@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -929,6 +931,166 @@ func TestPerformSearch_QueryEncoding(t *testing.T) {
 		t.Errorf("expected decoded query 'test query with spaces & special=chars', got %q", capturedQuery)
 	}
 }
+
+// --- ValidateSearchArgs tests ---
+
+// --- reorderArgs tests ---
+
+func TestReorderArgs(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []string
+		expected []string
+	}{
+		{
+			name:     "empty args",
+			input:    []string{},
+			expected: []string{},
+		},
+		{
+			name:     "only flags",
+			input:    []string{"--json", "--query", "test"},
+			expected: []string{"--json", "--query", "test"},
+		},
+		{
+			name:     "only positional args",
+			input:    []string{"query1", "query2"},
+			expected: []string{"query1", "query2"},
+		},
+		{
+			name:     "flags first already",
+			input:    []string{"--json", "--query", "test", "positional"},
+			expected: []string{"--json", "--query", "test", "positional"},
+		},
+		{
+			name:     "positional first, flags after - should reorder",
+			input:    []string{"test", "--json"},
+			expected: []string{"--json", "test"},
+		},
+		{
+			name:     "multiple positional before flags",
+			input:    []string{"query1", "query2", "--json", "--version"},
+			expected: []string{"--json", "--version", "query1", "query2"},
+		},
+		{
+			name:     "mixed order",
+			input:    []string{"--searxng-url", "https://example.com", "my query", "--json"},
+			expected: []string{"--searxng-url", "--json", "https://example.com", "my query"},
+		},
+		{
+			name:     "single flag with single positional",
+			input:    []string{"search term", "--json"},
+			expected: []string{"--json", "search term"},
+		},
+		{
+			name:     "no flags",
+			input:    []string{"just a query"},
+			expected: []string{"just a query"},
+		},
+		{
+			name:     "all flags no positional",
+			input:    []string{"--version", "--help"},
+			expected: []string{"--version", "--help"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := reorderArgs(tt.input)
+			if len(result) != len(tt.expected) {
+				t.Errorf("reorderArgs() length = %d, want %d", len(result), len(tt.expected))
+				return
+			}
+			for i := range result {
+				if result[i] != tt.expected[i] {
+					t.Errorf("reorderArgs()[%d] = %q, want %q", i, result[i], tt.expected[i])
+				}
+			}
+		})
+	}
+}
+
+// --- printCLIHelp tests ---
+
+func TestPrintCLIHelp(t *testing.T) {
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	printCLIHelp()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err := buf.ReadFrom(r)
+	if err != nil {
+		t.Fatalf("failed to read captured stdout: %v", err)
+	}
+	output := buf.String()
+
+	// Verify help content includes expected sections
+	expectedContent := []string{
+		"SearXNG MCP Server - CLI Mode",
+		"USAGE:",
+		"OPTIONS:",
+		"--query",
+		"--json",
+		"--searxng-url",
+		"--language",
+		"--safesearch",
+		"--time_range",
+		"--categories",
+		"--engines",
+		"--pageno",
+		"--help",
+		"--version",
+		"ARGUMENTS:",
+		"QUERY",
+		"OUTPUT:",
+		"EXAMPLES:",
+		"MCP MODE:",
+		"EXIT CODES:",
+		"https://github.com/xlionjuan/searxng-mcp-go",
+	}
+
+	for _, expected := range expectedContent {
+		if !strings.Contains(output, expected) {
+			t.Errorf("printCLIHelp() output missing expected content %q", expected)
+		}
+	}
+}
+
+// --- runCLIMode integration test notes ---
+// runCLIMode() is challenging to unit test directly because:
+// 1. It calls os.Exit() on errors, which terminates the test process
+// 2. It uses global flag variables (*cliHelp, *cliVersion, *cliQuery, etc.)
+// 3. It makes HTTP calls to SearXNG
+//
+// Integration test approach (as a separate binary or script):
+// - Build the binary: go build -o searxng-mcp-go .
+// - Test help: ./searxng-mcp-go --help (check exit code 0 and help output)
+// - Test version: ./searxng-mcp-go --version (check exit code 0 and version output)
+// - Test query with mock server:
+//   - Start a mock SearXNG server on localhost
+//   - Run: ./searxng-mcp-go --searxng-url=http://localhost:port "test query"
+//   - Verify search results output or JSON format
+// - Test missing query: ./searxng-mcp-go (check exit code 1 and error message)
+//
+// Example integration test using exec.Command in Go:
+//
+// func TestRunCLIModeIntegration(t *testing.T) {
+//     // Test --help flag
+//     cmd := exec.Command("./searxng-mcp-go", "--help")
+//     output, err := cmd.Output()
+//     if err != nil {
+//         t.Fatalf("expected no error for --help, got: %v", err)
+//     }
+//     if !strings.Contains(string(output), "SearXNG MCP Server") {
+//         t.Errorf("expected help header in output")
+//     }
+// }
 
 // --- ValidateSearchArgs tests ---
 
