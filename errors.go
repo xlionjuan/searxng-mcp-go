@@ -128,10 +128,4 @@ func (e *HTMLResponseError) Unwrap() error {
 	return e.Underlying
 }
 
-// NewSearchError creates a new search error based on the error type
-func NewSearchError(statusCode int, contentType string, body string, err error) error {
-	if err != nil {
-		return NewSearXNGError(statusCode, contentType, body, err)
-	}
-	return HTTPStatusError(statusCode, contentType, []byte(body))
-}
+
