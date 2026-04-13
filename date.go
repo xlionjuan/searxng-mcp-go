@@ -13,13 +13,11 @@ import (
 
 // Regex patterns for relative date parsing
 var (
-	lastHourRegex      = regexp.MustCompile(`(\d+)\s*(hour|hours|h|stunde|stunden)\s*(ago|vor)?`)
-	hoursAgoRegex      = regexp.MustCompile(`(\d+)\s*(hour|hours|h|stunde|stunden)\s*(ago|vor)?`)
-	daysAgoRegex       = regexp.MustCompile(`(\d+)\s*(day|days|d|tag|tagen)\s*(ago|vor)?`)
-	weeksAgoRegex      = regexp.MustCompile(`(\d+)\s*(week|weeks|w|woche|wochen)\s*(ago|vor)?`)
+	daysAgoRegex        = regexp.MustCompile(`(\d+)\s*(day|days|d|tag|tagen)\s*(ago|vor)?`)
+	weeksAgoRegex       = regexp.MustCompile(`(\d+)\s*(week|weeks|w|woche|wochen)\s*(ago|vor)?`)
 	germanWeeksAgoRegex = regexp.MustCompile(`vor\s+(\d+)\s*(woche|wochen)\b`)
 	germanDaysAgoRegex  = regexp.MustCompile(`vor\s+(\d+)\s*(tag|tagen)\b`)
-	germanHoursAgoRegex = regexp.MustCompile(`vor\s+(\d+)\s*(stunde|stunden|stunden)\b`)
+	germanHoursAgoRegex = regexp.MustCompile(`vor\s+(\d+)\s*(stunde|stunden)\b`)
 )
 
 func parseRelativeDate(content string, currentTime time.Time) *time.Time {
@@ -79,7 +77,7 @@ func parseRelativeDate(content string, currentTime time.Time) *time.Time {
 		}
 	}
 
-	vorHoursPattern := regexp.MustCompile(`vor\s+(\d+)\s*(stunde|stunden|stunden)\b`)
+	vorHoursPattern := regexp.MustCompile(`vor\s+(\d+)\s*(stunde|stunden)\b`)
 	if matches := vorHoursPattern.FindStringSubmatch(lower); len(matches) >= 2 {
 		hours := 0
 		fmt.Sscanf(matches[1], "%d", &hours)
