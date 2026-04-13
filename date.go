@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -11,11 +11,12 @@ import (
 // Date Parsing
 // ============================================================================
 
-// Regex patterns for relative date parsing
+// Package-level regex patterns (compiled once)
 var (
-	daysAgoRegex        = regexp.MustCompile(`(\d+)\s*(day|days|d|tag|tagen)\s*(ago|vor)?`)
-	germanDaysAgoRegex  = regexp.MustCompile(`vor\s+(\d+)\s*(tag|tagen)\b`)
-	germanHoursAgoRegex = regexp.MustCompile(`vor\s+(\d+)\s*(stunde|stunden)\b`)
+	hourPattern      = regexp.MustCompile(`(\d+)\s*(hour|hours|h|stunde|stunden)\s*(ago|vor)?`)
+	dayPattern       = regexp.MustCompile(`(\d+)\s*(day|days|d|tag|tagen)\s*(ago|vor)?`)
+	vorHoursPattern  = regexp.MustCompile(`vor\s+(\d+)\s*(stunde|stunden)\b`)
+	vorDaysPattern   = regexp.MustCompile(`vor\s+(\d+)\s*(tag|tagen)\b`)
 )
 
 func parseRelativeDate(content string, currentTime time.Time) *time.Time {
@@ -49,11 +50,8 @@ func parseRelativeDate(content string, currentTime time.Time) *time.Time {
 		return &t
 	}
 
-	hourPattern := regexp.MustCompile(`(\d+)\s*(hour|hours|h|stunde|stunden)\s*(ago|vor)?`)
 	if matches := hourPattern.FindStringSubmatch(lower); len(matches) >= 2 {
-		hours := 0
-		fmt.Sscanf(matches[1], "%d", &hours)
-		if hours > 0 && hours <= 48 {
+		if hours, err := strconv.Atoi(matches[1]); err == nil && hours > 0 && hours <= 48 {
 			t := currentTime.Add(-time.Duration(hours) * time.Hour)
 			if t.After(currentTime) || t.Year() < 2000 {
 				return nil
@@ -62,11 +60,8 @@ func parseRelativeDate(content string, currentTime time.Time) *time.Time {
 		}
 	}
 
-	dayPattern := regexp.MustCompile(`(\d+)\s*(day|days|d|tag|tagen)\s*(ago|vor)?`)
 	if matches := dayPattern.FindStringSubmatch(lower); len(matches) >= 2 {
-		days := 0
-		fmt.Sscanf(matches[1], "%d", &days)
-		if days > 0 && days <= 365 {
+		if days, err := strconv.Atoi(matches[1]); err == nil && days > 0 && days <= 365 {
 			t := currentTime.AddDate(0, 0, -days)
 			if t.After(currentTime) || t.Year() < 2000 {
 				return nil
@@ -75,11 +70,8 @@ func parseRelativeDate(content string, currentTime time.Time) *time.Time {
 		}
 	}
 
-	vorHoursPattern := regexp.MustCompile(`vor\s+(\d+)\s*(stunde|stunden)\b`)
 	if matches := vorHoursPattern.FindStringSubmatch(lower); len(matches) >= 2 {
-		hours := 0
-		fmt.Sscanf(matches[1], "%d", &hours)
-		if hours > 0 && hours <= 48 {
+		if hours, err := strconv.Atoi(matches[1]); err == nil && hours > 0 && hours <= 48 {
 			t := currentTime.Add(-time.Duration(hours) * time.Hour)
 			if t.After(currentTime) || t.Year() < 2000 {
 				return nil
@@ -88,11 +80,8 @@ func parseRelativeDate(content string, currentTime time.Time) *time.Time {
 		}
 	}
 
-	vorDaysPattern := regexp.MustCompile(`vor\s+(\d+)\s*(tag|tagen)\b`)
 	if matches := vorDaysPattern.FindStringSubmatch(lower); len(matches) >= 2 {
-		days := 0
-		fmt.Sscanf(matches[1], "%d", &days)
-		if days > 0 && days <= 365 {
+		if days, err := strconv.Atoi(matches[1]); err == nil && days > 0 && days <= 365 {
 			t := currentTime.AddDate(0, 0, -days)
 			if t.After(currentTime) || t.Year() < 2000 {
 				return nil
