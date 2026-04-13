@@ -664,7 +664,7 @@ func TestHTTPStatusError(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("status_%d", tc.statusCode), func(t *testing.T) {
-			err := httpStatusError(tc.statusCode, tc.contentType, tc.body)
+			err := HTTPStatusError(tc.statusCode, tc.contentType, tc.body)
 			if err == nil {
 				t.Fatalf("expected error for status %d, got nil", tc.statusCode)
 			}

@@ -114,11 +114,6 @@ func HTTPStatusError(statusCode int, contentType string, body []byte) error {
 	return NewSearXNGError(statusCode, contentType, bodyStr, errors.New(msg))
 }
 
-// httpStatusError is an alias for HTTPStatusError for backward compatibility with tests
-func httpStatusError(statusCode int, contentType string, body []byte) error {
-	return HTTPStatusError(statusCode, contentType, body)
-}
-
 // HTMLResponseError creates a specialized error for HTML responses (JSON not enabled)
 type HTMLResponseError struct {
 	Body       string // Truncated HTML body
