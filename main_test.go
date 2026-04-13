@@ -712,3 +712,134 @@ func TestPerformSearch_QueryEncoding(t *testing.T) {
 		t.Errorf("expected decoded query 'test query with spaces & special=chars', got %q", capturedQuery)
 	}
 }
+
+// --- ValidateSearchArgs tests ---
+
+func TestValidateSearchArgs(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        *SearchArgs
+		wantErr     bool
+		errField    string
+	}{
+		// nil args
+		{
+			name:    "nil args",
+			args:    nil,
+			wantErr: true,
+			errField: "args",
+		},
+		// empty query
+		{
+			name:    "empty query",
+			args:    &SearchArgs{Query: ""},
+			wantErr: true,
+			errField: "query",
+		},
+		// invalid time_range
+		{
+			name:    "invalid time_range hour",
+			args:    &SearchArgs{Query: "test", TimeRange: "hour"},
+			wantErr: true,
+			errField: "time_range",
+		},
+		{
+			name:    "invalid time_range week",
+			args:    &SearchArgs{Query: "test", TimeRange: "week"},
+			wantErr: true,
+			errField: "time_range",
+		},
+		{
+			name:    "invalid time_range invalid",
+			args:    &SearchArgs{Query: "test", TimeRange: "invalid"},
+			wantErr: true,
+			errField: "time_range",
+		},
+		// valid time_range values
+		{
+			name:    "valid time_range day",
+			args:    &SearchArgs{Query: "test", TimeRange: "day"},
+			wantErr: false,
+		},
+		{
+			name:    "valid time_range month",
+			args:    &SearchArgs{Query: "test", TimeRange: "month"},
+			wantErr: false,
+		},
+		{
+			name:    "valid time_range year",
+			args:    &SearchArgs{Query: "test", TimeRange: "year"},
+			wantErr: false,
+		},
+		// empty time_range is valid (optional)
+		{
+			name:    "empty time_range is valid",
+			args:    &SearchArgs{Query: "test", TimeRange: ""},
+			wantErr: false,
+		},
+		// safesearch out of range
+		{
+			name:    "safesearch negative",
+			args:    &SearchArgs{Query: "test", SafeSearch: -1},
+			wantErr: true,
+			errField: "safesearch",
+		},
+		{
+			name:    "safesearch too large",
+			args:    &SearchArgs{Query: "test", SafeSearch: 3},
+			wantErr: true,
+			errField: "safesearch",
+		},
+		// safesearch valid values
+		{
+			name:    "safesearch 0",
+			args:    &SearchArgs{Query: "test", SafeSearch: 0},
+			wantErr: false,
+		},
+		{
+			name:    "safesearch 1",
+			args:    &SearchArgs{Query: "test", SafeSearch: 1},
+			wantErr: false,
+		},
+		{
+			name:    "safesearch 2",
+			args:    &SearchArgs{Query: "test", SafeSearch: 2},
+			wantErr: false,
+		},
+		// normal valid args
+		{
+			name:    "valid args with all fields",
+			args:    &SearchArgs{Query: "golang mcp", Language: "en", SafeSearch: 1, TimeRange: "month"},
+			wantErr: false,
+		},
+		{
+			name:    "valid args with only query",
+			args:    &SearchArgs{Query: "test search"},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateSearchArgs(tt.args)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("ValidateSearchArgs() expected error, got nil")
+					return
+				}
+				ve, ok := err.(*ValidationError)
+				if !ok {
+					t.Errorf("ValidateSearchArgs() expected ValidationError, got %T", err)
+					return
+				}
+				if ve.Field != tt.errField {
+					t.Errorf("ValidateSearchArgs() error field = %q, want %q", ve.Field, tt.errField)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("ValidateSearchArgs() unexpected error: %v", err)
+				}
+			}
+		})
+	}
+}
