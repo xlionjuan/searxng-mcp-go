@@ -615,6 +615,119 @@ func TestInferDates(t *testing.T) {
 			t.Errorf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceNone)
 		}
 	})
+
+	// Accuracy tests: verify calculated dates are correct
+	t.Run("2 hours ago accuracy", func(t *testing.T) {
+		before := time.Now()
+		resp := &SearchResponse{
+			Results: []SearchResult{
+				{Title: "Test", URL: "https://example.com", Content: "Posted 2 hours ago"},
+			},
+		}
+		inferDates(resp)
+
+		if resp.Results[0].DateSource != DateSourceInferred {
+			t.Fatalf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceInferred)
+		}
+
+		inferredDate, err := time.Parse("2006-01-02", *resp.Results[0].PublishedDate)
+		if err != nil {
+			t.Fatalf("Failed to parse PublishedDate: %v", err)
+		}
+
+		// For hours, the date is stored as YYYY-MM-DD without time,
+		// so we need to check if the date matches (with +/- 1 day tolerance for edge cases)
+		// Since "2 hours ago" could cross midnight, we check the date is reasonable
+		expectedDate := before.AddDate(0, 0, 0).Format("2006-01-02") // today
+		dayDiff := before.Sub(inferredDate) / (24 * time.Hour)
+
+		// Should be either today or yesterday depending on when run
+		if dayDiff < 0 || dayDiff > 1 {
+			t.Errorf("Inferred date too far from expected: got %v, expected around %v",
+				resp.Results[0].PublishedDate, expectedDate)
+		}
+	})
+
+	t.Run("5 days ago accuracy", func(t *testing.T) {
+		before := time.Now()
+		resp := &SearchResponse{
+			Results: []SearchResult{
+				{Title: "Test", URL: "https://example.com", Content: "5 days ago news"},
+			},
+		}
+		inferDates(resp)
+
+		if resp.Results[0].DateSource != DateSourceInferred {
+			t.Fatalf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceInferred)
+		}
+
+		inferredDate, err := time.Parse("2006-01-02", *resp.Results[0].PublishedDate)
+		if err != nil {
+			t.Fatalf("Failed to parse PublishedDate: %v", err)
+		}
+
+		// Expected date should be approximately 5 days ago
+		expectedDate := before.AddDate(0, 0, -5)
+		dayDiff := (before.Sub(inferredDate) / (24 * time.Hour))
+
+		// Allow 1 day tolerance for time of day crossing midnight
+		if dayDiff < 4 || dayDiff > 6 {
+			t.Errorf("Inferred date not 5 days ago: got %v (dayDiff=%v), expected around %v",
+				resp.Results[0].PublishedDate, dayDiff, expectedDate.Format("2006-01-02"))
+		}
+	})
+
+	t.Run("german vor 2 tagen accuracy", func(t *testing.T) {
+		before := time.Now()
+		resp := &SearchResponse{
+			Results: []SearchResult{
+				{Title: "Test", URL: "https://example.com", Content: "Nachricht vor 2 tagen veröffentlicht"},
+			},
+		}
+		inferDates(resp)
+
+		if resp.Results[0].DateSource != DateSourceInferred {
+			t.Fatalf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceInferred)
+		}
+
+		inferredDate, err := time.Parse("2006-01-02", *resp.Results[0].PublishedDate)
+		if err != nil {
+			t.Fatalf("Failed to parse PublishedDate: %v", err)
+		}
+
+		dayDiff := (before.Sub(inferredDate) / (24 * time.Hour))
+		if dayDiff < 1 || dayDiff > 3 {
+			t.Errorf("German 'vor 2 tagen' not ~2 days ago: got %v (dayDiff=%v)",
+				resp.Results[0].PublishedDate, dayDiff)
+		}
+	})
+
+	t.Run("german vor 3 stunden accuracy", func(t *testing.T) {
+		before := time.Now()
+		resp := &SearchResponse{
+			Results: []SearchResult{
+				{Title: "Test", URL: "https://example.com", Content: "Artikel vor 3 stunden geschrieben"},
+			},
+		}
+		inferDates(resp)
+
+		if resp.Results[0].DateSource != DateSourceInferred {
+			t.Fatalf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceInferred)
+		}
+
+		inferredDate, err := time.Parse("2006-01-02", *resp.Results[0].PublishedDate)
+		if err != nil {
+			t.Fatalf("Failed to parse PublishedDate: %v", err)
+		}
+
+		// "vor 3 stunden" (3 hours ago) - since date only has day resolution,
+		// it should be today or yesterday
+		dayDiff := (before.Sub(inferredDate) / (24 * time.Hour))
+		if dayDiff < 0 || dayDiff > 1 {
+			t.Errorf("German 'vor 3 stunden' not close to today: got %v (dayDiff=%v)",
+				resp.Results[0].PublishedDate, dayDiff)
+		}
+	})
 }
 
 func TestPerformSearch_ContextCancellation(t *testing.T) {
