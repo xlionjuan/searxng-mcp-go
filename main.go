@@ -130,8 +130,8 @@ func main() {
 	// and treats everything after as positional arguments
 	flag.CommandLine.Parse(os.Args[1:])
 
-	// Check if we're in CLI mode (any CLI-specific flag is set or non-flag args exist)
-	isCLIMode := *cliHelp || *cliVersion || *cliQuery != "" || *cliJSON || flag.NFlag() > 0 || flag.NArg() > 0
+	// Check if we're in CLI mode (CLI-specific flags or positional args)
+	isCLIMode := *cliHelp || *cliVersion || *cliQuery != "" || *cliJSON || flag.NArg() > 0
 
 	if isCLIMode {
 		runCLIMode()
