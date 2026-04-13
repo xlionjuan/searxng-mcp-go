@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -270,7 +272,12 @@ func runMCPMode() {
 	})
 
 	log.Printf("Starting SearXNG MCP server...")
-	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
+
+	// Create context that listens for SIGINT/SIGTERM for graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }
