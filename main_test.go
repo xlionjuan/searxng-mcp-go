@@ -1120,6 +1120,34 @@ func TestValidateSearchArgs(t *testing.T) {
 			args:    &SearchArgs{Query: "test search"},
 			wantErr: false,
 		},
+		// pageno validation
+		{
+			name:    "pageno zero",
+			args:    &SearchArgs{Query: "test", Pageno: intPtr(0)},
+			wantErr: true,
+			errField: "pageno",
+		},
+		{
+			name:    "pageno negative",
+			args:    &SearchArgs{Query: "test", Pageno: intPtr(-1)},
+			wantErr: true,
+			errField: "pageno",
+		},
+		{
+			name:    "pageno valid 1",
+			args:    &SearchArgs{Query: "test", Pageno: intPtr(1)},
+			wantErr: false,
+		},
+		{
+			name:    "pageno valid 5",
+			args:    &SearchArgs{Query: "test", Pageno: intPtr(5)},
+			wantErr: false,
+		},
+		{
+			name:    "pageno nil is valid",
+			args:    &SearchArgs{Query: "test", Pageno: nil},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {

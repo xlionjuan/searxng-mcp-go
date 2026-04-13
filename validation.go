@@ -25,5 +25,9 @@ func ValidateSearchArgs(args *SearchArgs) error {
 		return NewValidationError("safesearch", "must be 0 (Off), 1 (Moderate), or 2 (Strict)")
 	}
 
+	if args.Pageno != nil && *args.Pageno < 1 {
+		return NewValidationError("pageno", "must be >= 1")
+	}
+
 	return nil
 }
