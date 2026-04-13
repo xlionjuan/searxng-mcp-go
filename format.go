@@ -11,7 +11,6 @@ import (
 
 // formatResults formats search results as a readable string
 func formatResults(resp *SearchResponse) string {
-	inferDates(resp)
 	if len(resp.Results) == 0 {
 		return "No results found."
 	}
