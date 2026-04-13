@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 )
 
 // ============================================================================
@@ -15,17 +16,18 @@ func formatResults(resp *SearchResponse) string {
 		return "No results found."
 	}
 
-	output := fmt.Sprintf("Found %d results for '%s':\n\n", len(resp.Results), resp.Query)
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Found %d results for '%s':\n\n", len(resp.Results), resp.Query))
 	for i, r := range resp.Results {
-		output += fmt.Sprintf("%d. %s\n", i+1, r.Title)
-		output += fmt.Sprintf("   URL: %s\n", r.URL)
+		b.WriteString(fmt.Sprintf("%d. %s\n", i+1, r.Title))
+		b.WriteString(fmt.Sprintf("   URL: %s\n", r.URL))
 		if r.Content != "" {
-			output += fmt.Sprintf("   Summary: %s\n", r.Content)
+			b.WriteString(fmt.Sprintf("   Summary: %s\n", r.Content))
 		}
 		if r.PublishedDate != nil && *r.PublishedDate != "" {
-			output += fmt.Sprintf("   Date: %s\n", *r.PublishedDate)
+			b.WriteString(fmt.Sprintf("   Date: %s\n", *r.PublishedDate))
 		}
-		output += fmt.Sprintf("   Engine: %s\n\n", r.Engine)
+		b.WriteString(fmt.Sprintf("   Engine: %s\n\n", r.Engine))
 	}
-	return output
+	return b.String()
 }
