@@ -473,13 +473,16 @@ func intPtr(i int) *int {
 
 func TestParseRelativeDate(t *testing.T) {
 	baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
+	h1 := time.Date(2024, 6, 15, 11, 0, 0, 0, time.UTC)
 	h2 := time.Date(2024, 6, 15, 10, 0, 0, 0, time.UTC)
 	h3 := time.Date(2024, 6, 15, 9, 0, 0, 0, time.UTC)
 	h24 := time.Date(2024, 6, 14, 12, 0, 0, 0, time.UTC)
 	h5st := time.Date(2024, 6, 15, 7, 0, 0, 0, time.UTC)
+	h1st := time.Date(2024, 6, 15, 11, 0, 0, 0, time.UTC)
 	d1 := time.Date(2024, 6, 14, 12, 0, 0, 0, time.UTC)
 	d5 := time.Date(2024, 6, 10, 12, 0, 0, 0, time.UTC)
 	d3t := time.Date(2024, 6, 12, 12, 0, 0, 0, time.UTC)
+	d1t := time.Date(2024, 6, 14, 12, 0, 0, 0, time.UTC)
 	y := time.Date(2024, 6, 14, 12, 0, 0, 0, time.UTC)
 	vg := time.Date(2024, 6, 13, 12, 0, 0, 0, time.UTC)
 	lw := time.Date(2024, 6, 8, 12, 0, 0, 0, time.UTC)
@@ -491,17 +494,28 @@ func TestParseRelativeDate(t *testing.T) {
 	}{
 		{"empty content", "", nil},
 		{"no date keywords", "This is some random content without any date information", nil},
+		// Exact boundary: 1 hour
+		{"1 hour ago", "Posted 1 hour ago by admin", &h1},
 		{"2 hours ago", "Posted 2 hours ago by admin", &h2},
 		{"3 hours ago", "3 hours ago, the news was published", &h3},
 		{"24 hours h", "Article from 24 hours h ago", &h24},
+		// German hour boundaries
+		{"German 1 stunde ago", "Nachricht vor 1 stunde veröffentlicht", &h1st},
 		{"German 5 stunden vor", "Nachricht vor 5 stunden veröffentlicht", &h5st},
+		// Day boundaries
 		{"1 day ago", "News from 1 day ago", &d1},
 		{"5 days ago", "Published 5 days ago", &d5},
+		// German day boundaries
+		{"German 1 tag vor", "Vor 1 tag wurde berichtet", &d1t},
 		{"German 3 tagen vor", "Vor 3 tagen wurde berichtet", &d3t},
+		// Special keywords
 		{"yesterday", "Article posted yesterday", &y},
 		{"German vorgestern", "Vorgestern wurde bekannt gegeben", &vg},
 		{"last week", "Report from last week suggests", &lw},
 		{"German vor woche", "Vor woche gab es eine ankündigung", &lw},
+		// Weeks patterns not implemented in parseRelativeDate (regex exists but unused)
+		{"2 weeks ago - not implemented", "Article from 2 weeks ago", nil},
+		{"2 wochen ago - not implemented", "Nachricht vor 2 wochen", nil},
 	}
 
 	for _, tt := range tests {
@@ -519,6 +533,27 @@ func TestParseRelativeDate(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestParseRelativeDate_ZeroHours(t *testing.T) {
+	baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
+	// "0 hours ago" should return nil because hours must be > 0
+	result := parseRelativeDate("Posted 0 hours ago", baseTime)
+	if result != nil {
+		t.Errorf("parseRelativeDate() with 0 hours should return nil, got %v", *result)
+	}
+}
+
+func TestParseRelativeDate_UpperBoundaries(t *testing.T) {
+	baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
+	// 48 hours is the upper limit for hours
+	h48 := time.Date(2024, 6, 13, 12, 0, 0, 0, time.UTC)
+	result := parseRelativeDate("Posted 48 hours ago", baseTime)
+	if result == nil {
+		t.Error("parseRelativeDate() with 48 hours should return a date")
+	} else if !result.Equal(h48) {
+		t.Errorf("parseRelativeDate() with 48 hours = %v, want %v", *result, h48)
 	}
 }
 
