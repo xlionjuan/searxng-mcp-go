@@ -135,6 +135,11 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		return nil, NewSearXNGError(0, "", "", fmt.Errorf("invalid SearXNG URL: %w", err))
 	}
 
+	// Validate URL scheme
+	if !strings.HasPrefix(s.baseURL, "http://") && !strings.HasPrefix(s.baseURL, "https://") {
+		return nil, NewSearXNGError(0, "", "", errors.New("SearXNG URL must start with http:// or https://"))
+	}
+
 	params := url.Values{}
 	params.Set("q", args.Query)
 	params.Set("format", "json")

@@ -103,7 +103,7 @@ The server will log "Starting SearXNG MCP server..." and then wait for input via
 To run in a container:
 
 ```dockerfile
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
 WORKDIR /app
 COPY . .
 RUN go build -o searxng-mcp-go .
