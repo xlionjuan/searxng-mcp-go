@@ -204,7 +204,7 @@ func runCLIMode() {
 	args := &SearchArgs{
 		Query:      query,
 		Language:   *cliLanguage,
-		SafeSearch: cliSafeSearch,
+		SafeSearch: *cliSafeSearch,
 		TimeRange:  *cliTimeRange,
 		Categories: *cliCategories,
 		Engines:    *cliEngines,

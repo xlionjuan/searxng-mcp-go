@@ -90,7 +90,7 @@ func getEnv(key, defaultValue string) string {
 type SearchArgs struct {
 	Query      string `json:"query" jsonschema:"Search query string"`
 	Language   string `json:"language" jsonschema:"Language code for results (e.g., en, zh-tw, ja). Defaults to en"`
-	SafeSearch *int   `json:"safesearch" jsonschema:"SafeSearch level: 0=Off, 1=Moderate, 2=Strict. Defaults to 0"`
+	SafeSearch int    `json:"safesearch" jsonschema:"SafeSearch level: 0=Off, 1=Moderate, 2=Strict. Defaults to 0"`
 	TimeRange  string `json:"time_range" jsonschema:"Time range filter: day, month, year, or empty for all time"`
 	Categories string `json:"categories" jsonschema:"Comma-separated list of categories to search (e.g., general, news, music)"`
 	Engines    string `json:"engines" jsonschema:"Comma-separated list of search engines to use (e.g., google, bing, duckduckgo)"`
@@ -144,10 +144,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	}
 	params.Set("language", language)
 
-	safesearch := 0
-	if args.SafeSearch != nil {
-		safesearch = *args.SafeSearch
-	}
+	safesearch := args.SafeSearch
 	params.Set("safesearch", fmt.Sprintf("%d", safesearch))
 
 	if args.TimeRange != "" {
