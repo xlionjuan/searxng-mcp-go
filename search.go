@@ -13,6 +13,9 @@ import (
 	"time"
 )
 
+// DefaultSearXNGURL is the default SearXNG instance URL
+const DefaultSearXNGURL = "https://search-4.xlion.dev"
+
 // ============================================================================
 // Searcher Interface
 // ============================================================================
@@ -69,7 +72,7 @@ type Config struct {
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
-		SearXNGURL: "https://search-4.xlion.dev",
+		SearXNGURL: DefaultSearXNGURL,
 		Timeout:    30 * time.Second,
 	}
 }
