@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -127,11 +126,9 @@ const searchInputSchema = `{
 // ============================================================================
 
 func main() {
-	// Reorder args: move all flags to the front, positional args to the back
-	// This allows mixing flags and positional args in any order
-	// e.g., searxng-mcp-go "test" --json will work correctly
-	reorderedArgs := reorderArgs(os.Args[1:])
-	flag.CommandLine.Parse(reorderedArgs)
+	// Parse flags - Go's flag.Parse() automatically stops at the first non-flag argument
+	// and treats everything after as positional arguments
+	flag.CommandLine.Parse(os.Args[1:])
 
 	// Check if we're in CLI mode (any CLI-specific flag is set or non-flag args exist)
 	isCLIMode := *cliHelp || *cliVersion || *cliQuery != "" || *cliJSON || flag.NFlag() > 0 || flag.NArg() > 0
@@ -143,24 +140,6 @@ func main() {
 
 	// MCP stdio mode
 	runMCPMode()
-}
-
-// reorderArgs reorders arguments so all flags come before positional arguments
-// This allows commands like: searxng-mcp-go "test" --json
-func reorderArgs(args []string) []string {
-	var flags []string
-	var positional []string
-
-	for _, arg := range args {
-		if strings.HasPrefix(arg, "-") {
-			flags = append(flags, arg)
-		} else {
-			positional = append(positional, arg)
-		}
-	}
-
-	result := append(flags, positional...)
-	return result
 }
 
 func getConfig() *Config {
