@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -398,6 +399,67 @@ func TestPerformSearch_Pageno(t *testing.T) {
 	}
 	if capturedPageno != "2" {
 		t.Errorf("expected pageno '2', got %q", capturedPageno)
+	}
+}
+
+func TestPerformSearch_HTMLResponseError(t *testing.T) {
+	tests := []struct {
+		name        string
+		contentType string
+		body        string
+		desc        string
+	}{
+		{
+			name:        "HTML content-type header",
+			contentType: "text/html",
+			body:        "<!DOCTYPE html><html><head><title>Search</title></head><body>JSON output not enabled</body></html>",
+			desc:        "HTMLResponseError triggered by text/html content-type",
+		},
+		{
+			name:        "body starts with DOCTYPE",
+			contentType: "text/html; charset=utf-8",
+			body:        "<!DOCTYPE html><html><body>Please enable JSON output</body></html>",
+			desc:        "HTMLResponseError triggered by <!DOCTYPE prefix",
+		},
+		{
+			name:        "body starts with html tag",
+			contentType: "application/octet-stream",
+			body:        "<html><body>JSON output not enabled on this instance</body></html>",
+			desc:        "HTMLResponseError triggered by <html> prefix even without HTML content-type",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", tt.contentType)
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(tt.body))
+			}))
+			defer server.Close()
+
+			cfg := &Config{
+				SearXNGURL: server.URL,
+				Timeout:    30 * time.Second,
+			}
+			args := &SearchArgs{Query: "test"}
+
+			ctx := context.Background()
+			_, err := performSearch(ctx, cfg, args)
+
+			if err == nil {
+				t.Fatal("expected HTMLResponseError, got nil")
+			}
+
+			var htmlErr *HTMLResponseError
+			if !errors.As(err, &htmlErr) {
+				t.Errorf("expected HTMLResponseError, got: %v", err)
+			}
+
+			if !strings.Contains(err.Error(), "searxng returned HTML instead of JSON") {
+				t.Errorf("expected HTML response error message, got: %v", err)
+			}
+		})
 	}
 }
 
