@@ -113,7 +113,7 @@ func TestPerformSearch_Success(t *testing.T) {
 	args := &SearchArgs{
 		Query:      "test",
 		Language:   "en",
-		SafeSearch: intPtr(1),
+		SafeSearch: 1,
 	}
 
 	ctx := context.Background()

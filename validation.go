@@ -21,11 +21,8 @@ func ValidateSearchArgs(args *SearchArgs) error {
 		return NewValidationError("time_range", "must be one of: day, month, year")
 	}
 
-	if args.SafeSearch != nil {
-		ss := *args.SafeSearch
-		if ss < 0 || ss > 2 {
-			return NewValidationError("safesearch", "must be 0 (Off), 1 (Moderate), or 2 (Strict)")
-		}
+	if args.SafeSearch < 0 || args.SafeSearch > 2 {
+		return NewValidationError("safesearch", "must be 0 (Off), 1 (Moderate), or 2 (Strict)")
 	}
 
 	return nil
