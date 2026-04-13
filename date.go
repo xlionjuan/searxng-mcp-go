@@ -14,8 +14,6 @@ import (
 // Regex patterns for relative date parsing
 var (
 	daysAgoRegex        = regexp.MustCompile(`(\d+)\s*(day|days|d|tag|tagen)\s*(ago|vor)?`)
-	weeksAgoRegex       = regexp.MustCompile(`(\d+)\s*(week|weeks|w|woche|wochen)\s*(ago|vor)?`)
-	germanWeeksAgoRegex = regexp.MustCompile(`vor\s+(\d+)\s*(woche|wochen)\b`)
 	germanDaysAgoRegex  = regexp.MustCompile(`vor\s+(\d+)\s*(tag|tagen)\b`)
 	germanHoursAgoRegex = regexp.MustCompile(`vor\s+(\d+)\s*(stunde|stunden)\b`)
 )
