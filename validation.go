@@ -4,8 +4,8 @@ package main
 // Centralized Validation
 // ============================================================================
 
-// ValidTimeRanges contains the set of valid time range values
-var ValidTimeRanges = map[string]bool{"day": true, "month": true, "year": true}
+// validTimeRanges contains the set of valid time range values
+var validTimeRanges = map[string]bool{"day": true, "month": true, "year": true}
 
 // ValidateSearchArgs validates the search arguments and returns a ValidationError if invalid
 func ValidateSearchArgs(args *SearchArgs) error {
@@ -17,7 +17,7 @@ func ValidateSearchArgs(args *SearchArgs) error {
 		return NewValidationError("query", "search query is required")
 	}
 
-	if args.TimeRange != "" && !ValidTimeRanges[args.TimeRange] {
+	if args.TimeRange != "" && !validTimeRanges[args.TimeRange] {
 		return NewValidationError("time_range", "must be one of: day, month, year")
 	}
 

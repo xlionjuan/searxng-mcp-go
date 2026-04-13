@@ -1,4 +1,3 @@
-// TEST_OK
 package main
 
 import (
@@ -15,6 +14,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
+
+const version = "1.0.0"
 
 // ============================================================================
 // CLI Flags
@@ -100,7 +101,7 @@ const searchInputSchema = `{
 			"description": "Language code for results (e.g., en, zh-tw, ja). Defaults to en"
 		},
 		"safesearch": {
-			"type": ["null", "integer"],
+			"type": "integer",
 			"description": "SafeSearch level: 0=Off, 1=Moderate, 2=Strict. Defaults to 0"
 		},
 		"time_range": {
@@ -116,7 +117,7 @@ const searchInputSchema = `{
 			"description": "Comma-separated list of search engines to use (e.g., google, bing, duckduckgo)"
 		},
 		"pageno": {
-			"type": ["null", "integer"],
+			"type": "integer",
 			"description": "Page number for pagination. Defaults to 1"
 		}
 	},
@@ -164,7 +165,7 @@ func runCLIMode() {
 	}
 
 	if *cliVersion {
-		fmt.Println("searxng-mcp-go version 1.0.0")
+		fmt.Println("searxng-mcp-go version " + version)
 		fmt.Println("SearXNG MCP Server - CLI + MCP stdio dual-mode")
 		return
 	}
@@ -230,7 +231,7 @@ func runMCPMode() {
 
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "searxng-mcp-go",
-		Version: "1.0.0",
+		Version: version,
 	}, nil)
 
 	mcp.AddTool(server, &mcp.Tool{
