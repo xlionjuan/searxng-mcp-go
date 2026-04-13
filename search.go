@@ -193,7 +193,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	isHTMLResponse := strings.Contains(contentType, "text/html") || strings.HasPrefix(strings.TrimSpace(string(body)), "<!DOCTYPE") || strings.HasPrefix(strings.TrimSpace(string(body)), "<html")
 
 	if isHTMLResponse {
-		return nil, &HTMLResponseError{Body: string(body)[:min(200, len(string(body)))], Underlying: nil}
+		return nil, &HTMLResponseError{Body: string(body[:min(200, len(body))]), Underlying: nil}
 	}
 
 	if !strings.Contains(contentType, "application/json") && !strings.Contains(contentType, "text/json") {
