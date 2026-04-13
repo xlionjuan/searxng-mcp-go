@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -13,63 +14,63 @@ import (
 
 // --- formatResults tests ---
 
-func TestFormatResults_NormalResults(t *testing.T) {
-	resp := &SearchResponse{
-		Results: []SearchResult{
-			{
-				Title:   "Test Title 1",
-				URL:     "https://example.com/1",
-				Content: "Test content 1",
-				Engine:  "google",
+func TestFormatResults(t *testing.T) {
+	tests := []struct {
+		name           string
+		resp           *SearchResponse
+		wantContains   []string
+		wantNotContain string
+		wantResult      string
+	}{
+		{
+			name: "normal results with content",
+			resp: &SearchResponse{
+				Results: []SearchResult{
+					{
+						Title:   "Test Title 1",
+						URL:     "https://example.com/1",
+						Content: "Test content 1",
+						Engine:  "google",
+					},
+					{
+						Title:   "Test Title 2",
+						URL:     "https://example.com/2",
+						Content: "",
+						Engine:  "bing",
+					},
+				},
+				NumberOfResults: 2,
+				Query:           "test query",
 			},
-			{
-				Title:   "Test Title 2",
-				URL:     "https://example.com/2",
-				Content: "",
-				Engine:  "bing",
-			},
+			wantContains: []string{"Found 2 results", "test query", "Test Title 1", "https://example.com/1", "Test content 1", "Test Title 2", "Summary:"},
 		},
-		NumberOfResults: 2,
-		Query:           "test query",
+		{
+			name:      "empty results",
+			resp:      &SearchResponse{Results: []SearchResult{}, NumberOfResults: 0, Query: "empty query"},
+			wantResult: "No results found.",
+		},
 	}
 
-	result := formatResults(resp)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatResults(tt.resp)
 
-	// Check that key elements are present
-	if !strings.Contains(result, "Found 2 results") {
-		t.Errorf("expected result count in output, got: %s", result)
-	}
-	if !strings.Contains(result, "test query") {
-		t.Errorf("expected query in output, got: %s", result)
-	}
-	if !strings.Contains(result, "Test Title 1") {
-		t.Errorf("expected first title in output, got: %s", result)
-	}
-	if !strings.Contains(result, "https://example.com/1") {
-		t.Errorf("expected first URL in output, got: %s", result)
-	}
-	if !strings.Contains(result, "Test content 1") {
-		t.Errorf("expected content in output, got: %s", result)
-	}
-	if !strings.Contains(result, "Test Title 2") {
-		t.Errorf("expected second title in output, got: %s", result)
-	}
-	if !strings.Contains(result, "Summary:") {
-		t.Errorf("did not expect Summary for empty content, got: %s", result)
-	}
-}
+			if tt.wantResult != "" {
+				if result != tt.wantResult {
+					t.Errorf("expected %q, got: %s", tt.wantResult, result)
+				}
+				return
+			}
 
-func TestFormatResults_EmptyResults(t *testing.T) {
-	resp := &SearchResponse{
-		Results:         []SearchResult{},
-		NumberOfResults: 0,
-		Query:           "empty query",
-	}
-
-	result := formatResults(resp)
-
-	if result != "No results found." {
-		t.Errorf("expected 'No results found.', got: %s", result)
+			for _, want := range tt.wantContains {
+				if !strings.Contains(result, want) {
+					t.Errorf("expected %q in output, got: %s", want, result)
+				}
+			}
+			if tt.wantNotContain != "" && strings.Contains(result, tt.wantNotContain) {
+				t.Errorf("did not expect %q in output, got: %s", tt.wantNotContain, result)
+			}
+		})
 	}
 }
 
@@ -86,20 +87,9 @@ func TestPerformSearch_Success(t *testing.T) {
 	}
 	body, _ := json.Marshal(searchResp)
 
+	var capturedQuery url.Values
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Verify request parameters
-		if r.URL.Query().Get("q") != "test" {
-			t.Errorf("expected query 'test', got %s", r.URL.Query().Get("q"))
-		}
-		if r.URL.Query().Get("format") != "json" {
-			t.Errorf("expected format 'json', got %s", r.URL.Query().Get("format"))
-		}
-		if r.URL.Query().Get("language") != "en" {
-			t.Errorf("expected language 'en', got %s", r.URL.Query().Get("language"))
-		}
-		if r.URL.Query().Get("safesearch") != "1" {
-			t.Errorf("expected safesearch '1', got %s", r.URL.Query().Get("safesearch"))
-		}
+		capturedQuery = r.URL.Query()
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(body)
@@ -127,6 +117,23 @@ func TestPerformSearch_Success(t *testing.T) {
 	}
 	if result.Results[0].Title != "Result 1" {
 		t.Errorf("expected 'Result 1', got %s", result.Results[0].Title)
+	}
+
+	// Verify request parameters using captured query
+	tests := []struct {
+		name string
+		param string
+		want  string
+	}{
+		{"query", "q", "test"},
+		{"format", "format", "json"},
+		{"language", "language", "en"},
+		{"safesearch", "safesearch", "1"},
+	}
+	for _, tt := range tests {
+		if capturedQuery.Get(tt.param) != tt.want {
+			t.Errorf("expected %s=%q, got %q", tt.param, tt.want, capturedQuery.Get(tt.param))
+		}
 	}
 }
 
