@@ -11,12 +11,19 @@ This project implements an MCP server in Go that exposes a `search` tool. AI age
 ```
 searxng-mcp-go/
 ├── main.go           # Main server implementation
+├── search.go         # Search functionality
+├── errors.go         # Error types and handling
+├── validation.go     # Input validation
+├── date.go           # Date/time utilities
+├── format.go         # Output formatting
+├── main_test.go      # Test suite
 ├── go.mod            # Go module definition
 ├── go.sum            # Go dependencies checksum
 ├── AGENTS.md         # This file - AI agent instructions
 └── docs/
-    ├── INSTALL.md    # Installation and build guide
-    └── MCP_TOOLS.md  # MCP tool documentation
+    ├── INSTALL.md        # Installation and build guide
+    ├── MCP_TOOLS.md      # MCP tool documentation
+    └── AI_UX_TEST_GUIDE.md  # AI UX testing guide
 ```
 
 ## Building
@@ -94,11 +101,26 @@ go fmt ./...
 
 The server uses the following default configuration:
 
-- **SearXNG URL**: `https://search-4.xlion.dev` (configurable in source)
+- **SearXNG URL**: `https://search-4.xlion.dev`
 - **Timeout**: 30 seconds per request
 - **Transport**: Stdio (stdin/stdout)
 
-No environment variables are required by default.
+### SearXNG Instance Configuration
+
+The SearXNG URL can be configured at runtime using either an environment variable or a command-line flag:
+
+**Environment variable:**
+```bash
+export SEARXNG_URL=https://your-searxng-instance.example.com
+./searxng-mcp-go
+```
+
+**Command-line flag:**
+```bash
+./searxng-mcp-go -searxng-url=https://your-searxng-instance.example.com
+```
+
+**Priority:** command-line flag > environment variable > default hardcoded value
 
 ## Error Handling
 
