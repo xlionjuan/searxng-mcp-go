@@ -218,6 +218,9 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		result.NumberOfResults = len(result.Results)
 	}
 
+	// Infer dates before returning to avoid mutation side effects in formatResults
+	inferDates(&result)
+
 	return &result, nil
 }
 
