@@ -30,7 +30,6 @@ type Searcher interface {
 type SearXNGSearcher struct {
 	client  *http.Client // Configurable HTTP client
 	baseURL string
-	timeout time.Duration
 }
 
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration
@@ -41,7 +40,6 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 	return &SearXNGSearcher{
 		client:  client,
 		baseURL: baseURL,
-		timeout: timeout,
 	}
 }
 
