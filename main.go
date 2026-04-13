@@ -146,7 +146,7 @@ func main() {
 
 func getConfig() *Config {
 	// Priority: flag > environment variable > default
-	url := getEnv("SEARXNG_URL", "https://search-4.xlion.dev")
+	url := getEnv("SEARXNG_URL", DefaultSearXNGURL)
 	if *cliSearXNGURL != "" {
 		url = *cliSearXNGURL
 	}
