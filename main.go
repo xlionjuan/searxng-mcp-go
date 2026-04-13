@@ -87,7 +87,7 @@ For more information, see: https://github.com/xlionjuan/searxng-mcp-go`)
 
 // searchInputSchema defines the JSON schema for the search tool input.
 // Only "query" is required; all other parameters are optional.
-var searchInputSchema = `{
+const searchInputSchema = `{
 	"type": "object",
 	"properties": {
 		"query": {
