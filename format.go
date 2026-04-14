@@ -22,7 +22,11 @@ func formatResults(resp *SearchResponse) string {
 		b.WriteString(fmt.Sprintf("%d. %s\n", i+1, r.Title))
 		b.WriteString(fmt.Sprintf("   URL: %s\n", r.URL))
 		if r.Content != "" {
-			b.WriteString(fmt.Sprintf("   Summary: %s\n", html.UnescapeString(r.Content)))
+			content := r.Content
+			if len(content) > 4000 {
+				content = content[:4000]
+			}
+			b.WriteString(fmt.Sprintf("   Summary: %s\n", html.UnescapeString(content)))
 		}
 		if r.PublishedDate != nil && *r.PublishedDate != "" {
 			b.WriteString(fmt.Sprintf("   Date: %s\n", *r.PublishedDate))

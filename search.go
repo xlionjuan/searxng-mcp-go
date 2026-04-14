@@ -140,6 +140,11 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		return nil, NewSearXNGError(0, "", "", errors.New("SearXNG URL must use http:// or https:// scheme"))
 	}
 
+	// Validate URL has a host
+	if baseURL.Host == "" {
+		return nil, NewSearXNGError(0, "", "", errors.New("SearXNG URL must include a host (e.g., search.example.com)"))
+	}
+
 	params := url.Values{}
 	params.Set("q", args.Query)
 	params.Set("format", "json")

@@ -13,9 +13,18 @@ import (
 
 // Package-level regex patterns (compiled once)
 var (
-	hourPattern = regexp.MustCompile(`(\d+)\s*(hour|hours|h|stunde|stunden)\s*(ago|vor)?`)
-	dayPattern  = regexp.MustCompile(`(\d+)\s*(day|days|d|tag|tagen)\s*(ago|vor)?`)
+	hourPattern = mustCompile(`(\d+)\s*(hour|hours|h|stunde|stunden)\s*(ago|vor)?`)
+	dayPattern  = mustCompile(`(\d+)\s*(day|days|d|tag|tagen)\s*(ago|vor)?`)
 )
+
+// mustCompile wraps regexp.Compile and panics on error for clarity
+func mustCompile(pattern string) *regexp.Regexp {
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		panic("invalid regex: " + pattern)
+	}
+	return re
+}
 
 func parseRelativeDate(content string, currentTime time.Time) *time.Time {
 	if content == "" {
