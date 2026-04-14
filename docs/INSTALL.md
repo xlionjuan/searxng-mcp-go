@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Go 1.23 or later (developed with Go 1.26.2)
+- Go 1.26.2 or later (developed with Go 1.26.2)
 - Access to a SearXNG instance (default: `https://search-4.xlion.dev`)
 
 ## Installing
@@ -103,7 +103,7 @@ The server will log "Starting SearXNG MCP server..." and then wait for input via
 To run in a container:
 
 ```dockerfile
-FROM golang:1.23-alpine AS builder
+FROM golang:1.26-alpine AS builder
 WORKDIR /app
 COPY . .
 RUN go build -o searxng-mcp-go .

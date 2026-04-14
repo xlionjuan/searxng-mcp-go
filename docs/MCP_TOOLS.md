@@ -40,6 +40,7 @@ The tool returns a text response containing:
   - Title (clickable link text)
   - URL
   - Content/summary snippet
+  - Date (if available, e.g., publication date)
   - Source search engine
 
 ### Example Usage
@@ -125,6 +126,7 @@ Found 5 results for 'golang tutorial':
 1. Go Language Tutorial
    URL: https://example.com/golang-tutorial
    Summary: Learn Go programming from scratch with this comprehensive tutorial...
+   Date: 2024-01-15
    Engine: google
 
 2. Building Web Applications with Go
@@ -135,13 +137,16 @@ Found 5 results for 'golang tutorial':
 
 ### Error Responses
 
-| Error Condition               | Response                                                |
-|-------------------------------|--------------------------------------------------------|
-| Missing `query` parameter     | "Error: query parameter is required"                   |
-| Invalid `time_range` value    | "Error: time_range must be one of: day, month, year"   |
-| Network failure               | "Search error: failed to execute search request: ..."  |
-| SearXNG API error            | "Search error: SearXNG returned non-OK status: 500"   |
-| Invalid JSON from SearXNG     | "Search error: failed to parse JSON response: ..."     |
+Actual error message formats from the server:
+
+| Error Condition               | Response Format                                                |
+|-------------------------------|----------------------------------------------------------------|
+| Missing `query` parameter     | `validation error on "query": query is required`              |
+| Invalid `time_range` value    | `validation error on "time_range": time_range must be one of: day, month, year` |
+| Network failure               | `searxng error (status 0): context deadline exceeded` (or similar) |
+| SearXNG HTTP error           | `searxng error (status 500): internal server error: the search engine encountered an internal error` |
+| HTML response (JSON disabled)| `searxng returned HTML instead of JSON (JSON output likely not enabled on instance). Response: <truncated HTML>` |
+| Invalid JSON from SearXNG     | `searxng error (status 200): <underlying error>` |
 
 ### Implementation Details
 
