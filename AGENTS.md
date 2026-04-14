@@ -78,6 +78,7 @@ Found 3 results for 'Golang MCP server':
 1. Building MCP Servers with Go
    URL: https://example.com/golang-mcp
    Summary: A tutorial on building Model Context Protocol servers in Go...
+   Date: 2024-01-15
    Engine: google
 ```
 
