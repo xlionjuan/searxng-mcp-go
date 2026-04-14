@@ -108,7 +108,7 @@ func HTTPStatusError(statusCode int, contentType string, body []byte) error {
 	case 504:
 		msg = "gateway timeout: timed out waiting for an upstream server"
 	default:
-		msg = fmt.Sprintf("unexpected status code received")
+		msg = "unexpected status code received"
 	}
 
 	return NewSearXNGError(statusCode, contentType, bodyStr, errors.New(msg))

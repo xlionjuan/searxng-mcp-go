@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -1016,6 +1017,210 @@ func TestPrintCLIHelp(t *testing.T) {
 //     }
 // }
 
+// --- runCLIMode tests ---
+
+// TestRunCLIMode_MissingQuery tests that runCLIMode returns an error when no query is provided
+// instead of calling os.Exit
+func TestRunCLIMode_MissingQuery(t *testing.T) {
+	// Reset flag values to ensure clean state
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	*cliQuery = ""
+	*cliHelp = false
+	*cliVersion = false
+	*cliJSON = false
+	*cliLanguage = "en"
+	*cliSafeSearch = 0
+	*cliTimeRange = ""
+	*cliCategories = ""
+	*cliEngines = ""
+	// Reset pageno to default value
+	cliPageno = flag.Int("pageno", 1, "Page number for pagination")
+
+	err := runCLIMode([]string{})
+	if err == nil {
+		t.Fatal("expected error for missing query, got nil")
+	}
+	if !strings.Contains(err.Error(), "search query is required") {
+		t.Errorf("expected 'search query is required' error, got: %v", err)
+	}
+}
+
+// TestRunCLIMode_ValidationError tests that runCLIMode returns validation errors
+// instead of calling os.Exit
+func TestRunCLIMode_ValidationError(t *testing.T) {
+	// Reset flag values
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	*cliQuery = "" // Will be overridden by positional arg
+	*cliHelp = false
+	*cliVersion = false
+	*cliJSON = false
+	*cliLanguage = "en"
+	*cliSafeSearch = -1 // Invalid: should trigger validation error
+	*cliTimeRange = ""
+	*cliCategories = ""
+	*cliEngines = ""
+
+	// Test with safesearch = -1 (invalid)
+	err := runCLIMode([]string{"test query"})
+	if err == nil {
+		t.Fatal("expected validation error for safesearch=-1, got nil")
+	}
+	if !strings.Contains(err.Error(), "validation error") {
+		t.Errorf("expected validation error, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "safesearch") {
+		t.Errorf("expected safesearch in error message, got: %v", err)
+	}
+}
+
+// TestRunCLIMode_InvalidTimeRange tests that invalid time_range returns validation error
+func TestRunCLIMode_InvalidTimeRange(t *testing.T) {
+	// Reset flag values
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	*cliQuery = ""
+	*cliHelp = false
+	*cliVersion = false
+	*cliJSON = false
+	*cliLanguage = "en"
+	*cliSafeSearch = 0
+	*cliTimeRange = "invalid" // Invalid time_range
+	*cliCategories = ""
+	*cliEngines = ""
+
+	err := runCLIMode([]string{"test query"})
+	if err == nil {
+		t.Fatal("expected validation error for invalid time_range, got nil")
+	}
+	if !strings.Contains(err.Error(), "validation error") {
+		t.Errorf("expected validation error, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "time_range") {
+		t.Errorf("expected time_range in error message, got: %v", err)
+	}
+}
+
+// TestRunCLIMode_InvalidPageno tests that invalid pageno returns validation error
+func TestRunCLIMode_InvalidPageno(t *testing.T) {
+	// Reset flag values
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	*cliQuery = ""
+	*cliHelp = false
+	*cliVersion = false
+	*cliJSON = false
+	*cliLanguage = "en"
+	*cliSafeSearch = 0
+	*cliTimeRange = ""
+	*cliCategories = ""
+	*cliEngines = ""
+
+	// Set pageno to invalid value (0)
+	*cliPageno = 0
+
+	err := runCLIMode([]string{"test query"})
+	if err == nil {
+		t.Fatal("expected validation error for pageno=0, got nil")
+	}
+	if !strings.Contains(err.Error(), "validation error") {
+		t.Errorf("expected validation error, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "pageno") {
+		t.Errorf("expected pageno in error message, got: %v", err)
+	}
+}
+
+// TestRunCLIMode_QueryTooLong tests that query > 500 chars returns validation error
+func TestRunCLIMode_QueryTooLong(t *testing.T) {
+	// Reset flag values
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	*cliQuery = strings.Repeat("a", 501) // Too long query
+	*cliHelp = false
+	*cliVersion = false
+	*cliJSON = false
+	*cliLanguage = "en"
+	*cliSafeSearch = 0
+	*cliTimeRange = ""
+	*cliCategories = ""
+	*cliEngines = ""
+
+	err := runCLIMode([]string{})
+	if err == nil {
+		t.Fatal("expected validation error for query too long, got nil")
+	}
+	if !strings.Contains(err.Error(), "validation error") {
+		t.Errorf("expected validation error, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "500 characters") {
+		t.Errorf("expected '500 characters' in error message, got: %v", err)
+	}
+}
+
+// TestRunCLIMode_HelpFlag tests that --help returns without error
+func TestRunCLIMode_HelpFlag(t *testing.T) {
+	// Reset flag values
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	*cliQuery = ""
+	*cliHelp = true // Setting help should return nil
+	*cliVersion = false
+	*cliJSON = false
+	*cliLanguage = "en"
+	*cliSafeSearch = 0
+	*cliTimeRange = ""
+	*cliCategories = ""
+	*cliEngines = ""
+
+	err := runCLIMode([]string{})
+	if err != nil {
+		t.Errorf("runCLIMode() with --help should return nil, got: %v", err)
+	}
+}
+
+// TestRunCLIMode_VersionFlag tests that --version returns without error
+func TestRunCLIMode_VersionFlag(t *testing.T) {
+	// Reset flag values
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	*cliQuery = ""
+	*cliHelp = false
+	*cliVersion = true // Setting version should return nil
+	*cliJSON = false
+	*cliLanguage = "en"
+	*cliSafeSearch = 0
+	*cliTimeRange = ""
+	*cliCategories = ""
+	*cliEngines = ""
+
+	err := runCLIMode([]string{})
+	if err != nil {
+		t.Errorf("runCLIMode() with --version should return nil, got: %v", err)
+	}
+}
+
+// TestRunCLIMode_SearchErrorReturnsError tests that search errors are returned as errors
+// and not cause os.Exit to be called
+func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
+	// Reset flag values
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	*cliQuery = "test query"
+	*cliHelp = false
+	*cliVersion = false
+	*cliJSON = false
+	*cliLanguage = "en"
+	*cliSafeSearch = 0
+	*cliTimeRange = ""
+	*cliCategories = ""
+	*cliEngines = ""
+	*cliSearXNGURL = "://invalid-url" // Invalid URL to trigger error
+	*cliPageno = 1                    // Valid pageno
+
+	err := runCLIMode([]string{})
+	if err == nil {
+		t.Fatal("expected error for invalid URL, got nil")
+	}
+	// Should NOT be a validation error - it should be a search error about invalid URL
+	if !strings.Contains(err.Error(), "search error") && !strings.Contains(err.Error(), "invalid") {
+		t.Errorf("expected search error with 'invalid', got: %v", err)
+	}
+}
+
 // --- ValidateSearchArgs tests ---
 
 func TestValidateSearchArgs(t *testing.T) {
@@ -1024,6 +1229,7 @@ func TestValidateSearchArgs(t *testing.T) {
 		args        *SearchArgs
 		wantErr     bool
 		errField    string
+		errContains string // Optional substring that should be in error message
 	}{
 		// nil args
 		{
@@ -1034,10 +1240,25 @@ func TestValidateSearchArgs(t *testing.T) {
 		},
 		// empty query
 		{
-			name:    "empty query",
-			args:    &SearchArgs{Query: ""},
-			wantErr: true,
-			errField: "query",
+			name:        "empty query",
+			args:        &SearchArgs{Query: ""},
+			wantErr:     true,
+			errField:    "query",
+			errContains: "search query is required",
+		},
+		// query too long (> 500 characters)
+		{
+			name:        "query too long",
+			args:        &SearchArgs{Query: strings.Repeat("a", 501)},
+			wantErr:     true,
+			errField:    "query",
+			errContains: "must be 500 characters or less",
+		},
+		// query exactly 500 characters (should pass)
+		{
+			name:    "query exactly 500 characters",
+			args:    &SearchArgs{Query: strings.Repeat("a", 500)},
+			wantErr: false,
 		},
 		// invalid time_range
 		{
@@ -1165,6 +1386,9 @@ func TestValidateSearchArgs(t *testing.T) {
 				}
 				if ve.Field != tt.errField {
 					t.Errorf("ValidateSearchArgs() error field = %q, want %q", ve.Field, tt.errField)
+				}
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("ValidateSearchArgs() error message = %q, want to contain %q", err.Error(), tt.errContains)
 				}
 			} else {
 				if err != nil {
