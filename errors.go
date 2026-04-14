@@ -34,6 +34,18 @@ func NewValidationError(field, message string) *ValidationError {
 	return &ValidationError{Field: field, Message: message}
 }
 
+// truncateBody returns a truncated preview of body for error messages
+func truncateBody(body []byte, maxLen int) string {
+	if len(body) == 0 {
+		return ""
+	}
+	previewLen := len(body)
+	if previewLen > maxLen {
+		previewLen = maxLen
+	}
+	return string(body[:previewLen])
+}
+
 // IsValidationError checks if an error is a ValidationError
 func IsValidationError(err error) bool {
 	var ve *ValidationError
@@ -63,29 +75,17 @@ func (e *SearXNGError) Unwrap() error {
 
 // NewSearXNGError creates a new SearXNGError
 func NewSearXNGError(statusCode int, contentType, body string, err error) *SearXNGError {
-	// Truncate body for storage
-	bodyPreview := body
-	if len(bodyPreview) > 200 {
-		bodyPreview = bodyPreview[:200] + "..."
-	}
 	return &SearXNGError{
 		StatusCode:    statusCode,
 		ContentType:   contentType,
-		ResponseBody:  bodyPreview,
+		ResponseBody:  truncateBody([]byte(body), 200),
 		UnderlyingErr: err,
 	}
 }
 
 // HTTPStatusError creates a SearXNGError from an HTTP status code
 func HTTPStatusError(statusCode int, contentType string, body []byte) error {
-	var bodyStr string
-	if len(body) > 0 {
-		if len(body) > 200 {
-			bodyStr = string(body[:200]) + "..."
-		} else {
-			bodyStr = string(body)
-		}
-	}
+	bodyStr := truncateBody(body, 200)
 
 	var msg string
 	switch statusCode {
