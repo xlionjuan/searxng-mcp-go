@@ -4,6 +4,9 @@ package main
 // Centralized Validation
 // ============================================================================
 
+// MaxQueryLength is the maximum allowed length for search queries
+const MaxQueryLength = 500
+
 // validTimeRanges contains the set of valid time range values
 var validTimeRanges = map[string]bool{"day": true, "month": true, "year": true}
 
@@ -17,7 +20,7 @@ func ValidateSearchArgs(args *SearchArgs) error {
 		return NewValidationError("query", "search query is required")
 	}
 
-	if len(args.Query) > 500 {
+	if len(args.Query) > MaxQueryLength {
 		return NewValidationError("query", "must be 500 characters or less")
 	}
 

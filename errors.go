@@ -116,8 +116,8 @@ func HTTPStatusError(statusCode int, contentType string, body []byte) error {
 
 // HTMLResponseError creates a specialized error for HTML responses (JSON not enabled)
 type HTMLResponseError struct {
-	Body       string // Truncated HTML body
-	Underlying error  // The underlying network error if any
+	Body          string // Truncated HTML body
+	UnderlyingErr error  // The underlying network error if any
 }
 
 func (e *HTMLResponseError) Error() string {
@@ -125,7 +125,7 @@ func (e *HTMLResponseError) Error() string {
 }
 
 func (e *HTMLResponseError) Unwrap() error {
-	return e.Underlying
+	return e.UnderlyingErr
 }
 
 

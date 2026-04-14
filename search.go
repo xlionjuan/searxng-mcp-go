@@ -32,8 +32,29 @@ type SearXNGSearcher struct {
 	baseURL string
 }
 
+// validateBaseURL checks that the baseURL is valid and returns an error if not
+func validateBaseURL(baseURL string) error {
+	if baseURL == "" {
+		return errors.New("baseURL cannot be empty")
+	}
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return errors.New("URL must use http:// or https:// scheme")
+	}
+	if parsed.Host == "" {
+		return errors.New("URL must include a host (e.g., search.example.com)")
+	}
+	return nil
+}
+
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration
 func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Client) *SearXNGSearcher {
+	if err := validateBaseURL(baseURL); err != nil {
+		panic("NewSearXNGSearcher: " + err.Error())
+	}
 	if client == nil {
 		client = &http.Client{Timeout: timeout}
 	}
@@ -51,7 +72,8 @@ func performSearch(ctx context.Context, cfg *Config, args *SearchArgs) (*SearchR
 	return searcher.Search(ctx, args)
 }
 
-// Search implements the Searcher interface
+// Search implements the Searcher interface.
+// It is the external API entry point that delegates to performSearch for the actual implementation.
 func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	return s.performSearch(ctx, args)
 }
@@ -209,13 +231,13 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	if isHTMLResponse {
 		bodyLen := len(body)
 		if bodyLen == 0 {
-			return nil, &HTMLResponseError{Body: "", Underlying: nil}
+			return nil, &HTMLResponseError{Body: "", UnderlyingErr: nil}
 		}
 		previewLen := bodyLen
 		if previewLen > 200 {
 			previewLen = 200
 		}
-		return nil, &HTMLResponseError{Body: string(body[:previewLen]), Underlying: nil}
+		return nil, &HTMLResponseError{Body: string(body[:previewLen]), UnderlyingErr: nil}
 	}
 
 	if !strings.Contains(contentType, "application/json") && !strings.Contains(contentType, "text/json") {
