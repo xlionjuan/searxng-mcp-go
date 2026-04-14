@@ -129,15 +129,68 @@ const searchInputSchema = `{
 // ============================================================================
 
 func main() {
-	// Parse flags - Go's flag.Parse() automatically stops at the first non-flag argument
-	// and treats everything after as positional arguments
-	flag.CommandLine.Parse(os.Args[1:])
+	// Parse flags manually to handle flags appearing after positional arguments
+	// Go's flag.Parse() stops at the first non-flag argument, so we need to
+	// collect all flag arguments (starting with -) before the first positional arg
+	// But flags that appear AFTER positional args should still be parsed if they start with -
+	args := os.Args[1:]
+	flagArgs := []string{}
+	positionalArgs := []string{}
+	seenPositional := false
+
+	// Map of flags that require a value
+	flagsWithValues := map[string]bool{
+		"--query": true, "--searxng-url": true, "--language": true,
+		"--safesearch": true, "--time_range": true, "--categories": true,
+		"--engines": true, "--pageno": true,
+	}
+
+	i := 0
+	for i < len(args) {
+		arg := args[i]
+		if arg == "--" {
+			// Explicit separator - treat everything after as positional
+			seenPositional = true
+			i++
+			continue
+		}
+		if len(arg) > 0 && arg[0] == '-' {
+			// Flag argument (starts with -)
+			needsValue := flagsWithValues[arg]
+			flagArgs = append(flagArgs, arg)
+			if needsValue {
+				// This flag needs a value - get the next arg if available
+				if i+1 < len(args) && len(args[i+1]) > 0 && args[i+1][0] != '-' {
+					// Next arg is a value (doesn't start with -)
+					flagArgs = append(flagArgs, args[i+1])
+					i += 2
+				} else {
+					// No value provided - let flag parser handle the error
+					i++
+				}
+			} else {
+				i++
+			}
+		} else if !seenPositional {
+			// First positional argument
+			seenPositional = true
+			positionalArgs = append(positionalArgs, arg)
+			i++
+		} else {
+			// After we've seen positional(s), treat non-flag args as positional too
+			positionalArgs = append(positionalArgs, arg)
+			i++
+		}
+	}
+
+	// Parse only the flag arguments
+	flag.CommandLine.Parse(flagArgs)
 
 	// Check if we're in CLI mode (CLI-specific flags or positional args)
-	isCLIMode := *cliHelp || *cliVersion || *cliQuery != "" || *cliJSON || flag.NArg() > 0
+	isCLIMode := *cliHelp || *cliVersion || *cliQuery != "" || *cliJSON || len(positionalArgs) > 0
 
 	if isCLIMode {
-		runCLIMode()
+		runCLIMode(positionalArgs)
 		return
 	}
 
@@ -158,7 +211,7 @@ func getConfig() *Config {
 	}
 }
 
-func runCLIMode() {
+func runCLIMode(positionalArgs []string) {
 	if *cliHelp {
 		printCLIHelp()
 		return
@@ -172,8 +225,8 @@ func runCLIMode() {
 
 	// Get query from flag or positional argument
 	query := *cliQuery
-	if query == "" && flag.NArg() > 0 {
-		query = flag.Arg(0)
+	if query == "" && len(positionalArgs) > 0 {
+		query = positionalArgs[0]
 	}
 
 	if query == "" {
