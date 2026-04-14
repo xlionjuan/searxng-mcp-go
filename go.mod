@@ -1,6 +1,6 @@
 module searxng-mcp-go
 
-go 1.25.0
+go 1.26.2
 
 require github.com/modelcontextprotocol/go-sdk v1.5.0
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html"
 	"strings"
 )
 
@@ -21,7 +22,7 @@ func formatResults(resp *SearchResponse) string {
 		b.WriteString(fmt.Sprintf("%d. %s\n", i+1, r.Title))
 		b.WriteString(fmt.Sprintf("   URL: %s\n", r.URL))
 		if r.Content != "" {
-			b.WriteString(fmt.Sprintf("   Summary: %s\n", r.Content))
+			b.WriteString(fmt.Sprintf("   Summary: %s\n", html.UnescapeString(r.Content)))
 		}
 		if r.PublishedDate != nil && *r.PublishedDate != "" {
 			b.WriteString(fmt.Sprintf("   Date: %s\n", *r.PublishedDate))

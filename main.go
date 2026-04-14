@@ -190,7 +190,10 @@ func main() {
 	isCLIMode := *cliHelp || *cliVersion || *cliQuery != "" || *cliJSON || len(positionalArgs) > 0
 
 	if isCLIMode {
-		runCLIMode(positionalArgs)
+		if err := runCLIMode(positionalArgs); err != nil {
+			fmt.Fprintln(os.Stderr, "Error:", err)
+			os.Exit(1)
+		}
 		return
 	}
 
@@ -211,16 +214,16 @@ func getConfig() *Config {
 	}
 }
 
-func runCLIMode(positionalArgs []string) {
+func runCLIMode(positionalArgs []string) error {
 	if *cliHelp {
 		printCLIHelp()
-		return
+		return nil
 	}
 
 	if *cliVersion {
 		fmt.Println("searxng-mcp-go version " + version)
 		fmt.Println("SearXNG MCP Server - CLI + MCP stdio dual-mode")
-		return
+		return nil
 	}
 
 	// Get query from flag or positional argument
@@ -230,9 +233,7 @@ func runCLIMode(positionalArgs []string) {
 	}
 
 	if query == "" {
-		fmt.Fprintln(os.Stderr, "Error: search query is required")
-		fmt.Fprintln(os.Stderr, "Use --help for usage information")
-		os.Exit(1)
+		return fmt.Errorf("search query is required. Use --help for usage information")
 	}
 
 	cfg := getConfig()
@@ -248,8 +249,7 @@ func runCLIMode(positionalArgs []string) {
 
 	// Validate arguments
 	if err := ValidateSearchArgs(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Validation error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("validation error: %v", err)
 	}
 
 	// Create searcher with configurable HTTP client
@@ -258,8 +258,7 @@ func runCLIMode(positionalArgs []string) {
 	ctx := context.Background()
 	resp, err := searcher.Search(ctx, args)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Search error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("search error: %v", err)
 	}
 
 	if *cliJSON {
@@ -267,13 +266,14 @@ func runCLIMode(positionalArgs []string) {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(resp); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to encode JSON: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to encode JSON: %v", err)
 		}
 	} else {
 		// Output as human-readable text
 		fmt.Print(formatResults(resp))
 	}
+
+	return nil
 }
 
 func runMCPMode() {

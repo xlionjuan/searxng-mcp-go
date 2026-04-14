@@ -136,8 +136,8 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	}
 
 	// Validate URL scheme
-	if !strings.HasPrefix(s.baseURL, "http://") && !strings.HasPrefix(s.baseURL, "https://") {
-		return nil, NewSearXNGError(0, "", "", errors.New("SearXNG URL must start with http:// or https://"))
+	if baseURL.Scheme != "http" && baseURL.Scheme != "https" {
+		return nil, NewSearXNGError(0, "", "", errors.New("SearXNG URL must use http:// or https:// scheme"))
 	}
 
 	params := url.Values{}
@@ -185,7 +185,10 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read error response body: %w", readErr))
+		}
 		return nil, HTTPStatusError(resp.StatusCode, resp.Header.Get("Content-Type"), body)
 	}
 
@@ -199,7 +202,15 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	isHTMLResponse := strings.Contains(contentType, "text/html") || strings.HasPrefix(strings.TrimSpace(string(body)), "<!DOCTYPE") || strings.HasPrefix(strings.TrimSpace(string(body)), "<html")
 
 	if isHTMLResponse {
-		return nil, &HTMLResponseError{Body: string(body[:min(200, len(body))]), Underlying: nil}
+		bodyLen := len(body)
+		if bodyLen > 0 {
+			previewLen := bodyLen
+			if previewLen > 200 {
+				previewLen = 200
+			}
+			return nil, &HTMLResponseError{Body: string(body[:previewLen]), Underlying: nil}
+		}
+		return nil, &HTMLResponseError{Body: "", Underlying: nil}
 	}
 
 	if !strings.Contains(contentType, "application/json") && !strings.Contains(contentType, "text/json") {

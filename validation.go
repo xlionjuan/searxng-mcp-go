@@ -17,6 +17,10 @@ func ValidateSearchArgs(args *SearchArgs) error {
 		return NewValidationError("query", "search query is required")
 	}
 
+	if len(args.Query) > 500 {
+		return NewValidationError("query", "must be 500 characters or less")
+	}
+
 	if args.TimeRange != "" && !validTimeRanges[args.TimeRange] {
 		return NewValidationError("time_range", "must be one of: day, month, year")
 	}
