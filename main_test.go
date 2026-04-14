@@ -221,14 +221,14 @@ func TestPerformSearch_InvalidURL(t *testing.T) {
 	args := &SearchArgs{Query: "test"}
 
 	ctx := context.Background()
-	_, err := performSearch(ctx, cfg, args)
 
-	if err == nil {
-		t.Fatal("expected error for invalid URL, got nil")
-	}
-	if !strings.Contains(err.Error(), "invalid SearXNG URL") {
-		t.Errorf("expected invalid URL error, got: %v", err)
-	}
+	// NewSearXNGSearcher now panics on invalid URL (fail fast)
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic for invalid URL, did not panic")
+		}
+	}()
+	_, _ = performSearch(ctx, cfg, args)
 }
 
 func TestPerformSearch_TimeRangeParam(t *testing.T) {
@@ -1224,8 +1224,8 @@ func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
 	*cliTimeRange = ""
 	*cliCategories = ""
 	*cliEngines = ""
-	*cliSearXNGURL = "://invalid-url" // Invalid URL to trigger error
-	*cliPageno = 1                    // Valid pageno
+	*cliSearXNGURL = "http://localhost:99999" // Valid URL scheme but unreachable
+	*cliPageno = 1
 
 	err := runCLIMode([]string{})
 	if err == nil {
