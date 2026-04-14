@@ -208,6 +208,13 @@ func getConfig() *Config {
 		url = *cliSearXNGURL
 	}
 
+	// Check if URL was explicitly provided (via env var or CLI flag)
+	// If not, warn the user that they're using the default
+	envURL := os.Getenv("SEARXNG_URL")
+	if envURL == "" && *cliSearXNGURL == "" {
+		fmt.Fprintln(os.Stdout, "警告：未指定 SearXNG 伺服器，目前使用預設伺服器（https://search-4.xlion.dev）。若這並非您預期的行為，請設定 SEARXNG_URL 環境變數或 --searxng-url 命令列參數。")
+	}
+
 	return &Config{
 		SearXNGURL: url,
 		Timeout:    30 * time.Second,
