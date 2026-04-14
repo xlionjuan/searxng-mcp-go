@@ -11,6 +11,10 @@ import (
 // Date Parsing
 // ============================================================================
 
+// Y2K_THRESHOLD is the cutoff year for detecting ambiguous 2-digit years.
+// 32-bit signed int overflow occurs in 2038, so this needs to be updated before then.
+const Y2K_THRESHOLD = 2000
+
 // Package-level regex patterns (compiled once)
 var (
 	hourPattern = mustCompile(`(\d+)\s*(hour|hours|h|stunde|stunden)\s*(ago|vor)?`)
@@ -35,7 +39,7 @@ func parseRelativeDate(content string, currentTime time.Time) *time.Time {
 
 	if strings.Contains(lower, "vorgestern") {
 		t := currentTime.AddDate(0, 0, -2)
-		if t.Year() < 2000 {
+		if t.Year() < Y2K_THRESHOLD {
 			return nil
 		}
 		return &t
@@ -43,7 +47,7 @@ func parseRelativeDate(content string, currentTime time.Time) *time.Time {
 
 	if strings.Contains(lower, "yesterday") {
 		t := currentTime.AddDate(0, 0, -1)
-		if t.Year() < 2000 {
+		if t.Year() < Y2K_THRESHOLD {
 			return nil
 		}
 		return &t
@@ -51,7 +55,7 @@ func parseRelativeDate(content string, currentTime time.Time) *time.Time {
 
 	if strings.Contains(lower, "vor woche") || strings.Contains(lower, "last week") {
 		t := currentTime.AddDate(0, 0, -7)
-		if t.Year() < 2000 {
+		if t.Year() < Y2K_THRESHOLD {
 			return nil
 		}
 		return &t
@@ -60,7 +64,7 @@ func parseRelativeDate(content string, currentTime time.Time) *time.Time {
 	if matches := hourPattern.FindStringSubmatch(lower); len(matches) >= 2 {
 		if hours, err := strconv.Atoi(matches[1]); err == nil && hours > 0 && hours <= 48 {
 			t := currentTime.Add(-time.Duration(hours) * time.Hour)
-			if t.After(currentTime) || t.Year() < 2000 {
+			if t.After(currentTime) || t.Year() < Y2K_THRESHOLD {
 				return nil
 			}
 			return &t
@@ -70,7 +74,7 @@ func parseRelativeDate(content string, currentTime time.Time) *time.Time {
 	if matches := dayPattern.FindStringSubmatch(lower); len(matches) >= 2 {
 		if days, err := strconv.Atoi(matches[1]); err == nil && days > 0 && days <= 365 {
 			t := currentTime.AddDate(0, 0, -days)
-			if t.After(currentTime) || t.Year() < 2000 {
+			if t.After(currentTime) || t.Year() < Y2K_THRESHOLD {
 				return nil
 			}
 			return &t
