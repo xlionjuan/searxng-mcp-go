@@ -1019,6 +1019,8 @@ func TestPrintCLIHelp(t *testing.T) {
 
 // --- runCLIMode tests ---
 
+// NOTE: This test modifies global flag state and should not run in parallel
+// with other tests that depend on flag state.
 // TestRunCLIMode_MissingQuery tests that runCLIMode returns an error when no query is provided
 // instead of calling os.Exit
 func TestRunCLIMode_MissingQuery(t *testing.T) {
@@ -1045,6 +1047,8 @@ func TestRunCLIMode_MissingQuery(t *testing.T) {
 	}
 }
 
+// NOTE: This test modifies global flag state and should not run in parallel
+// with other tests that depend on flag state.
 // TestRunCLIMode_ValidationError tests that runCLIMode returns validation errors
 // instead of calling os.Exit
 func TestRunCLIMode_ValidationError(t *testing.T) {
@@ -1073,6 +1077,8 @@ func TestRunCLIMode_ValidationError(t *testing.T) {
 	}
 }
 
+// NOTE: This test modifies global flag state and should not run in parallel
+// with other tests that depend on flag state.
 // TestRunCLIMode_InvalidTimeRange tests that invalid time_range returns validation error
 func TestRunCLIMode_InvalidTimeRange(t *testing.T) {
 	// Reset flag values
@@ -1099,6 +1105,8 @@ func TestRunCLIMode_InvalidTimeRange(t *testing.T) {
 	}
 }
 
+// NOTE: This test modifies global flag state and should not run in parallel
+// with other tests that depend on flag state.
 // TestRunCLIMode_InvalidPageno tests that invalid pageno returns validation error
 func TestRunCLIMode_InvalidPageno(t *testing.T) {
 	// Reset flag values
@@ -1128,6 +1136,8 @@ func TestRunCLIMode_InvalidPageno(t *testing.T) {
 	}
 }
 
+// NOTE: This test modifies global flag state and should not run in parallel
+// with other tests that depend on flag state.
 // TestRunCLIMode_QueryTooLong tests that query > 500 chars returns validation error
 func TestRunCLIMode_QueryTooLong(t *testing.T) {
 	// Reset flag values
@@ -1154,6 +1164,8 @@ func TestRunCLIMode_QueryTooLong(t *testing.T) {
 	}
 }
 
+// NOTE: This test modifies global flag state and should not run in parallel
+// with other tests that depend on flag state.
 // TestRunCLIMode_HelpFlag tests that --help returns without error
 func TestRunCLIMode_HelpFlag(t *testing.T) {
 	// Reset flag values
@@ -1174,6 +1186,8 @@ func TestRunCLIMode_HelpFlag(t *testing.T) {
 	}
 }
 
+// NOTE: This test modifies global flag state and should not run in parallel
+// with other tests that depend on flag state.
 // TestRunCLIMode_VersionFlag tests that --version returns without error
 func TestRunCLIMode_VersionFlag(t *testing.T) {
 	// Reset flag values
@@ -1194,6 +1208,8 @@ func TestRunCLIMode_VersionFlag(t *testing.T) {
 	}
 }
 
+// NOTE: This test modifies global flag state and should not run in parallel
+// with other tests that depend on flag state.
 // TestRunCLIMode_SearchErrorReturnsError tests that search errors are returned as errors
 // and not cause os.Exit to be called
 func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
