@@ -121,7 +121,7 @@ type HTMLResponseError struct {
 }
 
 func (e *HTMLResponseError) Error() string {
-	return fmt.Sprintf("searxng returned HTML instead of JSON (JSON output likely not enabled on instance). Response: %s", e.Body)
+	return fmt.Sprintf("searxng returned html instead of json (json output likely not enabled on instance). Response: %s", e.Body)
 }
 
 func (e *HTMLResponseError) Unwrap() error {
