@@ -240,7 +240,7 @@ func runCLIMode(positionalArgs []string) error {
 	}
 
 	if query == "" {
-		return fmt.Errorf("search query is required. Use --help for usage information")
+		return fmt.Errorf("search query is required use --help for usage information")
 	}
 
 	cfg := getConfig()
@@ -276,7 +276,7 @@ func runCLIMode(positionalArgs []string) error {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(resp); err != nil {
-			return fmt.Errorf("failed to encode JSON: %v", err)
+			return fmt.Errorf("failed to encode json: %v", err)
 		}
 	} else {
 		// Output as human-readable text
