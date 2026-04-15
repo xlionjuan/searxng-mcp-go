@@ -39,9 +39,32 @@ The tool returns a text response containing:
   - Sequential number
   - Title (clickable link text)
   - URL
-  - Content/summary snippet
-  - Date (if available, e.g., publication date)
+  - Content (main content snippet from the page)
+  - Date (if available, e.g., publication date; indicated by `dateSource` field showing "api" if from SearXNG or "inferred" if calculated from content)
   - Source search engine
+
+**JSON Response Fields:**
+
+When using the `--json` CLI flag, the response includes additional fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `results` | array | Array of search result objects |
+| `number_of_results` | integer | Total count of results (may be 0 even when results exist due to SearXNG API behavior) |
+| `query` | string | The original search query |
+
+**Result Object Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string | Result title |
+| `url` | string | URL of the result |
+| `content` | string | Content snippet from the page |
+| `engine` | string | Source search engine |
+| `publishedDate` | string | Publication date if available (ISO 8601 format) |
+| `dateSource` | string | Source of the date: "api" (from SearXNG), "inferred" (calculated from content), or "" (not available) |
+
+**Note:** The `number_of_results` field may return 0 even when results are present in the `results` array. This is a known behavior of the SearXNG API, and the code handles this by using the actual array length when this occurs.
 
 ### Example Usage
 
@@ -125,23 +148,34 @@ Found 5 results for 'golang tutorial':
 
 1. Go Language Tutorial
    URL: https://example.com/golang-tutorial
-   Summary: Learn Go programming from scratch with this comprehensive tutorial...
+   Content: Learn Go programming from scratch with this comprehensive tutorial...
    Date: 2024-01-15
    Engine: google
 
 2. Building Web Applications with Go
    URL: https://example.com/go-web-dev
-   Summary: A practical guide to building modern web applications using Go...
+   Content: A practical guide to building modern web applications using Go...
    Engine: duckduckgo
 ```
 
 ### Error Responses
 
+The server returns the following error types:
+
+| Error Type | Description |
+|------------|-------------|
+| `ValidationError` | User-provided parameter validation failure (missing/invalid fields) |
+| `HTMLResponseError` | SearXNG returned HTML instead of JSON (JSON output not enabled on instance) |
+| `SearXNGError` | Network failures, HTTP errors, or API errors from SearXNG |
+
 Actual error message formats from the server:
 
 | Error Condition               | Response Format                                                |
 |-------------------------------|----------------------------------------------------------------|
-| Missing `query` parameter     | `validation error on "query": query is required`              |
+| Missing `query` parameter     | `validation error on "query": search query is required`       |
+| Query too long (>500 chars)   | `validation error on "query": must be 500 characters or less` |
+| Invalid `safesearch` value    | `validation error on "safesearch": must be 0 (Off), 1 (Moderate), or 2 (Strict)` |
+| Invalid `pageno` value        | `validation error on "pageno": must be >= 1` |
 | Invalid `time_range` value    | `validation error on "time_range": time_range must be one of: day, month, year` |
 | Network failure               | `searxng error (status 0): context deadline exceeded` (or similar) |
 | SearXNG HTTP error           | `searxng error (status 500): internal server error: the search engine encountered an internal error` |
@@ -153,4 +187,4 @@ Actual error message formats from the server:
 - **Transport**: Stdio (stdin/stdout)
 - **Protocol**: MCP (Model Context Protocol)
 - **SearXNG Format**: JSON (`format=json`)
-- **Timeout**: 30 seconds (configurable in source)
+- **Timeout**: 30 seconds (fixed, not configurable)
