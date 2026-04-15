@@ -1,0 +1,70 @@
+# golangci-lint configuration for searxng-mcp-go
+# Go 1.26.2 project using mcp-sdk v1.5.0
+
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  enable-all: true
+  disable:
+    # Disabled due to common MCP server patterns
+    - gochecknoglobals       # Global variables are acceptable for config
+    - godox                  # TODO/FIXME comments are fine
+    - nestif                 # Slightly complex nesting is sometimes necessary
+    - wrapcheck              # Wrapper functions may not always add value
+    - errorlint              # Too noisy with error wrapped assertions
+    - errchkjson             # JSON errors are not always critical
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 50
+  max-same-issues: 10
+
+  # Incremental linting - only show new issues compared to main
+  new-from-rev: main
+
+  # Exclude common generated code patterns
+  exclude-files:
+    - ".*\\.pb\\.go$"
+    - ".*_test\\.go$"
+
+linters-settings:
+  cyclop:
+    max-complexity: 15
+  gocyclo:
+    min-complexity: 15
+  golint:
+    min-confidence: 0.5
+  govet:
+    enable-always:
+      - shadow
+  lll:
+    line-length: 140
+  nakedret:
+    max-func-lines: 5
+  nlreturn:
+    min-size: 10
+  gocognit:
+    min-complexity: 20
+  dupl:
+    threshold: 150
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  misspell:
+    locale: US
+  makezero:
+    allow slice: true
+  rangevalcopy:
+    width: 80
+  zerologlint:
+    passf: true
+  testpackage:
+    skip_regexp: ".*_test\\.go"
+  usetesting:
+    # Allow testing helper functions
+    disallow: false
+  interfacebloat:
+    max: 10

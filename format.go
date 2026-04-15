@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"strings"
+	"unicode/utf8"
 )
 
 // ============================================================================
@@ -23,8 +24,9 @@ func formatResults(resp *SearchResponse) string {
 		b.WriteString(fmt.Sprintf("   URL: %s\n", r.URL))
 		if r.Content != "" {
 			content := r.Content
-			if len(content) > 4000 {
-				content = content[:4000]
+			if utf8.RuneCountInString(content) > 4000 {
+				runes := []rune(content)
+				content = string(runes[:4000])
 			}
 			b.WriteString(fmt.Sprintf("   Summary: %s\n", html.UnescapeString(content)))
 		}
