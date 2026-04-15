@@ -80,11 +80,7 @@ export SEARXNG_URL=https://your-searxng-instance.example.com
 
 ### Timeout
 
-The default timeout for search requests is 30 seconds. To adjust, you would need to modify the source code in `main.go` and rebuild:
-
-```go
-Timeout: 60 * time.Second, // increase to 60 seconds
-```
+The default timeout for search requests is 30 seconds. This is a fixed value and cannot be configured at runtime.
 
 ## Verifying the Build
 

@@ -121,6 +121,11 @@ export SEARXNG_URL=https://your-searxng-instance.example.com
 ./searxng-mcp-go -searxng-url=https://your-searxng-instance.example.com
 ```
 
+**JSON output:**
+```bash
+./searxng-mcp-go "search query" --json
+```
+
 **Priority:** command-line flag > environment variable > default hardcoded value
 
 ## Error Handling
