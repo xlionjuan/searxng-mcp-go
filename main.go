@@ -260,7 +260,10 @@ func runCLIMode(positionalArgs []string) error {
 	}
 
 	// Create searcher with configurable HTTP client
-	searcher := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
+	searcher, err := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
+	if err != nil {
+		return fmt.Errorf("failed to create searcher: %v", err)
+	}
 
 	ctx := context.Background()
 	resp, err := searcher.Search(ctx, args)
@@ -287,7 +290,10 @@ func runMCPMode() {
 	cfg := getConfig()
 
 	// Create searcher with configurable HTTP client
-	searcher := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
+	searcher, err := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
+	if err != nil {
+		log.Fatalf("Failed to create searcher: %v", err)
+	}
 
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "searxng-mcp-go",

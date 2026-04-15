@@ -51,9 +51,9 @@ func validateBaseURL(baseURL string) error {
 }
 
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration
-func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Client) *SearXNGSearcher {
+func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Client) (*SearXNGSearcher, error) {
 	if err := validateBaseURL(baseURL); err != nil {
-		panic("NewSearXNGSearcher: " + err.Error())
+		return nil, fmt.Errorf("NewSearXNGSearcher: %w", err)
 	}
 	if client == nil {
 		client = &http.Client{Timeout: timeout}
@@ -61,14 +61,17 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 	return &SearXNGSearcher{
 		client:  client,
 		baseURL: baseURL,
-	}
+	}, nil
 }
 
 // performSearch is a backward-compatible wrapper that creates a temporary SearXNGSearcher
 // from the provided Config and delegates to its Search method.
 // This function exists for backward compatibility with existing tests and external callers.
 func performSearch(ctx context.Context, cfg *Config, args *SearchArgs) (*SearchResponse, error) {
-	searcher := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
+	searcher, err := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
+	if err != nil {
+		return nil, err
+	}
 	return searcher.Search(ctx, args)
 }
 

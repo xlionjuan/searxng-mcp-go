@@ -221,14 +221,14 @@ func TestPerformSearch_InvalidURL(t *testing.T) {
 	args := &SearchArgs{Query: "test"}
 
 	ctx := context.Background()
+	_, err := performSearch(ctx, cfg, args)
 
-	// NewSearXNGSearcher now panics on invalid URL (fail fast)
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatal("expected panic for invalid URL, did not panic")
-		}
-	}()
-	_, _ = performSearch(ctx, cfg, args)
+	if err == nil {
+		t.Fatal("expected error for invalid URL, got nil")
+	}
+	if !strings.Contains(err.Error(), "NewSearXNGSearcher") {
+		t.Errorf("expected NewSearXNGSearcher error message, got: %v", err)
+	}
 }
 
 func TestPerformSearch_TimeRangeParam(t *testing.T) {
