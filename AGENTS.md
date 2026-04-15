@@ -10,22 +10,31 @@ This project implements an MCP server in Go that exposes a `search` tool. AI age
 
 ```
 searxng-mcp-go/
-├── main.go           # Main server implementation (350 lines)
-├── search.go         # Search functionality, HTTP client (274 lines)
-├── errors.go         # Error types and handling (131 lines)
-├── format.go         # Output formatting (39 lines)
-├── validation.go     # Input validation (40 lines)
-├── date.go           # Date/time utilities (105 lines)
+├── main.go           # Main server implementation
+├── search.go         # Search functionality, HTTP client
+├── errors.go         # Error types and handling
+├── format.go         # Output formatting
+├── validation.go     # Input validation
+├── date.go           # Date/time utilities
 ├── main_test.go      # Test suite
 ├── .golangci.yml     # Linter configuration
+├── .gitignore        # Git ignore rules
+├── .env.example      # Environment variable example
 ├── go.mod            # Go module definition
 ├── go.sum            # Go dependencies checksum
 ├── coverage.out      # Test coverage report
 ├── AGENTS.md         # This file - AI agent instructions
+├── searxng-mcp-go    # Compiled binary (after build)
+├── .github/
+│   └── workflows/
+│       ├── lint.yml      # Lint workflow
+│       ├── security.yml  # Security workflow
+│       └── test.yml      # Test workflow
 └── docs/
     ├── INSTALL.md        # Installation and build guide
     ├── MCP_TOOLS.md      # MCP tool documentation
-    └── AI_UX_TEST_GUIDE.md  # AI UX testing guide
+    ├── AI_UX_TEST_GUIDE.md  # AI UX testing guide
+    └── LANGUAGE_PARAMETER_RESEARCH.md  # Language parameter research
 ```
 
 ## Building
