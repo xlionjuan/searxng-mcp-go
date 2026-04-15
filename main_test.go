@@ -459,7 +459,7 @@ func TestPerformSearch_HTMLResponseError(t *testing.T) {
 				t.Errorf("expected HTMLResponseError, got: %v", err)
 			}
 
-			if !strings.Contains(err.Error(), "searxng returned HTML instead of JSON") {
+			if !strings.Contains(err.Error(), "searxng returned html instead of json") {
 				t.Errorf("expected HTML response error message, got: %v", err)
 			}
 		})
@@ -827,10 +827,10 @@ func TestPerformSearch_NonJSONResponse(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for non-JSON response, got nil")
 	}
-	if !strings.Contains(err.Error(), "HTML instead of JSON") {
+	if !strings.Contains(err.Error(), "html instead of json") {
 		t.Errorf("expected HTML/JSON error, got: %v", err)
 	}
-	if !strings.Contains(err.Error(), "JSON output likely not enabled") {
+	if !strings.Contains(err.Error(), "json output likely not enabled") {
 		t.Errorf("expected JSON not enabled error, got: %v", err)
 	}
 }
