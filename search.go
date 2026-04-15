@@ -35,17 +35,17 @@ type SearXNGSearcher struct {
 // validateBaseURL checks that the baseURL is valid and returns an error if not
 func validateBaseURL(baseURL string) error {
 	if baseURL == "" {
-		return errors.New("baseURL cannot be empty")
+		return errors.New("baseurl cannot be empty")
 	}
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return fmt.Errorf("invalid URL: %w", err)
 	}
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return errors.New("URL must use http:// or https:// scheme")
+		return errors.New("url must use http or https scheme")
 	}
 	if parsed.Host == "" {
-		return errors.New("URL must include a host (e.g., search.example.com)")
+		return errors.New("url must include a host (e.g., search.example.com)")
 	}
 	return nil
 }
@@ -162,12 +162,12 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 
 	// Validate URL scheme
 	if baseURL.Scheme != "http" && baseURL.Scheme != "https" {
-		return nil, NewSearXNGError(0, "", "", errors.New("SearXNG URL must use http:// or https:// scheme"))
+		return nil, NewSearXNGError(0, "", "", errors.New("searxng url must use http or https scheme"))
 	}
 
 	// Validate URL has a host
 	if baseURL.Host == "" {
-		return nil, NewSearXNGError(0, "", "", errors.New("SearXNG URL must include a host (e.g., search.example.com)"))
+		return nil, NewSearXNGError(0, "", "", errors.New("searxng url must include a host (e.g., search.example.com)"))
 	}
 
 	params := url.Values{}
@@ -248,7 +248,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		if len(bodyPreview) > 200 {
 			bodyPreview = bodyPreview[:200] + "..."
 		}
-		return nil, NewSearXNGError(resp.StatusCode, contentType, bodyPreview, errors.New("unexpected content type (expected application/json)"))
+		return nil, NewSearXNGError(resp.StatusCode, contentType, bodyPreview, errors.New("unexpected content type expected application json"))
 	}
 
 	var result SearchResponse
