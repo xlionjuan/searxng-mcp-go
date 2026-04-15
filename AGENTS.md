@@ -10,15 +10,17 @@ This project implements an MCP server in Go that exposes a `search` tool. AI age
 
 ```
 searxng-mcp-go/
-├── main.go           # Main server implementation
-├── search.go         # Search functionality
-├── errors.go         # Error types and handling
-├── validation.go     # Input validation
-├── date.go           # Date/time utilities
-├── format.go         # Output formatting
+├── main.go           # Main server implementation (350 lines)
+├── search.go         # Search functionality, HTTP client (274 lines)
+├── errors.go         # Error types and handling (131 lines)
+├── format.go         # Output formatting (39 lines)
+├── validation.go     # Input validation (40 lines)
+├── date.go           # Date/time utilities (105 lines)
 ├── main_test.go      # Test suite
+├── .golangci.yml     # Linter configuration
 ├── go.mod            # Go module definition
 ├── go.sum            # Go dependencies checksum
+├── coverage.out      # Test coverage report
 ├── AGENTS.md         # This file - AI agent instructions
 └── docs/
     ├── INSTALL.md        # Installation and build guide
@@ -135,3 +137,25 @@ The server returns meaningful error messages for:
 - Invalid `time_range` values
 - Network/connectivity failures
 - SearXNG API errors (non-200 responses, malformed JSON)
+
+## Testing
+
+**Build & Test Status:** ✓ All tests passing
+
+```bash
+go build -o searxng-mcp-go . && go test ./...
+```
+
+**Test Coverage:** Available in `coverage.out`
+
+## Known Limitations
+
+1. **Pagination**: SearXNG API pagination starts at page 1 (not 0). The server validates `pageno >= 1`.
+
+2. **Date Inference**: Publication dates are inferred from content when not provided by the API. This uses relative date parsing (e.g., "2 hours ago", "yesterday", "last week"). The inference is best-effort and may not always be accurate.
+
+3. **HTML Detection**: If the SearXNG instance returns HTML instead of JSON (typically when JSON output is not enabled on the instance), the server returns a specific `HTMLResponseError` with guidance.
+
+4. **Y2K Threshold**: Date parsing uses a Y2K_THRESHOLD of 2000 to handle ambiguous 2-digit years. This will need updating before 2038 when 32-bit signed int overflow occurs.
+
+5. **Content Length**: Summaries are truncated to 4000 UTF-8 runes in formatted output to prevent excessively long responses.
