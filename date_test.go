@@ -111,6 +111,25 @@ func TestParseRelativeDate_TooOld(t *testing.T) {
 
 // --- inferDates tests ---
 
+func assertInferredDate(t *testing.T, content string, baseTime time.Time, expectedDate time.Time) {
+	t.Helper()
+	resp := &SearchResponse{
+		Results: []SearchResult{{Title: "Test", URL: "https://example.com", Content: content}},
+	}
+	inferDates(resp, &baseTime)
+	if resp.Results[0].DateSource != DateSourceInferred {
+		t.Fatalf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceInferred)
+	}
+	inferredDate, err := time.Parse("2006-01-02", *resp.Results[0].PublishedDate)
+	if err != nil {
+		t.Fatalf("Failed to parse PublishedDate: %v", err)
+	}
+	dayDiff := inferredDate.Sub(expectedDate) / (24 * time.Hour)
+	if dayDiff != 0 {
+		t.Errorf("Inferred date = %v, expected %v (dayDiff=%v)", *resp.Results[0].PublishedDate, expectedDate.Format("2006-01-02"), dayDiff)
+	}
+}
+
 func TestInferDates(t *testing.T) {
 	t.Run("api date preserved", func(t *testing.T) {
 		apiDate := "2024-06-10"
@@ -154,121 +173,26 @@ func TestInferDates(t *testing.T) {
 
 	// Accuracy tests: verify calculated dates are correct with fixed baseTime
 	t.Run("2 hours ago accuracy", func(t *testing.T) {
-		// Fixed baseTime: 2024-06-15 12:00:00 UTC
 		baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-		resp := &SearchResponse{
-			Results: []SearchResult{
-				{Title: "Test", URL: "https://example.com", Content: "Posted 2 hours ago"},
-			},
-		}
-		inferDates(resp, &baseTime)
-
-		if resp.Results[0].DateSource != DateSourceInferred {
-			t.Fatalf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceInferred)
-		}
-
-		inferredDate, err := time.Parse("2006-01-02", *resp.Results[0].PublishedDate)
-		if err != nil {
-			t.Fatalf("Failed to parse PublishedDate: %v", err)
-		}
-
-		// baseTime is 2024-06-15, 2 hours ago = 2024-06-15 10:00:00
-		// Date stored as YYYY-MM-DD = "2024-06-15"
 		expectedDate := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
-		dayDiff := inferredDate.Sub(expectedDate) / (24 * time.Hour)
-
-		// Should be same day (0 days difference)
-		if dayDiff != 0 {
-			t.Errorf("Inferred date = %v, expected %v (dayDiff=%v)",
-				*resp.Results[0].PublishedDate, expectedDate.Format("2006-01-02"), dayDiff)
-		}
+		assertInferredDate(t, "Posted 2 hours ago", baseTime, expectedDate)
 	})
 
 	t.Run("5 days ago accuracy", func(t *testing.T) {
-		// Fixed baseTime: 2024-06-15 12:00:00 UTC
 		baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-		resp := &SearchResponse{
-			Results: []SearchResult{
-				{Title: "Test", URL: "https://example.com", Content: "5 days ago news"},
-			},
-		}
-		inferDates(resp, &baseTime)
-
-		if resp.Results[0].DateSource != DateSourceInferred {
-			t.Fatalf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceInferred)
-		}
-
-		inferredDate, err := time.Parse("2006-01-02", *resp.Results[0].PublishedDate)
-		if err != nil {
-			t.Fatalf("Failed to parse PublishedDate: %v", err)
-		}
-
-		// baseTime is 2024-06-15, 5 days ago = 2024-06-10
 		expectedDate := time.Date(2024, 6, 10, 0, 0, 0, 0, time.UTC)
-		dayDiff := inferredDate.Sub(expectedDate) / (24 * time.Hour)
-
-		if dayDiff != 0 {
-			t.Errorf("Inferred date = %v, expected %v (dayDiff=%v)",
-				*resp.Results[0].PublishedDate, expectedDate.Format("2006-01-02"), dayDiff)
-		}
+		assertInferredDate(t, "5 days ago news", baseTime, expectedDate)
 	})
 
 	t.Run("german vor 2 tagen accuracy", func(t *testing.T) {
-		// Fixed baseTime: 2024-06-15 12:00:00 UTC
 		baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-		resp := &SearchResponse{
-			Results: []SearchResult{
-				{Title: "Test", URL: "https://example.com", Content: "Nachricht vor 2 tagen veröffentlicht"},
-			},
-		}
-		inferDates(resp, &baseTime)
-
-		if resp.Results[0].DateSource != DateSourceInferred {
-			t.Fatalf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceInferred)
-		}
-
-		inferredDate, err := time.Parse("2006-01-02", *resp.Results[0].PublishedDate)
-		if err != nil {
-			t.Fatalf("Failed to parse PublishedDate: %v", err)
-		}
-
-		// baseTime is 2024-06-15, "vor 2 tagen" = 2 days ago = 2024-06-13
 		expectedDate := time.Date(2024, 6, 13, 0, 0, 0, 0, time.UTC)
-		dayDiff := inferredDate.Sub(expectedDate) / (24 * time.Hour)
-
-		if dayDiff != 0 {
-			t.Errorf("Inferred date = %v, expected %v (dayDiff=%v)",
-				*resp.Results[0].PublishedDate, expectedDate.Format("2006-01-02"), dayDiff)
-		}
+		assertInferredDate(t, "Nachricht vor 2 tagen veröffentlicht", baseTime, expectedDate)
 	})
 
 	t.Run("german vor 3 stunden accuracy", func(t *testing.T) {
-		// Fixed baseTime: 2024-06-15 12:00:00 UTC
 		baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-		resp := &SearchResponse{
-			Results: []SearchResult{
-				{Title: "Test", URL: "https://example.com", Content: "Artikel vor 3 stunden geschrieben"},
-			},
-		}
-		inferDates(resp, &baseTime)
-
-		if resp.Results[0].DateSource != DateSourceInferred {
-			t.Fatalf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceInferred)
-		}
-
-		inferredDate, err := time.Parse("2006-01-02", *resp.Results[0].PublishedDate)
-		if err != nil {
-			t.Fatalf("Failed to parse PublishedDate: %v", err)
-		}
-
-		// baseTime is 2024-06-15, 3 hours ago = 2024-06-15 09:00:00
-		// Date stored as YYYY-MM-DD = "2024-06-15"
 		expectedDate := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
-		dayDiff := inferredDate.Sub(expectedDate) / (24 * time.Hour)
-
-		if dayDiff != 0 {
-			t.Errorf("Inferred date = %v, expected %v (dayDiff=%v)",
-				*resp.Results[0].PublishedDate, expectedDate.Format("2006-01-02"), dayDiff)
-		}
+		assertInferredDate(t, "Artikel vor 3 stunden geschrieben", baseTime, expectedDate)
 	})
 }
