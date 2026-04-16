@@ -1,59 +1,62 @@
-# golangci-lint configuration for searxng-mcp-go
-# Go 1.26.2 project using mcp-sdk v1.5.0
-
+version: "2"
 run:
-  timeout: 5m
-  tests: true
   modules-download-mode: readonly
-
+  tests: true
 linters:
-  enable-all: true
+  default: all
   disable:
-    # Disabled due to common MCP server patterns
-    - gochecknoglobals       # Global variables are acceptable for config
-    - godox                  # TODO/FIXME comments are fine
-    - nestif                 # Slightly complex nesting is sometimes necessary
-    - wrapcheck              # Wrapper functions may not always add value
-    - errorlint              # Too noisy with error wrapped assertions
-    - errchkjson             # JSON errors are not always critical
-
+    - errchkjson
+    - errorlint
+    - gochecknoglobals
+    - godox
+    - nestif
+    - wrapcheck
+  settings:
+    cyclop:
+      max-complexity: 15
+    dupl:
+      threshold: 150
+    gocognit:
+      min-complexity: 20
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    gocyclo:
+      min-complexity: 15
+    govet:
+      enable:
+        - shadow
+    interfacebloat:
+      max: 10
+    lll:
+      line-length: 140
+    misspell:
+      locale: US
+    nakedret:
+      max-func-lines: 5
+  exclusions:
+    generated: lax
+    paths:
+      - .*\.pb\.go$
+      - .*_test\.go$
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 50
   max-same-issues: 10
-
-  # Incremental linting - only show new issues compared to main
   new-from-rev: main
-
-  # Exclude common generated code patterns
-  exclude-files:
-    - ".*\\.pb\\.go$"
-    # Exclude test files from linting. Linters tend to produce excessive noise on
-    # test code (e.g., many `t.Helper()` calls, test-specific idioms). Test quality
-    # is primarily guaranteed by test coverage metrics and test failure rates in CI,
-    # not by linting test code. This keeps the lint signal clean for production code.
-    - ".*_test\\.go$"
-
-linters-settings:
-  cyclop:
-    max-complexity: 15
-  gocyclo:
-    min-complexity: 15
-  govet:
-    enable:
-      - shadow
-  lll:
-    line-length: 140
-  nakedret:
-    max-func-lines: 5
-  gocognit:
-    min-complexity: 20
-  dupl:
-    threshold: 150
-  goconst:
-    min-len: 3
-    min-occurrences: 3
-  misspell:
-    locale: US
-  interfacebloat:
-    max: 10
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - .*\.pb\.go$
+      - .*_test\.go$
+      - third_party$
+      - builtin$
+      - examples$
