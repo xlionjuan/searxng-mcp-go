@@ -112,3 +112,12 @@ See [docs/INSTALL.md](docs/INSTALL.md) for Docker and other build options.
 - 禁止：`.bak`、`.test`（編譯產出的 binary）、`*~`、`.swp`、`.swo` 等任何臨時/備份檔案
 - 這些檔案 **必須** 在 commit 前刪除，並永久排除於 Git 歷史之外（已用 `--force --invert-paths` 清除）
 - `.gitignore` 已設定 `*.bak`、`.test`、`.swp`、`.swo` 等規則，確保不會再被追蹤
+
+## Review & QA Workflow
+
+**審查報告規範** ⚠️
+
+- 所有程式碼審查、AGENTS.md 審查、test 覆蓋率分析等報告，**一律優先寫入 `REPORT.md`**（置於專案根目錄）
+- `REPORT.md` 永久列入 `.gitignore`，**嚴禁 commit**
+- 每個 Task 完成後，隨即產生對應的 Todo list，一併寫入 `REPORT.md`
+- Todo list 需包含「掌門」（Hermes Agent）待會兒派子代理時所需的所有規劃資訊
