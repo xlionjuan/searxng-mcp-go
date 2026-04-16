@@ -90,14 +90,7 @@ func TestPrintCLIHelp(t *testing.T) {
 //     }
 // }
 
-// --- runCLIMode tests ---
-
-// NOTE: This test modifies global flag state and should not run in parallel
-// with other tests that depend on flag state.
-// TestRunCLIMode_MissingQuery tests that runCLIMode returns an error when no query is provided
-// instead of calling os.Exit
-func TestRunCLIMode_MissingQuery(t *testing.T) {
-	// Reset flag values to ensure clean state
+func resetCLIFlags() {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	*cliQuery = ""
 	*cliHelp = false
@@ -108,8 +101,18 @@ func TestRunCLIMode_MissingQuery(t *testing.T) {
 	*cliTimeRange = ""
 	*cliCategories = ""
 	*cliEngines = ""
-	// Reset pageno to default value
-	cliPageno = flag.Int("pageno", 1, "Page number for pagination")
+	*cliPageno = 1
+	*cliSearXNGURL = ""
+}
+
+// --- runCLIMode tests ---
+
+// NOTE: This test modifies global flag state and should not run in parallel
+// with other tests that depend on flag state.
+// TestRunCLIMode_MissingQuery tests that runCLIMode returns an error when no query is provided
+// instead of calling os.Exit
+func TestRunCLIMode_MissingQuery(t *testing.T) {
+	resetCLIFlags()
 
 	err := runCLIMode([]string{})
 	if err == nil {
@@ -125,17 +128,8 @@ func TestRunCLIMode_MissingQuery(t *testing.T) {
 // TestRunCLIMode_ValidationError tests that runCLIMode returns validation errors
 // instead of calling os.Exit
 func TestRunCLIMode_ValidationError(t *testing.T) {
-	// Reset flag values
-	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	*cliQuery = "" // Will be overridden by positional arg
-	*cliHelp = false
-	*cliVersion = false
-	*cliJSON = false
-	*cliLanguage = "en"
-	*cliSafeSearch = -1 // Invalid: should trigger validation error
-	*cliTimeRange = ""
-	*cliCategories = ""
-	*cliEngines = ""
+	resetCLIFlags()
+	*cliSafeSearch = -1
 
 	// Test with safesearch = -1 (invalid)
 	err := runCLIMode([]string{"test query"})
@@ -154,17 +148,8 @@ func TestRunCLIMode_ValidationError(t *testing.T) {
 // with other tests that depend on flag state.
 // TestRunCLIMode_InvalidTimeRange tests that invalid time_range returns validation error
 func TestRunCLIMode_InvalidTimeRange(t *testing.T) {
-	// Reset flag values
-	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	*cliQuery = ""
-	*cliHelp = false
-	*cliVersion = false
-	*cliJSON = false
-	*cliLanguage = "en"
-	*cliSafeSearch = 0
-	*cliTimeRange = "invalid" // Invalid time_range
-	*cliCategories = ""
-	*cliEngines = ""
+	resetCLIFlags()
+	*cliTimeRange = "invalid"
 
 	err := runCLIMode([]string{"test query"})
 	if err == nil {
@@ -182,19 +167,7 @@ func TestRunCLIMode_InvalidTimeRange(t *testing.T) {
 // with other tests that depend on flag state.
 // TestRunCLIMode_InvalidPageno tests that invalid pageno returns validation error
 func TestRunCLIMode_InvalidPageno(t *testing.T) {
-	// Reset flag values
-	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	*cliQuery = ""
-	*cliHelp = false
-	*cliVersion = false
-	*cliJSON = false
-	*cliLanguage = "en"
-	*cliSafeSearch = 0
-	*cliTimeRange = ""
-	*cliCategories = ""
-	*cliEngines = ""
-
-	// Set pageno to invalid value (0)
+	resetCLIFlags()
 	*cliPageno = 0
 
 	err := runCLIMode([]string{"test query"})
@@ -213,17 +186,8 @@ func TestRunCLIMode_InvalidPageno(t *testing.T) {
 // with other tests that depend on flag state.
 // TestRunCLIMode_QueryTooLong tests that query > 500 chars returns validation error
 func TestRunCLIMode_QueryTooLong(t *testing.T) {
-	// Reset flag values
-	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	*cliQuery = strings.Repeat("a", 501) // Too long query
-	*cliHelp = false
-	*cliVersion = false
-	*cliJSON = false
-	*cliLanguage = "en"
-	*cliSafeSearch = 0
-	*cliTimeRange = ""
-	*cliCategories = ""
-	*cliEngines = ""
+	resetCLIFlags()
+	*cliQuery = strings.Repeat("a", 501)
 
 	err := runCLIMode([]string{})
 	if err == nil {
@@ -241,21 +205,30 @@ func TestRunCLIMode_QueryTooLong(t *testing.T) {
 // with other tests that depend on flag state.
 // TestRunCLIMode_HelpFlag tests that --help returns without error
 func TestRunCLIMode_HelpFlag(t *testing.T) {
-	// Reset flag values
-	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	*cliQuery = ""
-	*cliHelp = true // Setting help should return nil
-	*cliVersion = false
-	*cliJSON = false
-	*cliLanguage = "en"
-	*cliSafeSearch = 0
-	*cliTimeRange = ""
-	*cliCategories = ""
-	*cliEngines = ""
+	resetCLIFlags()
+	*cliHelp = true
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
 
 	err := runCLIMode([]string{})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
 	if err != nil {
 		t.Errorf("runCLIMode() with --help should return nil, got: %v", err)
+	}
+	if !strings.Contains(output, "SearXNG") {
+		t.Errorf("expected help output to contain 'SearXNG', got output: %q", output)
+	}
+	if !strings.Contains(output, "USAGE:") {
+		t.Errorf("expected help output to contain 'USAGE:', got output: %q", output)
 	}
 }
 
@@ -263,21 +236,30 @@ func TestRunCLIMode_HelpFlag(t *testing.T) {
 // with other tests that depend on flag state.
 // TestRunCLIMode_VersionFlag tests that --version returns without error
 func TestRunCLIMode_VersionFlag(t *testing.T) {
-	// Reset flag values
-	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	*cliQuery = ""
-	*cliHelp = false
-	*cliVersion = true // Setting version should return nil
-	*cliJSON = false
-	*cliLanguage = "en"
-	*cliSafeSearch = 0
-	*cliTimeRange = ""
-	*cliCategories = ""
-	*cliEngines = ""
+	resetCLIFlags()
+	*cliVersion = true
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
 
 	err := runCLIMode([]string{})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
 	if err != nil {
 		t.Errorf("runCLIMode() with --version should return nil, got: %v", err)
+	}
+	if !strings.Contains(output, "version") {
+		t.Errorf("expected version output to contain 'version', got output: %q", output)
+	}
+	if !strings.Contains(output, "searxng-mcp-go") {
+		t.Errorf("expected version output to contain 'searxng-mcp-go', got output: %q", output)
 	}
 }
 
@@ -286,18 +268,9 @@ func TestRunCLIMode_VersionFlag(t *testing.T) {
 // TestRunCLIMode_SearchErrorReturnsError tests that search errors are returned as errors
 // and not cause os.Exit to be called
 func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
-	// Reset flag values
-	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	resetCLIFlags()
 	*cliQuery = "test query"
-	*cliHelp = false
-	*cliVersion = false
-	*cliJSON = false
-	*cliLanguage = "en"
-	*cliSafeSearch = 0
-	*cliTimeRange = ""
-	*cliCategories = ""
-	*cliEngines = ""
-	*cliSearXNGURL = "http://localhost:99999" // Valid URL scheme but unreachable
+	*cliSearXNGURL = "http://localhost:99999"
 	*cliPageno = 1
 
 	err := runCLIMode([]string{})

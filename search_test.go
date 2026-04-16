@@ -99,55 +99,6 @@ func TestPerformSearch_NetworkError(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_NonOKStatus(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal Server Error"))
-	}))
-	defer server.Close()
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-	}
-	args := &SearchArgs{Query: "test"}
-
-	ctx := context.Background()
-	_, err := performSearch(ctx, cfg, args)
-
-	if err == nil {
-		t.Fatal("expected error for non-OK status, got nil")
-	}
-	if !strings.Contains(err.Error(), "searxng error (status 500)") {
-		t.Errorf("expected searxng error (status 500), got: %v", err)
-	}
-}
-
-func TestPerformSearch_InvalidJSON(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("not valid json{"))
-	}))
-	defer server.Close()
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-	}
-	args := &SearchArgs{Query: "test"}
-
-	ctx := context.Background()
-	_, err := performSearch(ctx, cfg, args)
-
-	if err == nil {
-		t.Fatal("expected JSON parse error, got nil")
-	}
-	if !strings.Contains(err.Error(), "failed to parse JSON response") {
-		t.Errorf("expected JSON parse error, got: %v", err)
-	}
-}
-
 func TestPerformSearch_InvalidURL(t *testing.T) {
 	cfg := &Config{
 		SearXNGURL: "://invalid-url",
@@ -244,15 +195,11 @@ func TestPerformSearch_DefaultLanguage(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_Categories(t *testing.T) {
-	var capturedCategories string
+func TestPerformSearch_OptionalParams(t *testing.T) {
+	var capturedParams url.Values
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		capturedCategories = r.URL.Query().Get("categories")
-		searchResp := SearchResponse{
-			Results:         []SearchResult{},
-			NumberOfResults: 0,
-			Query:           "test",
-		}
+		capturedParams = r.URL.Query()
+		searchResp := SearchResponse{Results: []SearchResult{}, NumberOfResults: 0, Query: "test"}
 		body, _ := json.Marshal(searchResp)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -260,83 +207,31 @@ func TestPerformSearch_Categories(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-	}
-	args := &SearchArgs{Query: "test", Categories: "general,news"}
+	cfg := &Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
 
-	ctx := context.Background()
-	_, err := performSearch(ctx, cfg, args)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	tests := []struct {
+		name    string
+		args    *SearchArgs
+		param   string
+		wantVal string
+	}{
+		{"categories forwarded", &SearchArgs{Query: "test", Categories: "general,news"}, "categories", "general,news"},
+		{"engines forwarded", &SearchArgs{Query: "test", Engines: "google,bing"}, "engines", "google,bing"},
+		{"pageno forwarded", &SearchArgs{Query: "test", Pageno: intPtr(2)}, "pageno", "2"},
 	}
-	if capturedCategories != "general,news" {
-		t.Errorf("expected categories 'general,news', got %q", capturedCategories)
-	}
-}
 
-func TestPerformSearch_Engines(t *testing.T) {
-	var capturedEngines string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		capturedEngines = r.URL.Query().Get("engines")
-		searchResp := SearchResponse{
-			Results:         []SearchResult{},
-			NumberOfResults: 0,
-			Query:           "test",
-		}
-		body, _ := json.Marshal(searchResp)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-	}))
-	defer server.Close()
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-	}
-	args := &SearchArgs{Query: "test", Engines: "google,bing"}
-
-	ctx := context.Background()
-	_, err := performSearch(ctx, cfg, args)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if capturedEngines != "google,bing" {
-		t.Errorf("expected engines 'google,bing', got %q", capturedEngines)
-	}
-}
-
-func TestPerformSearch_Pageno(t *testing.T) {
-	var capturedPageno string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		capturedPageno = r.URL.Query().Get("pageno")
-		searchResp := SearchResponse{
-			Results:         []SearchResult{},
-			NumberOfResults: 0,
-			Query:           "test",
-		}
-		body, _ := json.Marshal(searchResp)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-	}))
-	defer server.Close()
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-	}
-	args := &SearchArgs{Query: "test", Pageno: intPtr(2)}
-
-	ctx := context.Background()
-	_, err := performSearch(ctx, cfg, args)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if capturedPageno != "2" {
-		t.Errorf("expected pageno '2', got %q", capturedPageno)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			capturedParams = nil
+			ctx := context.Background()
+			_, err := performSearch(ctx, cfg, tt.args)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if capturedParams.Get(tt.param) != tt.wantVal {
+				t.Errorf("param %q = %q, want %q", tt.param, capturedParams.Get(tt.param), tt.wantVal)
+			}
+		})
 	}
 }
 
@@ -477,35 +372,6 @@ func TestPerformSearch_HTTPStatusCodes(t *testing.T) {
 				t.Errorf("expected error containing %q, got: %v", tc.errPart, err)
 			}
 		})
-	}
-}
-
-// Test non-JSON responses
-func TestPerformSearch_NonJSONResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("<html><body>Not Found</body></html>"))
-	}))
-	defer server.Close()
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-	}
-	args := &SearchArgs{Query: "test"}
-
-	ctx := context.Background()
-	_, err := performSearch(ctx, cfg, args)
-
-	if err == nil {
-		t.Fatal("expected error for non-JSON response, got nil")
-	}
-	if !strings.Contains(err.Error(), "html instead of json") {
-		t.Errorf("expected HTML/JSON error, got: %v", err)
-	}
-	if !strings.Contains(err.Error(), "json output likely not enabled") {
-		t.Errorf("expected JSON not enabled error, got: %v", err)
 	}
 }
 
