@@ -267,5 +267,3 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 
 	return &result, nil
 }
-
-
