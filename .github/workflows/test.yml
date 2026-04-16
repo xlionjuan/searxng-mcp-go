@@ -38,7 +38,7 @@ jobs:
           git diff --exit-code go.mod go.sum
 
       - name: Build
-        run: go build -o searxng-mcp-go .
+        run: go build -pgo=auto -o searxng-mcp-go .
 
       - name: Run tests
         run: go test -race -shuffle=on -coverprofile=coverage.out ./...
