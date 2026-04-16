@@ -20,16 +20,6 @@ var validLanguages = map[string]bool{
 	"sv": true, "da": true, "fi": true, "no": true, "tr": true,
 }
 
-// validCategories contains the set of valid category values
-var validCategories = map[string]bool{
-	"general": true, "news": true, "music": true,
-}
-
-// validEngines contains the set of valid engine values
-var validEngines = map[string]bool{
-	"google": true, "bing": true, "duckduckgo": true,
-}
-
 // containsControlCharacters checks if a string contains control characters
 // (characters in the range \x00-\x1f and \x7f)
 func containsControlCharacters(s string) bool {
@@ -41,7 +31,8 @@ func containsControlCharacters(s string) bool {
 	return false
 }
 
-// isValidIdentifier checks if a string is non-empty, trim-empty, alphanumeric, and valid
+const maxIdentifierLength = 50
+
 func isValidIdentifier(value string, validSet map[string]bool) bool {
 	trimmed := strings.TrimSpace(value)
 	if len(trimmed) == 0 {
@@ -58,13 +49,32 @@ func isValidIdentifier(value string, validSet map[string]bool) bool {
 	return true
 }
 
+func isValidCategoryOrEngine(value string) bool {
+	trimmed := strings.TrimSpace(value)
+	if len(trimmed) == 0 {
+		return false
+	}
+	if len(trimmed) > maxIdentifierLength {
+		return false
+	}
+	for _, r := range trimmed {
+		if r < 32 || r == 127 {
+			return false
+		}
+		if !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r == '-' || r == ',') {
+			return false
+		}
+	}
+	return true
+}
+
 // ValidateCategories validates a comma-separated list of categories
 func ValidateCategories(categories string) error {
 	if categories == "" {
 		return nil
 	}
 	for _, cat := range strings.Split(categories, ",") {
-		if !isValidIdentifier(cat, validCategories) {
+		if !isValidCategoryOrEngine(cat) {
 			return NewValidationError("categories", "contains invalid category")
 		}
 	}
@@ -77,7 +87,7 @@ func ValidateEngines(engines string) error {
 		return nil
 	}
 	for _, eng := range strings.Split(engines, ",") {
-		if !isValidIdentifier(eng, validEngines) {
+		if !isValidCategoryOrEngine(eng) {
 			return NewValidationError("engines", "contains invalid engine")
 		}
 	}
