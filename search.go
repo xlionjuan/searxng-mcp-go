@@ -128,7 +128,12 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 	}
 
 	// Parse URL to check scheme and host
-	parsed, _ := url.Parse(baseURL)
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		// This should not happen because validateBaseURL already validated the URL.
+		// If this occurs, it indicates a bug in validateBaseURL.
+		panic(fmt.Sprintf("url.Parse failed after validateBaseURL passed: %v", err))
+	}
 
 	// Warn if using HTTP with non-private host
 	if parsed.Scheme == "http" && !isPrivateHost(parsed.Host) {
