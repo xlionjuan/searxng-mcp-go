@@ -29,14 +29,15 @@ var httpClientCache sync.Map // map[string]*http.Client
 // getCachedHTTPClient returns an HTTP client for the given URL and timeout,
 // creating one if it doesn't exist in the cache.
 func getCachedHTTPClient(baseURL string, timeout time.Duration) *http.Client {
-	key := fmt.Sprintf("%s:%s", baseURL, timeout.String())
+	// Include insecureSkipVerify in cache key to ensure different clients
+	// don't share TLS settings incorrectly
+	insecureSkipVerify := strings.ToLower(os.Getenv("INSECURE_SKIP_VERIFY")) == "1" || strings.ToLower(os.Getenv("INSECURE_SKIP_VERIFY")) == "true"
+	key := fmt.Sprintf("%s:%s:%t", baseURL, timeout.String(), insecureSkipVerify)
 	if cached, ok := httpClientCache.Load(key); ok {
 		return cached.(*http.Client)
 	}
 
-	// Check for insecure skip verify env var
-	insecureSkipVerify := strings.ToLower(os.Getenv("INSECURE_SKIP_VERIFY"))
-	if insecureSkipVerify == "1" || insecureSkipVerify == "true" {
+	if insecureSkipVerify {
 		client := &http.Client{
 			Timeout: timeout,
 			Transport: &http.Transport{
@@ -337,7 +338,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	var reqErr error
 
 	// Attempt POST request
-	postReq, err := http.NewRequestWithContext(ctx, "POST", baseURL.String(), strings.NewReader(params.Encode()))
+	postReq, err := http.NewRequestWithContext(ctx, "POST", baseURL.String(), io.LimitReader(strings.NewReader(params.Encode()), MaxRequestBodySize))
 	if err == nil {
 		postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		postReq.Header.Set("Accept", "application/json")
