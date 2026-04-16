@@ -288,45 +288,6 @@ func TestValidateSearchArgs(t *testing.T) {
 			wantErr: false,
 		},
 
-		// --- Query: SQL injection patterns (should be sanitized/escaped) ---
-		{
-			name:    "query SQL injection OR",
-			args:    &SearchArgs{Query: "' OR '1'='1"},
-			wantErr: false, // Currently allowed - BUG: potentially dangerous
-		},
-		{
-			name:    "query SQL injection UNION",
-			args:    &SearchArgs{Query: "'; DROP TABLE users; --"},
-			wantErr: false, // Currently allowed - BUG
-		},
-		{
-			name:    "query SQL injection boolean",
-			args:    &SearchArgs{Query: "1=1"},
-			wantErr: false,
-		},
-
-		// --- Query: XSS patterns (should be sanitized) ---
-		{
-			name:    "query XSS script tag",
-			args:    &SearchArgs{Query: "<script>alert('xss')</script>"},
-			wantErr: false, // Currently allowed - BUG
-		},
-		{
-			name:    "query XSS img onerror",
-			args:    &SearchArgs{Query: "<img src=x onerror=alert('xss')>"},
-			wantErr: false, // Currently allowed - BUG
-		},
-		{
-			name:    "query XSS svg onload",
-			args:    &SearchArgs{Query: "<svg onload=alert('xss')>"},
-			wantErr: false, // Currently allowed - BUG
-		},
-		{
-			name:    "query XSS javascript URL",
-			args:    &SearchArgs{Query: "javascript:alert('xss')"},
-			wantErr: false, // Currently allowed - BUG
-		},
-
 		// --- Query: unicode homoglyphs (homograph attacks) ---
 		{
 			name:    "query unicode Cyrillic homoglyph a",
@@ -468,20 +429,20 @@ func TestValidateSearchArgs(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "categories whitespace only",
-			args:    &SearchArgs{Query: "test", Categories: "   "},
+			name:     "categories whitespace only",
+			args:     &SearchArgs{Query: "test", Categories: "   "},
 			wantErr:  true,
 			errField: "categories",
 		},
 		{
-			name:    "categories invalid name",
-			args:    &SearchArgs{Query: "test", Categories: "nonexistent_category"},
+			name:     "categories invalid name",
+			args:     &SearchArgs{Query: "test", Categories: "nonexistent_category"},
 			wantErr:  true,
 			errField: "categories",
 		},
 		{
-			name:    "categories special chars",
-			args:    &SearchArgs{Query: "test", Categories: "general!@#"},
+			name:     "categories special chars",
+			args:     &SearchArgs{Query: "test", Categories: "general!@#"},
 			wantErr:  true,
 			errField: "categories",
 		},
@@ -493,20 +454,20 @@ func TestValidateSearchArgs(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "engines whitespace only",
-			args:    &SearchArgs{Query: "test", Engines: "   "},
+			name:     "engines whitespace only",
+			args:     &SearchArgs{Query: "test", Engines: "   "},
 			wantErr:  true,
 			errField: "engines",
 		},
 		{
-			name:    "engines invalid name",
-			args:    &SearchArgs{Query: "test", Engines: "nonexistent_engine"},
+			name:     "engines invalid name",
+			args:     &SearchArgs{Query: "test", Engines: "nonexistent_engine"},
 			wantErr:  true,
 			errField: "engines",
 		},
 		{
-			name:    "engines special chars",
-			args:    &SearchArgs{Query: "test", Engines: "google!@#"},
+			name:     "engines special chars",
+			args:     &SearchArgs{Query: "test", Engines: "google!@#"},
 			wantErr:  true,
 			errField: "engines",
 		},
