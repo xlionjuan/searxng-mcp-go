@@ -45,7 +45,7 @@ func TestPerformSearch_Success(t *testing.T) {
 		SafeSearch: 1,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	result, err := performSearch(ctx, cfg, args)
 
 	if err != nil {
@@ -88,7 +88,7 @@ func TestPerformSearch_NetworkError(t *testing.T) {
 	}
 	args := &SearchArgs{Query: "test"}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := performSearch(ctx, cfg, args)
 
 	if err == nil {
@@ -107,7 +107,7 @@ func TestPerformSearch_InvalidURL(t *testing.T) {
 	}
 	args := &SearchArgs{Query: "test"}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := performSearch(ctx, cfg, args)
 
 	if err == nil {
@@ -153,7 +153,7 @@ func TestPerformSearch_TimeRangeParam(t *testing.T) {
 	for _, tt := range tests {
 		capturedTimeRange = ""
 		args := &SearchArgs{Query: "test", TimeRange: tt.timeRange}
-		ctx := context.Background()
+		ctx := t.Context()
 		_, err := performSearch(ctx, cfg, args)
 		if err != nil {
 			t.Errorf("performSearch() error = %v", err)
@@ -187,7 +187,7 @@ func TestPerformSearch_DefaultLanguage(t *testing.T) {
 	}
 	args := &SearchArgs{Query: "test"} // Language is empty, should default to en
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := performSearch(ctx, cfg, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -225,7 +225,7 @@ func TestPerformSearch_OptionalParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			capturedParams = nil
-			ctx := context.Background()
+			ctx := t.Context()
 			_, err := performSearch(ctx, cfg, tt.args)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -279,7 +279,7 @@ func TestPerformSearch_HTMLResponseError(t *testing.T) {
 			}
 			args := &SearchArgs{Query: "test"}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			_, err := performSearch(ctx, cfg, args)
 
 			if err == nil {
@@ -317,7 +317,7 @@ func TestPerformSearch_ContextCancellation(t *testing.T) {
 	}
 	args := &SearchArgs{Query: "test"}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 
 	_, err := performSearch(ctx, cfg, args)
@@ -364,7 +364,7 @@ func TestPerformSearch_HTTPStatusCodes(t *testing.T) {
 			}
 			args := &SearchArgs{Query: "test"}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			_, err := performSearch(ctx, cfg, args)
 
 			if err == nil {
@@ -393,7 +393,7 @@ func TestPerformSearch_JSONParseError(t *testing.T) {
 	}
 	args := &SearchArgs{Query: "test"}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := performSearch(ctx, cfg, args)
 
 	if err == nil {
@@ -429,7 +429,7 @@ func TestPerformSearch_QueryEncoding(t *testing.T) {
 	// Test query with special characters that need URL encoding
 	args := &SearchArgs{Query: "test query with spaces & special=chars"}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := performSearch(ctx, cfg, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -499,7 +499,7 @@ func TestPerformSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 	}
 	args := &SearchArgs{Query: "test"}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	result, err := performSearch(ctx, cfg, args)
 
 	if err != nil {
