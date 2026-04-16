@@ -269,3 +269,88 @@ func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
 		t.Errorf("expected search error with 'invalid', got: %v", err)
 	}
 }
+
+// NOTE: This test modifies global flag state and should not run in parallel
+// with other tests that depend on flag state.
+// TestRunCLIMode_FlagOnlyInvocations tests that flag-only invocations (without query)
+// enter CLI mode and return appropriate errors, NOT fall through to MCP mode.
+func TestRunCLIMode_FlagOnlyInvocations(t *testing.T) {
+	tests := []struct {
+		name         string
+		setup        func()
+		wantErr      bool
+		errSubstr    string
+		mcpModeCheck bool
+	}{
+		{
+			name: "language flag only - no query",
+			setup: func() {
+				resetCLIFlags()
+				*cliLanguage = "ja"
+			},
+			wantErr:      true,
+			errSubstr:    "search query is required",
+			mcpModeCheck: true,
+		},
+		{
+			name: "searxng-url flag only - no query",
+			setup: func() {
+				resetCLIFlags()
+				*cliSearXNGURL = "https://example.com"
+			},
+			wantErr:      true,
+			errSubstr:    "search query is required",
+			mcpModeCheck: true,
+		},
+		{
+			name: "multiple flags only - no query",
+			setup: func() {
+				resetCLIFlags()
+				*cliLanguage = "en"
+				*cliSafeSearch = 1
+			},
+			wantErr:      true,
+			errSubstr:    "search query is required",
+			mcpModeCheck: true,
+		},
+		{
+			name: "all optional flags without query",
+			setup: func() {
+				resetCLIFlags()
+				*cliLanguage = "zh-tw"
+				*cliSafeSearch = 2
+				*cliTimeRange = "month"
+				*cliCategories = "general"
+				*cliEngines = "google"
+				*cliPageno = 1
+			},
+			wantErr:      true,
+			errSubstr:    "search query is required",
+			mcpModeCheck: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setup()
+			err := runCLIMode([]string{})
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if !strings.Contains(err.Error(), tt.errSubstr) {
+					t.Errorf("error %q does not contain %q", err.Error(), tt.errSubstr)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			}
+			if tt.mcpModeCheck {
+				if strings.Contains(err.Error(), "MCP") || strings.Contains(err.Error(), "protocol") {
+					t.Errorf("flag-only invocation should NOT enter MCP mode, but got error mentioning MCP: %v", err)
+				}
+			}
+		})
+	}
+}

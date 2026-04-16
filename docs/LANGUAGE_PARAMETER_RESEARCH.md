@@ -43,43 +43,30 @@ The internal Go field is named `Language` with JSON tag `language`.
 
 ### 1.3 API Parameter Sent (search.go)
 
-**File:** `search.go`  
-**Lines:** 147-148
+**File:** `search.go`
+**Lines:** ~309
 
 ```go
-language := validateLanguage(args.Language)
-params.Set("lang", language)
+params.Set("language", language)
 ```
 
-The code validates the language using `validateLanguage()` and then sends it to the API as parameter `lang` (not `language`).
+The code sets the `language` parameter (not `lang`) when making API requests to SearXNG.
 
 ### 1.4 Language Validation Logic (validation.go)
 
 **File:** `validation.go`
 
-```go
-var validLanguages = map[string]bool{
-    "en": true, "zh": true, "zh-tw": true, "ja": true, "ko": true,
-    "fr": true, "de": true, "es": true, "it": true, "pt": true,
-    "ru": true, "ar": true, "hi": true, "nl": true, "pl": true,
-    "sv": true, "da": true, "fi": true, "no": true, "tr": true,
-}
+The language validation is integrated into `ValidateSearchArgs()`:
 
-func validateLanguage(language string) string {
-    if language == "" {
-        return "en"
-    }
-    if validLanguages[language] {
-        return language
-    }
-    return "en"
+```go
+if args.Language != "" && !validLanguages[args.Language] {
+    return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja)")
 }
 ```
 
 The validation function:
-- Returns `"en"` if the input is empty
-- Returns the language if it's in the valid list
-- Returns `"en"` as a fallback for invalid language codes
+- Returns a `ValidationError` if the language code is not in the valid set
+- Empty language defaults to English (handled by caller)
 
 ---
 
@@ -100,14 +87,14 @@ The official API uses `language` as the parameter name, **not** `lang`.
 
 The documentation does not explicitly list all accepted language codes, but the search settings typically include a UI for selecting language preferences. The implementation supports: `en`, `zh`, `zh-tw`, `ja`, `ko`, `fr`, `de`, `es`, `it`, `pt`, `ru`, `ar`, `hi`, `nl`, `pl`, `sv`, `da`, `fi`, `no`, `tr`.
 
-### 2.3 Discrepancy Between Documentation and Implementation
+### 2.3 Current Implementation Status
 
 | Aspect | Official Docs | Current Implementation |
 |--------|---------------|------------------------|
-| Parameter Name | `language` | `lang` |
+| Parameter Name | `language` | `language` |
 | Default Value | Instance settings | `"en"` (hardcoded) |
 
-**Note:** The current implementation sends `lang` to the API, but the official parameter name is `language`. The test server does accept both `lang` and `language`, but they produce different results.
+**Status:** The implementation now correctly uses `language` as the API parameter name.
 
 ---
 
@@ -235,42 +222,28 @@ However, this does not mean the parameter has no effect - testing with "python p
 
 ## 5. Recommendations
 
-### 5.1 Immediate Action: Change API Parameter from `lang` to `language`
+### 5.1 API Parameter Change Applied
 
-**Priority:** HIGH
+**Status:** COMPLETED
 
-The current implementation sends `lang` to the SearXNG API, but:
-1. The official documentation specifies `language`
-2. Live testing confirms `language=` produces different (and more correct) results than `lang=`
+The implementation has been corrected to use `language` instead of `lang` as the API parameter name.
 
-**File to modify:** `search.go`  
-**Current code (line ~148):**
-```go
-params.Set("lang", language)
-```
+**File modified:** `search.go` line ~309
 
-**Recommended change:**
-```go
-params.Set("language", language)
-```
+### 5.2 Documentation Status
 
-### 5.2 Update Documentation Discrepancy
+The MCP tool parameter is named `language`, matching the official SearXNG API parameter name.
 
-The project documentation should clarify that:
-- The MCP tool parameter is named `language`
-- The official SearXNG API parameter is also `language`
-- The internal implementation previously used `lang` but has been corrected
+### 5.3 Validation Logic
 
-### 5.3 Verify Validation Logic
+Language validation is performed via `ValidateSearchArgs()` in `validation.go`, which returns a `ValidationError` for invalid language codes.
 
-The current `validateLanguage` function returns `"en"` for any invalid language code. This is a reasonable fallback behavior and should be maintained.
+### 5.4 Verification
 
-### 5.4 Test After Fix
-
-After changing `lang` to `language`, re-run the live tests to confirm:
-- `language=en` produces expected English results
-- `language=ja` produces expected Japanese results
-- Invalid language codes fall back to `"en"`
+The fix has been verified:
+- `language=en` prioritizes English/Wikipedia results
+- `language=ja` returns Japanese-language results
+- Invalid language codes are rejected with a validation error
 
 ---
 

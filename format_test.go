@@ -93,6 +93,28 @@ func TestFormatResults(t *testing.T) {
 			},
 			wantNotContain: "Summary:", // Empty content should not show Summary line
 		},
+		{
+			name: "NumberOfResults greater than len(Results) - paginated response",
+			resp: &SearchResponse{
+				Results: []SearchResult{
+					{
+						Title:   "Result 1",
+						URL:     "https://example.com/1",
+						Content: "Content 1",
+						Engine:  "google",
+					},
+					{
+						Title:   "Result 2",
+						URL:     "https://example.com/2",
+						Content: "Content 2",
+						Engine:  "bing",
+					},
+				},
+				NumberOfResults: 100, // Total matches is 100, but only 2 on this page
+				Query:           "test",
+			},
+			wantContains: []string{"Found 100 results", "Result 1", "Result 2"},
+		},
 	}
 
 	for _, tt := range tests {
