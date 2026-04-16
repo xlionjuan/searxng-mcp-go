@@ -53,6 +53,55 @@ func TestFormatResults(t *testing.T) {
 			resp:      &SearchResponse{Results: []SearchResult{}, NumberOfResults: 0, Query: "empty query"},
 			wantResult: "No results found.",
 		},
+		// TEST-03: Boundary tests for formatResults
+		{
+			name: "content exceeding 4000 runes is truncated",
+			resp: &SearchResponse{
+				Results: []SearchResult{
+					{
+						Title:   "Long Content Test",
+						URL:     "https://example.com/long",
+						Content: strings.Repeat("x", 4500), // 4500 chars > 4000 limit
+						Engine:  "google",
+					},
+				},
+				NumberOfResults: 1,
+				Query:           "long content",
+			},
+			wantContains: []string{strings.Repeat("x", 4000)},
+		},
+		{
+			name: "HTML entities are unescaped in content",
+			resp: &SearchResponse{
+				Results: []SearchResult{
+					{
+						Title:   "HTML Test &amp; More &lt;stuff&gt;",
+						URL:     "https://example.com/html",
+						Content: "Test &amp; &lt; &gt; entities",
+						Engine:  "google",
+					},
+				},
+				NumberOfResults: 1,
+				Query:           "html entities",
+			},
+			wantContains: []string{"HTML Test & More <stuff>", "Test & < > entities"},
+		},
+		{
+			name: "empty content is handled correctly",
+			resp: &SearchResponse{
+				Results: []SearchResult{
+					{
+						Title:   "No Content",
+						URL:     "https://example.com/empty",
+						Content: "",
+						Engine:  "bing",
+					},
+				},
+				NumberOfResults: 1,
+				Query:           "empty",
+			},
+			wantNotContain: "Summary:", // Empty content should not show Summary line
+		},
 	}
 
 	for _, tt := range tests {
@@ -76,6 +125,62 @@ func TestFormatResults(t *testing.T) {
 			}
 		})
 	}
+}
+
+// --- TEST-02: ValidationError tests ---
+
+func TestValidationError(t *testing.T) {
+	t.Run("Is matches same field and message", func(t *testing.T) {
+		err1 := NewValidationError("query", "is required")
+		err2 := NewValidationError("query", "is required")
+		err3 := NewValidationError("query", "must be longer")
+		err4 := NewValidationError("other_field", "is required")
+
+		if !err1.Is(err2) {
+			t.Errorf("err1.Is(err2) = false, want true (same field and message)")
+		}
+		if err1.Is(err3) {
+			t.Errorf("err1.Is(err3) = true, want false (different message)")
+		}
+		if err1.Is(err4) {
+			t.Errorf("err1.Is(err4) = true, want false (different field)")
+		}
+		// Non-ValidationError target
+		if err1.Is(errors.New("some error")) {
+			t.Errorf("err1.Is(non-ValidationError) = true, want false")
+		}
+	})
+
+	t.Run("IsValidationError detects ValidationError", func(t *testing.T) {
+		err := NewValidationError("query", "is required")
+
+		if !IsValidationError(err) {
+			t.Errorf("IsValidationError(err) = false, want true")
+		}
+		if IsValidationError(errors.New("not a validation error")) {
+			t.Errorf("IsValidationError(non-ValidationError) = true, want false")
+		}
+		if IsValidationError(nil) {
+			t.Errorf("IsValidationError(nil) = true, want false")
+		}
+	})
+
+	t.Run("ValidationError wraps with Unwrap", func(t *testing.T) {
+		// Create a ValidationError wrapped in another error using fmt.Errorf
+		validationErr := NewValidationError("test", "test message")
+		// Use errors.Join to create a wrapped error (Go 1.20+)
+		wrappedErr := fmt.Errorf("operation failed: %w", validationErr)
+
+		// errors.Is should work through the wrapped error
+		if !errors.Is(wrappedErr, validationErr) {
+			t.Errorf("errors.Is(wrappedErr, validationErr) = false, want true")
+		}
+
+		// IsValidationError should detect it
+		if !IsValidationError(wrappedErr) {
+			t.Errorf("IsValidationError(wrappedErr) = false, want true")
+		}
+	})
 }
 
 // --- performSearch tests ---
@@ -586,7 +691,7 @@ func TestInferDates(t *testing.T) {
 				{Title: "Test", URL: "https://example.com", Content: "some content", PublishedDate: &apiDate},
 			},
 		}
-		inferDates(resp)
+		inferDates(resp, nil)
 		if resp.Results[0].DateSource != DateSourceAPI {
 			t.Errorf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceAPI)
 		}
@@ -598,7 +703,7 @@ func TestInferDates(t *testing.T) {
 				{Title: "Test", URL: "https://example.com", Content: "Posted 2 days ago"},
 			},
 		}
-		inferDates(resp)
+		inferDates(resp, nil)
 		if resp.Results[0].DateSource != DateSourceInferred {
 			t.Errorf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceInferred)
 		}
@@ -613,21 +718,22 @@ func TestInferDates(t *testing.T) {
 				{Title: "Test", URL: "https://example.com", Content: "Random content without dates"},
 			},
 		}
-		inferDates(resp)
+		inferDates(resp, nil)
 		if resp.Results[0].DateSource != DateSourceNone {
 			t.Errorf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceNone)
 		}
 	})
 
-	// Accuracy tests: verify calculated dates are correct
+	// Accuracy tests: verify calculated dates are correct with fixed baseTime
 	t.Run("2 hours ago accuracy", func(t *testing.T) {
-		before := time.Now()
+		// Fixed baseTime: 2024-06-15 12:00:00 UTC
+		baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
 		resp := &SearchResponse{
 			Results: []SearchResult{
 				{Title: "Test", URL: "https://example.com", Content: "Posted 2 hours ago"},
 			},
 		}
-		inferDates(resp)
+		inferDates(resp, &baseTime)
 
 		if resp.Results[0].DateSource != DateSourceInferred {
 			t.Fatalf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceInferred)
@@ -638,27 +744,27 @@ func TestInferDates(t *testing.T) {
 			t.Fatalf("Failed to parse PublishedDate: %v", err)
 		}
 
-		// For hours, the date is stored as YYYY-MM-DD without time,
-		// so we need to check if the date matches (with +/- 1 day tolerance for edge cases)
-		// Since "2 hours ago" could cross midnight, we check the date is reasonable
-		expectedDate := before.AddDate(0, 0, 0).Format("2006-01-02") // today
-		dayDiff := before.Sub(inferredDate) / (24 * time.Hour)
+		// baseTime is 2024-06-15, 2 hours ago = 2024-06-15 10:00:00
+		// Date stored as YYYY-MM-DD = "2024-06-15"
+		expectedDate := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
+		dayDiff := inferredDate.Sub(expectedDate) / (24 * time.Hour)
 
-		// Should be either today or yesterday depending on when run
-		if dayDiff < 0 || dayDiff > 1 {
-			t.Errorf("Inferred date too far from expected: got %v, expected around %v",
-				resp.Results[0].PublishedDate, expectedDate)
+		// Should be same day (0 days difference)
+		if dayDiff != 0 {
+			t.Errorf("Inferred date = %v, expected %v (dayDiff=%v)",
+				*resp.Results[0].PublishedDate, expectedDate.Format("2006-01-02"), dayDiff)
 		}
 	})
 
 	t.Run("5 days ago accuracy", func(t *testing.T) {
-		before := time.Now()
+		// Fixed baseTime: 2024-06-15 12:00:00 UTC
+		baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
 		resp := &SearchResponse{
 			Results: []SearchResult{
 				{Title: "Test", URL: "https://example.com", Content: "5 days ago news"},
 			},
 		}
-		inferDates(resp)
+		inferDates(resp, &baseTime)
 
 		if resp.Results[0].DateSource != DateSourceInferred {
 			t.Fatalf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceInferred)
@@ -669,25 +775,25 @@ func TestInferDates(t *testing.T) {
 			t.Fatalf("Failed to parse PublishedDate: %v", err)
 		}
 
-		// Expected date should be approximately 5 days ago
-		expectedDate := before.AddDate(0, 0, -5)
-		dayDiff := (before.Sub(inferredDate) / (24 * time.Hour))
+		// baseTime is 2024-06-15, 5 days ago = 2024-06-10
+		expectedDate := time.Date(2024, 6, 10, 0, 0, 0, 0, time.UTC)
+		dayDiff := inferredDate.Sub(expectedDate) / (24 * time.Hour)
 
-		// Allow 1 day tolerance for time of day crossing midnight
-		if dayDiff < 4 || dayDiff > 6 {
-			t.Errorf("Inferred date not 5 days ago: got %v (dayDiff=%v), expected around %v",
-				resp.Results[0].PublishedDate, dayDiff, expectedDate.Format("2006-01-02"))
+		if dayDiff != 0 {
+			t.Errorf("Inferred date = %v, expected %v (dayDiff=%v)",
+				*resp.Results[0].PublishedDate, expectedDate.Format("2006-01-02"), dayDiff)
 		}
 	})
 
 	t.Run("german vor 2 tagen accuracy", func(t *testing.T) {
-		before := time.Now()
+		// Fixed baseTime: 2024-06-15 12:00:00 UTC
+		baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
 		resp := &SearchResponse{
 			Results: []SearchResult{
 				{Title: "Test", URL: "https://example.com", Content: "Nachricht vor 2 tagen veröffentlicht"},
 			},
 		}
-		inferDates(resp)
+		inferDates(resp, &baseTime)
 
 		if resp.Results[0].DateSource != DateSourceInferred {
 			t.Fatalf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceInferred)
@@ -698,21 +804,25 @@ func TestInferDates(t *testing.T) {
 			t.Fatalf("Failed to parse PublishedDate: %v", err)
 		}
 
-		dayDiff := (before.Sub(inferredDate) / (24 * time.Hour))
-		if dayDiff < 1 || dayDiff > 3 {
-			t.Errorf("German 'vor 2 tagen' not ~2 days ago: got %v (dayDiff=%v)",
-				resp.Results[0].PublishedDate, dayDiff)
+		// baseTime is 2024-06-15, "vor 2 tagen" = 2 days ago = 2024-06-13
+		expectedDate := time.Date(2024, 6, 13, 0, 0, 0, 0, time.UTC)
+		dayDiff := inferredDate.Sub(expectedDate) / (24 * time.Hour)
+
+		if dayDiff != 0 {
+			t.Errorf("Inferred date = %v, expected %v (dayDiff=%v)",
+				*resp.Results[0].PublishedDate, expectedDate.Format("2006-01-02"), dayDiff)
 		}
 	})
 
 	t.Run("german vor 3 stunden accuracy", func(t *testing.T) {
-		before := time.Now()
+		// Fixed baseTime: 2024-06-15 12:00:00 UTC
+		baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
 		resp := &SearchResponse{
 			Results: []SearchResult{
 				{Title: "Test", URL: "https://example.com", Content: "Artikel vor 3 stunden geschrieben"},
 			},
 		}
-		inferDates(resp)
+		inferDates(resp, &baseTime)
 
 		if resp.Results[0].DateSource != DateSourceInferred {
 			t.Fatalf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceInferred)
@@ -723,12 +833,14 @@ func TestInferDates(t *testing.T) {
 			t.Fatalf("Failed to parse PublishedDate: %v", err)
 		}
 
-		// "vor 3 stunden" (3 hours ago) - since date only has day resolution,
-		// it should be today or yesterday
-		dayDiff := (before.Sub(inferredDate) / (24 * time.Hour))
-		if dayDiff < 0 || dayDiff > 1 {
-			t.Errorf("German 'vor 3 stunden' not close to today: got %v (dayDiff=%v)",
-				resp.Results[0].PublishedDate, dayDiff)
+		// baseTime is 2024-06-15, 3 hours ago = 2024-06-15 09:00:00
+		// Date stored as YYYY-MM-DD = "2024-06-15"
+		expectedDate := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
+		dayDiff := inferredDate.Sub(expectedDate) / (24 * time.Hour)
+
+		if dayDiff != 0 {
+			t.Errorf("Inferred date = %v, expected %v (dayDiff=%v)",
+				*resp.Results[0].PublishedDate, expectedDate.Format("2006-01-02"), dayDiff)
 		}
 	})
 }

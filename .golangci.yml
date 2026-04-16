@@ -28,6 +28,10 @@ issues:
   # Exclude common generated code patterns
   exclude-files:
     - ".*\\.pb\\.go$"
+    # Exclude test files from linting. Linters tend to produce excessive noise on
+    # test code (e.g., many `t.Helper()` calls, test-specific idioms). Test quality
+    # is primarily guaranteed by test coverage metrics and test failure rates in CI,
+    # not by linting test code. This keeps the lint signal clean for production code.
     - ".*_test\\.go$"
 
 linters-settings:
