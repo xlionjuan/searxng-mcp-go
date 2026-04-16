@@ -470,17 +470,20 @@ func TestValidateSearchArgs(t *testing.T) {
 		{
 			name:    "categories whitespace only",
 			args:    &SearchArgs{Query: "test", Categories: "   "},
-			wantErr: false, // BUG: should be rejected
+			wantErr:  true,
+			errField: "categories",
 		},
 		{
 			name:    "categories invalid name",
 			args:    &SearchArgs{Query: "test", Categories: "nonexistent_category"},
-			wantErr: false, // BUG: should be validated
+			wantErr:  true,
+			errField: "categories",
 		},
 		{
 			name:    "categories special chars",
 			args:    &SearchArgs{Query: "test", Categories: "general!@#"},
-			wantErr: false, // BUG: should be rejected
+			wantErr:  true,
+			errField: "categories",
 		},
 
 		// --- Engines: invalid/edge cases ---
@@ -492,17 +495,20 @@ func TestValidateSearchArgs(t *testing.T) {
 		{
 			name:    "engines whitespace only",
 			args:    &SearchArgs{Query: "test", Engines: "   "},
-			wantErr: false, // BUG: should be rejected
+			wantErr:  true,
+			errField: "engines",
 		},
 		{
 			name:    "engines invalid name",
 			args:    &SearchArgs{Query: "test", Engines: "nonexistent_engine"},
-			wantErr: false, // BUG: should be validated
+			wantErr:  true,
+			errField: "engines",
 		},
 		{
 			name:    "engines special chars",
 			args:    &SearchArgs{Query: "test", Engines: "google!@#"},
-			wantErr: false, // BUG: should be rejected
+			wantErr:  true,
+			errField: "engines",
 		},
 
 		// --- Pageno: edge cases ---
