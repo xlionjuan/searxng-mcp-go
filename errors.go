@@ -78,14 +78,14 @@ func NewSearXNGError(statusCode int, contentType, body string, err error) *SearX
 	return &SearXNGError{
 		StatusCode:    statusCode,
 		ContentType:   contentType,
-		ResponseBody:  truncateBody([]byte(body), 200),
+		ResponseBody:  truncateBody([]byte(body), MaxErrorDisplayChars),
 		UnderlyingErr: err,
 	}
 }
 
 // HTTPStatusError creates a SearXNGError from an HTTP status code
 func HTTPStatusError(statusCode int, contentType string, body []byte) error {
-	bodyStr := truncateBody(body, 200)
+	bodyStr := truncateBody(body, MaxErrorDisplayChars)
 
 	var msg string
 	switch statusCode {
