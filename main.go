@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -274,7 +275,8 @@ func runCLIMode(positionalArgs []string) error {
 		return fmt.Errorf("failed to create searcher: %w", err)
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	resp, err := searcher.Search(ctx, args)
 	if err != nil {
 		return fmt.Errorf("search error: %w", err)
