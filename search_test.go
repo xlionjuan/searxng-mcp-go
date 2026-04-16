@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -296,6 +298,255 @@ func TestPerformSearch_HTMLResponseError(t *testing.T) {
 			}
 		})
 	}
+}
+
+// --- isPrivateHost tests ---
+
+func TestIsPrivateHost(t *testing.T) {
+	tests := []struct {
+		name      string
+		host      string
+		isPrivate bool
+	}{
+		// IPv4 private ranges (10.x)
+		{"10.0.0.0", "10.0.0.0", true},
+		{"10.255.255.255", "10.255.255.255", true},
+		{"10.1.2.3", "10.1.2.3", true},
+
+		// IPv4 private ranges (172.16-31.x)
+		{"172.16.0.0", "172.16.0.0", true},
+		{"172.16.0.1", "172.16.0.1", true},
+		{"172.31.255.255", "172.31.255.255", true},
+		{"172.20.1.1", "172.20.1.1", true},
+		{"172.30.0.1", "172.30.0.1", true},
+
+		// Outside 172.16-31 range
+		{"172.15.255.255", "172.15.255.255", false},
+		{"172.32.0.1", "172.32.0.1", false},
+
+		// IPv4 private ranges (192.168.x)
+		{"192.168.0.0", "192.168.0.0", true},
+		{"192.168.1.1", "192.168.1.1", true},
+		{"192.168.255.255", "192.168.255.255", true},
+
+		// 192.168.x is private, other 192.x is not
+		{"192.169.0.1", "192.169.0.1", false},
+
+		// IPv4 loopback (127.x)
+		{"127.0.0.0", "127.0.0.0", true},
+		{"127.0.0.1", "127.0.0.1", true},
+		{"127.255.255.255", "127.255.255.255", true},
+
+		// IPv4 link-local (169.254.x)
+		{"169.254.0.0", "169.254.0.0", true},
+		{"169.254.1.2", "169.254.1.2", true},
+		{"169.254.255.255", "169.254.255.255", true},
+
+		// 169.254.x is link-local, other 169.x is not
+		{"169.255.0.1", "169.255.0.1", false},
+
+		// Public IPs
+		{"8.8.8.8", "8.8.8.8", false},
+		{"1.1.1.1", "1.1.1.1", false},
+		{"93.184.216.34", "93.184.216.34", false},
+
+		// IPv6 loopback
+		{"::1", "::1", true},
+
+		// IPv6 unique local (fc00::/7)
+		{"fc00::1", "fc00::1", true},
+		{"fd00::1", "fd00::1", true},
+		{"fe00::1", "fe00::1", false},
+
+		// IPv6 link-local (fe80::/10)
+		{"fe80::1", "fe80::1", true},
+		{"fe80::ffff", "fe80::ffff", true},
+		{"fea0::1", "fea0::1", true},
+		{"feb0::1", "feb0::1", true},
+		{"fec0::1", "fec0::1", false},
+
+		// IPv6 public
+		{"2001:4860:4860::8888", "2001:4860:4860::8888", false},
+		{"2606:4700:4700::1111", "2606:4700:4700::1111", false},
+
+		// TLD-based private domains
+		{"server.lan", "server.lan", true},
+		{"host.internal", "host.internal", true},
+		{"machine.local", "machine.local", true},
+		{"router.home", "router.home", true},
+		{"EXAMPLE.LAN", "EXAMPLE.LAN", true},
+
+		// Non-private domains
+		{"example.com", "example.com", false},
+		{"google.com", "google.com", false},
+		{"search.example.org", "search.example.org", false},
+
+		// Hosts with ports (should be parsed and checked)
+		{"192.168.1.1:8080", "192.168.1.1:8080", true},
+		{"10.0.0.1:443", "10.0.0.1:443", true},
+		{"server.lan:3000", "server.lan:3000", true},
+		{"example.com:443", "example.com:443", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isPrivateHost(tt.host)
+			if got != tt.isPrivate {
+				t.Errorf("isPrivateHost(%q) = %v, want %v", tt.host, got, tt.isPrivate)
+			}
+		})
+	}
+}
+
+// --- validateBaseURL tests ---
+
+func TestValidateBaseURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		baseURL   string
+		wantErr   bool
+		errSubstr string
+	}{
+		// Valid URLs
+		{"https URL", "https://search.example.com", false, ""},
+		{"http URL", "http://search.example.com", false, ""},
+		{"https with port", "https://search.example.com:8080", false, ""},
+		{"https with path", "https://search.example.com/search", false, ""},
+		{"IP address https", "https://192.168.1.1", false, ""},
+		{"localhost https", "https://localhost", false, ""},
+
+		// Invalid: empty
+		{"empty", "", true, "cannot be empty"},
+
+		// Invalid: no scheme
+		{"no scheme", "search.example.com", true, "http or https scheme"},
+		{"ftp scheme", "ftp://search.example.com", true, "http or https scheme"},
+		{"file scheme", "file:///etc/passwd", true, "http or https scheme"},
+
+		// Invalid: parse error
+		{"invalid URL chars", "https://not a valid url", true, "invalid URL"},
+		{"just spaces", "   ", true, "http or https scheme"},
+
+		// Invalid: missing host
+		{"https:///", "https:///", true, "must include a host"},
+		{"http:///", "http:///", true, "must include a host"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateBaseURL(tt.baseURL)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("validateBaseURL(%q) expected error, got nil", tt.baseURL)
+					return
+				}
+				if tt.errSubstr != "" && !strings.Contains(err.Error(), tt.errSubstr) {
+					t.Errorf("validateBaseURL(%q) error %q does not contain %q", tt.baseURL, err.Error(), tt.errSubstr)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("validateBaseURL(%q) unexpected error: %v", tt.baseURL, err)
+				}
+			}
+		})
+	}
+}
+
+// --- getCachedHTTPClient tests ---
+
+func TestGetCachedHTTPClient(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+		timeout time.Duration
+	}{
+		{"basic https", "https://search.example.com", 30 * time.Second},
+		{"basic http", "http://search.example.com", 30 * time.Second},
+		{"different timeout", "https://search.example.com", 60 * time.Second},
+		{"different URL", "https://other.example.com", 30 * time.Second},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			httpClientCache = sync.Map{}
+			os.Unsetenv("INSECURE_SKIP_VERIFY")
+
+			client1 := getCachedHTTPClient(tt.baseURL, tt.timeout)
+			client2 := getCachedHTTPClient(tt.baseURL, tt.timeout)
+
+			if client1 != client2 {
+				t.Errorf("getCachedHTTPClient(%q, %v) did not return same instance for same params", tt.baseURL, tt.timeout)
+			}
+		})
+	}
+}
+
+func TestGetCachedHTTPClient_CacheKeyUniqueness(t *testing.T) {
+	// Clear cache before test
+	httpClientCache = sync.Map{}
+	os.Unsetenv("INSECURE_SKIP_VERIFY")
+
+	timeout := 30 * time.Second
+
+	// Different base URLs should get different clients
+	client1 := getCachedHTTPClient("https://search1.example.com", timeout)
+	client2 := getCachedHTTPClient("https://search2.example.com", timeout)
+
+	if client1 == client2 {
+		t.Errorf("Different URLs should produce different cached clients")
+	}
+
+	// Different timeouts should get different clients
+	client3 := getCachedHTTPClient("https://search.example.com", 30*time.Second)
+	client4 := getCachedHTTPClient("https://search.example.com", 60*time.Second)
+
+	if client3 == client4 {
+		t.Errorf("Different timeouts should produce different cached clients")
+	}
+}
+
+func TestGetCachedHTTPClient_InsecureSkipVerify(t *testing.T) {
+	// Clear cache before test
+	httpClientCache = sync.Map{}
+
+	// Test without INSECURE_SKIP_VERIFY
+	os.Unsetenv("INSECURE_SKIP_VERIFY")
+	client1 := getCachedHTTPClient("https://search.example.com", 30*time.Second)
+
+	// Test with INSECURE_SKIP_VERIFY=1
+	os.Setenv("INSECURE_SKIP_VERIFY", "1")
+	client2 := getCachedHTTPClient("https://search.example.com", 30*time.Second)
+
+	// Should get different clients
+	if client1 == client2 {
+		t.Errorf("INSECURE_SKIP_VERIFY should produce different client")
+	}
+
+	// Verify the transport settings
+	transport1 := client1.Transport.(*http.Transport)
+	transport2 := client2.Transport.(*http.Transport)
+
+	if transport1.TLSClientConfig != nil && transport1.TLSClientConfig.InsecureSkipVerify {
+		t.Errorf("Client without env var should not have InsecureSkipVerify")
+	}
+
+	if transport2.TLSClientConfig == nil || !transport2.TLSClientConfig.InsecureSkipVerify {
+		t.Errorf("Client with INSECURE_SKIP_VERIFY=1 should have InsecureSkipVerify")
+	}
+
+	// Clean up
+	os.Unsetenv("INSECURE_SKIP_VERIFY")
+	httpClientCache = sync.Map{}
+
+	// Test INSECURE_SKIP_VERIFY=true (string "true" should also work)
+	os.Setenv("INSECURE_SKIP_VERIFY", "true")
+	client3 := getCachedHTTPClient("https://search.example.com", 30*time.Second)
+	transport3 := client3.Transport.(*http.Transport)
+	if transport3.TLSClientConfig == nil || !transport3.TLSClientConfig.InsecureSkipVerify {
+		t.Errorf("Client with INSECURE_SKIP_VERIFY=true should have InsecureSkipVerify")
+	}
+
+	os.Unsetenv("INSECURE_SKIP_VERIFY")
 }
 
 // --- helper functions and test utilities ---

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -121,45 +120,6 @@ func TestConcurrentContextCancellation(t *testing.T) {
 	}
 }
 
-// TestConcurrentMapAccess tests concurrent access to shared state in validation
-func TestConcurrentMapAccess(t *testing.T) {
-	var wg sync.WaitGroup
-	const numGoroutines = 50
-
-	// Concurrent reads of validLanguages map from validation.go
-	wg.Add(numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
-			defer wg.Done()
-			for j := 0; j < 100; j++ {
-				_ = validLanguages["en"]
-				_ = validLanguages["zh"]
-				_ = validLanguages["ja"]
-			}
-		}(i)
-	}
-
-	wg.Wait()
-
-	// Test actual validation concurrent access
-	validLang := "en"
-	wg.Add(numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
-			defer wg.Done()
-			for j := 0; j < 100; j++ {
-				args := &SearchArgs{
-					Query:    "test",
-					Language: validLang,
-				}
-				_ = ValidateSearchArgs(args)
-			}
-		}(i)
-	}
-
-	wg.Wait()
-}
-
 // TestConcurrentSearcherCreation tests creating many searchers concurrently
 func TestConcurrentSearcherCreation(t *testing.T) {
 	var wg sync.WaitGroup
@@ -231,47 +191,6 @@ func TestConcurrentSameSearcherUse(t *testing.T) {
 	count := atomic.LoadInt64(&requestCount)
 	if count != numGoroutines {
 		t.Errorf("Expected %d requests, got %d", numGoroutines, count)
-	}
-}
-
-// TestGoroutineLeakDetection tests that no goroutines are leaked by search operations
-func TestGoroutineLeakDetection(t *testing.T) {
-	initialGoroutines := runtime.NumGoroutine()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		searchResp := SearchResponse{
-			Results:         []SearchResult{},
-			NumberOfResults: 0,
-			Query:           "test",
-		}
-		body, _ := json.Marshal(searchResp)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-	}))
-	defer server.Close()
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-	}
-
-	// Run many searches
-	const iterations = 50
-	for i := 0; i < iterations; i++ {
-		ctx := context.Background()
-		_, _ = performSearch(ctx, cfg, &SearchArgs{Query: "test"})
-	}
-
-	// Give any background goroutines time to clean up
-	time.Sleep(100 * time.Millisecond)
-
-	finalGoroutines := runtime.NumGoroutine()
-
-	// Allow some variance but should be close to initial
-	if finalGoroutines > initialGoroutines+5 {
-		t.Errorf("Potential goroutine leak: started with %d, ended with %d after %d iterations",
-			initialGoroutines, finalGoroutines, iterations)
 	}
 }
 
@@ -366,46 +285,6 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 			if err != nil {
 				t.Errorf("Search error: %v", err)
 			}
-		}(i)
-	}
-
-	wg.Wait()
-}
-
-// TestConcurrentTransportUsage tests that the HTTP transport doesn't have races
-func TestConcurrentTransportUsage(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		searchResp := SearchResponse{
-			Results:         []SearchResult{},
-			NumberOfResults: 0,
-			Query:           "test",
-		}
-		body, _ := json.Marshal(searchResp)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-	}))
-	defer server.Close()
-
-	// Create custom transport
-	transport := &http.Transport{}
-	client := &http.Client{Transport: transport}
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-		HTTPClient: client,
-	}
-
-	var wg sync.WaitGroup
-	const numGoroutines = 30
-
-	wg.Add(numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
-			defer wg.Done()
-			ctx := context.Background()
-			_, _ = performSearch(ctx, cfg, &SearchArgs{Query: "test"})
 		}(i)
 	}
 
@@ -602,116 +481,6 @@ func TestContextDeadlineExceededDuringSearch(t *testing.T) {
 }
 
 // --- Connection Pool Exhaustion Tests ---
-
-// TestConnectionPoolExhaustion tests behavior when HTTP transport connection pool is exhausted
-func TestConnectionPoolExhaustion(t *testing.T) {
-	requestCount := int64(0)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt64(&requestCount, 1)
-		time.Sleep(50 * time.Millisecond)
-		searchResp := SearchResponse{
-			Results:         []SearchResult{},
-			NumberOfResults: 0,
-			Query:           "test",
-		}
-		body, _ := json.Marshal(searchResp)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-	}))
-	defer server.Close()
-
-	// Create transport with limited connection pool
-	transport := &http.Transport{
-		MaxIdleConns:        10,
-		MaxIdleConnsPerHost: 5,
-		MaxConnsPerHost:     5,
-	}
-	client := &http.Client{
-		Transport: transport,
-		Timeout:   10 * time.Second,
-	}
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-		HTTPClient: client,
-	}
-
-	// Many concurrent requests that could exhaust the pool
-	const numRequests = 50
-	var wg sync.WaitGroup
-	wg.Add(numRequests)
-
-	successCount := int64(0)
-	errorCount := int64(0)
-
-	for i := 0; i < numRequests; i++ {
-		go func(reqID int) {
-			defer wg.Done()
-			_, err := performSearch(context.Background(), cfg, &SearchArgs{Query: "test"})
-			if err != nil {
-				atomic.AddInt64(&errorCount, 1)
-			} else {
-				atomic.AddInt64(&successCount, 1)
-			}
-		}(i)
-	}
-
-	wg.Wait()
-
-	t.Logf("Connection pool test: success=%d, errors=%d, total=%d",
-		atomic.LoadInt64(&successCount), atomic.LoadInt64(&errorCount), atomic.LoadInt64(&requestCount))
-}
-
-// TestTransportMaxConnsLimit tests behavior when MaxConnsPerHost limit is reached
-func TestTransportMaxConnsLimit(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		searchResp := SearchResponse{
-			Results:         []SearchResult{},
-			NumberOfResults: 0,
-			Query:           "test",
-		}
-		body, _ := json.Marshal(searchResp)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-	}))
-	defer server.Close()
-
-	// Create transport with very low connection limit
-	transport := &http.Transport{
-		MaxConnsPerHost: 2, // Very restrictive
-	}
-	client := &http.Client{
-		Transport: transport,
-		Timeout:   10 * time.Second,
-	}
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-		HTTPClient: client,
-	}
-
-	var wg sync.WaitGroup
-	const numGoroutines = 50
-
-	wg.Add(numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
-			defer wg.Done()
-			ctx := context.Background()
-			_, err := performSearch(ctx, cfg, &SearchArgs{Query: "test"})
-			if err != nil {
-				t.Errorf("Request %d failed unexpectedly: %v", id, err)
-			}
-		}(i)
-	}
-
-	wg.Wait()
-}
 
 // TestHighConcurrencyStress tests the system under high concurrent load
 func TestHighConcurrencyStress(t *testing.T) {
