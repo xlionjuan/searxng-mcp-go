@@ -25,9 +25,9 @@ func formatResults(resp *SearchResponse) string {
 		b.WriteString(fmt.Sprintf("   URL: %s\n", r.URL))
 		if r.Content != "" {
 			content := html.UnescapeString(r.Content)
-			if utf8.RuneCountInString(content) > 4000 {
+			if utf8.RuneCountInString(content) > MaxContentRunes {
 				runes := []rune(content)
-				content = string(runes[:4000])
+				content = string(runes[:MaxContentRunes])
 			}
 			b.WriteString(fmt.Sprintf("   Summary: %s\n", content))
 		}

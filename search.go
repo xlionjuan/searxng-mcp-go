@@ -324,14 +324,14 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 100*1024))
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, MaxErrorBodySize))
 		if readErr != nil {
 			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read error response body: %w", readErr))
 		}
 		return nil, HTTPStatusError(resp.StatusCode, resp.Header.Get("Content-Type"), body)
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBodySize))
 	if err != nil {
 		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read response body: %w", err))
 	}
@@ -348,8 +348,8 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		}
 		// Log preview internally for debugging
 		previewLen := bodyLen
-		if previewLen > 200 {
-			previewLen = 200
+		if previewLen > MaxErrorDisplayChars {
+			previewLen = MaxErrorDisplayChars
 		}
 		slog.Debug("HTMLResponseError: received HTML instead of JSON", "preview", string(body[:previewLen]))
 		return nil, &HTMLResponseError{Body: "", UnderlyingErr: nil}
@@ -358,8 +358,8 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	if !strings.Contains(contentType, "application/json") && !strings.Contains(contentType, "text/json") {
 		// Log the unexpected content for debugging, but don't expose it to clients
 		bodyPreview := string(body)
-		if len(bodyPreview) > 200 {
-			bodyPreview = bodyPreview[:200] + "..."
+		if len(bodyPreview) > MaxErrorDisplayChars {
+			bodyPreview = bodyPreview[:MaxErrorDisplayChars] + "..."
 		}
 		slog.Debug("UnexpectedContentTypeError", "content_type", contentType, "body_preview", bodyPreview)
 		return nil, NewSearXNGError(resp.StatusCode, contentType, "", errors.New("unexpected content type: expected application/json"))
