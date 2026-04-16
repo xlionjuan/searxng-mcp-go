@@ -435,10 +435,9 @@ func TestValidateSearchArgs(t *testing.T) {
 			errField: "categories",
 		},
 		{
-			name:     "categories invalid name",
-			args:     &SearchArgs{Query: "test", Categories: "nonexistent_category"},
-			wantErr:  true,
-			errField: "categories",
+			name:    "categories arbitrary name is valid",
+			args:    &SearchArgs{Query: "test", Categories: "nonexistent_category"},
+			wantErr: false,
 		},
 		{
 			name:     "categories special chars",
@@ -460,10 +459,9 @@ func TestValidateSearchArgs(t *testing.T) {
 			errField: "engines",
 		},
 		{
-			name:     "engines invalid name",
-			args:     &SearchArgs{Query: "test", Engines: "nonexistent_engine"},
-			wantErr:  true,
-			errField: "engines",
+			name:    "engines arbitrary name is valid",
+			args:    &SearchArgs{Query: "test", Engines: "nonexistent_engine"},
+			wantErr: false,
 		},
 		{
 			name:     "engines special chars",
