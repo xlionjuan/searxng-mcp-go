@@ -198,7 +198,7 @@ func main() {
 
 	if isCLIMode {
 		if err := runCLIMode(positionalArgs); err != nil {
-			fmt.Fprintln(os.Stderr, "Error:", err)
+			slog.Error("CLI error", "error", err)
 			os.Exit(1)
 		}
 		return
