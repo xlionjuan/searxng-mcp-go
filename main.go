@@ -195,7 +195,9 @@ func main() {
 	flag.CommandLine.Parse(flagArgs)
 
 	// Check if we're in CLI mode (CLI-specific flags or positional args)
-	isCLIMode := *cliHelp || *cliVersion || *cliQuery != "" || *cliJSON || len(positionalArgs) > 0
+	isCLIMode := *cliHelp || *cliVersion || *cliQuery != "" || *cliJSON || len(positionalArgs) > 0 ||
+		*cliSearXNGURL != "" || *cliLanguage != "en" || *cliSafeSearch != 0 || *cliTimeRange != "" ||
+		*cliCategories != "" || *cliEngines != "" || *cliPageno != 1
 
 	if isCLIMode {
 		if err := runCLIMode(positionalArgs); err != nil {
