@@ -22,14 +22,11 @@ const version = "1.0.0"
 
 // CLI-specific flags.
 //
-// WARNING: These variables are package-level globals and are NOT concurrency-safe.
-// They are only ever referenced in CLI mode (when os.Args contains CLI-specific
-// flags or positional arguments). In MCP mode (runMCPMode), these flags MUST NOT
-// be read or written because: (1) flag.Parse() is only called in CLI mode,
-// (2) MCP mode runs in a separate goroutine with its own context, and (3) the
-// MCP SDK does not use Go's flag package. Referencing these vars in MCP mode
-// could introduce race conditions or undefined behavior. All MCP-mode config
-// is obtained via getConfig() which reads from environment variables only.
+// These variables are package-level globals. They are safe to read in both CLI mode
+// and MCP mode because: (1) flag.Parse() is called before either mode runs,
+// (2) the values are read atomically via getConfig() which constructs the Config
+// before spawning any goroutines, and (3) Go's string/int pointer reads are atomic.
+// All modes obtain config via getConfig() which respects: CLI flag > env var > default.
 var (
 	cliQuery      = flag.String("query", "", "Search query string (CLI mode)")
 	cliJSON       = flag.Bool("json", false, "Output results as JSON (CLI mode)")
