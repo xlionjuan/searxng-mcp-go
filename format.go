@@ -11,6 +11,15 @@ import (
 // Formatting
 // ============================================================================
 
+// unescapeIfNeeded calls html.UnescapeString only when the string contains
+// HTML entities, avoiding unnecessary allocations.
+func unescapeIfNeeded(s string) string {
+	if !strings.ContainsAny(s, "&<>\"'") {
+		return s
+	}
+	return html.UnescapeString(s)
+}
+
 // formatResults formats search results as a readable string
 func formatResults(resp *SearchResponse) string {
 	if len(resp.Results) == 0 {
@@ -20,11 +29,11 @@ func formatResults(resp *SearchResponse) string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("Found %d results for '%s':\n\n", len(resp.Results), resp.Query))
 	for i, r := range resp.Results {
-		title := html.UnescapeString(r.Title)
+		title := unescapeIfNeeded(r.Title)
 		b.WriteString(fmt.Sprintf("%d. %s\n", i+1, title))
 		b.WriteString(fmt.Sprintf("   URL: %s\n", r.URL))
 		if r.Content != "" {
-			content := html.UnescapeString(r.Content)
+			content := unescapeIfNeeded(r.Content)
 			if utf8.RuneCountInString(content) > MaxContentRunes {
 				runes := []rune(content)
 				content = string(runes[:MaxContentRunes])
