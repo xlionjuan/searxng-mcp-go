@@ -10,6 +10,17 @@ const MaxQueryLength = 500
 // validTimeRanges contains the set of valid time range values
 var validTimeRanges = map[string]bool{"day": true, "month": true, "year": true}
 
+// containsControlCharacters checks if a string contains control characters
+// (characters in the range \x00-\x1f and \x7f)
+func containsControlCharacters(s string) bool {
+	for _, r := range s {
+		if r < 32 || r == 127 {
+			return true
+		}
+	}
+	return false
+}
+
 // ValidateSearchArgs validates the search arguments and returns a ValidationError if invalid
 func ValidateSearchArgs(args *SearchArgs) error {
 	if args == nil {
@@ -24,6 +35,10 @@ func ValidateSearchArgs(args *SearchArgs) error {
 		return NewValidationError("query", "must be 500 characters or less")
 	}
 
+	if containsControlCharacters(args.Query) {
+		return NewValidationError("query", "contains invalid control characters")
+	}
+
 	if args.TimeRange != "" && !validTimeRanges[args.TimeRange] {
 		return NewValidationError("time_range", "must be one of day, month or year")
 	}
@@ -34,6 +49,14 @@ func ValidateSearchArgs(args *SearchArgs) error {
 
 	if args.Pageno != nil && *args.Pageno < 1 {
 		return NewValidationError("pageno", "must be >= 1")
+	}
+
+	if args.Categories != "" && containsControlCharacters(args.Categories) {
+		return NewValidationError("categories", "contains invalid control characters")
+	}
+
+	if args.Engines != "" && containsControlCharacters(args.Engines) {
+		return NewValidationError("engines", "contains invalid control characters")
 	}
 
 	return nil
