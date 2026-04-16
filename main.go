@@ -265,19 +265,19 @@ func runCLIMode(positionalArgs []string) error {
 
 	// Validate arguments
 	if err := ValidateSearchArgs(args); err != nil {
-		return fmt.Errorf("validation error: %v", err)
+		return fmt.Errorf("validation error: %w", err)
 	}
 
 	// Create searcher with configurable HTTP client
 	searcher, err := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
 	if err != nil {
-		return fmt.Errorf("failed to create searcher: %v", err)
+		return fmt.Errorf("failed to create searcher: %w", err)
 	}
 
 	ctx := context.Background()
 	resp, err := searcher.Search(ctx, args)
 	if err != nil {
-		return fmt.Errorf("search error: %v", err)
+		return fmt.Errorf("search error: %w", err)
 	}
 
 	if *cliJSON {
@@ -285,7 +285,7 @@ func runCLIMode(positionalArgs []string) error {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(resp); err != nil {
-			return fmt.Errorf("failed to encode json: %v", err)
+			return fmt.Errorf("failed to encode json: %w", err)
 		}
 	} else {
 		// Output as human-readable text
@@ -317,7 +317,7 @@ func runMCPMode() {
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
 		// Centralized validation
 		if err := ValidateSearchArgs(&args); err != nil {
-			return &mcp.CallToolResult{
+				return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: fmt.Sprintf("validation error: %v", err)},
 				},

@@ -1,5 +1,7 @@
 package main
 
+import "strings"
+
 // ============================================================================
 // Centralized Validation
 // ============================================================================
@@ -35,8 +37,8 @@ func ValidateSearchArgs(args *SearchArgs) error {
 		return NewValidationError("args", "search arguments cannot be nil")
 	}
 
-	if args.Query == "" {
-		return NewValidationError("query", "search query is required")
+	if strings.TrimSpace(args.Query) == "" {
+		return NewValidationError("query", "search query cannot be only whitespace")
 	}
 
 	if len(args.Query) > MaxQueryLength {
