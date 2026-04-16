@@ -25,6 +25,9 @@ vendor/
 *.swp
 *.swo
 
+# Backup files
+*.bak
+
 # OS
 .DS_Store
 Thumbs.db

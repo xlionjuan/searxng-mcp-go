@@ -104,3 +104,11 @@ go test ./...                 # Run tests
 ```
 
 See [docs/INSTALL.md](docs/INSTALL.md) for Docker and other build options.
+
+## Code Cleanliness
+
+**絕對禁止留下任何垃圾檔案** ⚠️
+
+- 禁止：`.bak`、`.test`（編譯產出的 binary）、`*~`、`.swp`、`.swo` 等任何臨時/備份檔案
+- 這些檔案 **必須** 在 commit 前刪除，並永久排除於 Git 歷史之外（已用 `--force --invert-paths` 清除）
+- `.gitignore` 已設定 `*.bak`、`.test`、`.swp`、`.swo` 等規則，確保不會再被追蹤
