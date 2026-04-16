@@ -76,8 +76,7 @@ type SearXNGSearcher struct {
 	baseURL string
 }
 
-// Close implements Searcher.Close.
-// It closes the HTTP client's transport to release any background goroutines.
+// Close releases resources held by the searcher.
 func (s *SearXNGSearcher) Close() error {
 	if s.client != nil && s.client.Transport != nil {
 		if transport, ok := s.client.Transport.(*http.Transport); ok {
@@ -210,8 +209,7 @@ func performSearch(ctx context.Context, cfg *Config, args *SearchArgs) (*SearchR
 	return searcher.performSearch(ctx, args)
 }
 
-// Search implements the Searcher interface.
-// It is the external API entry point that delegates to performSearch for the actual implementation.
+// Search is the external API entry point that delegates to performSearch.
 func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	return s.performSearch(ctx, args)
 }
