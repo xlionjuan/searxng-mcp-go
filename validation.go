@@ -10,6 +10,14 @@ const MaxQueryLength = 500
 // validTimeRanges contains the set of valid time range values
 var validTimeRanges = map[string]bool{"day": true, "month": true, "year": true}
 
+// validLanguages contains the set of valid language codes
+var validLanguages = map[string]bool{
+	"en": true, "zh": true, "zh-tw": true, "ja": true, "ko": true,
+	"fr": true, "de": true, "es": true, "it": true, "pt": true,
+	"ru": true, "ar": true, "hi": true, "nl": true, "pl": true,
+	"sv": true, "da": true, "fi": true, "no": true, "tr": true,
+}
+
 // containsControlCharacters checks if a string contains control characters
 // (characters in the range \x00-\x1f and \x7f)
 func containsControlCharacters(s string) bool {
@@ -57,6 +65,10 @@ func ValidateSearchArgs(args *SearchArgs) error {
 
 	if args.Engines != "" && containsControlCharacters(args.Engines) {
 		return NewValidationError("engines", "contains invalid control characters")
+	}
+
+	if args.Language != "" && !validLanguages[args.Language] {
+		return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja)")
 	}
 
 	return nil
