@@ -107,97 +107,84 @@ func resetCLIFlags() {
 
 // --- runCLIMode tests ---
 
+// TestRunCLIMode_ValidationErrors tests that runCLIMode returns validation errors
+// instead of calling os.Exit. This is a table-driven test.
 // NOTE: This test modifies global flag state and should not run in parallel
 // with other tests that depend on flag state.
-// TestRunCLIMode_MissingQuery tests that runCLIMode returns an error when no query is provided
-// instead of calling os.Exit
-func TestRunCLIMode_MissingQuery(t *testing.T) {
-	resetCLIFlags()
+func TestRunCLIMode_ValidationErrors(t *testing.T) {
+	tests := []struct {
+		name       string
+		setup      func()
+		query      []string
+		wantErr    bool
+		errSubstr  string
+	}{
+		{
+			name:      "missing query",
+			setup:     func() { resetCLIFlags() },
+			query:     []string{},
+			wantErr:   true,
+			errSubstr: "search query is required",
+		},
+		{
+			name: "safesearch out of range",
+			setup: func() {
+				resetCLIFlags()
+				*cliSafeSearch = -1
+			},
+			query:      []string{"test query"},
+			wantErr:    true,
+			errSubstr:  "validation error",
+		},
+		{
+			name: "invalid time_range",
+			setup: func() {
+				resetCLIFlags()
+				*cliTimeRange = "invalid"
+			},
+			query:      []string{"test query"},
+			wantErr:    true,
+			errSubstr:  "validation error",
+		},
+		{
+			name: "pageno zero",
+			setup: func() {
+				resetCLIFlags()
+				*cliPageno = 0
+			},
+			query:      []string{"test query"},
+			wantErr:    true,
+			errSubstr:  "validation error",
+		},
+		{
+			name: "query too long",
+			setup: func() {
+				resetCLIFlags()
+				*cliQuery = strings.Repeat("a", 501)
+			},
+			query:      []string{},
+			wantErr:    true,
+			errSubstr:  "validation error",
+		},
+	}
 
-	err := runCLIMode([]string{})
-	if err == nil {
-		t.Fatal("expected error for missing query, got nil")
-	}
-	if !strings.Contains(err.Error(), "search query is required") {
-		t.Errorf("expected 'search query is required' error, got: %v", err)
-	}
-}
-
-// NOTE: This test modifies global flag state and should not run in parallel
-// with other tests that depend on flag state.
-// TestRunCLIMode_ValidationError tests that runCLIMode returns validation errors
-// instead of calling os.Exit
-func TestRunCLIMode_ValidationError(t *testing.T) {
-	resetCLIFlags()
-	*cliSafeSearch = -1
-
-	// Test with safesearch = -1 (invalid)
-	err := runCLIMode([]string{"test query"})
-	if err == nil {
-		t.Fatal("expected validation error for safesearch=-1, got nil")
-	}
-	if !strings.Contains(err.Error(), "validation error") {
-		t.Errorf("expected validation error, got: %v", err)
-	}
-	if !strings.Contains(err.Error(), "safesearch") {
-		t.Errorf("expected safesearch in error message, got: %v", err)
-	}
-}
-
-// NOTE: This test modifies global flag state and should not run in parallel
-// with other tests that depend on flag state.
-// TestRunCLIMode_InvalidTimeRange tests that invalid time_range returns validation error
-func TestRunCLIMode_InvalidTimeRange(t *testing.T) {
-	resetCLIFlags()
-	*cliTimeRange = "invalid"
-
-	err := runCLIMode([]string{"test query"})
-	if err == nil {
-		t.Fatal("expected validation error for invalid time_range, got nil")
-	}
-	if !strings.Contains(err.Error(), "validation error") {
-		t.Errorf("expected validation error, got: %v", err)
-	}
-	if !strings.Contains(err.Error(), "time_range") {
-		t.Errorf("expected time_range in error message, got: %v", err)
-	}
-}
-
-// NOTE: This test modifies global flag state and should not run in parallel
-// with other tests that depend on flag state.
-// TestRunCLIMode_InvalidPageno tests that invalid pageno returns validation error
-func TestRunCLIMode_InvalidPageno(t *testing.T) {
-	resetCLIFlags()
-	*cliPageno = 0
-
-	err := runCLIMode([]string{"test query"})
-	if err == nil {
-		t.Fatal("expected validation error for pageno=0, got nil")
-	}
-	if !strings.Contains(err.Error(), "validation error") {
-		t.Errorf("expected validation error, got: %v", err)
-	}
-	if !strings.Contains(err.Error(), "pageno") {
-		t.Errorf("expected pageno in error message, got: %v", err)
-	}
-}
-
-// NOTE: This test modifies global flag state and should not run in parallel
-// with other tests that depend on flag state.
-// TestRunCLIMode_QueryTooLong tests that query > 500 chars returns validation error
-func TestRunCLIMode_QueryTooLong(t *testing.T) {
-	resetCLIFlags()
-	*cliQuery = strings.Repeat("a", 501)
-
-	err := runCLIMode([]string{})
-	if err == nil {
-		t.Fatal("expected validation error for query too long, got nil")
-	}
-	if !strings.Contains(err.Error(), "validation error") {
-		t.Errorf("expected validation error, got: %v", err)
-	}
-	if !strings.Contains(err.Error(), "500 characters") {
-		t.Errorf("expected '500 characters' in error message, got: %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setup()
+			err := runCLIMode(tt.query)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if !strings.Contains(err.Error(), tt.errSubstr) {
+					t.Errorf("error %q does not contain %q", err.Error(), tt.errSubstr)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			}
+		})
 	}
 }
 

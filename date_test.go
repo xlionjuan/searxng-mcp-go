@@ -13,6 +13,7 @@ func TestParseRelativeDate(t *testing.T) {
 	h2 := time.Date(2024, 6, 15, 10, 0, 0, 0, time.UTC)
 	h3 := time.Date(2024, 6, 15, 9, 0, 0, 0, time.UTC)
 	h24 := time.Date(2024, 6, 14, 12, 0, 0, 0, time.UTC)
+	h48 := time.Date(2024, 6, 13, 12, 0, 0, 0, time.UTC)
 	h5st := time.Date(2024, 6, 15, 7, 0, 0, 0, time.UTC)
 	h1st := time.Date(2024, 6, 15, 11, 0, 0, 0, time.UTC)
 	d1 := time.Date(2024, 6, 14, 12, 0, 0, 0, time.UTC)
@@ -52,6 +53,17 @@ func TestParseRelativeDate(t *testing.T) {
 		// Weeks patterns not implemented in parseRelativeDate (regex exists but unused)
 		{"2 weeks ago - not implemented", "Article from 2 weeks ago", nil},
 		{"2 wochen ago - not implemented", "Nachricht vor 2 wochen", nil},
+		// Boundary: 0 hours (should return nil)
+		{"0 hours ago - boundary", "Posted 0 hours ago", nil},
+		// Boundary: 48 hours (upper limit)
+		{"48 hours ago - upper boundary", "Posted 48 hours ago", &h48},
+		// Boundary: future date (should return nil)
+		{"100 hours ago - future", "Published 100 hours ago", nil},
+		// Boundary: too old (500 days, before 2000)
+		{"500 days ago - too old", "Published 500 days ago", nil},
+		// Weeks patterns not implemented in parseRelativeDate (regex exists but unused)
+		{"2 weeks ago - not implemented", "Article from 2 weeks ago", nil},
+		{"2 wochen ago - not implemented", "Nachricht vor 2 wochen", nil},
 	}
 
 	for _, tt := range tests {
@@ -69,43 +81,6 @@ func TestParseRelativeDate(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestParseRelativeDate_ZeroHours(t *testing.T) {
-	baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-	// "0 hours ago" should return nil because hours must be > 0
-	result := parseRelativeDate("Posted 0 hours ago", baseTime)
-	if result != nil {
-		t.Errorf("parseRelativeDate() with 0 hours should return nil, got %v", *result)
-	}
-}
-
-func TestParseRelativeDate_UpperBoundaries(t *testing.T) {
-	baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-	// 48 hours is the upper limit for hours
-	h48 := time.Date(2024, 6, 13, 12, 0, 0, 0, time.UTC)
-	result := parseRelativeDate("Posted 48 hours ago", baseTime)
-	if result == nil {
-		t.Error("parseRelativeDate() with 48 hours should return a date")
-	} else if !result.Equal(h48) {
-		t.Errorf("parseRelativeDate() with 48 hours = %v, want %v", *result, h48)
-	}
-}
-
-func TestParseRelativeDate_FutureDate(t *testing.T) {
-	baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-	result := parseRelativeDate("Published 100 hours ago", baseTime)
-	if result != nil {
-		t.Errorf("future date should be discarded, got %v", *result)
-	}
-}
-
-func TestParseRelativeDate_TooOld(t *testing.T) {
-	baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-	result := parseRelativeDate("Published 500 days ago", baseTime)
-	if result != nil {
-		t.Errorf("date before 2000 should be discarded, got %v", *result)
 	}
 }
 
