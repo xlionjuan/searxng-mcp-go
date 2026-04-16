@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -236,7 +236,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		if previewLen > 200 {
 			previewLen = 200
 		}
-		log.Printf("HTMLResponseError: received HTML instead of JSON, preview: %s", string(body[:previewLen]))
+		slog.Debug("HTMLResponseError: received HTML instead of JSON", "preview", string(body[:previewLen]))
 		return nil, &HTMLResponseError{Body: "", UnderlyingErr: nil}
 	}
 
@@ -246,14 +246,14 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		if len(bodyPreview) > 200 {
 			bodyPreview = bodyPreview[:200] + "..."
 		}
-		log.Printf("UnexpectedContentTypeError: content_type=%s, body_preview=%s", contentType, bodyPreview)
+		slog.Debug("UnexpectedContentTypeError", "content_type", contentType, "body_preview", bodyPreview)
 		return nil, NewSearXNGError(resp.StatusCode, contentType, "", errors.New("unexpected content type: expected application/json"))
 	}
 
 	var result SearchResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		// Log the JSON parse error for debugging, but don't expose the body to clients
-		log.Printf("JSONParseError: failed to parse JSON response: %v", err)
+		slog.Debug("JSONParseError: failed to parse JSON response", "error", err)
 		return nil, NewSearXNGError(resp.StatusCode, contentType, "", fmt.Errorf("failed to parse JSON response: %w", err))
 	}
 

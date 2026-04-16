@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -301,7 +301,8 @@ func runMCPMode() {
 	// Create searcher with configurable HTTP client
 	searcher, err := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
 	if err != nil {
-		log.Fatalf("Failed to create searcher: %v", err)
+		slog.Error("failed to create searcher", "error", err)
+		os.Exit(1)
 	}
 
 	server := mcp.NewServer(&mcp.Implementation{
@@ -341,13 +342,14 @@ func runMCPMode() {
 		}, nil, nil
 	})
 
-	log.Printf("Starting SearXNG MCP server...")
+	slog.Info("starting SearXNG MCP server")
 
 	// Create context that listens for SIGINT/SIGTERM for graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
-		log.Fatalf("Server failed: %v", err)
+		slog.Error("server failed", "error", err)
+		os.Exit(1)
 	}
 }
