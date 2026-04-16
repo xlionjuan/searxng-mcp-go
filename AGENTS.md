@@ -26,18 +26,29 @@ npx @modelcontextprotocol/inspector ./searxng-mcp-go
 
 ```
 searxng-mcp-go/
-├── main.go           # Main server implementation
-├── search.go         # Search functionality, HTTP client
-├── errors.go         # Error types and handling
-├── format.go         # Output formatting
-├── validation.go     # Input validation
-├── date.go           # Date/time utilities
-├── main_test.go      # Test suite
-├── go.mod/go.sum     # Go module/dependencies
-├── .github/workflows/ # CI: lint, security, test
+├── main.go              # Main server implementation (CLI + MCP entry points)
+├── search.go            # Search functionality, HTTP client, SearXNGSearcher
+├── errors.go            # Error types and handling
+├── format.go            # Output formatting
+├── validation.go        # Input validation
+├── date.go              # Date/time utilities
+├── constants.go         # Size limits and configuration constants
+├── main_test.go         # Main tests (CLI/MCP mode, runCLIMode)
+├── search_test.go       # Search tests (isPrivateHost, validateBaseURL, getCachedHTTPClient)
+├── errors_test.go       # Error type tests
+├── format_test.go       # Formatting tests (including pagination)
+├── validation_test.go   # Validation edge case tests
+├── date_test.go         # Date parsing and inference tests
+├── concurrency_test.go   # Concurrency and stress tests
+├── error_path_test.go   # Error path coverage tests
+├── go.mod/go.sum        # Go module/dependencies
+├── .golangci.yml        # Linter configuration
+├── codecov.yml          # Code coverage configuration
+├── .env.example         # Environment variable template
+├── .github/workflows/   # CI: lint, security, test
 └── docs/
-    ├── INSTALL.md        # Installation, build, configuration
-    ├── MCP_TOOLS.md      # MCP tool documentation
+    ├── INSTALL.md           # Installation, build, configuration
+    ├── MCP_TOOLS.md         # MCP tool documentation
     ├── AI_UX_TEST_GUIDE.md  # AI UX testing guide
     └── LANGUAGE_PARAMETER_RESEARCH.md  # Language parameter research
 ```
