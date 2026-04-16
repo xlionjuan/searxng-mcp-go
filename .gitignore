@@ -32,5 +32,8 @@ vendor/
 .DS_Store
 Thumbs.db
 
+# Review Reports (always local, never commit)
+REPORT.md
+
 # Environment files (keep .env.example)
 .env
