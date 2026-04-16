@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
@@ -454,6 +455,420 @@ func TestSearcherThreadSafety(t *testing.T) {
 	wg.Wait()
 
 	expected := int64(numGoroutines * iterationsPerGoroutine)
+	actual := atomic.LoadInt64(&requestCount)
+	if actual != expected {
+		t.Errorf("Expected %d requests, got %d", expected, actual)
+	}
+}
+
+// --- Graceful Shutdown and Signal Handling Tests ---
+
+// TestGracefulShutdownWithContextCancel tests that search operations respect context cancellation
+func TestGracefulShutdownWithContextCancel(t *testing.T) {
+	requestCount := int64(0)
+	completedCount := int64(0)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt64(&requestCount, 1)
+		time.Sleep(500 * time.Millisecond) // Simulate work
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"results":[],"number_of_results":0,"query":"test"}`))
+	}))
+	defer server.Close()
+
+	cfg := &Config{
+		SearXNGURL: server.URL,
+		Timeout:    30 * time.Second,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var wg sync.WaitGroup
+	const numGoroutines = 20
+
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			defer wg.Done()
+			_, _ = performSearch(ctx, cfg, &SearchArgs{Query: "test"})
+			atomic.AddInt64(&completedCount, 1)
+		}(i)
+	}
+
+	// Cancel context after some requests have started
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+
+	// Wait with timeout
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Normal shutdown
+	case <-time.After(5 * time.Second):
+		t.Fatal("Graceful shutdown timed out")
+	}
+
+	t.Logf("Requests made: %d, Completed: %d", atomic.LoadInt64(&requestCount), atomic.LoadInt64(&completedCount))
+}
+
+// TestGracefulShutdownWithSignal tests that the server handles termination signals gracefully
+func TestGracefulShutdownWithSignal(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		searchResp := SearchResponse{
+			Results:         []SearchResult{},
+			NumberOfResults: 0,
+			Query:           "test",
+		}
+		body, _ := json.Marshal(searchResp)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(body)
+	}))
+	defer server.Close()
+
+	cfg := &Config{
+		SearXNGURL: server.URL,
+		Timeout:    5 * time.Second, // Shorter timeout for signal test
+	}
+
+	// Create a cancellable context simulating SIGINT/SIGTERM
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	searcher, _ := NewSearXNGSearcher(server.URL, cfg.Timeout, nil)
+
+	// Start multiple searches
+	var wg sync.WaitGroup
+	const numGoroutines = 10
+
+	wg.Add(numGoroutines)
+	errChan := make(chan error, numGoroutines)
+
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			defer wg.Done()
+			_, err := searcher.Search(ctx, &SearchArgs{Query: "test"})
+			if err != nil && ctx.Err() == nil {
+				errChan <- err
+			}
+		}(i)
+	}
+
+	// Simulate signal after a short delay
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+
+	wg.Wait()
+	close(errChan)
+
+	for err := range errChan {
+		// Errors after cancellation are expected
+		if !strings.Contains(err.Error(), "context canceled") && !strings.Contains(err.Error(), "request canceled") {
+			t.Errorf("Unexpected error after signal: %v", err)
+		}
+	}
+}
+
+// TestContextDeadlineExceededDuringSearch tests behavior when context deadline expires during search
+func TestContextDeadlineExceededDuringSearch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(2 * time.Second) // Longer than any reasonable timeout
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cfg := &Config{
+		SearXNGURL: server.URL,
+		Timeout:    30 * time.Second,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	_, err := performSearch(ctx, cfg, &SearchArgs{Query: "test"})
+	if err == nil {
+		t.Error("Expected error due to context deadline, got nil")
+	}
+
+	errStr := err.Error()
+	if !strings.Contains(errStr, "context deadline exceeded") && !strings.Contains(errStr, "timeout") && !strings.Contains(errStr, "request canceled") {
+		t.Errorf("Expected context-related error, got: %v", err)
+	}
+}
+
+// --- Connection Pool Exhaustion Tests ---
+
+// TestConnectionPoolExhaustion tests behavior when HTTP transport connection pool is exhausted
+func TestConnectionPoolExhaustion(t *testing.T) {
+	requestCount := int64(0)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt64(&requestCount, 1)
+		time.Sleep(50 * time.Millisecond)
+		searchResp := SearchResponse{
+			Results:         []SearchResult{},
+			NumberOfResults: 0,
+			Query:           "test",
+		}
+		body, _ := json.Marshal(searchResp)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(body)
+	}))
+	defer server.Close()
+
+	// Create transport with limited connection pool
+	transport := &http.Transport{
+		MaxIdleConns:        10,
+		MaxIdleConnsPerHost: 5,
+		MaxConnsPerHost:     5,
+	}
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   10 * time.Second,
+	}
+
+	cfg := &Config{
+		SearXNGURL: server.URL,
+		Timeout:    30 * time.Second,
+		HTTPClient: client,
+	}
+
+	// Many concurrent requests that could exhaust the pool
+	const numRequests = 50
+	var wg sync.WaitGroup
+	wg.Add(numRequests)
+
+	successCount := int64(0)
+	errorCount := int64(0)
+
+	for i := 0; i < numRequests; i++ {
+		go func(reqID int) {
+			defer wg.Done()
+			_, err := performSearch(context.Background(), cfg, &SearchArgs{Query: "test"})
+			if err != nil {
+				atomic.AddInt64(&errorCount, 1)
+			} else {
+				atomic.AddInt64(&successCount, 1)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	t.Logf("Connection pool test: success=%d, errors=%d, total=%d",
+		atomic.LoadInt64(&successCount), atomic.LoadInt64(&errorCount), atomic.LoadInt64(&requestCount))
+}
+
+// TestTransportMaxConnsLimit tests behavior when MaxConnsPerHost limit is reached
+func TestTransportMaxConnsLimit(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		searchResp := SearchResponse{
+			Results:         []SearchResult{},
+			NumberOfResults: 0,
+			Query:           "test",
+		}
+		body, _ := json.Marshal(searchResp)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(body)
+	}))
+	defer server.Close()
+
+	// Create transport with very low connection limit
+	transport := &http.Transport{
+		MaxConnsPerHost: 2, // Very restrictive
+	}
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   10 * time.Second,
+	}
+
+	cfg := &Config{
+		SearXNGURL: server.URL,
+		Timeout:    30 * time.Second,
+		HTTPClient: client,
+	}
+
+	var wg sync.WaitGroup
+	const numGoroutines = 50
+
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			defer wg.Done()
+			ctx := context.Background()
+			_, err := performSearch(ctx, cfg, &SearchArgs{Query: "test"})
+			if err != nil {
+				t.Errorf("Request %d failed unexpectedly: %v", id, err)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+// TestHighConcurrencyStress tests the system under high concurrent load
+func TestHighConcurrencyStress(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping stress test in short mode")
+	}
+
+	requestCount := int64(0)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt64(&requestCount, 1)
+		searchResp := SearchResponse{
+			Results: []SearchResult{
+				{Title: "Result 1", URL: "https://example.com/1", Content: "Content 1", Engine: "google"},
+				{Title: "Result 2", URL: "https://example.com/2", Content: "Content 2", Engine: "bing"},
+				{Title: "Result 3", URL: "https://example.com/3", Content: "Content 3", Engine: "duckduckgo"},
+			},
+			NumberOfResults: 3,
+			Query:           "test",
+		}
+		body, _ := json.Marshal(searchResp)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(body)
+	}))
+	defer server.Close()
+
+	cfg := &Config{
+		SearXNGURL: server.URL,
+		Timeout:    30 * time.Second,
+	}
+
+	var wg sync.WaitGroup
+	const numGoroutines = 200
+	const iterationsPerGoroutine = 10
+
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go func(goroutineID int) {
+			defer wg.Done()
+			for j := 0; j < iterationsPerGoroutine; j++ {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				_, err := performSearch(ctx, cfg, &SearchArgs{
+					Query:    fmt.Sprintf("stress_test_%d_%d", goroutineID, j),
+					Language: []string{"en", "zh", "ja"}[j%3],
+				})
+				cancel()
+				if err != nil {
+					t.Errorf("Search error: %v", err)
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	expected := int64(numGoroutines * iterationsPerGoroutine)
+	actual := atomic.LoadInt64(&requestCount)
+	t.Logf("High concurrency stress test: expected=%d, actual=%d", expected, actual)
+
+	if actual != expected {
+		t.Errorf("Expected %d requests, got %d", expected, actual)
+	}
+}
+
+// TestConcurrentValidationAndSearch tests concurrent validation and search operations
+func TestConcurrentValidationAndSearch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		searchResp := SearchResponse{
+			Results:         []SearchResult{},
+			NumberOfResults: 0,
+			Query:           "test",
+		}
+		body, _ := json.Marshal(searchResp)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(body)
+	}))
+	defer server.Close()
+
+	searcher, _ := NewSearXNGSearcher(server.URL, 30*time.Second, nil)
+
+	var wg sync.WaitGroup
+	const numGoroutines = 50
+
+	wg.Add(numGoroutines * 2)
+
+	// Concurrent validation calls
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			defer wg.Done()
+			args := &SearchArgs{
+				Query:      "test",
+				Language:   "en",
+				SafeSearch: 0,
+			}
+			_ = ValidateSearchArgs(args)
+		}(i)
+	}
+
+	// Concurrent search calls
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			defer wg.Done()
+			ctx := context.Background()
+			_, _ = searcher.Search(ctx, &SearchArgs{Query: "test"})
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+// TestSharedSearcherAcrossGoroutines tests the same searcher being used by many goroutines
+func TestSharedSearcherAcrossGoroutines(t *testing.T) {
+	requestCount := int64(0)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt64(&requestCount, 1)
+		searchResp := SearchResponse{
+			Results: []SearchResult{
+				{Title: "Result", URL: r.URL.Query().Get("q"), Content: "Content", Engine: "test"},
+			},
+			NumberOfResults: 1,
+			Query:           r.URL.Query().Get("q"),
+		}
+		body, _ := json.Marshal(searchResp)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(body)
+	}))
+	defer server.Close()
+
+	searcher, _ := NewSearXNGSearcher(server.URL, 30*time.Second, nil)
+
+	// Use searcher from many goroutines simultaneously
+	var wg sync.WaitGroup
+	const numGoroutines = 100
+	const queriesPerGoroutine = 20
+
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go func(goroutineID int) {
+			defer wg.Done()
+			ctx := context.Background()
+			for j := 0; j < queriesPerGoroutine; j++ {
+				query := fmt.Sprintf("goroutine_%d_query_%d", goroutineID, j)
+				_, err := searcher.Search(ctx, &SearchArgs{Query: query})
+				if err != nil {
+					t.Errorf("Search error for %s: %v", query, err)
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	expected := int64(numGoroutines * queriesPerGoroutine)
 	actual := atomic.LoadInt64(&requestCount)
 	if actual != expected {
 		t.Errorf("Expected %d requests, got %d", expected, actual)

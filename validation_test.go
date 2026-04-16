@@ -278,65 +278,65 @@ func TestValidateSearchArgs(t *testing.T) {
 
 		// --- Query: unicode edge cases (removed exploratory tests) ---
 		{
-			name:     "query unicode devanagari Zah",
-			args:     &SearchArgs{Query: "हिन्दी"},
-			wantErr:  false, // Valid unicode in script
+			name:    "query unicode devanagari Zah",
+			args:    &SearchArgs{Query: "हिन्दी"},
+			wantErr: false, // Valid unicode in script
 		},
 		{
-			name:     "query unicode mixed valid",
-			args:     &SearchArgs{Query: "Hello 世界 🌍"},
-			wantErr:  false,
+			name:    "query unicode mixed valid",
+			args:    &SearchArgs{Query: "Hello 世界 🌍"},
+			wantErr: false,
 		},
 
 		// --- Query: SQL injection patterns (should be sanitized/escaped) ---
 		{
-			name:     "query SQL injection OR",
-			args:     &SearchArgs{Query: "' OR '1'='1"},
-			wantErr:  false, // Currently allowed - BUG: potentially dangerous
+			name:    "query SQL injection OR",
+			args:    &SearchArgs{Query: "' OR '1'='1"},
+			wantErr: false, // Currently allowed - BUG: potentially dangerous
 		},
 		{
-			name:     "query SQL injection UNION",
-			args:     &SearchArgs{Query: "'; DROP TABLE users; --"},
-			wantErr:  false, // Currently allowed - BUG
+			name:    "query SQL injection UNION",
+			args:    &SearchArgs{Query: "'; DROP TABLE users; --"},
+			wantErr: false, // Currently allowed - BUG
 		},
 		{
-			name:     "query SQL injection boolean",
-			args:     &SearchArgs{Query: "1=1"},
-			wantErr:  false,
+			name:    "query SQL injection boolean",
+			args:    &SearchArgs{Query: "1=1"},
+			wantErr: false,
 		},
 
 		// --- Query: XSS patterns (should be sanitized) ---
 		{
-			name:     "query XSS script tag",
-			args:     &SearchArgs{Query: "<script>alert('xss')</script>"},
-			wantErr:  false, // Currently allowed - BUG
+			name:    "query XSS script tag",
+			args:    &SearchArgs{Query: "<script>alert('xss')</script>"},
+			wantErr: false, // Currently allowed - BUG
 		},
 		{
-			name:     "query XSS img onerror",
-			args:     &SearchArgs{Query: "<img src=x onerror=alert('xss')>"},
-			wantErr:  false, // Currently allowed - BUG
+			name:    "query XSS img onerror",
+			args:    &SearchArgs{Query: "<img src=x onerror=alert('xss')>"},
+			wantErr: false, // Currently allowed - BUG
 		},
 		{
-			name:     "query XSS svg onload",
-			args:     &SearchArgs{Query: "<svg onload=alert('xss')>"},
-			wantErr:  false, // Currently allowed - BUG
+			name:    "query XSS svg onload",
+			args:    &SearchArgs{Query: "<svg onload=alert('xss')>"},
+			wantErr: false, // Currently allowed - BUG
 		},
 		{
-			name:     "query XSS javascript URL",
-			args:     &SearchArgs{Query: "javascript:alert('xss')"},
-			wantErr:  false, // Currently allowed - BUG
+			name:    "query XSS javascript URL",
+			args:    &SearchArgs{Query: "javascript:alert('xss')"},
+			wantErr: false, // Currently allowed - BUG
 		},
 
 		// --- Query: unicode homoglyphs (homograph attacks) ---
 		{
-			name:     "query unicode Cyrillic homoglyph a",
-			args:     &SearchArgs{Query: "аптека"}, // Cyrillic 'а' instead of Latin 'a'
-			wantErr:  false,
+			name:    "query unicode Cyrillic homoglyph a",
+			args:    &SearchArgs{Query: "аптека"}, // Cyrillic 'а' instead of Latin 'a'
+			wantErr: false,
 		},
 		{
-			name:     "query unicode Greek homoglyph o",
-			args:     &SearchArgs{Query: "οκρινοκ"}, // Greek 'ο' instead of Latin 'o'
-			wantErr:  false,
+			name:    "query unicode Greek homoglyph o",
+			args:    &SearchArgs{Query: "οκρινοκ"}, // Greek 'ο' instead of Latin 'o'
+			wantErr: false,
 		},
 
 		// --- Query: null bytes (various positions) ---
@@ -361,9 +361,9 @@ func TestValidateSearchArgs(t *testing.T) {
 
 		// --- Language codes: invalid/edge cases ---
 		{
-			name:     "language empty is valid",
-			args:     &SearchArgs{Query: "test", Language: ""},
-			wantErr:  false,
+			name:    "language empty is valid",
+			args:    &SearchArgs{Query: "test", Language: ""},
+			wantErr: false,
 		},
 		{
 			name:     "language number",
@@ -444,9 +444,9 @@ func TestValidateSearchArgs(t *testing.T) {
 			errField: "time_range",
 		},
 		{
-			name:     "time_range empty is valid",
-			args:     &SearchArgs{Query: "test", TimeRange: ""},
-			wantErr:  false,
+			name:    "time_range empty is valid",
+			args:    &SearchArgs{Query: "test", TimeRange: ""},
+			wantErr: false,
 		},
 		{
 			name:     "time_range all",
@@ -463,46 +463,46 @@ func TestValidateSearchArgs(t *testing.T) {
 
 		// --- Categories: invalid/edge cases ---
 		{
-			name:     "categories empty is valid",
-			args:     &SearchArgs{Query: "test", Categories: ""},
-			wantErr:  false,
+			name:    "categories empty is valid",
+			args:    &SearchArgs{Query: "test", Categories: ""},
+			wantErr: false,
 		},
 		{
-			name:     "categories whitespace only",
-			args:     &SearchArgs{Query: "test", Categories: "   "},
-			wantErr:  false, // BUG: should be rejected
+			name:    "categories whitespace only",
+			args:    &SearchArgs{Query: "test", Categories: "   "},
+			wantErr: false, // BUG: should be rejected
 		},
 		{
-			name:     "categories invalid name",
-			args:     &SearchArgs{Query: "test", Categories: "nonexistent_category"},
-			wantErr:  false, // BUG: should be validated
+			name:    "categories invalid name",
+			args:    &SearchArgs{Query: "test", Categories: "nonexistent_category"},
+			wantErr: false, // BUG: should be validated
 		},
 		{
-			name:     "categories special chars",
-			args:     &SearchArgs{Query: "test", Categories: "general!@#"},
-			wantErr:  false, // BUG: should be rejected
+			name:    "categories special chars",
+			args:    &SearchArgs{Query: "test", Categories: "general!@#"},
+			wantErr: false, // BUG: should be rejected
 		},
 
 		// --- Engines: invalid/edge cases ---
 		{
-			name:     "engines empty is valid",
-			args:     &SearchArgs{Query: "test", Engines: ""},
-			wantErr:  false,
+			name:    "engines empty is valid",
+			args:    &SearchArgs{Query: "test", Engines: ""},
+			wantErr: false,
 		},
 		{
-			name:     "engines whitespace only",
-			args:     &SearchArgs{Query: "test", Engines: "   "},
-			wantErr:  false, // BUG: should be rejected
+			name:    "engines whitespace only",
+			args:    &SearchArgs{Query: "test", Engines: "   "},
+			wantErr: false, // BUG: should be rejected
 		},
 		{
-			name:     "engines invalid name",
-			args:     &SearchArgs{Query: "test", Engines: "nonexistent_engine"},
-			wantErr:  false, // BUG: should be validated
+			name:    "engines invalid name",
+			args:    &SearchArgs{Query: "test", Engines: "nonexistent_engine"},
+			wantErr: false, // BUG: should be validated
 		},
 		{
-			name:     "engines special chars",
-			args:     &SearchArgs{Query: "test", Engines: "google!@#"},
-			wantErr:  false, // BUG: should be rejected
+			name:    "engines special chars",
+			args:    &SearchArgs{Query: "test", Engines: "google!@#"},
+			wantErr: false, // BUG: should be rejected
 		},
 
 		// --- Pageno: edge cases ---
@@ -525,19 +525,19 @@ func TestValidateSearchArgs(t *testing.T) {
 			errField: "pageno",
 		},
 		{
-			name:     "pageno valid one",
-			args:     &SearchArgs{Query: "test", Pageno: intPtr(1)},
-			wantErr:  false,
+			name:    "pageno valid one",
+			args:    &SearchArgs{Query: "test", Pageno: intPtr(1)},
+			wantErr: false,
 		},
 		{
-			name:     "pageno valid large",
-			args:     &SearchArgs{Query: "test", Pageno: intPtr(1000000)},
-			wantErr:  false, // Currently allowed
+			name:    "pageno valid large",
+			args:    &SearchArgs{Query: "test", Pageno: intPtr(1000000)},
+			wantErr: false, // Currently allowed
 		},
 		{
-			name:     "pageno nil is valid",
-			args:     &SearchArgs{Query: "test", Pageno: nil},
-			wantErr:  false,
+			name:    "pageno nil is valid",
+			args:    &SearchArgs{Query: "test", Pageno: nil},
+			wantErr: false,
 		},
 		// NOTE: Pageno is *int type, so floats and strings won't compile
 		// The MCP layer would catch these before they reach validation
