@@ -67,17 +67,10 @@ func getCachedHTTPClient(baseURL string, timeout time.Duration) *http.Client {
 }
 
 // ============================================================================
-// Searcher Interface
+// SearXNG Searcher
 // ============================================================================
 
-// Searcher defines the interface for performing web searches.
-// This allows for different implementations (real SearXNG, mock, etc.)
-type Searcher interface {
-	Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error)
-	Close() error // Close releases resources held by the searcher
-}
-
-// SearXNGSearcher implements the Searcher interface using a real SearXNG instance
+// SearXNGSearcher performs web searches via a SearXNG instance
 type SearXNGSearcher struct {
 	client  *http.Client // Configurable HTTP client
 	baseURL string
@@ -208,14 +201,13 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 }
 
 // performSearch is a backward-compatible wrapper that creates a temporary SearXNGSearcher
-// from the provided Config and delegates to its Search method.
-// This function exists for backward compatibility with existing tests and external callers.
+// from the provided Config and delegates to its performSearch method.
 func performSearch(ctx context.Context, cfg *Config, args *SearchArgs) (*SearchResponse, error) {
 	searcher, err := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
 	if err != nil {
 		return nil, err
 	}
-	return searcher.Search(ctx, args)
+	return searcher.performSearch(ctx, args)
 }
 
 // Search implements the Searcher interface.
@@ -290,6 +282,9 @@ type SearchResponse struct {
 
 // performSearch executes the search query against SearXNG
 func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
+	if args == nil {
+		return nil, NewSearXNGError(0, "", "", fmt.Errorf("args cannot be nil"))
+	}
 	baseURL, err := url.Parse(s.baseURL)
 	if err != nil {
 		return nil, NewSearXNGError(0, "", "", fmt.Errorf("invalid SearXNG URL: %w", err))

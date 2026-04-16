@@ -87,6 +87,9 @@ func parseRelativeDate(content string, currentTime time.Time) *time.Time {
 // inferDates attempts to infer publication dates for search results that lack explicit dates
 // If currentTime is nil, time.Now() is used.
 func inferDates(resp *SearchResponse, currentTime *time.Time) {
+	if resp == nil {
+		return
+	}
 	if currentTime == nil {
 		now := time.Now()
 		currentTime = &now
