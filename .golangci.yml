@@ -39,17 +39,13 @@ linters-settings:
     max-complexity: 15
   gocyclo:
     min-complexity: 15
-  golint:
-    min-confidence: 0.5
   govet:
-    enable-always:
+    enable:
       - shadow
   lll:
     line-length: 140
   nakedret:
     max-func-lines: 5
-  nlreturn:
-    min-size: 10
   gocognit:
     min-complexity: 20
   dupl:
@@ -59,16 +55,5 @@ linters-settings:
     min-occurrences: 3
   misspell:
     locale: US
-  makezero:
-    allow slice: true
-  rangevalcopy:
-    width: 80
-  zerologlint:
-    passf: true
-  testpackage:
-    skip_regexp: ".*_test\\.go"
-  usetesting:
-    # Allow testing helper functions
-    disallow: false
   interfacebloat:
     max: 10
