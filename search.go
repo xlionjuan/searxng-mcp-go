@@ -215,14 +215,14 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 100*1024))
 		if readErr != nil {
 			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read error response body: %w", readErr))
 		}
 		return nil, HTTPStatusError(resp.StatusCode, resp.Header.Get("Content-Type"), body)
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
 	if err != nil {
 		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read response body: %w", err))
 	}

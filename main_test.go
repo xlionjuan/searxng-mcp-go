@@ -1385,6 +1385,39 @@ func TestValidateSearchArgs(t *testing.T) {
 			args:    &SearchArgs{Query: "test", Pageno: nil},
 			wantErr: false,
 		},
+		// language validation
+		{
+			name:    "language empty is valid",
+			args:    &SearchArgs{Query: "test", Language: ""},
+			wantErr: false,
+		},
+		{
+			name:    "language en is valid",
+			args:    &SearchArgs{Query: "test", Language: "en"},
+			wantErr: false,
+		},
+		{
+			name:    "language zh-tw is valid",
+			args:    &SearchArgs{Query: "test", Language: "zh-tw"},
+			wantErr: false,
+		},
+		{
+			name:    "language ja is valid",
+			args:    &SearchArgs{Query: "test", Language: "ja"},
+			wantErr: false,
+		},
+		{
+			name:    "language invalid",
+			args:    &SearchArgs{Query: "test", Language: "INVALID_LANG"},
+			wantErr: true,
+			errField: "language",
+		},
+		{
+			name:    "language invalid2",
+			args:    &SearchArgs{Query: "test", Language: "xyz"},
+			wantErr: true,
+			errField: "language",
+		},
 	}
 
 	for _, tt := range tests {

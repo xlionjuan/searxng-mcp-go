@@ -117,7 +117,7 @@ const searchInputSchema = `{
 			"description": "Comma-separated list of search engines to use (e.g., google, bing, duckduckgo)"
 		},
 		"pageno": {
-			"type": "integer",
+			"type": ["null", "integer"],
 			"description": "Page number for pagination. Defaults to 1"
 		}
 	},

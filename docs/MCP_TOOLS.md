@@ -174,7 +174,7 @@ Actual error message formats from the server:
 |-------------------------------|----------------------------------------------------------------|
 | Missing `query` parameter     | `validation error on "query": search query is required`       |
 | Query too long (>500 chars)   | `validation error on "query": must be 500 characters or less` |
-| Invalid `safesearch` value    | `validation error on "safesearch": must be 0 (Off), 1 (Moderate), or 2 (Strict)` |
+| Invalid `safesearch` value    | `validation error on "safesearch": must be 0 off, 1 moderate, or 2 strict` |
 | Invalid `pageno` value        | `validation error on "pageno": must be >= 1` |
 | Invalid `time_range` value    | `validation error on "time_range": time_range must be one of: day, month, year` |
 | Network failure               | `searxng error (status 0): context deadline exceeded` (or similar) |
