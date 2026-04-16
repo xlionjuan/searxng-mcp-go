@@ -202,6 +202,9 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 // performSearch is a backward-compatible wrapper that creates a temporary SearXNGSearcher
 // from the provided Config and delegates to its performSearch method.
 func performSearch(ctx context.Context, cfg *Config, args *SearchArgs) (*SearchResponse, error) {
+	if cfg == nil {
+		return nil, NewSearXNGError(0, "", "", fmt.Errorf("performSearch: cfg cannot be nil"))
+	}
 	searcher, err := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
 	if err != nil {
 		return nil, err
