@@ -437,3 +437,77 @@ func TestPerformSearch_QueryEncoding(t *testing.T) {
 		t.Errorf("expected decoded query 'test query with spaces & special=chars', got %q", capturedQuery)
 	}
 }
+
+// Test URL validation edge cases
+func TestNewSearXNGSearcher_URLValidation(t *testing.T) {
+	tests := []struct {
+		name      string
+		baseURL   string
+		wantErr   bool
+		errSubstr string
+	}{
+		{"empty URL", "", true, "cannot be empty"},
+		{"no scheme", "search.example.com", true, "http or https scheme"},
+		{"ftp scheme", "ftp://search.example.com", true, "http or https scheme"},
+		{"relative path only", "/search", true, "http or https scheme"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewSearXNGSearcher(tt.baseURL, 30*time.Second, nil)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if tt.errSubstr != "" && !strings.Contains(err.Error(), tt.errSubstr) {
+					t.Errorf("error %q does not contain %q", err.Error(), tt.errSubstr)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			}
+		})
+	}
+}
+
+// Test NumberOfResults=0 with actual results (SearXNG quirk)
+func TestPerformSearch_NumberOfResultsZeroWithResults(t *testing.T) {
+	// SearXNG may return number_of_results=0 even when results exist
+	searchResp := SearchResponse{
+		Results: []SearchResult{
+			{Title: "Result 1", URL: "https://example.com/1", Content: "Content 1", Engine: "google"},
+			{Title: "Result 2", URL: "https://example.com/2", Content: "Content 2", Engine: "bing"},
+		},
+		NumberOfResults: 0, // API returns 0 but has results
+		Query:           "test",
+	}
+	body, _ := json.Marshal(searchResp)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(body)
+	}))
+	defer server.Close()
+
+	cfg := &Config{
+		SearXNGURL: server.URL,
+		Timeout:    30 * time.Second,
+	}
+	args := &SearchArgs{Query: "test"}
+
+	ctx := context.Background()
+	result, err := performSearch(ctx, cfg, args)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Should have corrected NumberOfResults to match actual result count
+	if result.NumberOfResults != 2 {
+		t.Errorf("NumberOfResults = %d, want 2", result.NumberOfResults)
+	}
+	if len(result.Results) != 2 {
+		t.Errorf("len(Results) = %d, want 2", len(result.Results))
+	}
+}

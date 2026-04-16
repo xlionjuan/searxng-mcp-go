@@ -186,6 +186,58 @@ func TestValidateSearchArgs(t *testing.T) {
 			wantErr:  true,
 			errField: "language",
 		},
+		// Control characters in query
+		{
+			name:        "query with newline",
+			args:        &SearchArgs{Query: "test\nquery"},
+			wantErr:     true,
+			errField:    "query",
+			errContains: "invalid control characters",
+		},
+		{
+			name:        "query with tab",
+			args:        &SearchArgs{Query: "test\tquery"},
+			wantErr:     true,
+			errField:    "query",
+			errContains: "invalid control characters",
+		},
+		{
+			name:        "query with null byte",
+			args:        &SearchArgs{Query: "test\x00query"},
+			wantErr:     true,
+			errField:    "query",
+			errContains: "invalid control characters",
+		},
+		// Control characters in categories
+		{
+			name:        "categories with newline",
+			args:        &SearchArgs{Query: "test", Categories: "general\nnews"},
+			wantErr:     true,
+			errField:    "categories",
+			errContains: "invalid control characters",
+		},
+		{
+			name:        "categories with tab",
+			args:        &SearchArgs{Query: "test", Categories: "general\tnews"},
+			wantErr:     true,
+			errField:    "categories",
+			errContains: "invalid control characters",
+		},
+		// Control characters in engines
+		{
+			name:        "engines with newline",
+			args:        &SearchArgs{Query: "test", Engines: "google\nbing"},
+			wantErr:     true,
+			errField:    "engines",
+			errContains: "invalid control characters",
+		},
+		{
+			name:        "engines with null byte",
+			args:        &SearchArgs{Query: "test", Engines: "google\x00bing"},
+			wantErr:     true,
+			errField:    "engines",
+			errContains: "invalid control characters",
+		},
 	}
 
 	for _, tt := range tests {

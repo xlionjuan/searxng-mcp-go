@@ -196,3 +196,61 @@ func TestInferDates(t *testing.T) {
 		assertInferredDate(t, "Artikel vor 3 stunden geschrieben", baseTime, expectedDate)
 	})
 }
+
+// TestInferDates_MixedDateSources tests that results with different date sources are handled correctly
+func TestInferDates_MixedDateSources(t *testing.T) {
+	resp := &SearchResponse{
+		Results: []SearchResult{
+			// Result with API-provided date
+			{
+				Title:         "API Date Result",
+				URL:           "https://example.com/1",
+				Content:       "Some content",
+				PublishedDate: strPtr("2024-06-10"),
+			},
+			// Result without date (will be inferred)
+			{
+				Title:         "Inferred Date Result",
+				URL:           "https://example.com/2",
+				Content:       "Posted 2 days ago",
+			},
+			// Result with API date that should be preserved
+			{
+				Title:         "Another API Date",
+				URL:           "https://example.com/3",
+				Content:       "Random content",
+				PublishedDate: strPtr("2024-01-15"),
+			},
+		},
+	}
+	baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
+	inferDates(resp, &baseTime)
+
+	// First result should have API date source
+	if resp.Results[0].DateSource != DateSourceAPI {
+		t.Errorf("Results[0] DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceAPI)
+	}
+	if *resp.Results[0].PublishedDate != "2024-06-10" {
+		t.Errorf("Results[0] PublishedDate = %v, want %v", *resp.Results[0].PublishedDate, "2024-06-10")
+	}
+
+	// Second result should have inferred date source
+	if resp.Results[1].DateSource != DateSourceInferred {
+		t.Errorf("Results[1] DateSource = %v, want %v", resp.Results[1].DateSource, DateSourceInferred)
+	}
+	if resp.Results[1].PublishedDate == nil {
+		t.Error("Results[1] PublishedDate should be set for inferred date")
+	}
+
+	// Third result should have API date source
+	if resp.Results[2].DateSource != DateSourceAPI {
+		t.Errorf("Results[2] DateSource = %v, want %v", resp.Results[2].DateSource, DateSourceAPI)
+	}
+	if *resp.Results[2].PublishedDate != "2024-01-15" {
+		t.Errorf("Results[2] PublishedDate = %v, want %v", *resp.Results[2].PublishedDate, "2024-01-15")
+	}
+}
+
+func strPtr(s string) *string {
+	return &s
+}
