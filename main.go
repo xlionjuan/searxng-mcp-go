@@ -225,7 +225,7 @@ func getConfig() *Config {
 	// Check if URL was explicitly provided (via env var or CLI flag)
 	// If not, warn the user that they're using the default
 	if *cliSearXNGURL == "" && os.Getenv("SEARXNG_URL") == "" {
-		fmt.Fprintln(os.Stdout, "WARNING: No SearXNG server specified, using default server (https://search-4.xlion.dev). To use a different server, set the SEARXNG_URL environment variable or use the --searxng-url command line flag.")
+		slog.Warn("No SearXNG server specified, using default server (https://search-4.xlion.dev). To use a different server, set the SEARXNG_URL environment variable or use the --searxng-url command line flag.")
 	}
 
 	return cfg
