@@ -3,14 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -203,22 +201,24 @@ func main() {
 
 func getConfig() *Config {
 	// Priority: flag > environment variable > default
-	url := getEnv("SEARXNG_URL", DefaultSearXNGURL)
+	cfg := DefaultConfig()
+
 	if *cliSearXNGURL != "" {
-		url = *cliSearXNGURL
+		cfg.SearXNGURL = *cliSearXNGURL
+	} else {
+		envURL := os.Getenv("SEARXNG_URL")
+		if envURL != "" {
+			cfg.SearXNGURL = envURL
+		}
 	}
 
 	// Check if URL was explicitly provided (via env var or CLI flag)
 	// If not, warn the user that they're using the default
-	envURL := os.Getenv("SEARXNG_URL")
-	if envURL == "" && *cliSearXNGURL == "" {
+	if *cliSearXNGURL == "" && os.Getenv("SEARXNG_URL") == "" {
 		fmt.Fprintln(os.Stdout, "WARNING: No SearXNG server specified, using default server (https://search-4.xlion.dev). To use a different server, set the SEARXNG_URL environment variable or use the --searxng-url command line flag.")
 	}
 
-	return &Config{
-		SearXNGURL: url,
-		Timeout:    30 * time.Second,
-	}
+	return cfg
 }
 
 func runCLIMode(positionalArgs []string) error {
@@ -309,7 +309,7 @@ func runMCPMode() {
 		if err := ValidateSearchArgs(&args); err != nil {
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: fmt.Sprintf("Validation error: %v", err)},
+					&mcp.TextContent{Text: fmt.Sprintf("validation error: %v", err)},
 				},
 				IsError: true,
 			}, nil, nil
@@ -317,15 +317,9 @@ func runMCPMode() {
 
 		resp, err := searcher.Search(ctx, &args)
 		if err != nil {
-			errMsg := err.Error()
-			// Check for specific error types for better user feedback
-			var ve *ValidationError
-			if errors.As(err, &ve) {
-				errMsg = fmt.Sprintf("Validation error: %v", err)
-			}
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: fmt.Sprintf("Search error: %s", errMsg)},
+					&mcp.TextContent{Text: fmt.Sprintf("Search error: %s", err.Error())},
 				},
 				IsError: true,
 			}, nil, nil

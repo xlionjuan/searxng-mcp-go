@@ -20,15 +20,16 @@ func formatResults(resp *SearchResponse) string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("Found %d results for '%s':\n\n", len(resp.Results), resp.Query))
 	for i, r := range resp.Results {
-		b.WriteString(fmt.Sprintf("%d. %s\n", i+1, r.Title))
+		title := html.UnescapeString(r.Title)
+		b.WriteString(fmt.Sprintf("%d. %s\n", i+1, title))
 		b.WriteString(fmt.Sprintf("   URL: %s\n", r.URL))
 		if r.Content != "" {
-			content := r.Content
+			content := html.UnescapeString(r.Content)
 			if utf8.RuneCountInString(content) > 4000 {
 				runes := []rune(content)
 				content = string(runes[:4000])
 			}
-			b.WriteString(fmt.Sprintf("   Summary: %s\n", html.UnescapeString(content)))
+			b.WriteString(fmt.Sprintf("   Summary: %s\n", content))
 		}
 		if r.PublishedDate != nil && *r.PublishedDate != "" {
 			b.WriteString(fmt.Sprintf("   Date: %s\n", *r.PublishedDate))

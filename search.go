@@ -6,14 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 )
 
-// DefaultSearXNGURL is the default SearXNG instance URL
+// DefaultSearXNGURL is the default SearXNG instance URL.
+// WARNING: This is a default value for convenience only. For production use,
+// you should set your own instance via the SEARXNG_URL environment variable.
 const DefaultSearXNGURL = "https://search-4.xlion.dev"
 
 // ============================================================================
@@ -98,14 +100,6 @@ func DefaultConfig() *Config {
 		SearXNGURL: DefaultSearXNGURL,
 		Timeout:    30 * time.Second,
 	}
-}
-
-// getEnv returns the value of an environment variable or a default value
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }
 
 // ============================================================================
@@ -232,32 +226,35 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	isHTMLResponse := strings.Contains(contentType, "text/html") || strings.HasPrefix(strings.TrimSpace(string(body)), "<!DOCTYPE") || strings.HasPrefix(strings.TrimSpace(string(body)), "<html")
 
 	if isHTMLResponse {
+		// Log the HTML response body for debugging, but don't expose it to clients
 		bodyLen := len(body)
 		if bodyLen == 0 {
 			return nil, &HTMLResponseError{Body: "", UnderlyingErr: nil}
 		}
+		// Log preview internally for debugging
 		previewLen := bodyLen
 		if previewLen > 200 {
 			previewLen = 200
 		}
-		return nil, &HTMLResponseError{Body: string(body[:previewLen]), UnderlyingErr: nil}
+		log.Printf("HTMLResponseError: received HTML instead of JSON, preview: %s", string(body[:previewLen]))
+		return nil, &HTMLResponseError{Body: "", UnderlyingErr: nil}
 	}
 
 	if !strings.Contains(contentType, "application/json") && !strings.Contains(contentType, "text/json") {
+		// Log the unexpected content for debugging, but don't expose it to clients
 		bodyPreview := string(body)
 		if len(bodyPreview) > 200 {
 			bodyPreview = bodyPreview[:200] + "..."
 		}
-		return nil, NewSearXNGError(resp.StatusCode, contentType, bodyPreview, errors.New("unexpected content type expected application json"))
+		log.Printf("UnexpectedContentTypeError: content_type=%s, body_preview=%s", contentType, bodyPreview)
+		return nil, NewSearXNGError(resp.StatusCode, contentType, "", errors.New("unexpected content type: expected application/json"))
 	}
 
 	var result SearchResponse
 	if err := json.Unmarshal(body, &result); err != nil {
-		bodyPreview := string(body)
-		if len(bodyPreview) > 200 {
-			bodyPreview = bodyPreview[:200] + "..."
-		}
-		return nil, NewSearXNGError(resp.StatusCode, contentType, bodyPreview, fmt.Errorf("failed to parse JSON response: %w", err))
+		// Log the JSON parse error for debugging, but don't expose the body to clients
+		log.Printf("JSONParseError: failed to parse JSON response: %v", err)
+		return nil, NewSearXNGError(resp.StatusCode, contentType, "", fmt.Errorf("failed to parse JSON response: %w", err))
 	}
 
 	// SearXNG may return number_of_results=0 even when results exist

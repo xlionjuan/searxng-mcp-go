@@ -26,7 +26,7 @@ func (e *ValidationError) Is(target error) bool {
 	if !ok {
 		return false
 	}
-	return e.Field == ve.Field
+	return e.Field == ve.Field && e.Message == ve.Message
 }
 
 // NewValidationError creates a new ValidationError
