@@ -17,6 +17,18 @@ import (
 
 // --- performSearch tests ---
 
+func TestPerformSearch_CfgNil(t *testing.T) {
+	ctx := t.Context()
+	_, err := performSearch(ctx, nil, &SearchArgs{Query: "test"})
+
+	if err == nil {
+		t.Fatal("expected error for cfg == nil, got nil")
+	}
+	if !strings.Contains(err.Error(), "cfg cannot be nil") {
+		t.Errorf("expected cfg cannot be nil error, got: %v", err)
+	}
+}
+
 func TestPerformSearch_Success(t *testing.T) {
 	searchResp := SearchResponse{
 		Results: []SearchResult{
