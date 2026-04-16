@@ -308,7 +308,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	}
 
 	// If POST failed with 405 or 501, fall back to GET
-	if err == nil && (resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
+	if err == nil && resp != nil && (resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
 		resp.Body.Close()
 		getReq, reqErr := http.NewRequestWithContext(ctx, "GET", baseURL.String(), nil)
 		if reqErr != nil {
