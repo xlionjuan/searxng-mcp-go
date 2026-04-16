@@ -27,7 +27,11 @@ func formatResults(resp *SearchResponse) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Found %d results for '%s':\n\n", len(resp.Results), resp.Query))
+	total := resp.NumberOfResults
+	if total == 0 {
+		total = len(resp.Results)
+	}
+	b.WriteString(fmt.Sprintf("Found %d results for '%s':\n\n", total, resp.Query))
 	for i, r := range resp.Results {
 		title := unescapeIfNeeded(r.Title)
 		b.WriteString(fmt.Sprintf("%d. %s\n", i+1, title))
