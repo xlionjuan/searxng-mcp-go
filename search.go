@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -52,14 +55,110 @@ func validateBaseURL(baseURL string) error {
 	return nil
 }
 
+// isPrivateHost checks if the host is a private/internal address
+func isPrivateHost(host string) bool {
+	// Remove port if present
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+
+	// Check TLD-based private domains (case-insensitive)
+	lowerHost := strings.ToLower(host)
+	if strings.HasSuffix(lowerHost, ".lan") ||
+		strings.HasSuffix(lowerHost, ".internal") ||
+		strings.HasSuffix(lowerHost, ".local") ||
+		strings.HasSuffix(lowerHost, ".home") {
+		return true
+	}
+
+	// Check if it's an IP address
+	ip := net.ParseIP(host)
+	if ip == nil {
+		// Not an IP address, not private
+		return false
+	}
+
+	// Check IPv4 private ranges
+	// 10.0.0.0/8
+	if ip4 := ip.To4(); ip4 != nil {
+		// 10.0.0.0/8
+		if ip4[0] == 10 {
+			return true
+		}
+		// 172.16.0.0/12
+		if ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31 {
+			return true
+		}
+		// 192.168.0.0/16
+		if ip4[0] == 192 && ip4[1] == 168 {
+			return true
+		}
+		// 127.0.0.0/8 (loopback)
+		if ip4[0] == 127 {
+			return true
+		}
+		// 169.254.0.0/16 (link-local)
+		if ip4[0] == 169 && ip4[1] == 254 {
+			return true
+		}
+		return false
+	}
+
+	// Check IPv6
+	// ::1 (loopback)
+	if ip.Equal(net.IPv6loopback) {
+		return true
+	}
+	// fc00::/7 (unique local)
+	if ip[0]&0xfe == 0xfc {
+		return true
+	}
+	// fe80::/10 (link-local)
+	if ip[0] == 0xfe && ip[1]&0xc0 == 0x80 {
+		return true
+	}
+
+	return false
+}
+
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration
 func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Client) (*SearXNGSearcher, error) {
 	if err := validateBaseURL(baseURL); err != nil {
 		return nil, fmt.Errorf("NewSearXNGSearcher: %w", err)
 	}
-	if client == nil {
-		client = &http.Client{Timeout: timeout}
+
+	// Parse URL to check scheme and host
+	parsed, _ := url.Parse(baseURL)
+
+	// Warn if using HTTP with non-private host
+	if parsed.Scheme == "http" && !isPrivateHost(parsed.Host) {
+		slog.Warn("Using HTTP for non-private host. Search queries may be transmitted in clear text. Search results could be intercepted and modified by a MITM attacker")
 	}
+
+	if client == nil {
+		// Check for INSECURE_SKIP_VERIFY env (explicit, strong warning)
+		if strings.ToLower(os.Getenv("INSECURE_SKIP_VERIFY")) == "true" {
+			client = &http.Client{
+				Timeout: timeout,
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				},
+			}
+			slog.Warn("TLS certificate verification is disabled - connections are susceptible to man-in-the-middle attacks and data may be intercepted or modified")
+		} else if parsed.Scheme == "https" && isPrivateHost(parsed.Host) {
+			// Private host via HTTPS - implicit bypass with weak warning
+			client = &http.Client{
+				Timeout: timeout,
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				},
+			}
+			slog.Warn("TLS certificate verification skipped for private network host - this is expected for internal infrastructure but results may be intercepted by local attackers")
+		} else {
+			client = &http.Client{Timeout: timeout}
+		}
+	}
+
 	return &SearXNGSearcher{
 		client:  client,
 		baseURL: baseURL,
