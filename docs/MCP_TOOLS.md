@@ -25,7 +25,7 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 |              |         |          |         | - `month` = Last 30 days                        |
 |              |         |          |         | - `year` = Last 365 days                       |
 | `categories` | string  | No       | -       | Comma-separated list of categories to search    |
-|              |         |          |         | (e.g., general, news, music, videos, it)       |
+|              |         |          |         | (e.g., general, news, music)                   |
 | `engines`    | string  | No       | -       | Comma-separated list of search engines to use  |
 |              |         |          |         | (e.g., google, bing, duckduckgo)               |
 | `pageno`     | integer | No       | 1       | Page number for pagination                       |
@@ -172,11 +172,11 @@ Actual error message formats from the server:
 
 | Error Condition               | Response Format                                                |
 |-------------------------------|----------------------------------------------------------------|
-| Missing `query` parameter     | `validation error on "query": search query is required`       |
+| Missing `query` parameter     | `validation error on "query": search query cannot be only whitespace` |
 | Query too long (>500 chars)   | `validation error on "query": must be 500 characters or less` |
 | Invalid `safesearch` value    | `validation error on "safesearch": must be 0 off, 1 moderate, or 2 strict` |
 | Invalid `pageno` value        | `validation error on "pageno": must be >= 1` |
-| Invalid `time_range` value    | `validation error on "time_range": time_range must be one of: day, month, year` |
+| Invalid `time_range` value    | `validation error on "time_range": time_range must be one of day, month or year` |
 | Network failure               | `searxng error (status 0): context deadline exceeded` (or similar) |
 | SearXNG HTTP error           | `searxng error (status 500): internal server error: the search engine encountered an internal error` |
 | HTML response (JSON disabled)| `searxng returned HTML instead of JSON (JSON output likely not enabled on instance). Response: <truncated HTML>` |
