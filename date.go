@@ -85,14 +85,18 @@ func parseRelativeDate(content string, currentTime time.Time) *time.Time {
 }
 
 // inferDates attempts to infer publication dates for search results that lack explicit dates
-func inferDates(resp *SearchResponse) {
-	now := time.Now()
+// If currentTime is nil, time.Now() is used.
+func inferDates(resp *SearchResponse, currentTime *time.Time) {
+	if currentTime == nil {
+		now := time.Now()
+		currentTime = &now
+	}
 	for i := range resp.Results {
 		r := &resp.Results[i]
 		if r.PublishedDate != nil && *r.PublishedDate != "" {
 			r.DateSource = DateSourceAPI
 		} else {
-			parsed := parseRelativeDate(r.Content, now)
+			parsed := parseRelativeDate(r.Content, *currentTime)
 			if parsed != nil {
 				formatted := parsed.Format("2006-01-02")
 				r.PublishedDate = &formatted

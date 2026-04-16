@@ -80,7 +80,18 @@ export SEARXNG_URL=https://your-searxng-instance.example.com
 
 ### Timeout
 
-The default timeout for search requests is 30 seconds. This is a fixed value and cannot be configured at runtime.
+The default timeout for search requests is 30 seconds. This value is configurable in the source code but cannot be adjusted via MCP client parameters.
+
+## Running Tests
+
+### Race Detector
+
+The `-race` flag for race condition detection requires CGO to be enabled. Some environments (such as Linuxbrew) have CGO disabled by default, which may cause `go test -race` to fail locally.
+
+If you encounter issues running `go test -race` locally, consider:
+- Using Docker where CGO is available
+- Running tests in the CI environment
+- Or simply run `go test ./...` without the `-race` flag for local development
 
 ## Verifying the Build
 

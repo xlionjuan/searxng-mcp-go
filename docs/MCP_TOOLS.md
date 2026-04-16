@@ -187,4 +187,4 @@ Actual error message formats from the server:
 - **Transport**: Stdio (stdin/stdout)
 - **Protocol**: MCP (Model Context Protocol)
 - **SearXNG Format**: JSON (`format=json`)
-- **Timeout**: 30 seconds (fixed, not configurable)
+- **Timeout**: 30 seconds (configurable in source code; not adjustable via MCP client parameters)
