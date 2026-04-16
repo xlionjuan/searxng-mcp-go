@@ -22,6 +22,9 @@ func unescapeIfNeeded(s string) string {
 
 // formatResults formats search results as a readable string
 func formatResults(resp *SearchResponse) string {
+	if resp == nil {
+		return "No results found."
+	}
 	if len(resp.Results) == 0 {
 		return "No results found."
 	}
