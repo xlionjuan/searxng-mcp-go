@@ -141,8 +141,18 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 	}
 
 		if client == nil {
-		// Check for INSECURE_SKIP_VERIFY env (explicit, strong warning)
-		if strings.ToLower(os.Getenv("INSECURE_SKIP_VERIFY")) == "true" {
+		// Check for explicit TLS bypass opt-in via environment variable.
+		// SECURITY WARNING: Setting INSECURE_SKIP_VERIFY=1 OR INSECURE_SKIP_VERIFY=true
+		// disables TLS certificate verification. This makes connections susceptible
+		// to man-in-the-middle (MITM) attacks. Attackers could intercept, read, and
+		// modify your search queries and results. Only use this option if:
+		//   1. You are connecting to a server with a self-signed or invalid certificate
+		//   2. You fully understand and accept the security risks
+		//   3. You are on a trusted private network
+		// For MCP clients that may run on public networks, this bypass is disabled
+		// by default - TLS verification is required for all HTTPS connections.
+		insecureSkipVerify := strings.ToLower(os.Getenv("INSECURE_SKIP_VERIFY"))
+		if insecureSkipVerify == "1" || insecureSkipVerify == "true" {
 			client = &http.Client{
 				Timeout: timeout,
 				Transport: &http.Transport{
@@ -151,18 +161,10 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 					MaxIdleConnsPerHost: 100,
 				},
 			}
-			slog.Warn("TLS certificate verification is disabled - connections are susceptible to man-in-the-middle attacks and data may be intercepted or modified")
-		} else if parsed.Scheme == "https" && isPrivateHost(parsed.Host) {
-			// Private host via HTTPS - implicit bypass with weak warning
-			client = &http.Client{
-				Timeout: timeout,
-				Transport: &http.Transport{
-					TLSClientConfig:    &tls.Config{InsecureSkipVerify: true},
-					MaxIdleConns:        100,
-					MaxIdleConnsPerHost: 100,
-				},
-			}
-			slog.Warn("TLS certificate verification skipped for private network host - this is expected for internal infrastructure but results may be intercepted by local attackers")
+			slog.Error("SECURITY WARNING: TLS certificate verification is DISABLED. " +
+				"Connections are susceptible to man-in-the-middle attacks. " +
+				"Search queries and results may be intercepted or modified by attackers. " +
+				"Set INSECURE_SKIP_VERIFY to a non-true value (e.g., '0', 'false', or '') to re-enable verification.")
 		} else {
 			client = &http.Client{
 				Timeout: timeout,
