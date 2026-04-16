@@ -81,7 +81,7 @@ See [docs/INSTALL.md](docs/INSTALL.md) for full configuration details.
 
 ## Error Handling
 
-- Missing required `query` parameter
+- Empty or whitespace-only `query` rejected
 - Invalid `time_range` values (must be: day, month, year)
 - Network/connectivity failures
 - SearXNG API errors (non-200, malformed JSON, HTML responses)
