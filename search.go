@@ -272,12 +272,12 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 
 	// Validate URL scheme
 	if baseURL.Scheme != "http" && baseURL.Scheme != "https" {
-		return nil, NewSearXNGError(0, "", "", errors.New("searxng url must use http or https scheme"))
+		return nil, NewSearXNGError(0, "", "", fmt.Errorf("searxng url must use http or https scheme"))
 	}
 
 	// Validate URL has a host
 	if baseURL.Host == "" {
-		return nil, NewSearXNGError(0, "", "", errors.New("searxng url must include a host (e.g., search.example.com)"))
+		return nil, NewSearXNGError(0, "", "", fmt.Errorf("searxng url must include a host (e.g., search.example.com)"))
 	}
 
 	params := url.Values{}
@@ -369,7 +369,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 			previewLen = MaxErrorDisplayChars
 		}
 		slog.Debug("HTMLResponseError: received HTML instead of JSON", "preview", string(body[:previewLen]))
-		return nil, &HTMLResponseError{Body: "", UnderlyingErr: nil}
+		return nil, &HTMLResponseError{Body: string(body[:previewLen]), UnderlyingErr: nil}
 	}
 
 	if !strings.Contains(contentType, "application/json") && !strings.Contains(contentType, "text/json") {
@@ -379,7 +379,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 			bodyPreview = bodyPreview[:MaxErrorDisplayChars] + "..."
 		}
 		slog.Debug("UnexpectedContentTypeError", "content_type", contentType, "body_preview", bodyPreview)
-		return nil, NewSearXNGError(resp.StatusCode, contentType, "", errors.New("unexpected content type: expected application/json"))
+		return nil, NewSearXNGError(resp.StatusCode, contentType, "", fmt.Errorf("unexpected content type: expected application/json"))
 	}
 
 	var result SearchResponse

@@ -319,7 +319,7 @@ func runMCPMode() {
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
 		// Centralized validation
 		if err := ValidateSearchArgs(&args); err != nil {
-				return &mcp.CallToolResult{
+			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: fmt.Sprintf("validation error: %v", err)},
 				},
