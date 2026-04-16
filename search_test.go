@@ -94,8 +94,9 @@ func TestPerformSearch_NetworkError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected network error, got nil")
 	}
-	if !strings.Contains(err.Error(), "failed to execute search request") {
-		t.Errorf("expected specific error message, got: %v", err)
+	var searxngErr *SearXNGError
+	if !errors.As(err, &searxngErr) {
+		t.Errorf("expected *SearXNGError, got: %v", err)
 	}
 }
 
@@ -112,8 +113,9 @@ func TestPerformSearch_InvalidURL(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid URL, got nil")
 	}
-	if !strings.Contains(err.Error(), "NewSearXNGSearcher") {
-		t.Errorf("expected NewSearXNGSearcher error message, got: %v", err)
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) {
+		t.Errorf("expected *url.Error, got: %v", err)
 	}
 }
 
