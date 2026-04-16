@@ -274,6 +274,7 @@ func runCLIMode(positionalArgs []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create searcher: %w", err)
 	}
+	defer searcher.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -306,6 +307,7 @@ func runMCPMode() {
 		slog.Error("failed to create searcher", "error", err)
 		os.Exit(1)
 	}
+	defer searcher.Close()
 
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "searxng-mcp-go",
