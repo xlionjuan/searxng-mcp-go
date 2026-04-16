@@ -20,6 +20,16 @@ var validLanguages = map[string]bool{
 	"sv": true, "da": true, "fi": true, "no": true, "tr": true,
 }
 
+// validCategories contains the set of valid category values
+var validCategories = map[string]bool{
+	"general": true, "news": true, "music": true,
+}
+
+// validEngines contains the set of valid engine values
+var validEngines = map[string]bool{
+	"google": true, "bing": true, "duckduckgo": true,
+}
+
 // containsControlCharacters checks if a string contains control characters
 // (characters in the range \x00-\x1f and \x7f)
 func containsControlCharacters(s string) bool {
@@ -29,6 +39,49 @@ func containsControlCharacters(s string) bool {
 		}
 	}
 	return false
+}
+
+// isValidIdentifier checks if a string is non-empty, trim-empty, alphanumeric, and valid
+func isValidIdentifier(value string, validSet map[string]bool) bool {
+	trimmed := strings.TrimSpace(value)
+	if len(trimmed) == 0 {
+		return false
+	}
+	if !validSet[trimmed] {
+		return false
+	}
+	for _, r := range trimmed {
+		if !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')) {
+			return false
+		}
+	}
+	return true
+}
+
+// ValidateCategories validates a comma-separated list of categories
+func ValidateCategories(categories string) error {
+	if categories == "" {
+		return nil
+	}
+	for _, cat := range strings.Split(categories, ",") {
+		if !isValidIdentifier(cat, validCategories) {
+			return NewValidationError("categories", "contains invalid category")
+		}
+	}
+	return nil
+}
+
+// ValidateEngines validates a comma-separated list of engines
+func ValidateEngines(engines string) error {
+	if engines == "" {
+		return nil
+	}
+	for _, eng := range strings.Split(engines, ",") {
+		if !isValidIdentifier(eng, validEngines) {
+			return NewValidationError("engines", "contains invalid engine")
+		}
+	}
+	return nil
 }
 
 // ValidateSearchArgs validates the search arguments and returns a ValidationError if invalid
@@ -61,12 +114,22 @@ func ValidateSearchArgs(args *SearchArgs) error {
 		return NewValidationError("pageno", "must be >= 1")
 	}
 
-	if args.Categories != "" && containsControlCharacters(args.Categories) {
-		return NewValidationError("categories", "contains invalid control characters")
+	if args.Categories != "" {
+		if containsControlCharacters(args.Categories) {
+			return NewValidationError("categories", "contains invalid control characters")
+		}
+		if err := ValidateCategories(args.Categories); err != nil {
+			return err
+		}
 	}
 
-	if args.Engines != "" && containsControlCharacters(args.Engines) {
-		return NewValidationError("engines", "contains invalid control characters")
+	if args.Engines != "" {
+		if containsControlCharacters(args.Engines) {
+			return NewValidationError("engines", "contains invalid control characters")
+		}
+		if err := ValidateEngines(args.Engines); err != nil {
+			return err
+		}
 	}
 
 	if args.Language != "" && !validLanguages[args.Language] {
