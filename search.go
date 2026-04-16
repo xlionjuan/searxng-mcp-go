@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -20,6 +21,44 @@ import (
 // WARNING: This is a default value for convenience only. For production use,
 // you should set your own instance via the SEARXNG_URL environment variable.
 const DefaultSearXNGURL = "https://search-4.xlion.dev"
+
+// httpClientCache caches HTTP clients per (URL, timeout) tuple to avoid
+// creating new transport goroutines for each performSearch call.
+var httpClientCache sync.Map // map[string]*http.Client
+
+// getCachedHTTPClient returns an HTTP client for the given URL and timeout,
+// creating one if it doesn't exist in the cache.
+func getCachedHTTPClient(baseURL string, timeout time.Duration) *http.Client {
+	key := fmt.Sprintf("%s:%s", baseURL, timeout.String())
+	if cached, ok := httpClientCache.Load(key); ok {
+		return cached.(*http.Client)
+	}
+
+	// Check for insecure skip verify env var
+	insecureSkipVerify := strings.ToLower(os.Getenv("INSECURE_SKIP_VERIFY"))
+	if insecureSkipVerify == "1" || insecureSkipVerify == "true" {
+		client := &http.Client{
+			Timeout: timeout,
+			Transport: &http.Transport{
+				TLSClientConfig:    &tls.Config{InsecureSkipVerify: true},
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 100,
+			},
+		}
+		httpClientCache.Store(key, client)
+		return client
+	}
+
+	client := &http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 100,
+		},
+	}
+	httpClientCache.Store(key, client)
+	return client
+}
 
 // ============================================================================
 // Searcher Interface
@@ -29,12 +68,24 @@ const DefaultSearXNGURL = "https://search-4.xlion.dev"
 // This allows for different implementations (real SearXNG, mock, etc.)
 type Searcher interface {
 	Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error)
+	Close() error // Close releases resources held by the searcher
 }
 
 // SearXNGSearcher implements the Searcher interface using a real SearXNG instance
 type SearXNGSearcher struct {
 	client  *http.Client // Configurable HTTP client
 	baseURL string
+}
+
+// Close implements Searcher.Close.
+// It closes the HTTP client's transport to release any background goroutines.
+func (s *SearXNGSearcher) Close() error {
+	if s.client != nil && s.client.Transport != nil {
+		if transport, ok := s.client.Transport.(*http.Transport); ok {
+			transport.CloseIdleConnections()
+		}
+	}
+	return nil
 }
 
 // validateBaseURL checks that the baseURL is valid and returns an error if not
@@ -140,40 +191,10 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 		slog.Warn("Using HTTP for non-private host. Search queries may be transmitted in clear text. Search results could be intercepted and modified by a MITM attacker")
 	}
 
-		if client == nil {
-		// Check for explicit TLS bypass opt-in via environment variable.
-		// SECURITY WARNING: Setting INSECURE_SKIP_VERIFY=1 OR INSECURE_SKIP_VERIFY=true
-		// disables TLS certificate verification. This makes connections susceptible
-		// to man-in-the-middle (MITM) attacks. Attackers could intercept, read, and
-		// modify your search queries and results. Only use this option if:
-		//   1. You are connecting to a server with a self-signed or invalid certificate
-		//   2. You fully understand and accept the security risks
-		//   3. You are on a trusted private network
-		// For MCP clients that may run on public networks, this bypass is disabled
-		// by default - TLS verification is required for all HTTPS connections.
-		insecureSkipVerify := strings.ToLower(os.Getenv("INSECURE_SKIP_VERIFY"))
-		if insecureSkipVerify == "1" || insecureSkipVerify == "true" {
-			client = &http.Client{
-				Timeout: timeout,
-				Transport: &http.Transport{
-					TLSClientConfig:    &tls.Config{InsecureSkipVerify: true},
-					MaxIdleConns:        100,
-					MaxIdleConnsPerHost: 100,
-				},
-			}
-			slog.Error("SECURITY WARNING: TLS certificate verification is DISABLED. " +
-				"Connections are susceptible to man-in-the-middle attacks. " +
-				"Search queries and results may be intercepted or modified by attackers. " +
-				"Set INSECURE_SKIP_VERIFY to a non-true value (e.g., '0', 'false', or '') to re-enable verification.")
-		} else {
-			client = &http.Client{
-				Timeout: timeout,
-				Transport: &http.Transport{
-					MaxIdleConns:        100,
-					MaxIdleConnsPerHost: 100,
-				},
-			}
-		}
+	if client == nil {
+		// Use cached client for this URL/timeout combination to avoid
+		// creating new transport goroutines for each search.
+		client = getCachedHTTPClient(baseURL, timeout)
 	}
 
 	return &SearXNGSearcher{
