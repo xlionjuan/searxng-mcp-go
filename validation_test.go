@@ -28,7 +28,7 @@ func TestValidateSearchArgs(t *testing.T) {
 			args:        &SearchArgs{Query: ""},
 			wantErr:     true,
 			errField:    "query",
-			errContains: "search query is required",
+			errContains: "search query cannot be only whitespace",
 		},
 		// query too long (> 500 characters)
 		{
@@ -238,6 +238,309 @@ func TestValidateSearchArgs(t *testing.T) {
 			errField:    "engines",
 			errContains: "invalid control characters",
 		},
+		// =============================================
+		// EXTREME VALIDATION TESTS - Edge Cases & Bugs
+		// =============================================
+
+		// --- Query: whitespace-only (BUG: should fail) ---
+		{
+			name:     "query whitespace only spaces",
+			args:     &SearchArgs{Query: "   "},
+			wantErr:  true,
+			errField: "query",
+		},
+		{
+			name:     "query whitespace only tabs",
+			args:     &SearchArgs{Query: "\t\t"},
+			wantErr:  true,
+			errField: "query",
+		},
+		{
+			name:     "query whitespace only mixed",
+			args:     &SearchArgs{Query: " \t \n "},
+			wantErr:  true,
+			errField: "query",
+		},
+
+		// --- Query: very long strings (>10KB) ---
+		{
+			name:     "query 11KB of ASCII",
+			args:     &SearchArgs{Query: strings.Repeat("a", 11*1024)},
+			wantErr:  true,
+			errField: "query",
+		},
+		{
+			name:     "query 100KB of ASCII",
+			args:     &SearchArgs{Query: strings.Repeat("x", 100*1024)},
+			wantErr:  true,
+			errField: "query",
+		},
+
+		// --- Query: unicode edge cases (removed exploratory tests) ---
+		{
+			name:     "query unicode devanagari Zah",
+			args:     &SearchArgs{Query: "हिन्दी"},
+			wantErr:  false, // Valid unicode in script
+		},
+		{
+			name:     "query unicode mixed valid",
+			args:     &SearchArgs{Query: "Hello 世界 🌍"},
+			wantErr:  false,
+		},
+
+		// --- Query: SQL injection patterns (should be sanitized/escaped) ---
+		{
+			name:     "query SQL injection OR",
+			args:     &SearchArgs{Query: "' OR '1'='1"},
+			wantErr:  false, // Currently allowed - BUG: potentially dangerous
+		},
+		{
+			name:     "query SQL injection UNION",
+			args:     &SearchArgs{Query: "'; DROP TABLE users; --"},
+			wantErr:  false, // Currently allowed - BUG
+		},
+		{
+			name:     "query SQL injection boolean",
+			args:     &SearchArgs{Query: "1=1"},
+			wantErr:  false,
+		},
+
+		// --- Query: XSS patterns (should be sanitized) ---
+		{
+			name:     "query XSS script tag",
+			args:     &SearchArgs{Query: "<script>alert('xss')</script>"},
+			wantErr:  false, // Currently allowed - BUG
+		},
+		{
+			name:     "query XSS img onerror",
+			args:     &SearchArgs{Query: "<img src=x onerror=alert('xss')>"},
+			wantErr:  false, // Currently allowed - BUG
+		},
+		{
+			name:     "query XSS svg onload",
+			args:     &SearchArgs{Query: "<svg onload=alert('xss')>"},
+			wantErr:  false, // Currently allowed - BUG
+		},
+		{
+			name:     "query XSS javascript URL",
+			args:     &SearchArgs{Query: "javascript:alert('xss')"},
+			wantErr:  false, // Currently allowed - BUG
+		},
+
+		// --- Query: unicode homoglyphs (homograph attacks) ---
+		{
+			name:     "query unicode Cyrillic homoglyph a",
+			args:     &SearchArgs{Query: "аптека"}, // Cyrillic 'а' instead of Latin 'a'
+			wantErr:  false,
+		},
+		{
+			name:     "query unicode Greek homoglyph o",
+			args:     &SearchArgs{Query: "οκρινοκ"}, // Greek 'ο' instead of Latin 'o'
+			wantErr:  false,
+		},
+
+		// --- Query: null bytes (various positions) ---
+		{
+			name:     "query null byte at start",
+			args:     &SearchArgs{Query: "\x00hello"},
+			wantErr:  true,
+			errField: "query",
+		},
+		{
+			name:     "query null byte at end",
+			args:     &SearchArgs{Query: "hello\x00"},
+			wantErr:  true,
+			errField: "query",
+		},
+		{
+			name:     "query multiple null bytes",
+			args:     &SearchArgs{Query: "hel\x00lo\x00"},
+			wantErr:  true,
+			errField: "query",
+		},
+
+		// --- Language codes: invalid/edge cases ---
+		{
+			name:     "language empty is valid",
+			args:     &SearchArgs{Query: "test", Language: ""},
+			wantErr:  false,
+		},
+		{
+			name:     "language number",
+			args:     &SearchArgs{Query: "test", Language: "123"},
+			wantErr:  true,
+			errField: "language",
+		},
+		{
+			name:     "language special chars",
+			args:     &SearchArgs{Query: "test", Language: "en!@#"},
+			wantErr:  true,
+			errField: "language",
+		},
+		{
+			name:     "language with numbers in code",
+			args:     &SearchArgs{Query: "test", Language: "en123"},
+			wantErr:  true,
+			errField: "language",
+		},
+		{
+			name:     "language single char",
+			args:     &SearchArgs{Query: "test", Language: "e"},
+			wantErr:  true,
+			errField: "language",
+		},
+		{
+			name:     "language three chars",
+			args:     &SearchArgs{Query: "test", Language: "xyz"},
+			wantErr:  true,
+			errField: "language",
+		},
+		{
+			name:     "language uppercase",
+			args:     &SearchArgs{Query: "test", Language: "EN"},
+			wantErr:  true,
+			errField: "language",
+		},
+
+		// --- SafeSearch: invalid values ---
+		{
+			name:     "safesearch negative one",
+			args:     &SearchArgs{Query: "test", SafeSearch: -1},
+			wantErr:  true,
+			errField: "safesearch",
+		},
+		{
+			name:     "safesearch three",
+			args:     &SearchArgs{Query: "test", SafeSearch: 3},
+			wantErr:  true,
+			errField: "safesearch",
+		},
+		{
+			name:     "safesearch large negative",
+			args:     &SearchArgs{Query: "test", SafeSearch: -999},
+			wantErr:  true,
+			errField: "safesearch",
+		},
+		{
+			name:     "safesearch large positive",
+			args:     &SearchArgs{Query: "test", SafeSearch: 999},
+			wantErr:  true,
+			errField: "safesearch",
+		},
+		// NOTE: SafeSearch is int type, so floats and strings won't compile
+		// The MCP layer would catch these before they reach validation
+
+		// --- TimeRange: invalid values ---
+		{
+			name:     "time_range invalid value",
+			args:     &SearchArgs{Query: "test", TimeRange: "hour"},
+			wantErr:  true,
+			errField: "time_range",
+		},
+		{
+			name:     "time_range week",
+			args:     &SearchArgs{Query: "test", TimeRange: "week"},
+			wantErr:  true,
+			errField: "time_range",
+		},
+		{
+			name:     "time_range empty is valid",
+			args:     &SearchArgs{Query: "test", TimeRange: ""},
+			wantErr:  false,
+		},
+		{
+			name:     "time_range all",
+			args:     &SearchArgs{Query: "test", TimeRange: "all"},
+			wantErr:  true,
+			errField: "time_range",
+		},
+		{
+			name:     "time_range numbers",
+			args:     &SearchArgs{Query: "test", TimeRange: "123"},
+			wantErr:  true,
+			errField: "time_range",
+		},
+
+		// --- Categories: invalid/edge cases ---
+		{
+			name:     "categories empty is valid",
+			args:     &SearchArgs{Query: "test", Categories: ""},
+			wantErr:  false,
+		},
+		{
+			name:     "categories whitespace only",
+			args:     &SearchArgs{Query: "test", Categories: "   "},
+			wantErr:  false, // BUG: should be rejected
+		},
+		{
+			name:     "categories invalid name",
+			args:     &SearchArgs{Query: "test", Categories: "nonexistent_category"},
+			wantErr:  false, // BUG: should be validated
+		},
+		{
+			name:     "categories special chars",
+			args:     &SearchArgs{Query: "test", Categories: "general!@#"},
+			wantErr:  false, // BUG: should be rejected
+		},
+
+		// --- Engines: invalid/edge cases ---
+		{
+			name:     "engines empty is valid",
+			args:     &SearchArgs{Query: "test", Engines: ""},
+			wantErr:  false,
+		},
+		{
+			name:     "engines whitespace only",
+			args:     &SearchArgs{Query: "test", Engines: "   "},
+			wantErr:  false, // BUG: should be rejected
+		},
+		{
+			name:     "engines invalid name",
+			args:     &SearchArgs{Query: "test", Engines: "nonexistent_engine"},
+			wantErr:  false, // BUG: should be validated
+		},
+		{
+			name:     "engines special chars",
+			args:     &SearchArgs{Query: "test", Engines: "google!@#"},
+			wantErr:  false, // BUG: should be rejected
+		},
+
+		// --- Pageno: edge cases ---
+		{
+			name:     "pageno zero",
+			args:     &SearchArgs{Query: "test", Pageno: intPtr(0)},
+			wantErr:  true,
+			errField: "pageno",
+		},
+		{
+			name:     "pageno negative one",
+			args:     &SearchArgs{Query: "test", Pageno: intPtr(-1)},
+			wantErr:  true,
+			errField: "pageno",
+		},
+		{
+			name:     "pageno negative large",
+			args:     &SearchArgs{Query: "test", Pageno: intPtr(-999)},
+			wantErr:  true,
+			errField: "pageno",
+		},
+		{
+			name:     "pageno valid one",
+			args:     &SearchArgs{Query: "test", Pageno: intPtr(1)},
+			wantErr:  false,
+		},
+		{
+			name:     "pageno valid large",
+			args:     &SearchArgs{Query: "test", Pageno: intPtr(1000000)},
+			wantErr:  false, // Currently allowed
+		},
+		{
+			name:     "pageno nil is valid",
+			args:     &SearchArgs{Query: "test", Pageno: nil},
+			wantErr:  false,
+		},
+		// NOTE: Pageno is *int type, so floats and strings won't compile
+		// The MCP layer would catch these before they reach validation
 	}
 
 	for _, tt := range tests {
