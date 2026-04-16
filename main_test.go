@@ -113,11 +113,11 @@ func resetCLIFlags() {
 // with other tests that depend on flag state.
 func TestRunCLIMode_ValidationErrors(t *testing.T) {
 	tests := []struct {
-		name       string
-		setup      func()
-		query      []string
-		wantErr    bool
-		errSubstr  string
+		name      string
+		setup     func()
+		query     []string
+		wantErr   bool
+		errSubstr string
 	}{
 		{
 			name:      "missing query",
@@ -132,9 +132,9 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 				resetCLIFlags()
 				*cliSafeSearch = -1
 			},
-			query:      []string{"test query"},
-			wantErr:    true,
-			errSubstr:  "validation error",
+			query:     []string{"test query"},
+			wantErr:   true,
+			errSubstr: "validation error",
 		},
 		{
 			name: "invalid time_range",
@@ -142,9 +142,9 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 				resetCLIFlags()
 				*cliTimeRange = "invalid"
 			},
-			query:      []string{"test query"},
-			wantErr:    true,
-			errSubstr:  "validation error",
+			query:     []string{"test query"},
+			wantErr:   true,
+			errSubstr: "validation error",
 		},
 		{
 			name: "pageno zero",
@@ -152,9 +152,9 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 				resetCLIFlags()
 				*cliPageno = 0
 			},
-			query:      []string{"test query"},
-			wantErr:    true,
-			errSubstr:  "validation error",
+			query:     []string{"test query"},
+			wantErr:   true,
+			errSubstr: "validation error",
 		},
 		{
 			name: "query too long",
@@ -162,9 +162,9 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 				resetCLIFlags()
 				*cliQuery = strings.Repeat("a", 501)
 			},
-			query:      []string{},
-			wantErr:    true,
-			errSubstr:  "validation error",
+			query:     []string{},
+			wantErr:   true,
+			errSubstr: "validation error",
 		},
 	}
 

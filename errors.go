@@ -127,5 +127,3 @@ func (e *HTMLResponseError) Error() string {
 func (e *HTMLResponseError) Unwrap() error {
 	return e.UnderlyingErr
 }
-
-

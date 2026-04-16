@@ -185,9 +185,9 @@ func TestInferDates_MixedDateSources(t *testing.T) {
 			},
 			// Result without date (will be inferred)
 			{
-				Title:         "Inferred Date Result",
-				URL:           "https://example.com/2",
-				Content:       "Posted 2 days ago",
+				Title:   "Inferred Date Result",
+				URL:     "https://example.com/2",
+				Content: "Posted 2 days ago",
 			},
 			// Result with API date that should be preserved
 			{
