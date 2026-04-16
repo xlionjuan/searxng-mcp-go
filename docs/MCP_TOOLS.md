@@ -39,7 +39,7 @@ The tool returns a text response containing:
   - Sequential number
   - Title (clickable link text)
   - URL
-  - Content (main content snippet from the page)
+  - Content (summary snippet from the page)
   - Date (if available, e.g., publication date; indicated by `dateSource` field showing "api" if from SearXNG or "inferred" if calculated from content)
   - Source search engine
 
@@ -62,7 +62,7 @@ When using the `--json` CLI flag, the response includes additional fields:
 | `content` | string | Content snippet from the page |
 | `engine` | string | Source search engine |
 | `publishedDate` | string | Publication date if available (ISO 8601 format) |
-| `dateSource` | string | Source of the date: "api" (from SearXNG), "inferred" (calculated from content), or "" (not available) |
+| `dateSource` | string | Source of the date: "api" (from SearXNG), "inferred" (calculated from content), or "" (not available); only in JSON output |
 
 **Note:** The `number_of_results` field may return 0 even when results are present in the `results` array. This is a known behavior of the SearXNG API, and the code handles this by using the actual array length when this occurs.
 
@@ -176,7 +176,7 @@ Actual error message formats from the server:
 | Query too long (>500 chars)   | `validation error on "query": must be 500 characters or less` |
 | Invalid `safesearch` value    | `validation error on "safesearch": must be 0 off, 1 moderate, or 2 strict` |
 | Invalid `pageno` value        | `validation error on "pageno": must be >= 1` |
-| Invalid `time_range` value    | `validation error on "time_range": time_range must be one of day, month or year` |
+| Invalid `time_range` value    | `validation error on "time_range": must be one of day, month or year` |
 | Network failure               | `searxng error (status 0): context deadline exceeded` (or similar) |
 | SearXNG HTTP error           | `searxng error (status 500): internal server error: the search engine encountered an internal error` |
 | HTML response (JSON disabled)| `searxng returned HTML instead of JSON (JSON output likely not enabled on instance). Response: <truncated HTML>` |

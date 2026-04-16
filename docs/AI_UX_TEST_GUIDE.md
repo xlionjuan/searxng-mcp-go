@@ -19,7 +19,7 @@
 
 ### 必要環境
 
-- **專案位置**: `~/git/searxng-mcp-go`
+- **專案位置**: `.`
 - **Binary**: `./searxng-mcp-go`
 - **SearXNG 實例**: `https://search-4.xlion.dev/`
 - **可用 toolsets**: `terminal`, `file`, `web`, `skills`, `session_search`
