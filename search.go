@@ -24,6 +24,11 @@ const DefaultSearXNGURL = "https://search-4.xlion.dev"
 
 // httpClientCache caches HTTP clients per (URL, timeout) tuple to avoid
 // creating new transport goroutines for each performSearch call.
+// NOTE: This cache is process-global and unbounded. It grows with each unique
+// (URL, timeout, insecureSkipVerify) combination. This is acceptable because:
+// - The number of distinct server configurations is typically small
+// - Each client holds minimal memory (idle connections are reused)
+// - This is intentional to avoid connection churn for repeated searches
 var httpClientCache sync.Map // map[string]*http.Client
 
 // getCachedHTTPClient returns an HTTP client for the given URL and timeout,
@@ -41,7 +46,7 @@ func getCachedHTTPClient(baseURL string, timeout time.Duration) *http.Client {
 		client := &http.Client{
 			Timeout: timeout,
 			Transport: &http.Transport{
-				TLSClientConfig:    &tls.Config{InsecureSkipVerify: true},
+				TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 				MaxIdleConns:        100,
 				MaxIdleConnsPerHost: 100,
 			},
@@ -182,9 +187,7 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 	// Parse URL to check scheme and host
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
-		// This should not happen because validateBaseURL already validated the URL.
-		// If this occurs, it indicates a bug in validateBaseURL.
-		panic(fmt.Sprintf("url.Parse failed after validateBaseURL passed: %v", err))
+		return nil, fmt.Errorf("NewSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error): %w", err)
 	}
 
 	// Warn if using HTTP with non-private host
