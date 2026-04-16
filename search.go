@@ -140,13 +140,15 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 		slog.Warn("Using HTTP for non-private host. Search queries may be transmitted in clear text. Search results could be intercepted and modified by a MITM attacker")
 	}
 
-	if client == nil {
+		if client == nil {
 		// Check for INSECURE_SKIP_VERIFY env (explicit, strong warning)
 		if strings.ToLower(os.Getenv("INSECURE_SKIP_VERIFY")) == "true" {
 			client = &http.Client{
 				Timeout: timeout,
 				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+					TLSClientConfig:    &tls.Config{InsecureSkipVerify: true},
+					MaxIdleConns:        100,
+					MaxIdleConnsPerHost: 100,
 				},
 			}
 			slog.Warn("TLS certificate verification is disabled - connections are susceptible to man-in-the-middle attacks and data may be intercepted or modified")
@@ -155,12 +157,20 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 			client = &http.Client{
 				Timeout: timeout,
 				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+					TLSClientConfig:    &tls.Config{InsecureSkipVerify: true},
+					MaxIdleConns:        100,
+					MaxIdleConnsPerHost: 100,
 				},
 			}
 			slog.Warn("TLS certificate verification skipped for private network host - this is expected for internal infrastructure but results may be intercepted by local attackers")
 		} else {
-			client = &http.Client{Timeout: timeout}
+			client = &http.Client{
+				Timeout: timeout,
+				Transport: &http.Transport{
+					MaxIdleConns:        100,
+					MaxIdleConnsPerHost: 100,
+				},
+			}
 		}
 	}
 
