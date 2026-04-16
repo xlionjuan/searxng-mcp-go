@@ -24,11 +24,16 @@ const DefaultSearXNGURL = "https://search-4.xlion.dev"
 
 // httpClientCache caches HTTP clients per (URL, timeout) tuple to avoid
 // creating new transport goroutines for each performSearch call.
-// NOTE: This cache is process-global and unbounded. It grows with each unique
+//
+// NOTE: This cache is PROCESS-GLOBAL and UNBOUNDED. It grows with each unique
 // (URL, timeout, insecureSkipVerify) combination. This is acceptable because:
 // - The number of distinct server configurations is typically small
 // - Each client holds minimal memory (idle connections are reused)
 // - This is intentional to avoid connection churn for repeated searches
+//
+// IMPORTANT: The cache is process-global because http.Client is intentionally
+// shared for connection reuse. The cache persists for the lifetime of the
+// process and is NOT evicted when Close() is called.
 var httpClientCache sync.Map // map[string]*http.Client
 
 // getCachedHTTPClient returns an HTTP client for the given URL and timeout,
@@ -77,6 +82,21 @@ type SearXNGSearcher struct {
 }
 
 // Close releases resources held by the searcher.
+//
+// OWNERSHIP SEMANTICS:
+//
+//   - The HTTP client may be shared (cached globally). Close() only closes idle
+//     connections on the cached client, it does NOT evict the client from the cache.
+//     Subsequent calls to NewSearXNGSearcher with the same URL/timeout may return
+//     the same cached client.
+//
+//   - Calling Close() multiple times is SAFE (idempotent). It only closes idle
+//     connections, and calling it on an already-drained transport is a no-op.
+//
+//   - The cache itself lives for the lifetime of the process and is not affected
+//     by Close(). If you need to fully release resources, close the underlying
+//     transport and let it be garbage collected; the cache entry will be replaced
+//     on the next call with a fresh client.
 func (s *SearXNGSearcher) Close() error {
 	if s.client != nil && s.client.Transport != nil {
 		if transport, ok := s.client.Transport.(*http.Transport); ok {
