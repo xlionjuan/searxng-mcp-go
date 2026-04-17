@@ -9,23 +9,58 @@ permissions:
   contents: read
 
 jobs:
+  # TODO: Pin actions to immutable SHAs for production use.
+  # See: https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions
   test:
-    name: Test (Go ${{ matrix.go }})
+    name: Test (Go 1.26.2)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        go:
-          - "1.26"
-          - "stable"
-
     steps:
       - uses: actions/checkout@v6
 
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
+          go-version: "1.26.2"
+
+      - name: Verify dependencies
+        run: |
+          go mod verify
+          go mod download
+
+      - name: Check go mod tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      - name: Build
+        run: go build -o searxng-mcp-go .
+
+      # PGO (Profile-Guided Optimization) is not enabled in CI because:
+      # - It requires profiling data from production workloads
+      # - The binary produced is specific to the workload profile used
+      # - For a library/tool used in varied contexts, PGO may not improve all use cases
+      # To enable PGO: add `-pgo=auto` to go build command
+
+      - name: Run tests
+        run: go test -race -shuffle=on -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.out
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  test-stable:
+    name: Test (Go stable)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
 
       - name: Verify dependencies
         run: |
@@ -41,12 +76,4 @@ jobs:
         run: go build -o searxng-mcp-go .
 
       - name: Run tests
-        run: go test -race -shuffle=on -coverprofile=coverage.out ./...
-
-      - name: Upload coverage
-        if: matrix.go == 'stable'
-        uses: codecov/codecov-action@v5
-        with:
-          files: ./coverage.out
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
+        run: go test -race -shuffle=on ./...
