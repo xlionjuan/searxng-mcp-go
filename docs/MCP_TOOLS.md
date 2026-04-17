@@ -28,7 +28,7 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 |              |         |          |         | (e.g., general, news, music)                   |
 | `engines`    | string  | No       | -       | Comma-separated list of search engines to use  |
 |              |         |          |         | (e.g., google, bing, duckduckgo)               |
-| `pageno`     | integer | No       | 1       | Page number for pagination                       |
+| `pageno`     | integer, null | No       | 1       | Page number for pagination (null = backend default/page 1) |
 
 ### Response Format
 
@@ -37,11 +37,13 @@ The tool returns a text response containing:
 - Total number of results found
 - For each result:
   - Sequential number
-  - Title (clickable link text)
-  - URL
-  - Content (summary snippet from the page)
-  - Date (if available, e.g., publication date; indicated by `dateSource` field showing "api" if from SearXNG or "inferred" if calculated from content)
+  - Title
+  - URL (plain text)
+  - Summary (content snippet from the page)
+  - Date (if available, e.g., publication date)
   - Source search engine
+
+Note: `dateSource` is a JSON-only metadata field indicating whether the date came from the SearXNG API ("api") or was inferred from page content ("inferred"). It is not displayed in text output.
 
 **JSON Response Fields:**
 
@@ -148,13 +150,13 @@ Found 5 results for 'golang tutorial':
 
 1. Go Language Tutorial
    URL: https://example.com/golang-tutorial
-   Content: Learn Go programming from scratch with this comprehensive tutorial...
+   Summary: Learn Go programming from scratch with this comprehensive tutorial...
    Date: 2024-01-15
    Engine: google
 
 2. Building Web Applications with Go
    URL: https://example.com/go-web-dev
-   Content: A practical guide to building modern web applications using Go...
+   Summary: A practical guide to building modern web applications using Go...
    Engine: duckduckgo
 ```
 
