@@ -251,7 +251,7 @@ func DefaultConfig() *Config {
 // SearchArgs defines the arguments for the search tool
 type SearchArgs struct {
 	Query      string `json:"query" jsonschema:"Search query string"`
-	Language   string `json:"language" jsonschema:"Language code for results (e.g., en, zh-tw, ja). Defaults to en"`
+	Language   string `json:"language" jsonschema:"Language code for results (e.g., en, zh-tw, ja). Defaults to auto (SearXNG decides)"`
 	SafeSearch int    `json:"safesearch" jsonschema:"SafeSearch level: 0=Off, 1=Moderate, 2=Strict. Defaults to 0"`
 	TimeRange  string `json:"time_range" jsonschema:"Time range filter: day, month, year, or empty for all time"`
 	Categories string `json:"categories" jsonschema:"Comma-separated list of categories to search (e.g., general, news, music)"`
@@ -313,11 +313,9 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	params.Set("q", args.Query)
 	params.Set("format", "json")
 
-	language := args.Language
-	if language == "" {
-		language = "en"
+	if args.Language != "" {
+		params.Set("language", args.Language)
 	}
-	params.Set("language", language)
 
 	safesearch := args.SafeSearch
 	params.Set("safesearch", fmt.Sprintf("%d", safesearch))

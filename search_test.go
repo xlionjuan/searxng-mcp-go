@@ -210,15 +210,15 @@ func TestPerformSearch_DefaultLanguage(t *testing.T) {
 		SearXNGURL: server.URL,
 		Timeout:    30 * time.Second,
 	}
-	args := &SearchArgs{Query: "test"} // Language is empty, should default to en
+	args := &SearchArgs{Query: "test"} // Language is empty, should not be sent to SearXNG
 
 	ctx := t.Context()
 	_, err := performSearch(ctx, cfg, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if capturedLanguage != "en" {
-		t.Errorf("expected default language 'en', got %q", capturedLanguage)
+	if capturedLanguage != "" {
+		t.Errorf("expected no language param when empty, got %q", capturedLanguage)
 	}
 }
 

@@ -16,7 +16,7 @@ This research investigates the `language` vs `lang` parameter handling in the se
 ```json
 "language": {
     "type": "string",
-    "description": "Language code for results (e.g., en, zh-tw, ja). Defaults to en"
+    "description": "Language code for results (e.g., en, zh-tw, ja). Defaults to auto (SearXNG decides)"
 }
 ```
 
@@ -30,7 +30,7 @@ The MCP tool schema exposes the parameter as `language` to AI agents.
 ```go
 type SearchArgs struct {
     Query      string `json:"query" jsonschema:"Search query string"`
-    Language   string `json:"language" jsonschema:"Language code for results (e.g., en, zh-tw, ja). Defaults to en"`
+    Language   string `json:"language" jsonschema:"Language code for results (e.g., en, zh-tw, ja). Defaults to auto (SearXNG decides)"`
     SafeSearch int    `json:"safesearch" jsonschema:"SafeSearch level: 0=Off, 1=Moderate, 2=Strict. Defaults to 0"`
     TimeRange  string `json:"time_range" jsonschema:"Time range filter: day, month, year, or empty for all time"`
     Categories string `json:"categories" jsonschema:"Comma-separated list of categories to search (e.g., general, news, music)"`

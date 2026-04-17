@@ -62,7 +62,7 @@ Search the web via SearXNG.
 | Parameter    | Type   | Required | Default | Description                              |
 |--------------|--------|----------|---------|------------------------------------------|
 | `query`      | string | Yes      | -       | Search query string                      |
-| `language`   | string | No       | en      | Language code (en, zh-tw, ja, etc.)      |
+| `language`   | string | No       | auto    | Language code (en, zh-tw, ja, etc.); empty = SearXNG decides |
 | `safesearch` | int    | No       | 0       | 0=Off, 1=Moderate, 2=Strict              |
 | `time_range` | string | No       | -       | day, month, year                         |
 | `categories` | string | No       | -       | Comma-separated categories               |
