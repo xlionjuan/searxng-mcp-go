@@ -37,6 +37,7 @@ func TestPrintCLIHelp(t *testing.T) {
 		"--categories",
 		"--engines",
 		"--pageno",
+		"--debug",
 		"--help",
 		"--version",
 		"ARGUMENTS:",
@@ -223,6 +224,21 @@ func TestParseArgs(t *testing.T) {
 			wantFlags:   CLIFlags{Pageno: 2, Language: "", SafeSearch: 0},
 			wantErr:     false,
 		},
+		{
+			name:        "--debug flag alone - MCP mode",
+			args:        []string{"--debug"},
+			wantCLIMode: false,
+			wantFlags:   CLIFlags{Debug: true, Language: "", SafeSearch: 0, Pageno: 1},
+			wantErr:     false,
+		},
+		{
+			name:           "--debug flag with query",
+			args:           []string{"--debug", "test query"},
+			wantCLIMode:    true,
+			wantFlags:      CLIFlags{Debug: true, Language: "", SafeSearch: 0, Pageno: 1},
+			wantPositional: []string{"test query"},
+			wantErr:        false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -276,6 +292,9 @@ func TestParseArgs(t *testing.T) {
 			}
 			if flags.Engines != tt.wantFlags.Engines {
 				t.Errorf("flags.Engines = %q, want %q", flags.Engines, tt.wantFlags.Engines)
+			}
+			if flags.Debug != tt.wantFlags.Debug {
+				t.Errorf("flags.Debug = %v, want %v", flags.Debug, tt.wantFlags.Debug)
 			}
 
 			if len(positionalArgs) != len(tt.wantPositional) {

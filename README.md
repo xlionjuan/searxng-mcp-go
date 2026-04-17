@@ -48,6 +48,7 @@ searxng-mcp-go "recipes" --pageno 2
 | `--pageno`        | int    | 1       | Page number (>= 1)                                    |
 | `--help`          | bool   | false   | Show help message                                     |
 | `--version`       | bool   | false   | Show version                                          |
+| `--debug`         | bool   | false   | Enable verbose HTTP request/response logging          |
 
 ### MCP Mode
 
@@ -95,6 +96,7 @@ See [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) for full tool documentation and respo
 | Variable       | Required | Default                        | Description                          |
 |----------------|----------|--------------------------------|--------------------------------------|
 | `SEARXNG_URL`  | No       | `https://search-4.xlion.dev`  | SearXNG instance URL to query        |
+| `DEBUG`        | No       |                                | Set to `1` to enable verbose HTTP request/response logging |
 
 Configuration priority: **CLI flag** > **environment variable** > **default value**.
 

@@ -75,6 +75,10 @@ See [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) for full details.
 
 Default SearXNG URL: `https://search-4.xlion.dev`
 
+**ENV Naming Convention ⚠️**
+
+Environment variable names should be neutral. **Only the SearXNG server URL variable may contain `searxng`** (e.g. `SEARXNG_URL`). All other functional ENV vars must NOT use the `SEARXNG_` prefix.
+
 ```bash
 # Environment variable
 export SEARXNG_URL=https://your-searxng-instance.example.com
