@@ -55,6 +55,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 	flagArgs := []string{}
 	positionalArgs = []string{}
 	seenPositional := false
+	afterDoubleDash := false
 
 	flagsWithValues := map[string]bool{
 		"--query": true, "--searxng-url": true, "--language": true,
@@ -66,7 +67,12 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 	for i < len(args) {
 		arg := args[i]
 		if arg == "--" {
-			seenPositional = true
+			afterDoubleDash = true
+			i++
+			continue
+		}
+		if afterDoubleDash {
+			positionalArgs = append(positionalArgs, arg)
 			i++
 			continue
 		}
