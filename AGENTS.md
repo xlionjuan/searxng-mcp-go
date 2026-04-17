@@ -94,6 +94,38 @@ Priority: command-line flag > environment variable > default
 
 See [docs/INSTALL.md](docs/INSTALL.md) for full configuration details.
 
+## Debug Mode
+
+Enable verbose HTTP request/response logging for troubleshooting SearXNG communication.
+
+```bash
+# CLI flag
+./searxng-mcp-go "query" --debug
+
+# Environment variable
+export DEBUG=1
+./searxng-mcp-go "query"
+```
+
+Debug output includes: HTTP method, URL, request body, response status, content-type, and response body preview (first 500 chars).
+
+## HTTP Headers & Bot Detection
+
+SearXNG's `limiter` (enabled when `server.limiter: true` or `public_instance: true`) blocks non-browser requests via header validation. Each filter returns 429 on failure:
+
+| Filter | Condition |
+|--------|-----------|
+| `http_user_agent` | UA must not match bot regex (curl, wget, Go-http-client, Python, etc.) |
+| `http_accept` | Must contain `text/html` |
+| `http_accept_language` | Must be non-empty |
+| `http_accept_encoding` | Must contain `gzip` or `deflate` |
+| `http_sec_fetch` | Sec-Fetch-Mode must be `navigate` or `cors` (HTTPS only) |
+| `ip_limit` | `format=json` in URL query triggers 4 requests/hour limit |
+
+**Additional protections**: `link_token` (forced on for `public_instance`) requires browser CSS challenge — non-browser clients accumulate in a suspicious IP counter (3 requests/30 days → 302 redirect). This cannot be bypassed with headers alone.
+
+Our headers are set via `setBrowserHeaders()` in `search.go`. POST and GET fallback share the same function.
+
 ## Error Handling
 
 - Empty or whitespace-only `query` rejected
