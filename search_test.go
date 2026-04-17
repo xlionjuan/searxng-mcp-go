@@ -42,7 +42,12 @@ func TestPerformSearch_Success(t *testing.T) {
 
 	var capturedQuery url.Values
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		capturedQuery = r.URL.Query()
+		if r.Method == "POST" {
+			r.ParseForm()
+			capturedQuery = r.PostForm
+		} else {
+			capturedQuery = r.URL.Query()
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(body)
@@ -136,7 +141,11 @@ func TestPerformSearch_InvalidURL(t *testing.T) {
 func TestPerformSearch_TimeRangeParam(t *testing.T) {
 	var capturedTimeRange string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		capturedTimeRange = r.URL.Query().Get("time_range")
+		if r.Method == "POST" {
+			capturedTimeRange = r.PostFormValue("time_range")
+		} else {
+			capturedTimeRange = r.URL.Query().Get("time_range")
+		}
 		searchResp := SearchResponse{
 			Results:         []SearchResult{},
 			NumberOfResults: 0,
@@ -182,7 +191,11 @@ func TestPerformSearch_TimeRangeParam(t *testing.T) {
 func TestPerformSearch_DefaultLanguage(t *testing.T) {
 	var capturedLanguage string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		capturedLanguage = r.URL.Query().Get("language")
+		if r.Method == "POST" {
+			capturedLanguage = r.PostFormValue("language")
+		} else {
+			capturedLanguage = r.URL.Query().Get("language")
+		}
 		searchResp := SearchResponse{
 			Results:         []SearchResult{},
 			NumberOfResults: 0,
@@ -214,7 +227,12 @@ func TestPerformSearch_DefaultLanguage(t *testing.T) {
 func TestPerformSearch_OptionalParams(t *testing.T) {
 	var capturedParams url.Values
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		capturedParams = r.URL.Query()
+		if r.Method == "POST" {
+			r.ParseForm()
+			capturedParams = r.PostForm
+		} else {
+			capturedParams = r.URL.Query()
+		}
 		searchResp := SearchResponse{Results: []SearchResult{}, NumberOfResults: 0, Query: "test"}
 		body, _ := json.Marshal(searchResp)
 		w.Header().Set("Content-Type", "application/json")
@@ -671,7 +689,11 @@ func TestPerformSearch_JSONParseError(t *testing.T) {
 func TestPerformSearch_QueryEncoding(t *testing.T) {
 	var capturedQuery string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		capturedQuery = r.URL.Query().Get("q")
+		if r.Method == "POST" {
+			capturedQuery = r.PostFormValue("q")
+		} else {
+			capturedQuery = r.URL.Query().Get("q")
+		}
 		searchResp := SearchResponse{
 			Results:         []SearchResult{},
 			NumberOfResults: 0,
