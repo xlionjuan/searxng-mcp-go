@@ -26,7 +26,7 @@ var (
 	cliHelp       = flag.Bool("help", false, "Show this help message")
 	cliVersion    = flag.Bool("version", false, "Show version information")
 	cliSearXNGURL = flag.String("searxng-url", "", "SearXNG URL (can also be set via SEARXNG_URL env var)")
-	cliLanguage   = flag.String("language", "en", "Language code for results (e.g., en, zh-tw, ja)")
+	cliLanguage   = flag.String("language", "", "Language code for results (e.g., en, zh-tw, ja). Leave empty for auto")
 	cliSafeSearch = flag.Int("safesearch", 0, "SafeSearch level: 0=Off, 1=Moderate, 2=Strict")
 	cliTimeRange  = flag.String("time_range", "", "Time range filter: day, month, year")
 	cliCategories = flag.String("categories", "", "Comma-separated list of categories to search")
@@ -106,7 +106,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 	cliHelp = flag.Bool("help", false, "")
 	cliVersion = flag.Bool("version", false, "")
 	cliSearXNGURL = flag.String("searxng-url", "", "")
-	cliLanguage = flag.String("language", "en", "")
+	cliLanguage = flag.String("language", "", "")
 	cliSafeSearch = flag.Int("safesearch", 0, "")
 	cliTimeRange = flag.String("time_range", "", "")
 	cliCategories = flag.String("categories", "", "")
@@ -154,7 +154,7 @@ OPTIONS:
   --json             Output results as formatted JSON instead of human-readable text
   --searxng-url URL  SearXNG instance URL (default: https://search-4.xlion.dev)
                      Can also be set via SEARXNG_URL environment variable
-  --language LANG    Language code for results (e.g., en, zh-tw, ja) [default: en]
+  --language LANG    Language code for results (e.g., en, zh-tw, ja) [default: auto]
   --safesearch 0-2   SafeSearch level: 0=Off, 1=Moderate, 2=Strict [default: 0]
   --time_range RANGE Time range filter: day, month, year
   --categories CAT   Comma-separated list of categories to search
@@ -198,7 +198,7 @@ const searchInputSchema = `{
 		},
 		"language": {
 			"type": "string",
-			"description": "Language code for results (e.g., en, zh-tw, ja). Defaults to en"
+			"description": "Language code for results (e.g., en, zh-tw, ja). Defaults to auto (SearXNG decides)"
 		},
 		"safesearch": {
 			"type": "integer",

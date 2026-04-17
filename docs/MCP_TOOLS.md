@@ -15,7 +15,7 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 | Parameter    | Type    | Required | Default | Description                                      |
 |--------------|---------|----------|---------|--------------------------------------------------|
 | `query`      | string  | Yes      | -       | The search query string                          |
-| `language`   | string  | No       | en      | Language code for results (e.g., en, zh-tw, ja) |
+| `language`   | string  | No       | auto    | Language code for results (e.g., en, zh-tw, ja). Empty = SearXNG decides |
 | `safesearch` | integer | No       | 0       | SafeSearch filtering level:                     |
 |              |         |          |         | - `0` = Off (show all results)                   |
 |              |         |          |         | - `1` = Moderate (filter some adult content)    |
