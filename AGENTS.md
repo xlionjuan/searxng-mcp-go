@@ -34,7 +34,7 @@ searxng-mcp-go/
 ├── date.go              # Date/time utilities
 ├── constants.go         # Size limits and configuration constants
 ├── main_test.go         # Main tests (CLI/MCP mode, runCLIMode)
-├── search_test.go       # Search tests (isPrivateHost, validateBaseURL, getCachedHTTPClient)
+├── search_test.go       # Search tests (isPrivateHost, validateBaseURL, getDefaultHTTPClient)
 ├── errors_test.go       # Error type tests
 ├── format_test.go       # Formatting tests (including pagination)
 ├── validation_test.go   # Validation edge case tests

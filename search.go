@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -22,53 +20,24 @@ import (
 // you should set your own instance via the SEARXNG_URL environment variable.
 const DefaultSearXNGURL = "https://search-4.xlion.dev"
 
-// httpClientCache caches HTTP clients per (URL, timeout) tuple to avoid
-// creating new transport goroutines for each performSearch call.
-//
-// NOTE: This cache is PROCESS-GLOBAL and UNBOUNDED. It grows with each unique
-// (URL, timeout, insecureSkipVerify) combination. This is acceptable because:
-// - The number of distinct server configurations is typically small
-// - Each client holds minimal memory (idle connections are reused)
-// - This is intentional to avoid connection churn for repeated searches
-//
-// IMPORTANT: The cache is process-global because http.Client is intentionally
-// shared for connection reuse. The cache persists for the lifetime of the
-// process and is NOT evicted when Close() is called.
-var httpClientCache sync.Map // map[string]*http.Client
+// defaultHTTPClient is a singleton HTTP client shared across all searchers.
+// This avoids creating new transport goroutines for each search while preventing
+// unbounded memory growth.
+var defaultHTTPClient *http.Client
+var defaultHTTPClientOnce sync.Once
 
-// getCachedHTTPClient returns an HTTP client for the given URL and timeout,
-// creating one if it doesn't exist in the cache.
-func getCachedHTTPClient(baseURL string, timeout time.Duration) *http.Client {
-	// Include insecureSkipVerify in cache key to ensure different clients
-	// don't share TLS settings incorrectly
-	insecureSkipVerify := strings.ToLower(os.Getenv("INSECURE_SKIP_VERIFY")) == "1" || strings.ToLower(os.Getenv("INSECURE_SKIP_VERIFY")) == "true"
-	key := fmt.Sprintf("%s:%s:%t", baseURL, timeout.String(), insecureSkipVerify)
-	if cached, ok := httpClientCache.Load(key); ok {
-		return cached.(*http.Client)
-	}
-
-	if insecureSkipVerify {
-		client := &http.Client{
-			Timeout: timeout,
+// getDefaultHTTPClient returns the singleton HTTP client.
+func getDefaultHTTPClient() *http.Client {
+	defaultHTTPClientOnce.Do(func() {
+		defaultHTTPClient = &http.Client{
+			Timeout: 30 * time.Second,
 			Transport: &http.Transport{
-				TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 				MaxIdleConns:        100,
 				MaxIdleConnsPerHost: 100,
 			},
 		}
-		httpClientCache.Store(key, client)
-		return client
-	}
-
-	client := &http.Client{
-		Timeout: timeout,
-		Transport: &http.Transport{
-			MaxIdleConns:        100,
-			MaxIdleConnsPerHost: 100,
-		},
-	}
-	httpClientCache.Store(key, client)
-	return client
+	})
+	return defaultHTTPClient
 }
 
 // ============================================================================
@@ -208,9 +177,7 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 	}
 
 	if client == nil {
-		// Use cached client for this URL/timeout combination to avoid
-		// creating new transport goroutines for each search.
-		client = getCachedHTTPClient(baseURL, timeout)
+		client = getDefaultHTTPClient()
 	}
 
 	return &SearXNGSearcher{

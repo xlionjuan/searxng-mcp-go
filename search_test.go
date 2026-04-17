@@ -8,9 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 )
@@ -482,101 +480,24 @@ func TestValidateBaseURL(t *testing.T) {
 	}
 }
 
-// --- getCachedHTTPClient tests ---
+// --- getDefaultHTTPClient tests ---
 
-func TestGetCachedHTTPClient(t *testing.T) {
-	tests := []struct {
-		name    string
-		baseURL string
-		timeout time.Duration
-	}{
-		{"basic https", "https://search.example.com", 30 * time.Second},
-		{"basic http", "http://search.example.com", 30 * time.Second},
-		{"different timeout", "https://search.example.com", 60 * time.Second},
-		{"different URL", "https://other.example.com", 30 * time.Second},
-	}
+func TestGetDefaultHTTPClient_Singleton(t *testing.T) {
+	client1 := getDefaultHTTPClient()
+	client2 := getDefaultHTTPClient()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			httpClientCache = sync.Map{}
-			os.Unsetenv("INSECURE_SKIP_VERIFY")
-
-			client1 := getCachedHTTPClient(tt.baseURL, tt.timeout)
-			client2 := getCachedHTTPClient(tt.baseURL, tt.timeout)
-
-			if client1 != client2 {
-				t.Errorf("getCachedHTTPClient(%q, %v) did not return same instance for same params", tt.baseURL, tt.timeout)
-			}
-		})
+	if client1 != client2 {
+		t.Errorf("getDefaultHTTPClient() did not return same instance")
 	}
 }
 
-func TestGetCachedHTTPClient_CacheKeyUniqueness(t *testing.T) {
-	// Clear cache before test
-	httpClientCache = sync.Map{}
-	os.Unsetenv("INSECURE_SKIP_VERIFY")
+func TestGetDefaultHTTPClient_Transport(t *testing.T) {
+	client := getDefaultHTTPClient()
+	transport := client.Transport.(*http.Transport)
 
-	timeout := 30 * time.Second
-
-	// Different base URLs should get different clients
-	client1 := getCachedHTTPClient("https://search1.example.com", timeout)
-	client2 := getCachedHTTPClient("https://search2.example.com", timeout)
-
-	if client1 == client2 {
-		t.Errorf("Different URLs should produce different cached clients")
+	if transport.TLSClientConfig != nil && transport.TLSClientConfig.InsecureSkipVerify {
+		t.Errorf("Default client should not have InsecureSkipVerify")
 	}
-
-	// Different timeouts should get different clients
-	client3 := getCachedHTTPClient("https://search.example.com", 30*time.Second)
-	client4 := getCachedHTTPClient("https://search.example.com", 60*time.Second)
-
-	if client3 == client4 {
-		t.Errorf("Different timeouts should produce different cached clients")
-	}
-}
-
-func TestGetCachedHTTPClient_InsecureSkipVerify(t *testing.T) {
-	// Clear cache before test
-	httpClientCache = sync.Map{}
-
-	// Test without INSECURE_SKIP_VERIFY
-	os.Unsetenv("INSECURE_SKIP_VERIFY")
-	client1 := getCachedHTTPClient("https://search.example.com", 30*time.Second)
-
-	// Test with INSECURE_SKIP_VERIFY=1
-	os.Setenv("INSECURE_SKIP_VERIFY", "1")
-	client2 := getCachedHTTPClient("https://search.example.com", 30*time.Second)
-
-	// Should get different clients
-	if client1 == client2 {
-		t.Errorf("INSECURE_SKIP_VERIFY should produce different client")
-	}
-
-	// Verify the transport settings
-	transport1 := client1.Transport.(*http.Transport)
-	transport2 := client2.Transport.(*http.Transport)
-
-	if transport1.TLSClientConfig != nil && transport1.TLSClientConfig.InsecureSkipVerify {
-		t.Errorf("Client without env var should not have InsecureSkipVerify")
-	}
-
-	if transport2.TLSClientConfig == nil || !transport2.TLSClientConfig.InsecureSkipVerify {
-		t.Errorf("Client with INSECURE_SKIP_VERIFY=1 should have InsecureSkipVerify")
-	}
-
-	// Clean up
-	os.Unsetenv("INSECURE_SKIP_VERIFY")
-	httpClientCache = sync.Map{}
-
-	// Test INSECURE_SKIP_VERIFY=true (string "true" should also work)
-	os.Setenv("INSECURE_SKIP_VERIFY", "true")
-	client3 := getCachedHTTPClient("https://search.example.com", 30*time.Second)
-	transport3 := client3.Transport.(*http.Transport)
-	if transport3.TLSClientConfig == nil || !transport3.TLSClientConfig.InsecureSkipVerify {
-		t.Errorf("Client with INSECURE_SKIP_VERIFY=true should have InsecureSkipVerify")
-	}
-
-	os.Unsetenv("INSECURE_SKIP_VERIFY")
 }
 
 // --- helper functions and test utilities ---
