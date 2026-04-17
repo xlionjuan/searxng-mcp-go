@@ -283,16 +283,18 @@ func TestPerformSearch_500Error(t *testing.T) {
 		t.Fatal("expected 500 error, got nil")
 	}
 
-	// Verify error is wrapped with context
 	errStr := err.Error()
 	if !strings.Contains(errStr, "searxng error (status 500)") {
 		t.Errorf("error %q does not contain expected context 'searxng error (status 500)'", errStr)
 	}
 
-	// Verify it's a proper wrapped error type
 	var searxngErr *SearXNGError
 	if !errors.As(err, &searxngErr) {
-		t.Errorf("expected *SearXNGError, got type %T", err)
+		t.Fatalf("expected *SearXNGError, got type %T", err)
+	}
+
+	if searxngErr.GetStatusCode() != 500 {
+		t.Errorf("SearXNGError.StatusCode = %d, want 500", searxngErr.GetStatusCode())
 	}
 }
 
@@ -316,16 +318,18 @@ func TestPerformSearch_404Error(t *testing.T) {
 		t.Fatal("expected 404 error, got nil")
 	}
 
-	// Verify error is wrapped with context
 	errStr := err.Error()
 	if !strings.Contains(errStr, "searxng error (status 404)") {
 		t.Errorf("error %q does not contain expected context 'searxng error (status 404)'", errStr)
 	}
 
-	// Verify it's a proper wrapped error type
 	var searxngErr *SearXNGError
 	if !errors.As(err, &searxngErr) {
-		t.Errorf("expected *SearXNGError, got type %T", err)
+		t.Fatalf("expected *SearXNGError, got type %T", err)
+	}
+
+	if searxngErr.GetStatusCode() != 404 {
+		t.Errorf("SearXNGError.StatusCode = %d, want 404", searxngErr.GetStatusCode())
 	}
 }
 
@@ -368,26 +372,26 @@ func TestPerformSearch_NetworkError_ConnectionClose(t *testing.T) {
 
 func TestPerformSearch_TimeoutExceeded(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(2 * time.Second) // Slow response
+		time.Sleep(10 * time.Second)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"results":[],"number_of_results":0,"query":"test"}`))
 	}))
 	defer server.Close()
 
 	cfg := &Config{
 		SearXNGURL: server.URL,
-		Timeout:    100 * time.Millisecond, // Very short timeout
+		Timeout:    30 * time.Second,
 	}
 	args := &SearchArgs{Query: "test"}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
 	_, err := performSearch(ctx, cfg, args)
 
 	if err == nil {
 		t.Fatal("expected timeout error, got nil")
 	}
 
-	// Error should contain context about timeout/cancellation
 	errStr := err.Error()
 	if !strings.Contains(errStr, "context deadline exceeded") &&
 		!strings.Contains(errStr, "request canceled") &&
@@ -469,6 +473,15 @@ func TestPerformSearch_HTTPStatusErrors(t *testing.T) {
 
 			if !strings.Contains(err.Error(), tc.wantContains) {
 				t.Errorf("error %q does not contain %q", err.Error(), tc.wantContains)
+			}
+
+			var searxngErr *SearXNGError
+			if !errors.As(err, &searxngErr) {
+				t.Fatalf("expected *SearXNGError, got type %T", err)
+			}
+
+			if searxngErr.GetStatusCode() != tc.statusCode {
+				t.Errorf("SearXNGError.StatusCode = %d, want %d", searxngErr.GetStatusCode(), tc.statusCode)
 			}
 		})
 	}
