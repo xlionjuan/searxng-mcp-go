@@ -202,11 +202,14 @@ const searchInputSchema = `{
 		},
 		"safesearch": {
 			"type": "integer",
-			"description": "SafeSearch level: 0=Off, 1=Moderate, 2=Strict. Defaults to 0"
+			"description": "SafeSearch level: 0=Off, 1=Moderate, 2=Strict. Defaults to 0",
+			"minimum": 0,
+			"maximum": 2
 		},
 		"time_range": {
 			"type": "string",
-			"description": "Time range filter: day, month, year, or empty for all time"
+			"description": "Time range filter: day, month, year, or empty for all time",
+			"enum": ["", "day", "month", "year"]
 		},
 		"categories": {
 			"type": "string",
@@ -218,10 +221,12 @@ const searchInputSchema = `{
 		},
 		"pageno": {
 			"type": ["null", "integer"],
-			"description": "Page number for pagination. Defaults to 1"
+			"description": "Page number for pagination. Defaults to 1",
+			"minimum": 1
 		}
 	},
-	"required": ["query"]
+	"required": ["query"],
+	"additionalProperties": false
 }`
 
 // ============================================================================
