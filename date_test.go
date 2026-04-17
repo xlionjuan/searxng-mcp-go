@@ -50,9 +50,6 @@ func TestParseRelativeDate(t *testing.T) {
 		{"German vorgestern", "Vorgestern wurde bekannt gegeben", &vg},
 		{"last week", "Report from last week suggests", &lw},
 		{"German vor woche", "Vor woche gab es eine ankündigung", &lw},
-		// Weeks patterns not implemented in parseRelativeDate (regex exists but unused)
-		{"2 weeks ago - not implemented", "Article from 2 weeks ago", nil},
-		{"2 wochen ago - not implemented", "Nachricht vor 2 wochen", nil},
 		// Boundary: 0 hours (should return nil)
 		{"0 hours ago - boundary", "Posted 0 hours ago", nil},
 		// Boundary: 48 hours (upper limit)
@@ -61,9 +58,6 @@ func TestParseRelativeDate(t *testing.T) {
 		{"100 hours ago - future", "Published 100 hours ago", nil},
 		// Boundary: too old (500 days, before 2000)
 		{"500 days ago - too old", "Published 500 days ago", nil},
-		// Weeks patterns not implemented in parseRelativeDate (regex exists but unused)
-		{"2 weeks ago - not implemented", "Article from 2 weeks ago", nil},
-		{"2 wochen ago - not implemented", "Nachricht vor 2 wochen", nil},
 	}
 
 	for _, tt := range tests {

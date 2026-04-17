@@ -17,6 +17,9 @@ import (
 
 // TestConcurrentSearches runs multiple searches simultaneously with different parameters
 func TestConcurrentSearches(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping concurrent search stress test in short mode")
+	}
 	requestCount := int64(0)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -71,6 +74,9 @@ func TestConcurrentSearches(t *testing.T) {
 
 // TestConcurrentContextCancellation tests concurrent context cancellation
 func TestConcurrentContextCancellation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping concurrent cancellation stress test in short mode")
+	}
 	requestCount := int64(0)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -122,6 +128,9 @@ func TestConcurrentContextCancellation(t *testing.T) {
 
 // TestConcurrentSearcherCreation tests creating many searchers concurrently
 func TestConcurrentSearcherCreation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping concurrent searcher creation stress test in short mode")
+	}
 	var wg sync.WaitGroup
 	const numGoroutines = 50
 
@@ -148,6 +157,9 @@ func TestConcurrentSearcherCreation(t *testing.T) {
 
 // TestConcurrentSameSearcherUse tests using the same searcher from multiple goroutines
 func TestConcurrentSameSearcherUse(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping shared searcher stress test in short mode")
+	}
 	requestCount := int64(0)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -196,6 +208,9 @@ func TestConcurrentSameSearcherUse(t *testing.T) {
 
 // TestChannelDeadlockDetection tests that channels don't deadlock
 func TestChannelDeadlockDetection(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping deadlock stress test in short mode")
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		searchResp := SearchResponse{
 			Results:         []SearchResult{},
@@ -244,6 +259,9 @@ func TestChannelDeadlockDetection(t *testing.T) {
 
 // TestRaceConditionOnSharedState tests for race conditions on shared HTTP client
 func TestRaceConditionOnSharedState(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping shared state race test in short mode")
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		searchResp := SearchResponse{
 			Results: []SearchResult{
@@ -293,6 +311,9 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 
 // TestSearcherThreadSafety tests that a single searcher can handle concurrent requests
 func TestSearcherThreadSafety(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping thread-safety stress test in short mode")
+	}
 	requestCount := int64(0)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -344,6 +365,9 @@ func TestSearcherThreadSafety(t *testing.T) {
 
 // TestGracefulShutdownWithContextCancel tests that search operations respect context cancellation
 func TestGracefulShutdownWithContextCancel(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping graceful shutdown stress test in short mode")
+	}
 	requestCount := int64(0)
 	completedCount := int64(0)
 
@@ -397,6 +421,9 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 
 // TestGracefulShutdownWithSignal tests that the server handles termination signals gracefully
 func TestGracefulShutdownWithSignal(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping signal shutdown stress test in short mode")
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		searchResp := SearchResponse{
 			Results:         []SearchResult{},
@@ -455,6 +482,9 @@ func TestGracefulShutdownWithSignal(t *testing.T) {
 
 // TestContextDeadlineExceededDuringSearch tests behavior when context deadline expires during search
 func TestContextDeadlineExceededDuringSearch(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping deadline stress test in short mode")
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(2 * time.Second) // Longer than any reasonable timeout
 		w.WriteHeader(http.StatusOK)
@@ -548,6 +578,9 @@ func TestHighConcurrencyStress(t *testing.T) {
 
 // TestConcurrentValidationAndSearch tests concurrent validation and search operations
 func TestConcurrentValidationAndSearch(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping validation/search concurrency stress test in short mode")
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		searchResp := SearchResponse{
 			Results:         []SearchResult{},
@@ -595,6 +628,9 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 
 // TestSharedSearcherAcrossGoroutines tests the same searcher being used by many goroutines
 func TestSharedSearcherAcrossGoroutines(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping shared searcher load test in short mode")
+	}
 	requestCount := int64(0)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

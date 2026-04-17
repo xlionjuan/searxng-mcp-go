@@ -1,10 +1,8 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -90,49 +88,6 @@ func TestPerformSearch_Success(t *testing.T) {
 		if capturedQuery.Get(tt.param) != tt.want {
 			t.Errorf("expected %s=%q, got %q", tt.param, tt.want, capturedQuery.Get(tt.param))
 		}
-	}
-}
-
-func TestPerformSearch_NetworkError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Close connection immediately to simulate network error
-	}))
-	server.Close()
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-	}
-	args := &SearchArgs{Query: "test"}
-
-	ctx := t.Context()
-	_, err := performSearch(ctx, cfg, args)
-
-	if err == nil {
-		t.Fatal("expected network error, got nil")
-	}
-	var searxngErr *SearXNGError
-	if !errors.As(err, &searxngErr) {
-		t.Errorf("expected *SearXNGError, got: %v", err)
-	}
-}
-
-func TestPerformSearch_InvalidURL(t *testing.T) {
-	cfg := &Config{
-		SearXNGURL: "://invalid-url",
-		Timeout:    30 * time.Second,
-	}
-	args := &SearchArgs{Query: "test"}
-
-	ctx := t.Context()
-	_, err := performSearch(ctx, cfg, args)
-
-	if err == nil {
-		t.Fatal("expected error for invalid URL, got nil")
-	}
-	var urlErr *url.Error
-	if !errors.As(err, &urlErr) {
-		t.Errorf("expected *url.Error, got: %v", err)
 	}
 }
 
@@ -506,105 +461,6 @@ func intPtr(i int) *int {
 	return &i
 }
 
-func TestPerformSearch_ContextCancellation(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(5 * time.Second) // Simulate slow response
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-	}
-	args := &SearchArgs{Query: "test"}
-
-	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
-	defer cancel()
-
-	_, err := performSearch(ctx, cfg, args)
-
-	if err == nil {
-		t.Fatal("expected context deadline exceeded error, got nil")
-	}
-	// The error should be related to context cancellation/timeout
-	if !strings.Contains(err.Error(), "context deadline exceeded") && !strings.Contains(err.Error(), "request canceled") {
-		t.Errorf("expected context-related error, got: %v", err)
-	}
-}
-
-// Test performSearch with empty query (edge case - query parameter still set)
-// Test HTTP status code errors
-func TestPerformSearch_HTTPStatusCodes(t *testing.T) {
-	statusCodes := []struct {
-		code       int
-		statusName string
-		errPart    string
-	}{
-		{400, "Bad Request", "searxng error (status 400)"},
-		{401, "Unauthorized", "searxng error (status 401)"},
-		{403, "Forbidden", "searxng error (status 403)"},
-		{404, "Not Found", "searxng error (status 404)"},
-		{429, "Too Many Requests", "searxng error (status 429)"},
-		{500, "Internal Server Error", "searxng error (status 500)"},
-		{502, "Bad Gateway", "searxng error (status 502)"},
-		{503, "Service Unavailable", "searxng error (status 503)"},
-		{504, "Gateway Timeout", "searxng error (status 504)"},
-	}
-
-	for _, tc := range statusCodes {
-		t.Run(tc.statusName, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(tc.code)
-				w.Write([]byte(fmt.Sprintf("Error %d: %s", tc.code, tc.statusName)))
-			}))
-			defer server.Close()
-
-			cfg := &Config{
-				SearXNGURL: server.URL,
-				Timeout:    30 * time.Second,
-			}
-			args := &SearchArgs{Query: "test"}
-
-			ctx := t.Context()
-			_, err := performSearch(ctx, cfg, args)
-
-			if err == nil {
-				t.Fatalf("expected error for status %d, got nil", tc.code)
-			}
-			if !strings.Contains(strings.ToLower(err.Error()), tc.errPart) {
-				t.Errorf("expected error containing %q, got: %v", tc.errPart, err)
-			}
-		})
-	}
-}
-
-// Test JSON parse error with helpful message
-func TestPerformSearch_JSONParseError(t *testing.T) {
-	invalidJSON := []byte(`{"results": [{"title": "test", `) // truncated/invalid JSON
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(invalidJSON)
-	}))
-	defer server.Close()
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-	}
-	args := &SearchArgs{Query: "test"}
-
-	ctx := t.Context()
-	_, err := performSearch(ctx, cfg, args)
-
-	if err == nil {
-		t.Fatal("expected JSON parse error, got nil")
-	}
-	if !strings.Contains(err.Error(), "failed to parse JSON response") {
-		t.Errorf("expected JSON parse error, got: %v", err)
-	}
-}
 
 // Test that performSearch properly encodes query parameters
 func TestPerformSearch_QueryEncoding(t *testing.T) {

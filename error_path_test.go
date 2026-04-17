@@ -293,8 +293,8 @@ func TestPerformSearch_500Error(t *testing.T) {
 		t.Fatalf("expected *SearXNGError, got type %T", err)
 	}
 
-	if searxngErr.GetStatusCode() != 500 {
-		t.Errorf("SearXNGError.StatusCode = %d, want 500", searxngErr.GetStatusCode())
+	if searxngErr.StatusCode != 500 {
+		t.Errorf("SearXNGError.StatusCode = %d, want 500", searxngErr.StatusCode)
 	}
 }
 
@@ -328,8 +328,8 @@ func TestPerformSearch_404Error(t *testing.T) {
 		t.Fatalf("expected *SearXNGError, got type %T", err)
 	}
 
-	if searxngErr.GetStatusCode() != 404 {
-		t.Errorf("SearXNGError.StatusCode = %d, want 404", searxngErr.GetStatusCode())
+	if searxngErr.StatusCode != 404 {
+		t.Errorf("SearXNGError.StatusCode = %d, want 404", searxngErr.StatusCode)
 	}
 }
 
@@ -480,8 +480,8 @@ func TestPerformSearch_HTTPStatusErrors(t *testing.T) {
 				t.Fatalf("expected *SearXNGError, got type %T", err)
 			}
 
-			if searxngErr.GetStatusCode() != tc.statusCode {
-				t.Errorf("SearXNGError.StatusCode = %d, want %d", searxngErr.GetStatusCode(), tc.statusCode)
+			if searxngErr.StatusCode != tc.statusCode {
+				t.Errorf("SearXNGError.StatusCode = %d, want %d", searxngErr.StatusCode, tc.statusCode)
 			}
 		})
 	}

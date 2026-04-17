@@ -116,7 +116,8 @@ searxng-mcp-go --searxng-url https://other-instance.example.com "search query"
 - Empty or whitespace-only queries are rejected at validation
 - Invalid `time_range` values (must be: day, month, year)
 - Network/connectivity failures return descriptive error messages
-- SearXNG returning HTML instead of JSON produces an `HTMLResponseError`
+- SearXNG returning HTML instead of JSON produces `searxng returned html instead of json - json output may not be enabled on the server`
+- Invalid JSON responses surface as `searxng error (status N): failed to parse JSON response: ...`
 
 ## Links
 

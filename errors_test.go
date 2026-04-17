@@ -97,11 +97,11 @@ func TestHTTPStatusError(t *testing.T) {
 				t.Fatalf("expected *SearXNGError, got type %T", err)
 			}
 
-			if searxngErr.GetStatusCode() != tc.statusCode {
-				t.Errorf("SearXNGError.StatusCode = %d, want %d", searxngErr.GetStatusCode(), tc.statusCode)
+			if searxngErr.StatusCode != tc.statusCode {
+				t.Errorf("SearXNGError.StatusCode = %d, want %d", searxngErr.StatusCode, tc.statusCode)
 			}
-			if searxngErr.GetContentType() != tc.contentType {
-				t.Errorf("SearXNGError.ContentType = %q, want %q", searxngErr.GetContentType(), tc.contentType)
+			if searxngErr.RespContentType != tc.contentType {
+				t.Errorf("SearXNGError.RespContentType = %q, want %q", searxngErr.RespContentType, tc.contentType)
 			}
 		})
 	}
@@ -143,32 +143,6 @@ func TestSearXNGError_ResponseBodyField(t *testing.T) {
 	}
 	if searxngErr.ResponseBody == "error details here" {
 		t.Log("ResponseBody is exact match - truncation works correctly")
-	}
-}
-
-func TestSearXNGError_GetStatusCode(t *testing.T) {
-	err := NewSearXNGError(403, "application/json", "", errors.New("forbidden"))
-
-	var searxngErr *SearXNGError
-	if !errors.As(err, &searxngErr) {
-		t.Fatalf("expected *SearXNGError, got type %T", err)
-	}
-
-	if searxngErr.GetStatusCode() != 403 {
-		t.Errorf("GetStatusCode() = %d, want 403", searxngErr.GetStatusCode())
-	}
-}
-
-func TestSearXNGError_GetContentType(t *testing.T) {
-	err := NewSearXNGError(500, "text/plain", "", errors.New("server error"))
-
-	var searxngErr *SearXNGError
-	if !errors.As(err, &searxngErr) {
-		t.Fatalf("expected *SearXNGError, got type %T", err)
-	}
-
-	if searxngErr.GetContentType() != "text/plain" {
-		t.Errorf("GetContentType() = %q, want %q", searxngErr.GetContentType(), "text/plain")
 	}
 }
 

@@ -132,6 +132,8 @@ Our headers are set via `setBrowserHeaders()` in `search.go`. POST and GET fallb
 - Invalid `time_range` values (must be: day, month, year)
 - Network/connectivity failures
 - SearXNG API errors (non-200, malformed JSON, HTML responses)
+- HTML responses use the fixed message `searxng returned html instead of json - json output may not be enabled on the server`
+- Malformed JSON is reported as `searxng error (status N): failed to parse JSON response: ...`
 
 ## Known Limitations
 
