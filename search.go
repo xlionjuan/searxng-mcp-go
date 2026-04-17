@@ -350,25 +350,23 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		params.Set("pageno", fmt.Sprintf("%d", *args.Pageno))
 	}
 
-	baseURL.RawQuery = params.Encode()
+	postURL := *baseURL
+	postURL.RawQuery = ""
 
-	// Try POST first, fall back to GET if method not allowed or not implemented
 	var resp *http.Response
-	var reqErr error
 
-	// Attempt POST request
-	postReq, err := http.NewRequestWithContext(ctx, "POST", baseURL.String(), io.LimitReader(strings.NewReader(params.Encode()), MaxRequestBodySize))
+	postReq, err := http.NewRequestWithContext(ctx, "POST", postURL.String(), io.LimitReader(strings.NewReader(params.Encode()), MaxRequestBodySize))
 	if err == nil {
 		postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		postReq.Header.Set("Accept", "application/json")
-		resp, reqErr = s.client.Do(postReq)
-		err = reqErr
+		resp, err = s.client.Do(postReq)
 	}
 
-	// If POST failed with 405 or 501, fall back to GET
 	if err == nil && resp != nil && (resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
 		resp.Body.Close()
-		getReq, reqErr := http.NewRequestWithContext(ctx, "GET", baseURL.String(), nil)
+		getURL := *baseURL
+		getURL.RawQuery = params.Encode()
+		getReq, reqErr := http.NewRequestWithContext(ctx, "GET", getURL.String(), nil)
 		if reqErr != nil {
 			return nil, NewSearXNGError(0, "", "", fmt.Errorf("failed to create request: %w", reqErr))
 		}
