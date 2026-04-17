@@ -336,12 +336,14 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		params.Set("pageno", fmt.Sprintf("%d", *args.Pageno))
 	}
 
-	postURL := *baseURL
-	postURL.RawQuery = ""
+	// Append /search path to avoid SearXNG redirect that drops POST body
+	searchURL := *baseURL
+	searchURL.RawQuery = ""
+	searchURL.Path = strings.TrimRight(searchURL.Path, "/") + "/search"
 
 	var resp *http.Response
 
-	postReq, err := http.NewRequestWithContext(ctx, "POST", postURL.String(), io.LimitReader(strings.NewReader(params.Encode()), MaxRequestBodySize))
+	postReq, err := http.NewRequestWithContext(ctx, "POST", searchURL.String(), strings.NewReader(params.Encode()))
 	if err == nil {
 		postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		postReq.Header.Set("Accept", "application/json")
@@ -350,7 +352,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 
 	if err == nil && resp != nil && (resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
 		resp.Body.Close()
-		getURL := *baseURL
+		getURL := searchURL
 		getURL.RawQuery = params.Encode()
 		getReq, reqErr := http.NewRequestWithContext(ctx, "GET", getURL.String(), nil)
 		if reqErr != nil {
