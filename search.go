@@ -26,20 +26,24 @@ const DefaultSearXNGURL = "https://search-4.xlion.dev"
 var defaultHTTPClient *http.Client
 var defaultHTTPClientOnce sync.Once
 
+func newHTTPClient(timeout time.Duration) *http.Client {
+	return &http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			DialContext:           (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ResponseHeaderTimeout: 30 * time.Second,
+			IdleConnTimeout:       90 * time.Second,
+			MaxIdleConns:          100,
+			MaxIdleConnsPerHost:   10,
+		},
+	}
+}
+
 // getDefaultHTTPClient returns the singleton HTTP client.
 func getDefaultHTTPClient() *http.Client {
 	defaultHTTPClientOnce.Do(func() {
-		defaultHTTPClient = &http.Client{
-			Timeout: 30 * time.Second,
-			Transport: &http.Transport{
-				DialContext:           (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
-				TLSHandshakeTimeout:   10 * time.Second,
-				ResponseHeaderTimeout: 30 * time.Second,
-				IdleConnTimeout:       90 * time.Second,
-				MaxIdleConns:          100,
-				MaxIdleConnsPerHost:   10,
-			},
-		}
+		defaultHTTPClient = newHTTPClient(30 * time.Second)
 	})
 	return defaultHTTPClient
 }
@@ -198,7 +202,11 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 	}
 
 	if client == nil {
-		client = getDefaultHTTPClient()
+		if timeout > 0 {
+			client = newHTTPClient(timeout)
+		} else {
+			client = getDefaultHTTPClient()
+		}
 	}
 
 	return &SearXNGSearcher{
@@ -289,10 +297,25 @@ type SearchResponse struct {
 // Search Implementation
 // ============================================================================
 
+// setBrowserHeaders sets browser-like HTTP headers to bypass SearXNG bot detection.
+func setBrowserHeaders(req *http.Request) {
+	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	req.Header.Set("Sec-Fetch-Mode", "navigate")
+	req.Header.Set("Sec-Fetch-Dest", "document")
+	req.Header.Set("Sec-Fetch-Site", "none")
+	req.Header.Set("Sec-Fetch-User", "?1")
+	req.Header.Set("Sec-Ch-Ua", `"Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"`)
+	req.Header.Set("Sec-Ch-Ua-Mobile", "?0")
+	req.Header.Set("Sec-Ch-Ua-Platform", `"Linux"`)
+	req.Header.Set("Priority", "u=0, i")
+}
+
 // performSearch executes the search query against SearXNG
 func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
-	if args == nil {
-		return nil, NewSearXNGError(0, "", "", fmt.Errorf("args cannot be nil"))
+	if err := ValidateSearchArgs(args); err != nil {
+		return nil, err
 	}
 	baseURL, err := url.Parse(s.baseURL)
 	if err != nil {
@@ -339,18 +362,58 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	// Append /search path to avoid SearXNG redirect that drops POST body
 	searchURL := *baseURL
 	searchURL.RawQuery = ""
-	searchURL.Path = strings.TrimRight(searchURL.Path, "/") + "/search"
+	trimmedPath := strings.TrimRight(searchURL.Path, "/")
+	lastSegment := trimmedPath
+	if idx := strings.LastIndex(trimmedPath, "/"); idx >= 0 {
+		lastSegment = trimmedPath[idx+1:]
+	}
+	if lastSegment != "search" {
+		if trimmedPath == "" {
+			searchURL.Path = "/search"
+		} else {
+			searchURL.Path = trimmedPath + "/search"
+		}
+	} else {
+		searchURL.Path = trimmedPath
+	}
 
 	var resp *http.Response
 
-	postReq, err := http.NewRequestWithContext(ctx, "POST", searchURL.String(), strings.NewReader(params.Encode()))
+	// Save the raw body string so debug logging shows exactly what was sent
+	postBodyStr := params.Encode()
+	postReq, err := http.NewRequestWithContext(ctx, "POST", searchURL.String(), strings.NewReader(postBodyStr))
 	if err == nil {
 		postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		postReq.Header.Set("Accept", "application/json")
+		setBrowserHeaders(postReq)
+
+		if debugMode {
+			bodyPreview := postBodyStr
+			if len(bodyPreview) > 500 {
+				bodyPreview = bodyPreview[:500]
+			}
+			slog.Debug("HTTP request",
+				"method", postReq.Method,
+				"url", postReq.URL.String(),
+				"Content-Type", postReq.Header.Get("Content-Type"),
+				"Accept", postReq.Header.Get("Accept"),
+				"body", bodyPreview,
+			)
+		}
+
 		resp, err = s.client.Do(postReq)
+
+		if debugMode && err == nil && resp != nil {
+			slog.Debug("HTTP response",
+				"status", resp.StatusCode,
+				"content_type", resp.Header.Get("Content-Type"),
+			)
+		}
 	}
 
 	if err == nil && resp != nil && (resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
+		if debugMode {
+			slog.Debug("Redirecting to GET fallback", "status", resp.StatusCode, "reason", "POST not supported by server")
+		}
 		resp.Body.Close()
 		getURL := searchURL
 		getURL.RawQuery = params.Encode()
@@ -358,8 +421,24 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		if reqErr != nil {
 			return nil, NewSearXNGError(0, "", "", fmt.Errorf("failed to create request: %w", reqErr))
 		}
-		getReq.Header.Set("Accept", "application/json")
+		setBrowserHeaders(getReq)
+
+		if debugMode {
+			slog.Debug("HTTP request",
+				"method", getReq.Method,
+				"url", getReq.URL.String(),
+				"Accept", getReq.Header.Get("Accept"),
+			)
+		}
+
 		resp, err = s.client.Do(getReq)
+
+		if debugMode && err == nil && resp != nil {
+			slog.Debug("HTTP response",
+				"status", resp.StatusCode,
+				"content_type", resp.Header.Get("Content-Type"),
+			)
+		}
 	}
 
 	if err != nil {
@@ -371,6 +450,18 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		body, readErr := io.ReadAll(io.LimitReader(resp.Body, MaxErrorBodySize))
 		if readErr != nil {
 			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read error response body: %w", readErr))
+		}
+		if debugMode {
+			errBodyPreview := string(body)
+			if len(errBodyPreview) > 500 {
+				errBodyPreview = errBodyPreview[:500]
+			}
+			slog.Debug("HTTP error response body",
+				"status", resp.StatusCode,
+				"content_type", resp.Header.Get("Content-Type"),
+				"body_size", len(body),
+				"body_preview", errBodyPreview,
+			)
 		}
 		truncated, _ := checkBodyTruncated(resp.Body)
 		if truncated {
@@ -386,6 +477,19 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	truncated, _ := checkBodyTruncated(resp.Body)
 	if truncated {
 		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), fmt.Errorf("response body exceeded maximum size limit of %d bytes", MaxResponseBodySize))
+	}
+
+	if debugMode {
+		bodyPreview := string(body)
+		if len(bodyPreview) > 500 {
+			bodyPreview = bodyPreview[:500]
+		}
+		slog.Debug("HTTP response body",
+			"status", resp.StatusCode,
+			"content_type", resp.Header.Get("Content-Type"),
+			"body_size", len(body),
+			"body_preview", bodyPreview,
+		)
 	}
 
 	// Check Content-Type to provide better error messages for non-JSON responses

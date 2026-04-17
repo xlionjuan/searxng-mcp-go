@@ -16,6 +16,9 @@ import (
 
 const version = "1.0.0"
 
+// debugMode is set to true when --debug flag or DEBUG=1 env var is active.
+var debugMode bool
+
 // ============================================================================
 // CLI Flags
 // ============================================================================
@@ -32,6 +35,7 @@ var (
 	cliCategories = flag.String("categories", "", "Comma-separated list of categories to search")
 	cliEngines    = flag.String("engines", "", "Comma-separated list of search engines to use")
 	cliPageno     = flag.Int("pageno", 1, "Page number for pagination")
+	cliDebug      = flag.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)")
 )
 
 // CLIFlags holds parsed CLI flag values
@@ -47,6 +51,7 @@ type CLIFlags struct {
 	Categories string
 	Engines    string
 	Pageno     int
+	Debug      bool
 }
 
 // parseArgs parses command-line arguments and returns the mode, flags, and positional arguments.
@@ -112,6 +117,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 	cliCategories = flag.String("categories", "", "")
 	cliEngines = flag.String("engines", "", "")
 	cliPageno = flag.Int("pageno", 1, "")
+	cliDebug = flag.Bool("debug", false, "")
 
 	if err := flag.CommandLine.Parse(flagArgs); err != nil {
 		return false, CLIFlags{}, nil, err
@@ -129,6 +135,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 		Categories: *cliCategories,
 		Engines:    *cliEngines,
 		Pageno:     *cliPageno,
+		Debug:      *cliDebug,
 	}
 
 	isCLIMode = flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
@@ -160,6 +167,8 @@ OPTIONS:
   --categories CAT   Comma-separated list of categories to search
   --engines ENG      Comma-separated list of search engines to use
   --pageno N         Page number for pagination [default: 1]
+  --debug            Enable verbose HTTP request/response logging
+                     Can also be enabled via DEBUG=1 environment variable
   --help             Show this help message
   --version          Show version information
 
@@ -238,6 +247,12 @@ func main() {
 	if err != nil {
 		slog.Error("failed to parse arguments", "error", err)
 		os.Exit(1)
+	}
+
+	// Enable debug mode via --debug flag or DEBUG=1 env var
+	debugMode = flags.Debug || os.Getenv("DEBUG") == "1"
+	if debugMode {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
 	if isCLIMode {
