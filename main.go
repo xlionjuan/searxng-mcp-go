@@ -125,9 +125,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 		Pageno:     *cliPageno,
 	}
 
-	isCLIMode = flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0 ||
-		flags.SearXNGURL != "" || flags.Language != "en" || flags.SafeSearch != 0 || flags.TimeRange != "" ||
-		flags.Categories != "" || flags.Engines != "" || flags.Pageno != 1
+	isCLIMode = flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
 
 	return isCLIMode, flags, positionalArgs, nil
 }
