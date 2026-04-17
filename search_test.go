@@ -719,3 +719,75 @@ func TestPerformSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 		t.Errorf("len(Results) = %d, want 2", len(result.Results))
 	}
 }
+
+func TestPerformSearch_POSTtoGETFallback(t *testing.T) {
+	var postReq *http.Request
+	var getReq *http.Request
+	var postHadQueryParams bool
+
+	searchResp := SearchResponse{
+		Results:         []SearchResult{},
+		NumberOfResults: 0,
+		Query:           "test",
+	}
+	body, _ := json.Marshal(searchResp)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			postReq = r
+			postHadQueryParams = r.URL.RawQuery != ""
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		if r.Method == "GET" {
+			getReq = r
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(body)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	cfg := &Config{
+		SearXNGURL: server.URL,
+		Timeout:    30 * time.Second,
+	}
+	args := &SearchArgs{Query: "test search", Language: "en", SafeSearch: 1}
+
+	ctx := t.Context()
+	result, err := performSearch(ctx, cfg, args)
+
+	if err != nil {
+		t.Fatalf("unexpected error after fallback: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected result, got nil")
+	}
+
+	if postReq == nil {
+		t.Fatal("POST request was never made")
+	}
+	if getReq == nil {
+		t.Fatal("GET fallback was never called")
+	}
+
+	if postHadQueryParams {
+		t.Error("POST request had query params in URI - query should only be in body")
+	}
+
+	getQuery := getReq.URL.Query()
+	if getQuery.Get("q") != "test search" {
+		t.Errorf("GET query q = %q, want %q", getQuery.Get("q"), "test search")
+	}
+	if getQuery.Get("format") != "json" {
+		t.Errorf("GET query format = %q, want %q", getQuery.Get("format"), "json")
+	}
+	if getQuery.Get("language") != "en" {
+		t.Errorf("GET query language = %q, want %q", getQuery.Get("language"), "en")
+	}
+	if getQuery.Get("safesearch") != "1" {
+		t.Errorf("GET query safesearch = %q, want %q", getQuery.Get("safesearch"), "1")
+	}
+}

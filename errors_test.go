@@ -63,7 +63,6 @@ func TestValidationError(t *testing.T) {
 	})
 }
 
-// Test httpStatusError function directly
 func TestHTTPStatusError(t *testing.T) {
 	tests := []struct {
 		statusCode  int
@@ -92,6 +91,107 @@ func TestHTTPStatusError(t *testing.T) {
 			if !strings.Contains(strings.ToLower(err.Error()), tc.errContains) {
 				t.Errorf("expected error containing %q, got: %v", tc.errContains, err)
 			}
+
+			var searxngErr *SearXNGError
+			if !errors.As(err, &searxngErr) {
+				t.Fatalf("expected *SearXNGError, got type %T", err)
+			}
+
+			if searxngErr.GetStatusCode() != tc.statusCode {
+				t.Errorf("SearXNGError.StatusCode = %d, want %d", searxngErr.GetStatusCode(), tc.statusCode)
+			}
+			if searxngErr.GetContentType() != tc.contentType {
+				t.Errorf("SearXNGError.ContentType = %q, want %q", searxngErr.GetContentType(), tc.contentType)
+			}
 		})
+	}
+}
+
+func TestHTTPStatusError_HTMLBodyNotInErrorMessage(t *testing.T) {
+	htmlBody := []byte("<!DOCTYPE html><html><body>Internal Server Error</body></html>")
+
+	err := HTTPStatusError(500, "text/html", htmlBody)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	errMsg := err.Error()
+	if strings.Contains(errMsg, "<!DOCTYPE") || strings.Contains(errMsg, "<html>") || strings.Contains(errMsg, "Internal Server Error") {
+		t.Errorf("error message should not contain HTML body content, got: %s", errMsg)
+	}
+
+	var searxngErr *SearXNGError
+	if !errors.As(err, &searxngErr) {
+		t.Fatalf("expected *SearXNGError, got type %T", err)
+	}
+
+	if searxngErr.ResponseBody != "" && (strings.Contains(searxngErr.ResponseBody, "<!DOCTYPE") || strings.Contains(searxngErr.ResponseBody, "<html>")) {
+		t.Logf("ResponseBody contains HTML for debugging (this is allowed in structured field): %s", searxngErr.ResponseBody)
+	}
+}
+
+func TestSearXNGError_ResponseBodyField(t *testing.T) {
+	err := NewSearXNGError(400, "text/html", "error details here", errors.New("bad request"))
+
+	var searxngErr *SearXNGError
+	if !errors.As(err, &searxngErr) {
+		t.Fatalf("expected *SearXNGError, got type %T", err)
+	}
+
+	if searxngErr.ResponseBody == "" {
+		t.Error("ResponseBody should not be empty when body is provided")
+	}
+	if searxngErr.ResponseBody == "error details here" {
+		t.Log("ResponseBody is exact match - truncation works correctly")
+	}
+}
+
+func TestSearXNGError_GetStatusCode(t *testing.T) {
+	err := NewSearXNGError(403, "application/json", "", errors.New("forbidden"))
+
+	var searxngErr *SearXNGError
+	if !errors.As(err, &searxngErr) {
+		t.Fatalf("expected *SearXNGError, got type %T", err)
+	}
+
+	if searxngErr.GetStatusCode() != 403 {
+		t.Errorf("GetStatusCode() = %d, want 403", searxngErr.GetStatusCode())
+	}
+}
+
+func TestSearXNGError_GetContentType(t *testing.T) {
+	err := NewSearXNGError(500, "text/plain", "", errors.New("server error"))
+
+	var searxngErr *SearXNGError
+	if !errors.As(err, &searxngErr) {
+		t.Fatalf("expected *SearXNGError, got type %T", err)
+	}
+
+	if searxngErr.GetContentType() != "text/plain" {
+		t.Errorf("GetContentType() = %q, want %q", searxngErr.GetContentType(), "text/plain")
+	}
+}
+
+func TestSearXNGError_Unwrap(t *testing.T) {
+	underlying := errors.New("connection refused")
+	err := NewSearXNGError(0, "", "", underlying)
+
+	unwrapped := errors.Unwrap(err)
+	if unwrapped != underlying {
+		t.Errorf("Unwrap() = %v, want %v", unwrapped, underlying)
+	}
+
+	if !errors.Is(err, underlying) {
+		t.Errorf("errors.Is(err, underlying) = false, want true")
+	}
+}
+
+func TestHTMLResponseError_HTMLBodyNotInMessage(t *testing.T) {
+	htmlBody := "<!DOCTYPE html><html><head><title>Error</title></head><body>JSON not enabled</body></html>"
+	err := &HTMLResponseError{Body: htmlBody, UnderlyingErr: nil}
+
+	errMsg := err.Error()
+	if strings.Contains(errMsg, "<!DOCTYPE") || strings.Contains(errMsg, "<html>") || strings.Contains(errMsg, "JSON not enabled") {
+		t.Errorf("HTMLResponseError.Error() should not contain HTML body, got: %s", errMsg)
 	}
 }

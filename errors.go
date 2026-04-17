@@ -55,24 +55,28 @@ func IsValidationError(err error) bool {
 // SearXNGError represents an error that occurred during communication with
 // the SearXNG service. This includes network errors, HTTP errors, and API errors.
 type SearXNGError struct {
-	statusCode    int    // HTTP status code if available
-	ContentType   string // Content-Type header from response
-	ResponseBody  string // Truncated response body for debugging
-	UnderlyingErr error  // The original error that caused this
+	StatusCode      int    // HTTP status code if available
+	RespContentType string // Content-Type header from response
+	ResponseBody    string // Truncated response body for debugging
+	UnderlyingErr   error  // The original error that caused this
 }
 
 func (e *SearXNGError) Error() string {
 	if e.UnderlyingErr != nil {
-		if e.ContentType != "" {
-			return fmt.Sprintf("searxng error (status %d) - content-type %s: %v", e.statusCode, e.ContentType, e.UnderlyingErr)
+		if e.RespContentType != "" {
+			return fmt.Sprintf("searxng error (status %d) - content-type %s: %v", e.StatusCode, e.RespContentType, e.UnderlyingErr)
 		}
-		return fmt.Sprintf("searxng error (status %d): %v", e.statusCode, e.UnderlyingErr)
+		return fmt.Sprintf("searxng error (status %d): %v", e.StatusCode, e.UnderlyingErr)
 	}
-	return fmt.Sprintf("searxng error: status %d, content-type: %s", e.statusCode, e.ContentType)
+	return fmt.Sprintf("searxng error: status %d, content-type: %s", e.StatusCode, e.RespContentType)
 }
 
-func (e *SearXNGError) StatusCode() int {
-	return e.statusCode
+func (e *SearXNGError) GetStatusCode() int {
+	return e.StatusCode
+}
+
+func (e *SearXNGError) GetContentType() string {
+	return e.RespContentType
 }
 
 // Unwrap returns the underlying error for errors.Is/ errors.As support
@@ -83,10 +87,10 @@ func (e *SearXNGError) Unwrap() error {
 // NewSearXNGError creates a new SearXNGError
 func NewSearXNGError(statusCode int, contentType, body string, err error) *SearXNGError {
 	return &SearXNGError{
-		statusCode:    statusCode,
-		ContentType:   contentType,
-		ResponseBody:  truncateBody([]byte(body), MaxErrorDisplayChars),
-		UnderlyingErr: err,
+		StatusCode:      statusCode,
+		RespContentType: contentType,
+		ResponseBody:    truncateBody([]byte(body), MaxErrorDisplayChars),
+		UnderlyingErr:   err,
 	}
 }
 

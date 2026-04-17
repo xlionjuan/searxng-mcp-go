@@ -188,6 +188,41 @@ func TestParseArgs(t *testing.T) {
 			wantPositional: []string{"-leading-dash-query"},
 			wantErr:        false,
 		},
+		{
+			name:        "multiple server config flags only - MCP mode",
+			args:        []string{"--searxng-url", "https://example.com", "--language", "ja", "--safesearch", "1"},
+			wantCLIMode: false,
+			wantFlags:   CLIFlags{SearXNGURL: "https://example.com", Language: "ja", SafeSearch: 1, Pageno: 1},
+			wantErr:     false,
+		},
+		{
+			name:        "all server config flags without query - MCP mode",
+			args:        []string{"--searxng-url", "https://example.com", "--language", "zh-tw", "--safesearch", "2", "--time_range", "month", "--categories", "general", "--engines", "google", "--pageno", "3"},
+			wantCLIMode: false,
+			wantFlags:   CLIFlags{SearXNGURL: "https://example.com", Language: "zh-tw", SafeSearch: 2, TimeRange: "month", Categories: "general", Engines: "google", Pageno: 3},
+			wantErr:     false,
+		},
+		{
+			name:        "language and safesearch only - MCP mode",
+			args:        []string{"--language", "fr", "--safesearch", "1"},
+			wantCLIMode: false,
+			wantFlags:   CLIFlags{Language: "fr", SafeSearch: 1, Pageno: 1},
+			wantErr:     false,
+		},
+		{
+			name:        "categories and engines only - MCP mode",
+			args:        []string{"--categories", "news", "--engines", "bing"},
+			wantCLIMode: false,
+			wantFlags:   CLIFlags{Categories: "news", Engines: "bing", Language: "en", SafeSearch: 0, Pageno: 1},
+			wantErr:     false,
+		},
+		{
+			name:        "pageno only - MCP mode",
+			args:        []string{"--pageno", "2"},
+			wantCLIMode: false,
+			wantFlags:   CLIFlags{Pageno: 2, Language: "en", SafeSearch: 0},
+			wantErr:     false,
+		},
 	}
 
 	for _, tt := range tests {
