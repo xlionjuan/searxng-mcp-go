@@ -173,11 +173,19 @@ func TestParseArgs(t *testing.T) {
 			wantErr:        false,
 		},
 		{
-			name:           "double dash separator treats subsequent dashes as flags",
+			name:           "double dash separator treats subsequent args as positional",
 			args:           []string{"--", "--help"},
 			wantCLIMode:    true,
-			wantFlags:      CLIFlags{Help: true, Language: "en", SafeSearch: 0, Pageno: 1},
-			wantPositional: []string{},
+			wantFlags:      CLIFlags{Language: "en", SafeSearch: 0, Pageno: 1},
+			wantPositional: []string{"--help"},
+			wantErr:        false,
+		},
+		{
+			name:           "double dash with leading dash query",
+			args:           []string{"--", "-leading-dash-query"},
+			wantCLIMode:    true,
+			wantFlags:      CLIFlags{Language: "en", SafeSearch: 0, Pageno: 1},
+			wantPositional: []string{"-leading-dash-query"},
 			wantErr:        false,
 		},
 	}
