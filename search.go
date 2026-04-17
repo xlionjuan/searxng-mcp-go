@@ -97,11 +97,28 @@ func validateBaseURL(baseURL string) error {
 	return nil
 }
 
+func checkBodyTruncated(body io.Reader) (bool, error) {
+	buf := make([]byte, 1)
+	_, err := body.Read(buf)
+	if err == nil {
+		return true, nil
+	}
+	if err == io.EOF {
+		return false, nil
+	}
+	return false, err
+}
+
 // isPrivateHost checks if the host is a private/internal address
 func isPrivateHost(host string) bool {
 	// Remove port if present
 	if h, _, err := net.SplitHostPort(host); err == nil {
 		host = h
+	}
+
+	// Check localhost explicitly
+	if host == "localhost" || strings.HasSuffix(strings.ToLower(host), ".localhost") {
+		return true
 	}
 
 	// Check TLD-based private domains (case-insensitive)
@@ -355,12 +372,20 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		if readErr != nil {
 			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read error response body: %w", readErr))
 		}
+		truncated, _ := checkBodyTruncated(resp.Body)
+		if truncated {
+			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), fmt.Errorf("error response body exceeded maximum size limit of %d bytes", MaxErrorBodySize))
+		}
 		return nil, HTTPStatusError(resp.StatusCode, resp.Header.Get("Content-Type"), body)
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBodySize))
 	if err != nil {
 		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read response body: %w", err))
+	}
+	truncated, _ := checkBodyTruncated(resp.Body)
+	if truncated {
+		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), fmt.Errorf("response body exceeded maximum size limit of %d bytes", MaxResponseBodySize))
 	}
 
 	// Check Content-Type to provide better error messages for non-JSON responses
