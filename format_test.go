@@ -42,7 +42,6 @@ func TestFormatResults(t *testing.T) {
 			resp:       &SearchResponse{Results: []SearchResult{}, NumberOfResults: 0, Query: "empty query"},
 			wantResult: "No results found.",
 		},
-		// TEST-03: Boundary tests for formatResults
 		{
 			name: "content exceeding 4000 runes is truncated",
 			resp: &SearchResponse{
@@ -57,9 +56,8 @@ func TestFormatResults(t *testing.T) {
 				NumberOfResults: 1,
 				Query:           "long content",
 			},
-			// Check that the result contains the first ~4000 x's but not 4500
-			// We verify truncation by checking content length in result
-			wantContains: []string{strings.Repeat("x", 100), "Long Content Test"},
+			wantContains:   []string{strings.Repeat("x", MaxContentRunes), "Long Content Test"},
+			wantNotContain: strings.Repeat("x", MaxContentRunes+1),
 		},
 		{
 			name: "HTML entities are unescaped in content",

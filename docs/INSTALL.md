@@ -103,7 +103,7 @@ ls -la searxng-mcp-go
 ./searxng-mcp-go
 ```
 
-The server will log "starting SearXNG MCP server..." and then wait for input via stdio.
+The server starts and then waits for input via stdio.
 
 ## Docker (Optional)
 

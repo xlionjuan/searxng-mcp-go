@@ -71,14 +71,6 @@ func (e *SearXNGError) Error() string {
 	return fmt.Sprintf("searxng error: status %d, content-type: %s", e.StatusCode, e.RespContentType)
 }
 
-func (e *SearXNGError) GetStatusCode() int {
-	return e.StatusCode
-}
-
-func (e *SearXNGError) GetContentType() string {
-	return e.RespContentType
-}
-
 // Unwrap returns the underlying error for errors.Is/ errors.As support
 func (e *SearXNGError) Unwrap() error {
 	return e.UnderlyingErr

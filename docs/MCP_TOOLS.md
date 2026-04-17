@@ -167,7 +167,7 @@ The server returns the following error types:
 | Error Type | Description |
 |------------|-------------|
 | `ValidationError` | User-provided parameter validation failure (missing/invalid fields) |
-| `HTMLResponseError` | SearXNG returned HTML instead of JSON (JSON output not enabled on instance) |
+| `HTMLResponseError` | `searxng returned html instead of json - json output may not be enabled on the server` |
 | `SearXNGError` | Network failures, HTTP errors, or API errors from SearXNG |
 
 Actual error message formats from the server:
@@ -181,8 +181,8 @@ Actual error message formats from the server:
 | Invalid `time_range` value    | `validation error on "time_range": must be one of day, month or year` |
 | Network failure               | `searxng error (status 0): context deadline exceeded` (or similar) |
 | SearXNG HTTP error           | `searxng error (status 500): internal server error: the search engine encountered an internal error` |
-| HTML response (JSON disabled)| `searxng returned HTML instead of JSON (JSON output likely not enabled on instance). Response: <truncated HTML>` |
-| Invalid JSON from SearXNG     | `searxng error (status 200): <underlying error>` |
+| HTML response (JSON disabled)| `searxng returned html instead of json - json output may not be enabled on the server` |
+| Invalid JSON from SearXNG     | `searxng error (status 200): failed to parse JSON response: <underlying error>` |
 
 ### Implementation Details
 
