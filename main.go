@@ -170,7 +170,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 
 // usage prints the help message for CLI mode
 func printCLIHelp() {
-	fmt.Println(`SearXNG MCP Server - CLI Mode
+	fmt.Println(`SearXNG MCP Server - CLI Mode (v` + version + `)
 
 A Model Context Protocol server that provides web search via SearXNG.
 
@@ -276,6 +276,7 @@ func main() {
 	debugMode = flags.Debug || os.Getenv("DEBUG") == "1"
 	if debugMode {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
+		slog.Debug("debug mode enabled", "version", version)
 	}
 
 	if isCLIMode {
