@@ -807,6 +807,36 @@ func TestDeduplicateAnswers_EmptyAnswerSkipped(t *testing.T) {
 
 // --- SearchResponse.MarshalJSON tests ---
 
+func TestSearchResponse_MarshalJSON_NilSlices(t *testing.T) {
+	resp := SearchResponse{
+		Query:           "test",
+		NumberOfResults: 0,
+		Results:         nil,
+		Suggestions:     nil,
+	}
+
+	data, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("MarshalJSON error: %v", err)
+	}
+
+	raw := string(data)
+
+	// Results and Suggestions should serialize as [] not null
+	if strings.Contains(raw, `"results":null`) {
+		t.Errorf("results should be [], not null: %s", raw)
+	}
+	if strings.Contains(raw, `"suggestions":null`) {
+		t.Errorf("suggestions should be [], not null: %s", raw)
+	}
+	if !strings.Contains(raw, `"results":[]`) {
+		t.Errorf("expected results to be [], got: %s", raw)
+	}
+	if !strings.Contains(raw, `"suggestions":[]`) {
+		t.Errorf("expected suggestions to be [], got: %s", raw)
+	}
+}
+
 func TestSearchResponse_MarshalJSON_FieldOrder(t *testing.T) {
 	resp := SearchResponse{
 		Query:           "test",
