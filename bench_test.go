@@ -441,6 +441,144 @@ func BenchmarkValidateSearchArgsMinimal(b *testing.B) {
 }
 
 // ============================================================================
+// Additional Benchmarks (REPORT_PERF 2026-04-19)
+// ============================================================================
+
+// makeLongContentResults generates n results with content well above MaxContentRunes
+// including multi-byte UTF-8 characters.
+func makeLongContentResults(n int) *SearchResponse {
+	results := make([]SearchResult, n)
+	base := strings.Repeat("這是一段很長的中文測試內容，包含多位元組字元。Go is a programming language. 日本語テスト。🎉🚀📊 ", 200)
+	for i := 0; i < n; i++ {
+		results[i] = SearchResult{
+			Title:   fmt.Sprintf("長內容測試結果 #%d 🌐", i),
+			URL:     fmt.Sprintf("https://example.com/long/%d", i),
+			Content: base + fmt.Sprintf(" Result index %d.", i),
+			Engine:  "google",
+		}
+	}
+	return &SearchResponse{
+		Query:           "long content test",
+		NumberOfResults: n,
+		Results:         results,
+	}
+}
+
+func BenchmarkFormatResultsLongContent(b *testing.B) {
+	resp := makeLongContentResults(20)
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = formatResults(resp)
+	}
+}
+
+// makeNoDateResults generates n results with no date keywords and no PublishedDate.
+func makeNoDateResults(n int) []SearchResult {
+	results := make([]SearchResult, n)
+	for i := 0; i < n; i++ {
+		results[i] = SearchResult{
+			Title:   fmt.Sprintf("Technical Document #%d", i),
+			URL:     fmt.Sprintf("https://docs.example.com/page/%d", i),
+			Content: fmt.Sprintf("This document describes configuration parameters and system architecture details for module %d.", i),
+			Engine:  "google",
+		}
+	}
+	return results
+}
+
+func BenchmarkInferDatesNoDatesLarge(b *testing.B) {
+	now := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
+	results := makeNoDateResults(100)
+	b.ReportAllocs()
+	for b.Loop() {
+		resp := &SearchResponse{Results: make([]SearchResult, len(results))}
+		copy(resp.Results, results)
+		inferDates(resp, &now)
+	}
+}
+
+// makeEntityResults generates n results with heavy HTML entities in titles and content.
+func makeEntityResults(n int) *SearchResponse {
+	results := make([]SearchResult, n)
+	entities := []string{"&amp;", "&quot;", "&lt;", "&gt;", "&#39;"}
+	for i := 0; i < n; i++ {
+		e := entities[i%len(entities)]
+		results[i] = SearchResult{
+			Title:   fmt.Sprintf("A %s B %s C %s D", e, entities[(i+1)%len(entities)], entities[(i+2)%len(entities)]),
+			URL:     fmt.Sprintf("https://example.com/entity/%d", i),
+			Content: fmt.Sprintf("Content with %s symbols & %s more %s entities %s here %s end.", e, entities[(i+1)%len(entities)], entities[(i+2)%len(entities)], entities[(i+3)%len(entities)], entities[(i+4)%len(entities)]),
+			Engine:  "google",
+		}
+	}
+	return &SearchResponse{
+		Query:           "entity test",
+		NumberOfResults: n,
+		Results:         results,
+	}
+}
+
+func BenchmarkFormatResultsWithEntities(b *testing.B) {
+	resp := makeEntityResults(50)
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = formatResults(resp)
+	}
+}
+
+func BenchmarkDeduplicateAnswersScale(b *testing.B) {
+	cases := []struct {
+		name       string
+		nAnswers   int
+		nInfoboxes int
+	}{
+		{"answers_3_infoboxes_10", 3, 10},
+		{"answers_10_infoboxes_50", 10, 50},
+		{"answers_25_infoboxes_100", 25, 100},
+	}
+	for _, tc := range cases {
+		b.Run(tc.name, func(b *testing.B) {
+			answers := make([]Answer, tc.nAnswers)
+			for i := range answers {
+				answers[i] = Answer{
+					Answer: fmt.Sprintf("Answer text number %d with some content about topic %d", i, i),
+					Engine: fmt.Sprintf("engine_%d", i%3),
+				}
+			}
+			infoboxes := make([]Infobox, tc.nInfoboxes)
+			for i := range infoboxes {
+				infoboxes[i] = Infobox{
+					Infobox: fmt.Sprintf("Topic %d", i),
+					Content: strings.Repeat(fmt.Sprintf("Content paragraph %d for testing deduplication. ", i), 20),
+				}
+			}
+			b.ReportAllocs()
+			for b.Loop() {
+				_ = deduplicateAnswers(answers, infoboxes)
+			}
+		})
+	}
+}
+
+func BenchmarkFullPipelineLarge(b *testing.B) {
+	largeResp := makeLargeSearchResponse(100)
+	data, err := json.Marshal(largeResp)
+	if err != nil {
+		b.Fatal(err)
+	}
+	now := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
+	b.ReportAllocs()
+	for b.Loop() {
+		var resp SearchResponse
+		if err := json.Unmarshal(data, &resp); err != nil {
+			b.Fatal(err)
+		}
+		resp.Answers = deduplicateAnswers(resp.Answers, resp.Infoboxes)
+		inferDates(&resp, &now)
+		_ = formatResults(&resp)
+	}
+}
+
+// ============================================================================
 // Full Pipeline Benchmark (unmarshal -> dedup -> infer -> format)
 // ============================================================================
 
