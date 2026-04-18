@@ -17,8 +17,8 @@ const Y2K_THRESHOLD = 2000
 
 // Package-level regex patterns (compiled once)
 var (
-	hourPattern = mustCompile(`(\d+)\s*(hour|hours|h|stunde|stunden)\s*(ago|vor)?`)
-	dayPattern  = mustCompile(`(\d+)\s*(day|days|d|tag|tagen)\s*(ago|vor)?`)
+	hourPattern = mustCompile(`(?i)(\d+)\s*(hour|hours|h|stunde|stunden)\s*(ago|vor)?`)
+	dayPattern  = mustCompile(`(?i)(\d+)\s*(day|days|d|tag|tagen)\s*(ago|vor)?`)
 )
 
 // mustCompile wraps regexp.Compile and panics on error for clarity
@@ -30,28 +30,58 @@ func mustCompile(pattern string) *regexp.Regexp {
 	return re
 }
 
-// mayContainRelativeDate checks for common relative-date keywords (case variants).
+// asciiCaseInsensitiveContains performs case-insensitive substring search
+// for ASCII-only patterns without allocating (no strings.ToLower).
+func asciiCaseInsensitiveContains(s, substr string) bool {
+	if substr == "" {
+		return true
+	}
+	if len(s) < len(substr) {
+		return false
+	}
+	subLen := len(substr)
+	for i := 0; i <= len(s)-subLen; i++ {
+		found := true
+		for j := 0; j < subLen; j++ {
+			sc := s[i+j]
+			pc := substr[j]
+			if sc != pc {
+				if sc >= 'A' && sc <= 'Z' {
+					sc += 32
+				} else if sc >= 'a' && sc <= 'z' {
+					sc -= 32
+				} else {
+					found = false
+					break
+				}
+				if sc != pc {
+					found = false
+					break
+				}
+			}
+		}
+		if found {
+			return true
+		}
+	}
+	return false
+}
+
+// mayContainRelativeDate checks for common relative-date keywords (case-insensitive).
 // This fast path avoids expensive ToLower + regex when content clearly has no date hint.
 func mayContainRelativeDate(content string) bool {
 	if content == "" {
 		return false
 	}
-	return strings.Contains(content, "ago") ||
-		strings.Contains(content, "Ago") ||
-		strings.Contains(content, "AGO") ||
-		strings.Contains(content, "yesterday") ||
-		strings.Contains(content, "Yesterday") ||
-		strings.Contains(content, "last week") ||
-		strings.Contains(content, "Last week") ||
-		strings.Contains(content, "Last Week") ||
-		strings.Contains(content, "vor") ||
-		strings.Contains(content, "Vor") ||
-		strings.Contains(content, "vorgestern") ||
-		strings.Contains(content, "Vorgestern") ||
-		strings.Contains(content, "stunde") ||
-		strings.Contains(content, "stunden") ||
-		strings.Contains(content, "tag") ||
-		strings.Contains(content, "tagen")
+	return asciiCaseInsensitiveContains(content, "ago") ||
+		asciiCaseInsensitiveContains(content, "yesterday") ||
+		asciiCaseInsensitiveContains(content, "last week") ||
+		asciiCaseInsensitiveContains(content, "vor") ||
+		asciiCaseInsensitiveContains(content, "vorgestern") ||
+		asciiCaseInsensitiveContains(content, "stunde") ||
+		asciiCaseInsensitiveContains(content, "stunden") ||
+		asciiCaseInsensitiveContains(content, "tag") ||
+		asciiCaseInsensitiveContains(content, "tagen")
 }
 
 func parseRelativeDate(content string, currentTime time.Time) *time.Time {
