@@ -45,6 +45,8 @@ $ ./searxng-mcp-go "apple inc"
       - Official site: https://www.apple.com/
       ...
 
+=== Results ===
+
 Found 16 results for 'apple inc':
 
 1. Apple Inc.
@@ -130,6 +132,8 @@ Query: `golang tutorial` — this query returns no Answers or Infoboxes.
 ```
 $ ./searxng-mcp-go "golang tutorial"
 
+=== Results ===
+
 Found 17 results for 'golang tutorial':
 
 1. Tutorials - The Go Programming Language
@@ -206,6 +210,7 @@ When a field in the query results has no value, the behavior is as follows:
 - `infoboxes` is empty → omit the entire `=== Infoboxes ===` section
 - `infobox.attributes` is empty → omit the `Attributes:` subsection for that infobox
 - `infobox.urls` is empty → omit the `URLs:` subsection for that infobox
+- `results` is empty → omit the entire `=== Results ===` section
 - `result.content` is empty → omit the `Summary:` line for that result
 - `result.publishedDate` is empty → omit the `Date:` line for that result
 - `suggestions` is empty → omit the entire `Suggestions:` section
@@ -227,10 +232,24 @@ When a field in the query results has no value, the behavior is as follows:
 
 1. **`answers`** — Direct answers (e.g., IP, hash, timezone, etc.), introduced by the `=== Answers ===` heading
 2. **`infoboxes`** — Knowledge panels, introduced by the `=== Infoboxes ===` heading
-3. **`results`** — Search result list, introduced by the `Found N results for 'query':` heading
+3. **`results`** — Search result list, introduced by the `=== Results ===` heading (contains the `Found N results for 'query':` summary line)
 4. **`suggestions`** — Related search suggestions, introduced by the `Suggestions:` heading
 
 Each section only appears when it contains values. Sections are separated by blank lines.
+
+#### Output Order Diagram
+
+```
+query
+  ↓
+answers
+  ↓
+infoboxes
+  ↓
+results
+  ↓
+suggestions
+```
 
 ### JSON Mode Field Order
 
