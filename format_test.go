@@ -113,6 +113,40 @@ func TestFormatResults(t *testing.T) {
 			},
 			wantContains: []string{"Found 100 results", "Result 1", "Result 2"},
 		},
+		{
+			name: "suggestions are displayed after results",
+			resp: &SearchResponse{
+				Results: []SearchResult{
+					{
+						Title:   "Result 1",
+						URL:     "https://example.com/1",
+						Content: "Content 1",
+						Engine:  "google",
+					},
+				},
+				NumberOfResults: 1,
+				Query:           "test",
+				Suggestions:     []string{"suggested query 1", "suggested query 2"},
+			},
+			wantContains: []string{"Suggestions:", "  - suggested query 1", "  - suggested query 2"},
+		},
+		{
+			name: "no suggestions block when empty",
+			resp: &SearchResponse{
+				Results: []SearchResult{
+					{
+						Title:   "Result 1",
+						URL:     "https://example.com/1",
+						Content: "Content 1",
+						Engine:  "google",
+					},
+				},
+				NumberOfResults: 1,
+				Query:           "test",
+				Suggestions:     nil,
+			},
+			wantNotContain: "Suggestions:",
+		},
 	}
 
 	for _, tt := range tests {

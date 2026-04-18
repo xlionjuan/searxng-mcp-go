@@ -52,5 +52,11 @@ func formatResults(resp *SearchResponse) string {
 		}
 		b.WriteString(fmt.Sprintf("   Engine: %s\n\n", r.Engine))
 	}
+	if len(resp.Suggestions) > 0 {
+		b.WriteString("Suggestions:\n")
+		for _, s := range resp.Suggestions {
+			b.WriteString(fmt.Sprintf("  - %s\n", s))
+		}
+	}
 	return b.String()
 }
