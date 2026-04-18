@@ -64,6 +64,7 @@ func TestParseArgs(t *testing.T) {
 		wantFlags      CLIFlags
 		wantPositional []string
 		wantErr        bool
+		errSubstr      string
 	}{
 		{
 			name:        "empty args",
@@ -109,53 +110,53 @@ func TestParseArgs(t *testing.T) {
 			wantErr:     false,
 		},
 		{
-			name:        "--searxng-url flag",
+			name:        "--searxng-url flag alone is MCP mode with args - error",
 			args:        []string{"--searxng-url", "https://example.com"},
 			wantCLIMode: false,
-			wantFlags:   CLIFlags{SearXNGURL: "https://example.com", Language: "", SafeSearch: 0, Pageno: 1},
-			wantErr:     false,
+			wantErr:     true,
+			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
-			name:        "--language flag",
+			name:        "--language flag alone is MCP mode with args - error",
 			args:        []string{"--language", "ja"},
 			wantCLIMode: false,
-			wantFlags:   CLIFlags{Language: "ja", SafeSearch: 0, Pageno: 1},
-			wantErr:     false,
+			wantErr:     true,
+			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
-			name:        "--safesearch flag",
+			name:        "--safesearch flag alone is MCP mode with args - error",
 			args:        []string{"--safesearch", "2"},
 			wantCLIMode: false,
-			wantFlags:   CLIFlags{SafeSearch: 2, Language: "", Pageno: 1},
-			wantErr:     false,
+			wantErr:     true,
+			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
-			name:        "--time_range flag",
+			name:        "--time_range flag alone is MCP mode with args - error",
 			args:        []string{"--time_range", "month"},
 			wantCLIMode: false,
-			wantFlags:   CLIFlags{TimeRange: "month", Language: "", SafeSearch: 0, Pageno: 1},
-			wantErr:     false,
+			wantErr:     true,
+			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
-			name:        "--categories flag",
+			name:        "--categories flag alone is MCP mode with args - error",
 			args:        []string{"--categories", "general,news"},
 			wantCLIMode: false,
-			wantFlags:   CLIFlags{Categories: "general,news", Language: "", SafeSearch: 0, Pageno: 1},
-			wantErr:     false,
+			wantErr:     true,
+			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
-			name:        "--engines flag",
+			name:        "--engines flag alone is MCP mode with args - error",
 			args:        []string{"--engines", "google,bing"},
 			wantCLIMode: false,
-			wantFlags:   CLIFlags{Engines: "google,bing", Language: "", SafeSearch: 0, Pageno: 1},
-			wantErr:     false,
+			wantErr:     true,
+			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
-			name:        "--pageno flag",
+			name:        "--pageno flag alone is MCP mode with args - error",
 			args:        []string{"--pageno", "5"},
 			wantCLIMode: false,
-			wantFlags:   CLIFlags{Pageno: 5, Language: "", SafeSearch: 0},
-			wantErr:     false,
+			wantErr:     true,
+			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
 			name:           "multiple flags with positional",
@@ -190,46 +191,46 @@ func TestParseArgs(t *testing.T) {
 			wantErr:        false,
 		},
 		{
-			name:        "multiple server config flags only - MCP mode",
+			name:        "multiple server config flags only - MCP mode - error",
 			args:        []string{"--searxng-url", "https://example.com", "--language", "ja", "--safesearch", "1"},
 			wantCLIMode: false,
-			wantFlags:   CLIFlags{SearXNGURL: "https://example.com", Language: "ja", SafeSearch: 1, Pageno: 1},
-			wantErr:     false,
+			wantErr:     true,
+			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
-			name:        "all server config flags without query - MCP mode",
+			name:        "all server config flags without query - MCP mode - error",
 			args:        []string{"--searxng-url", "https://example.com", "--language", "zh-tw", "--safesearch", "2", "--time_range", "month", "--categories", "general", "--engines", "google", "--pageno", "3"},
 			wantCLIMode: false,
-			wantFlags:   CLIFlags{SearXNGURL: "https://example.com", Language: "zh-tw", SafeSearch: 2, TimeRange: "month", Categories: "general", Engines: "google", Pageno: 3},
-			wantErr:     false,
+			wantErr:     true,
+			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
-			name:        "language and safesearch only - MCP mode",
+			name:        "language and safesearch only - MCP mode - error",
 			args:        []string{"--language", "fr", "--safesearch", "1"},
 			wantCLIMode: false,
-			wantFlags:   CLIFlags{Language: "fr", SafeSearch: 1, Pageno: 1},
-			wantErr:     false,
+			wantErr:     true,
+			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
-			name:        "categories and engines only - MCP mode",
+			name:        "categories and engines only - MCP mode - error",
 			args:        []string{"--categories", "news", "--engines", "bing"},
 			wantCLIMode: false,
-			wantFlags:   CLIFlags{Categories: "news", Engines: "bing", Language: "", SafeSearch: 0, Pageno: 1},
-			wantErr:     false,
+			wantErr:     true,
+			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
-			name:        "pageno only - MCP mode",
+			name:        "pageno only - MCP mode - error",
 			args:        []string{"--pageno", "2"},
 			wantCLIMode: false,
-			wantFlags:   CLIFlags{Pageno: 2, Language: "", SafeSearch: 0},
-			wantErr:     false,
+			wantErr:     true,
+			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
-			name:        "--debug flag alone - MCP mode",
+			name:        "--debug flag alone - MCP mode - error",
 			args:        []string{"--debug"},
 			wantCLIMode: false,
-			wantFlags:   CLIFlags{Debug: true, Language: "", SafeSearch: 0, Pageno: 1},
-			wantErr:     false,
+			wantErr:     true,
+			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
 			name:           "--debug flag with query",
@@ -248,6 +249,9 @@ func TestParseArgs(t *testing.T) {
 			if tt.wantErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
+				}
+				if tt.errSubstr != "" && !strings.Contains(err.Error(), tt.errSubstr) {
+					t.Errorf("error %q does not contain %q", err.Error(), tt.errSubstr)
 				}
 				return
 			}
