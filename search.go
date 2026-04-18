@@ -325,6 +325,13 @@ type SearchResponse struct {
 
 // MarshalJSON ensures JSON field ordering: query, answers, number_of_results, infoboxes, results, suggestions.
 func (r SearchResponse) MarshalJSON() ([]byte, error) {
+	// Ensure slices are empty (not nil) so JSON serializes as [] instead of null
+	if r.Results == nil {
+		r.Results = []SearchResult{}
+	}
+	if r.Suggestions == nil {
+		r.Suggestions = []string{}
+	}
 	return json.Marshal(struct {
 		Query           string         `json:"query"`
 		Answers         []Answer       `json:"answers,omitempty"`

@@ -371,12 +371,7 @@ func TestFormatResults(t *testing.T) {
 				NumberOfResults: 1,
 				Suggestions:     []string{"related query"},
 			},
-			wantContains: []string{
-				"=== Answers ===",
-				"=== Infoboxes ===",
-				"=== Results ===",
-				"=== Search Suggestions ===",
-			},
+			wantResult: "ORDERED", // sentinel: handled by index-based check below
 		},
 	}
 
@@ -385,6 +380,22 @@ func TestFormatResults(t *testing.T) {
 			result := formatResults(tt.resp)
 
 			if tt.wantResult != "" {
+				if tt.wantResult == "ORDERED" {
+					// Index-based assertion: verify section headers appear in order
+					headers := []string{"=== Answers ===", "=== Infoboxes ===", "=== Results ===", "=== Search Suggestions ==="}
+					for i := 1; i < len(headers); i++ {
+						prev := strings.Index(result, headers[i-1])
+						curr := strings.Index(result, headers[i])
+						if prev == -1 {
+							t.Errorf("expected %q in output", headers[i-1])
+						} else if curr == -1 {
+							t.Errorf("expected %q in output", headers[i])
+						} else if curr < prev {
+							t.Errorf("section order wrong: %q (pos %d) should come after %q (pos %d)", headers[i], curr, headers[i-1], prev)
+						}
+					}
+					return
+				}
 				if result != tt.wantResult {
 					t.Errorf("expected %q, got: %s", tt.wantResult, result)
 				}
