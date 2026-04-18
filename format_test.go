@@ -27,7 +27,7 @@ func TestFormatResults(t *testing.T) {
 				},
 				NumberOfResults: 1,
 			},
-			wantContains: []string{"=== Answers ===", "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043", "Engine: plugin:hash_plugin", "Hash Result"},
+			wantContains: []string{"=== Answers ===", "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043", "Engine: plugin:hash_plugin", "=== Results ===", "Hash Result"},
 		},
 		{
 			name: "multiple answers",
@@ -81,7 +81,7 @@ func TestFormatResults(t *testing.T) {
 				},
 				NumberOfResults: 1,
 			},
-			wantContains: []string{"=== Answers ===", "192.168.1.1", "=== Infoboxes ===", "Apple", "Found 1 results", "Apple - Fruit"},
+			wantContains: []string{"=== Answers ===", "192.168.1.1", "=== Infoboxes ===", "Apple", "=== Results ===", "Found 1 results", "Apple - Fruit"},
 		},
 		{
 			name: "no answers when empty",
@@ -114,7 +114,7 @@ func TestFormatResults(t *testing.T) {
 				NumberOfResults: 2,
 				Query:           "test query",
 			},
-			wantContains: []string{"Found 2 results", "test query", "Test Title 1", "https://example.com/1", "Test content 1", "Test Title 2", "Summary:"},
+			wantContains: []string{"=== Results ===", "Found 2 results", "test query", "Test Title 1", "https://example.com/1", "Test content 1", "Test Title 2", "Summary:"},
 		},
 		{
 			name:       "empty results",
@@ -135,7 +135,7 @@ func TestFormatResults(t *testing.T) {
 				NumberOfResults: 1,
 				Query:           "long content",
 			},
-			wantContains:   []string{strings.Repeat("x", MaxContentRunes), "Long Content Test"},
+			wantContains:   []string{"=== Results ===", strings.Repeat("x", MaxContentRunes), "Long Content Test"},
 			wantNotContain: strings.Repeat("x", MaxContentRunes+1),
 		},
 		{
@@ -152,7 +152,7 @@ func TestFormatResults(t *testing.T) {
 				NumberOfResults: 1,
 				Query:           "html entities",
 			},
-			wantContains: []string{"HTML Test & More <stuff>", "Test & < > entities"},
+			wantContains: []string{"=== Results ===", "HTML Test & More <stuff>", "Test & < > entities"},
 		},
 		{
 			name: "empty content is handled correctly",
@@ -190,7 +190,7 @@ func TestFormatResults(t *testing.T) {
 				NumberOfResults: 100,
 				Query:           "test",
 			},
-			wantContains: []string{"Found 100 results", "Result 1", "Result 2"},
+			wantContains: []string{"=== Results ===", "Found 100 results", "Result 1", "Result 2"},
 		},
 		{
 			name: "suggestions are displayed after results",
@@ -207,7 +207,7 @@ func TestFormatResults(t *testing.T) {
 				Query:           "test",
 				Suggestions:     []string{"suggested query 1", "suggested query 2"},
 			},
-			wantContains: []string{"Suggestions:", "  - suggested query 1", "  - suggested query 2"},
+			wantContains: []string{"=== Results ===", "Suggestions:", "  - suggested query 1", "  - suggested query 2"},
 		},
 		{
 			name: "no suggestions block when empty",
@@ -264,6 +264,7 @@ func TestFormatResults(t *testing.T) {
 				"URLs:",
 				"- Official site: https://www.apple.com",
 				"- Wikipedia: https://en.wikipedia.org/wiki/Apple_Inc.",
+				"=== Results ===",
 				"Found 2 results for 'apple inc'",
 				"Apple - Official Site",
 			},
@@ -315,6 +316,7 @@ func TestFormatResults(t *testing.T) {
 				"[1] Minimal Infobox",
 				"Attributes:",
 				"- Key: Value",
+				"=== Results ===",
 			},
 		},
 		{
@@ -339,6 +341,7 @@ func TestFormatResults(t *testing.T) {
 			},
 			wantContains: []string{
 				"=== Infoboxes ===",
+				"=== Results ===",
 				"Found 1 results",
 				"Suggestions:",
 			},

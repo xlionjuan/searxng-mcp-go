@@ -97,6 +97,7 @@ func formatResults(resp *SearchResponse) string {
 
 	// Results
 	if len(resp.Results) > 0 {
+		b.WriteString("=== Results ===\n\n")
 		total := resp.NumberOfResults
 		if total == 0 {
 			total = len(resp.Results)
