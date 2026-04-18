@@ -513,3 +513,103 @@ If only one optimization is done first, it should be this exact change set in `f
 - replace rune-count-plus-rune-slice truncation with single-pass truncation
 
 That is the highest-confidence, lowest-risk improvement in the current codebase.
+
+## After Optimization — Benchmark Results (2026-04-19)
+
+All optimizations have been implemented:
+
+- **TODO 1**: `format.go` — replaced `fmt.Sprintf` with `strings.Builder`, added `truncateRunes` single-pass truncation, merged `formatAnswers`/`formatInfoboxes` into shared builder writers
+- **TODO 2**: `date.go` — added `mayContainRelativeDate` fast-path keyword check before `ToLower`+regex
+- **TODO 3**: `format.go` — single-pass `truncateRunes` (done as part of TODO 1)
+- **TODO 4**: `search.go` — added exact-case fast path in `deduplicateAnswers` with lazy lowercase fallback
+
+Hardware: Intel Core Ultra 5 125H, Go amd64, `count=3`.
+
+### Before vs After — Existing Benchmarks
+
+Benchmark results collected at commit `97be25f` (before) and HEAD (after). Medians of 3 runs.
+
+| Benchmark | Before ns/op | After ns/op | Change | Before allocs/op | After allocs/op | Change |
+|---|---|---|---|---|---|---|
+| FormatResults | 21,351 | 10,183 | -52.3% | 141 | 9 | -93.6% |
+| FormatResultsLarge | 172,337 | 71,440 | -58.6% | 1,048 | 17 | -98.4% |
+| FormatResultsInfoboxes | 7,346 | 3,373 | -54.1% | 29 | 4 | -86.2% |
+| ParseRelativeDate/no_date | 3,735 | 218.8 | -94.1% | 1 | 0 | -100% |
+| ParseRelativeDate/hours_ago | 949.9 | 965.8 | +1.7% | 4 | 4 | 0% |
+| ParseRelativeDate/days_ago | 2,360 | 2,459 | +4.2% | 4 | 4 | 0% |
+| ParseRelativeDate/yesterday | 263.5 | 316.0 | +19.9% | 2 | 2 | 0% |
+| ParseRelativeDate/last_week | 293.8 | 378.4 | +28.8% | 2 | 2 | 0% |
+| ParseRelativeDate/german | 2,623 | 2,775 | +5.8% | 4 | 4 | 0% |
+| ParseRelativeDate/vorgestern | 215.5 | 345.5 | +60.3% | 2 | 2 | 0% |
+| InferDates | 11,607 | 9,845 | -15.2% | 42 | 40 | -4.8% |
+| DeduplicateAnswers | 5,204 | 4,781 | -8.1% | 3 | 3 | 0% |
+| DeduplicateAnswersManyInfoboxes | 63,185 | 62,001 | -1.9% | 15 | 15 | 0% |
+| FullPipeline | 145,696 | 90,444 | -37.9% | 252 | 121 | -52.0% |
+
+### Before vs After — Memory (B/op)
+
+| Benchmark | Before B/op | After B/op | Change |
+|---|---|---|---|
+| FormatResults | 13,692 | 10,856 | -20.7% |
+| FormatResultsLarge | 117,682 | 83,054 | -29.4% |
+| FormatResultsInfoboxes | 7,055 | 2,632 | -62.7% |
+| ParseRelativeDate/no_date | 64 | 0 | -100% |
+| InferDates | 1,313 | 1,284 | -2.2% |
+| DeduplicateAnswers | 2,112 | 1,952 | -7.6% |
+| DeduplicateAnswersManyInfoboxes | 10,936 | 10,648 | -2.6% |
+| FullPipeline | 28,140 | 20,738 | -26.3% |
+
+### New Benchmarks (After Only)
+
+These benchmarks were added per the "Additional Benchmarks Needed" section above.
+
+| Benchmark | ns/op | B/op | allocs/op |
+|---|---|---|---|
+| FormatResultsLongContent | 1,055,182 | 631,016 | 13 |
+| InferDatesNoDatesLarge | 70,133 | 9,472 | 1 |
+| FormatResultsWithEntities | 54,280 | 40,936 | 163 |
+| DeduplicateAnswersScale/answers_3_infoboxes_10 | 58,117 | 10,736 | 15 |
+| DeduplicateAnswersScale/answers_10_infoboxes_50 | 637,772 | 53,216 | 62 |
+| DeduplicateAnswersScale/answers_25_infoboxes_100 | 2,882,324 | 107,072 | 127 |
+| FullPipelineLarge | 427,793 | 127,672 | 663 |
+
+### Summary Of Improvements
+
+**Formatting (TODO 1 + TODO 3) — biggest wins:**
+
+- `FormatResults`: 52% faster, 94% fewer allocations
+- `FormatResultsLarge`: 59% faster, 98% fewer allocations
+- `FormatResultsInfoboxes`: 54% faster, 86% fewer allocations
+- Eliminated `fmt.Sprintf` entirely from `format.go`; all formatting now uses a single shared `strings.Builder`
+- Single-pass `truncateRunes` replaces double-pass `RuneCountInString` + `[]rune` slicing
+
+**Date parsing (TODO 2) — fast path dominates:**
+
+- `ParseRelativeDate/no_date` (the common case): 94% faster, zero allocations (was 1 alloc/op for regex)
+- `InferDates`: 15% faster overall (benefits from no-date fast path across results)
+- Hit-path cases (hours_ago, days_ago, etc.) show minor regression (1–60%) due to the cost of the `mayContainRelativeDate` keyword scan before regex. This is an acceptable tradeoff since the no-date case dominates in real workloads.
+- `vorgestern` shows the largest hit-path regression (+60%) because the fast-path does 16+ `strings.Contains` checks before finding a match. This could be optimized later with a folded-case single-pass scanner if needed.
+
+**Deduplication (TODO 4) — modest wins:**
+
+- `DeduplicateAnswers`: 8% faster, 8% less memory
+- `DeduplicateAnswersManyInfoboxes`: 2% faster
+- The exact-case fast path avoids unnecessary lowercasing when content already matches
+
+**Full pipeline:**
+
+- `FullPipeline`: 38% faster, 52% fewer allocations, 26% less memory
+- This reflects the compounding effect of formatting + date parsing improvements
+
+### TODO Status
+
+- [x] TODO 1: Replace `fmt.Sprintf` with `strings.Builder` in formatting — **DONE**
+- [x] TODO 2: Add fast-path keyword check before regex in `parseRelativeDate` — **DONE**
+- [x] TODO 3: Optimize content truncation single-pass — **DONE** (implemented as part of TODO 1)
+- [x] TODO 4: Avoid redundant lowercase/search work in `deduplicateAnswers` — **DONE**
+
+### Potential Follow-Up Optimizations
+
+1. **`mayContainRelativeDate` hit-path cost**: The 16+ `strings.Contains` checks add ~100–130ns to hit-path cases. Could be replaced with a single-pass ASCII-fold scanner.
+2. **`Builder.Grow` pre-allocation**: `formatResults` could pre-estimate output size and call `b.Grow(estimate)` to reduce buffer growth overhead.
+3. **`deduplicateAnswers` scaling**: At 25 answers × 100 infoboxes, it takes ~2.9ms. If this becomes a bottleneck, restrict matching to content prefixes instead of full-body substring search.
