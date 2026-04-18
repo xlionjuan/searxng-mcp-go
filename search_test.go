@@ -647,3 +647,142 @@ func TestPerformSearch_POSTtoGETFallback(t *testing.T) {
 		t.Errorf("GET query safesearch = %q, want %q", getQuery.Get("safesearch"), "1")
 	}
 }
+
+// --- deduplicateAnswers tests ---
+
+func TestDeduplicateAnswers_EmptyInputs(t *testing.T) {
+	// Both empty
+	result := deduplicateAnswers(nil, nil)
+	if len(result) != 0 {
+		t.Errorf("expected 0, got %d", len(result))
+	}
+
+	// Empty answers
+	result = deduplicateAnswers(nil, []Infobox{{Infobox: "test", Content: "content"}})
+	if len(result) != 0 {
+		t.Errorf("expected 0, got %d", len(result))
+	}
+
+	// Empty infoboxes
+	answers := []Answer{{Answer: "test", Engine: "duckduckgo"}}
+	result = deduplicateAnswers(answers, nil)
+	if len(result) != 1 {
+		t.Errorf("expected 1, got %d", len(result))
+	}
+}
+
+func TestDeduplicateAnswers_RemovesDuplicateWikipedia(t *testing.T) {
+	// Simulate DuckDuckGo putting Wikipedia summary in both answers and infoboxes
+	wikiSummary := "Apple Inc. is an American multinational technology company headquartered in Cupertino, California."
+	answers := []Answer{
+		{Answer: wikiSummary, Engine: "duckduckgo"},
+	}
+	infoboxes := []Infobox{
+		{Infobox: "Apple Inc.", Content: wikiSummary},
+	}
+
+	result := deduplicateAnswers(answers, infoboxes)
+	if len(result) != 0 {
+		t.Errorf("expected 0 (duplicate removed), got %d: %+v", len(result), result)
+	}
+}
+
+func TestDeduplicateAnswers_RemovesPrefixMatch(t *testing.T) {
+	// Answer is a prefix of infobox content (truncated answer)
+	answers := []Answer{
+		{Answer: "Apple Inc. is an American multinational technology company", Engine: "duckduckgo"},
+	}
+	infoboxes := []Infobox{
+		{Infobox: "Apple Inc.", Content: "Apple Inc. is an American multinational technology company headquartered in Cupertino, California."},
+	}
+
+	result := deduplicateAnswers(answers, infoboxes)
+	if len(result) != 0 {
+		t.Errorf("expected 0 (prefix match removed), got %d", len(result))
+	}
+}
+
+func TestDeduplicateAnswers_KeepsDistinctAnswer(t *testing.T) {
+	// "ip" query: answer is an IP address, infobox has unrelated content
+	answers := []Answer{
+		{Answer: "203.0.113.42", Engine: "ip"},
+	}
+	infoboxes := []Infobox{
+		{Infobox: "IP Address", Content: "An Internet Protocol address is a numerical label."},
+	}
+
+	result := deduplicateAnswers(answers, infoboxes)
+	if len(result) != 1 {
+		t.Errorf("expected 1 (distinct answer kept), got %d", len(result))
+	}
+	if result[0].Answer != "203.0.113.42" {
+		t.Errorf("expected '203.0.113.42', got %q", result[0].Answer)
+	}
+}
+
+func TestDeduplicateAnswers_CaseInsensitive(t *testing.T) {
+	answers := []Answer{
+		{Answer: "apple inc. is an american company", Engine: "duckduckgo"},
+	}
+	infoboxes := []Infobox{
+		{Infobox: "Apple Inc.", Content: "Apple Inc. is an American company headquartered in California."},
+	}
+
+	result := deduplicateAnswers(answers, infoboxes)
+	if len(result) != 0 {
+		t.Errorf("expected 0 (case-insensitive match), got %d", len(result))
+	}
+}
+
+func TestDeduplicateAnswers_InfoboxContentOnly(t *testing.T) {
+	// Infobox with empty content should not cause filtering
+	answers := []Answer{
+		{Answer: "test answer", Engine: "test"},
+	}
+	infoboxes := []Infobox{
+		{Infobox: "Test", Content: ""},
+		{Infobox: "Test2", Content: ""},
+	}
+
+	result := deduplicateAnswers(answers, infoboxes)
+	if len(result) != 1 {
+		t.Errorf("expected 1 (no content to match), got %d", len(result))
+	}
+}
+
+func TestDeduplicateAnswers_MultipleAnswersMixed(t *testing.T) {
+	wikiSummary := "Apple Inc. is an American multinational technology company."
+	answers := []Answer{
+		{Answer: wikiSummary, Engine: "duckduckgo"},
+		{Answer: "203.0.113.42", Engine: "ip"},
+	}
+	infoboxes := []Infobox{
+		{Infobox: "Apple Inc.", Content: wikiSummary},
+	}
+
+	result := deduplicateAnswers(answers, infoboxes)
+	if len(result) != 1 {
+		t.Errorf("expected 1 (only IP answer kept), got %d", len(result))
+	}
+	if result[0].Answer != "203.0.113.42" {
+		t.Errorf("expected '203.0.113.42', got %q", result[0].Answer)
+	}
+}
+
+func TestDeduplicateAnswers_EmptyAnswerSkipped(t *testing.T) {
+	answers := []Answer{
+		{Answer: "", Engine: "duckduckgo"},
+		{Answer: "valid answer", Engine: "test"},
+	}
+	infoboxes := []Infobox{
+		{Infobox: "Test", Content: "some content"},
+	}
+
+	result := deduplicateAnswers(answers, infoboxes)
+	if len(result) != 1 {
+		t.Errorf("expected 1, got %d", len(result))
+	}
+	if result[0].Answer != "valid answer" {
+		t.Errorf("expected 'valid answer', got %q", result[0].Answer)
+	}
+}
