@@ -1,10 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"html"
+	"strconv"
 	"strings"
-	"unicode/utf8"
 )
 
 // ============================================================================
@@ -20,58 +19,87 @@ func unescapeIfNeeded(s string) string {
 	return html.UnescapeString(s)
 }
 
-// formatAnswers formats direct answers as a readable string.
-func formatAnswers(answers []Answer) string {
-	if len(answers) == 0 {
+// truncateRunes truncates s to at most limit runes in a single pass.
+// It returns the original string unchanged if already within the limit.
+func truncateRunes(s string, limit int) string {
+	if limit <= 0 || s == "" {
 		return ""
 	}
-	var b strings.Builder
-	b.WriteString("=== Answers ===\n\n")
-	for i, a := range answers {
-		b.WriteString(fmt.Sprintf("[%d] %s\n", i+1, a.Answer))
-		if a.Engine != "" {
-			b.WriteString(fmt.Sprintf("    Engine: %s\n", a.Engine))
+	runeCount := 0
+	for i := range s {
+		if runeCount == limit {
+			return s[:i]
 		}
+		runeCount++
 	}
-	b.WriteString("\n")
-	return b.String()
+	return s
 }
 
-// formatInfoboxes formats infoboxes as a readable string.
-func formatInfoboxes(infoboxes []Infobox) string {
-	if len(infoboxes) == 0 {
-		return ""
+// writeAnswers writes formatted direct answers to b.
+func writeAnswers(b *strings.Builder, answers []Answer) {
+	if len(answers) == 0 {
+		return
 	}
-	var b strings.Builder
+	b.WriteString("=== Answers ===\n\n")
+	for i, a := range answers {
+		b.WriteByte('[')
+		b.WriteString(strconv.Itoa(i + 1))
+		b.WriteString("] ")
+		b.WriteString(a.Answer)
+		b.WriteByte('\n')
+		if a.Engine != "" {
+			b.WriteString("    Engine: ")
+			b.WriteString(a.Engine)
+			b.WriteByte('\n')
+		}
+	}
+	b.WriteByte('\n')
+}
+
+// writeInfoboxes writes formatted infoboxes to b.
+func writeInfoboxes(b *strings.Builder, infoboxes []Infobox) {
+	if len(infoboxes) == 0 {
+		return
+	}
 	b.WriteString("=== Infoboxes ===\n\n")
 	for i, ib := range infoboxes {
-		b.WriteString(fmt.Sprintf("[%d] %s\n", i+1, ib.Infobox))
+		b.WriteByte('[')
+		b.WriteString(strconv.Itoa(i + 1))
+		b.WriteString("] ")
+		b.WriteString(ib.Infobox)
+		b.WriteByte('\n')
 		if ib.Content != "" {
 			content := unescapeIfNeeded(ib.Content)
-			if utf8.RuneCountInString(content) > MaxContentRunes {
-				runes := []rune(content)
-				content = string(runes[:MaxContentRunes])
-			}
-			b.WriteString(fmt.Sprintf("    %s\n", content))
+			content = truncateRunes(content, MaxContentRunes)
+			b.WriteString("    ")
+			b.WriteString(content)
+			b.WriteByte('\n')
 		}
 		if len(ib.Attributes) > 0 {
 			b.WriteString("    Attributes:\n")
 			for _, attr := range ib.Attributes {
-				b.WriteString(fmt.Sprintf("      - %s: %s\n", attr.Label, attr.Value))
+				b.WriteString("      - ")
+				b.WriteString(attr.Label)
+				b.WriteString(": ")
+				b.WriteString(attr.Value)
+				b.WriteByte('\n')
 			}
 		}
 		if len(ib.URLs) > 0 {
 			b.WriteString("    URLs:\n")
 			for _, u := range ib.URLs {
-				b.WriteString(fmt.Sprintf("      - %s: %s\n", u.Title, u.URL))
+				b.WriteString("      - ")
+				b.WriteString(u.Title)
+				b.WriteString(": ")
+				b.WriteString(u.URL)
+				b.WriteByte('\n')
 			}
 		}
 		if i < len(infoboxes)-1 {
-			b.WriteString("\n")
+			b.WriteByte('\n')
 		}
 	}
-	b.WriteString("\n")
-	return b.String()
+	b.WriteByte('\n')
 }
 
 // formatResults formats search results as a readable string
@@ -86,14 +114,10 @@ func formatResults(resp *SearchResponse) string {
 	var b strings.Builder
 
 	// Answers first (direct answers like IP, hash, timezone)
-	if ansText := formatAnswers(resp.Answers); ansText != "" {
-		b.WriteString(ansText)
-	}
+	writeAnswers(&b, resp.Answers)
 
 	// Infoboxes
-	if ibText := formatInfoboxes(resp.Infoboxes); ibText != "" {
-		b.WriteString(ibText)
-	}
+	writeInfoboxes(&b, resp.Infoboxes)
 
 	// Results
 	if len(resp.Results) > 0 {
@@ -102,23 +126,35 @@ func formatResults(resp *SearchResponse) string {
 		if total == 0 {
 			total = len(resp.Results)
 		}
-		b.WriteString(fmt.Sprintf("Found %d results for '%s':\n\n", total, resp.Query))
+		b.WriteString("Found ")
+		b.WriteString(strconv.Itoa(total))
+		b.WriteString(" results for '")
+		b.WriteString(resp.Query)
+		b.WriteString("':\n\n")
 		for i, r := range resp.Results {
 			title := unescapeIfNeeded(r.Title)
-			b.WriteString(fmt.Sprintf("%d. %s\n", i+1, title))
-			b.WriteString(fmt.Sprintf("   URL: %s\n", r.URL))
+			b.WriteString(strconv.Itoa(i + 1))
+			b.WriteString(". ")
+			b.WriteString(title)
+			b.WriteByte('\n')
+			b.WriteString("   URL: ")
+			b.WriteString(r.URL)
+			b.WriteByte('\n')
 			if r.Content != "" {
 				content := unescapeIfNeeded(r.Content)
-				if utf8.RuneCountInString(content) > MaxContentRunes {
-					runes := []rune(content)
-					content = string(runes[:MaxContentRunes])
-				}
-				b.WriteString(fmt.Sprintf("   Summary: %s\n", content))
+				content = truncateRunes(content, MaxContentRunes)
+				b.WriteString("   Summary: ")
+				b.WriteString(content)
+				b.WriteByte('\n')
 			}
 			if r.PublishedDate != nil && *r.PublishedDate != "" {
-				b.WriteString(fmt.Sprintf("   Date: %s\n", *r.PublishedDate))
+				b.WriteString("   Date: ")
+				b.WriteString(*r.PublishedDate)
+				b.WriteByte('\n')
 			}
-			b.WriteString(fmt.Sprintf("   Engine: %s\n\n", r.Engine))
+			b.WriteString("   Engine: ")
+			b.WriteString(r.Engine)
+			b.WriteString("\n\n")
 		}
 	}
 
@@ -126,7 +162,9 @@ func formatResults(resp *SearchResponse) string {
 	if len(resp.Suggestions) > 0 {
 		b.WriteString("=== Search Suggestions ===\n\n")
 		for _, s := range resp.Suggestions {
-			b.WriteString(fmt.Sprintf("  - %s\n", s))
+			b.WriteString("  - ")
+			b.WriteString(s)
+			b.WriteByte('\n')
 		}
 	}
 	return b.String()
