@@ -207,7 +207,7 @@ func TestFormatResults(t *testing.T) {
 				Query:           "test",
 				Suggestions:     []string{"suggested query 1", "suggested query 2"},
 			},
-			wantContains: []string{"=== Results ===", "Suggestions:", "  - suggested query 1", "  - suggested query 2"},
+			wantContains: []string{"=== Results ===", "=== Search Suggestions ===", "  - suggested query 1", "  - suggested query 2"},
 		},
 		{
 			name: "no suggestions block when empty",
@@ -224,7 +224,7 @@ func TestFormatResults(t *testing.T) {
 				Query:           "test",
 				Suggestions:     nil,
 			},
-			wantNotContain: "Suggestions:",
+			wantNotContain: "=== Search Suggestions ===",
 		},
 		{
 			name: "infoboxes displayed before results",
@@ -343,7 +343,7 @@ func TestFormatResults(t *testing.T) {
 				"=== Infoboxes ===",
 				"=== Results ===",
 				"Found 1 results",
-				"Suggestions:",
+				"=== Search Suggestions ===",
 			},
 		},
 	}

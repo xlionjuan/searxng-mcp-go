@@ -61,7 +61,7 @@ Found 16 results for 'apple inc':
 
 ...
 
-Suggestions:
+=== Search Suggestions ===
   - Apple app
   - Retail companies of the United States
   - Apple Store locations
@@ -153,7 +153,7 @@ Found 17 results for 'golang tutorial':
 
 ...
 
-Suggestions:
+=== Search Suggestions ===
   - Best Golang tutorial
   - Golang tutorial interactive
   - Golang tutorial w3schools
@@ -213,7 +213,7 @@ When a field in the query results has no value, the behavior is as follows:
 - `results` is empty → omit the entire `=== Results ===` section
 - `result.content` is empty → omit the `Summary:` line for that result
 - `result.publishedDate` is empty → omit the `Date:` line for that result
-- `suggestions` is empty → omit the entire `Suggestions:` section
+- `suggestions` is empty → omit the entire `=== Search Suggestions ===` section
 
 **JSON mode:**
 - `answers` is empty → no `answers` key in the JSON
@@ -233,7 +233,7 @@ When a field in the query results has no value, the behavior is as follows:
 1. **`answers`** — Direct answers (e.g., IP, hash, timezone, etc.), introduced by the `=== Answers ===` heading
 2. **`infoboxes`** — Knowledge panels, introduced by the `=== Infoboxes ===` heading
 3. **`results`** — Search result list, introduced by the `=== Results ===` heading (contains the `Found N results for 'query':` summary line)
-4. **`suggestions`** — Related search suggestions, introduced by the `Suggestions:` heading
+4. **`suggestions`** — Related search suggestions, introduced by the `=== Search Suggestions ===` heading
 
 Each section only appears when it contains values. Sections are separated by blank lines.
 
