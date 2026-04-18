@@ -413,3 +413,29 @@ func TestFormatResults(t *testing.T) {
 		})
 	}
 }
+
+func TestFormatResults_NilInput(t *testing.T) {
+	if got := formatResults(nil); got != "No results found." {
+		t.Fatalf("formatResults(nil) = %q, want %q", got, "No results found.")
+	}
+}
+
+func TestFormatResults_PublishedDate(t *testing.T) {
+	date := "2024-06-10"
+	resp := &SearchResponse{
+		Query:           "test",
+		NumberOfResults: 1,
+		Results: []SearchResult{{
+			Title:         "Result",
+			URL:           "https://example.com",
+			Content:       "Content",
+			Engine:        "google",
+			PublishedDate: &date,
+		}},
+	}
+
+	got := formatResults(resp)
+	if !strings.Contains(got, "Date: 2024-06-10") {
+		t.Fatalf("expected published date in output, got: %s", got)
+	}
+}

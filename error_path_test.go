@@ -163,10 +163,23 @@ func TestPerformSearch_UnexpectedContentType(t *testing.T) {
 		t.Fatal("expected error for unexpected content type, got nil")
 	}
 
-	// Should be a SearXNGError
 	var searxngErr *SearXNGError
 	if !errors.As(err, &searxngErr) {
 		t.Errorf("expected *SearXNGError, got type %T: %v", err, err)
+		return
+	}
+
+	if searxngErr.StatusCode != http.StatusOK {
+		t.Fatalf("StatusCode = %d, want %d", searxngErr.StatusCode, http.StatusOK)
+	}
+	if searxngErr.RespContentType != "text/plain" {
+		t.Fatalf("RespContentType = %q, want %q", searxngErr.RespContentType, "text/plain")
+	}
+	if searxngErr.UnderlyingErr == nil || searxngErr.UnderlyingErr.Error() != "unexpected content type: expected application/json" {
+		t.Fatalf("UnderlyingErr = %v, want unexpected content type error", searxngErr.UnderlyingErr)
+	}
+	if got, want := err.Error(), "searxng error (status 200) - content-type text/plain: unexpected content type: expected application/json"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
 	}
 }
 

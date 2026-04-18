@@ -96,6 +96,8 @@ func TestConcurrentContextCancellation(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(numGoroutines)
 
+	var successCount int64
+	var errorCount int64
 	errChan := make(chan error, numGoroutines)
 
 	for i := 0; i < numGoroutines; i++ {
@@ -106,8 +108,11 @@ func TestConcurrentContextCancellation(t *testing.T) {
 
 			_, err := performSearch(ctx, cfg, &SearchArgs{Query: "test"})
 			if err != nil {
+				atomic.AddInt64(&errorCount, 1)
 				errChan <- err
+				return
 			}
+			atomic.AddInt64(&successCount, 1)
 		}(i)
 	}
 
@@ -115,7 +120,15 @@ func TestConcurrentContextCancellation(t *testing.T) {
 	close(errChan)
 
 	count := atomic.LoadInt64(&requestCount)
-	t.Logf("Total requests made before cancellation: %d", count)
+	if count == 0 {
+		t.Fatal("expected at least one request to start before cancellation")
+	}
+	if successCount != 0 {
+		t.Fatalf("successCount = %d, want 0", successCount)
+	}
+	if errorCount != numGoroutines {
+		t.Fatalf("errorCount = %d, want %d", errorCount, numGoroutines)
+	}
 
 	// Check errors are context-related
 	for err := range errChan {
@@ -262,7 +275,9 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping shared state race test in short mode")
 	}
+	requestCount := int64(0)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt64(&requestCount, 1)
 		searchResp := SearchResponse{
 			Results: []SearchResult{
 				{Title: "Result", URL: "https://example.com/1", Content: "Content", Engine: "google"},
@@ -292,6 +307,7 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 
 	var wg sync.WaitGroup
 	const numGoroutines = 50
+	var errorCount int64
 
 	wg.Add(numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
@@ -301,12 +317,20 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 			ctx := context.Background()
 			_, err := searcher.Search(ctx, &SearchArgs{Query: "race_test"})
 			if err != nil {
+				atomic.AddInt64(&errorCount, 1)
 				t.Errorf("Search error: %v", err)
 			}
 		}(i)
 	}
 
 	wg.Wait()
+
+	if errorCount != 0 {
+		t.Fatalf("errorCount = %d, want 0", errorCount)
+	}
+	if got := atomic.LoadInt64(&requestCount); got != numGoroutines {
+		t.Fatalf("requestCount = %d, want %d", got, numGoroutines)
+	}
 }
 
 // TestSearcherThreadSafety tests that a single searcher can handle concurrent requests
@@ -417,67 +441,6 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 	}
 
 	t.Logf("Requests made: %d, Completed: %d", atomic.LoadInt64(&requestCount), atomic.LoadInt64(&completedCount))
-}
-
-// TestGracefulShutdownWithSignal tests that the server handles termination signals gracefully
-func TestGracefulShutdownWithSignal(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping signal shutdown stress test in short mode")
-	}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		searchResp := SearchResponse{
-			Results:         []SearchResult{},
-			NumberOfResults: 0,
-			Query:           "test",
-		}
-		body, _ := json.Marshal(searchResp)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-	}))
-	defer server.Close()
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    5 * time.Second, // Shorter timeout for signal test
-	}
-
-	// Create a cancellable context simulating SIGINT/SIGTERM
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	searcher, _ := NewSearXNGSearcher(server.URL, cfg.Timeout, nil)
-
-	// Start multiple searches
-	var wg sync.WaitGroup
-	const numGoroutines = 10
-
-	wg.Add(numGoroutines)
-	errChan := make(chan error, numGoroutines)
-
-	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
-			defer wg.Done()
-			_, err := searcher.Search(ctx, &SearchArgs{Query: "test"})
-			if err != nil && ctx.Err() == nil {
-				errChan <- err
-			}
-		}(i)
-	}
-
-	// Simulate signal after a short delay
-	time.Sleep(50 * time.Millisecond)
-	cancel()
-
-	wg.Wait()
-	close(errChan)
-
-	for err := range errChan {
-		// Errors after cancellation are expected
-		if !strings.Contains(err.Error(), "context canceled") && !strings.Contains(err.Error(), "request canceled") {
-			t.Errorf("Unexpected error after signal: %v", err)
-		}
-	}
 }
 
 // TestContextDeadlineExceededDuringSearch tests behavior when context deadline expires during search
@@ -598,6 +561,8 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 
 	var wg sync.WaitGroup
 	const numGoroutines = 50
+	var validationErrors int64
+	var searchErrors int64
 
 	wg.Add(numGoroutines * 2)
 
@@ -610,7 +575,10 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 				Language:   "en",
 				SafeSearch: 0,
 			}
-			_ = ValidateSearchArgs(args)
+			if err := ValidateSearchArgs(args); err != nil {
+				atomic.AddInt64(&validationErrors, 1)
+				t.Errorf("unexpected validation error: %v", err)
+			}
 		}(i)
 	}
 
@@ -619,11 +587,21 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			ctx := context.Background()
-			_, _ = searcher.Search(ctx, &SearchArgs{Query: "test"})
+			if _, err := searcher.Search(ctx, &SearchArgs{Query: "test"}); err != nil {
+				atomic.AddInt64(&searchErrors, 1)
+				t.Errorf("search error: %v", err)
+			}
 		}(i)
 	}
 
 	wg.Wait()
+
+	if validationErrors != 0 {
+		t.Fatalf("validationErrors = %d, want 0", validationErrors)
+	}
+	if searchErrors != 0 {
+		t.Fatalf("searchErrors = %d, want 0", searchErrors)
+	}
 }
 
 // TestSharedSearcherAcrossGoroutines tests the same searcher being used by many goroutines

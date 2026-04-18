@@ -265,7 +265,8 @@ func BenchmarkMarshalJSONLarge(b *testing.B) {
 
 // Standard json.Marshal for comparison
 func BenchmarkStdMarshalJSON(b *testing.B) {
-	resp := makeLargeSearchResponse(10)
+	type stdSearchResponse SearchResponse
+	resp := stdSearchResponse(*makeLargeSearchResponse(10))
 	b.ReportAllocs()
 	for b.Loop() {
 		if _, err := json.Marshal(resp); err != nil {
@@ -299,13 +300,13 @@ func BenchmarkFormatResultsInfoboxes(b *testing.B) {
 		Query:           "test",
 		NumberOfResults: 1,
 		Infoboxes: []Infobox{
-		{
-			Infobox: "Test",
-			Content: strings.Repeat("Content paragraph. ", 50),
-			Attributes: []InfoboxAttribute{
-				{Label: "Key1", Value: "Value1"},
-				{Label: "Key2", Value: "Value2"},
-			},
+			{
+				Infobox: "Test",
+				Content: strings.Repeat("Content paragraph. ", 50),
+				Attributes: []InfoboxAttribute{
+					{Label: "Key1", Value: "Value1"},
+					{Label: "Key2", Value: "Value2"},
+				},
 				URLs: []InfoboxURL{
 					{Title: "Link", URL: "https://example.com"},
 				},

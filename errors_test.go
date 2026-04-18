@@ -138,11 +138,8 @@ func TestSearXNGError_ResponseBodyField(t *testing.T) {
 		t.Fatalf("expected *SearXNGError, got type %T", err)
 	}
 
-	if searxngErr.ResponseBody == "" {
-		t.Error("ResponseBody should not be empty when body is provided")
-	}
-	if searxngErr.ResponseBody == "error details here" {
-		t.Log("ResponseBody is exact match - truncation works correctly")
+	if got, want := searxngErr.ResponseBody, "error details here"; got != want {
+		t.Fatalf("ResponseBody = %q, want %q", got, want)
 	}
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -219,6 +220,136 @@ func TestPerformSearch_OptionalParams(t *testing.T) {
 				t.Errorf("param %q = %q, want %q", tt.param, capturedParams.Get(tt.param), tt.wantVal)
 			}
 		})
+	}
+}
+
+func TestPerformSearch_SearchPathNormalization(t *testing.T) {
+	tests := []struct {
+		name     string
+		baseURL  string
+		wantPath string
+	}{
+		{name: "root path", baseURL: "", wantPath: "/search"},
+		{name: "nested path", baseURL: "/api/", wantPath: "/api/search"},
+		{name: "existing search suffix", baseURL: "/search", wantPath: "/search"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotPath string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotPath = r.URL.Path
+				searchResp := SearchResponse{Results: []SearchResult{}, NumberOfResults: 0, Query: "test"}
+				body, _ := json.Marshal(searchResp)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write(body)
+			}))
+			defer server.Close()
+
+			cfg := &Config{SearXNGURL: server.URL + tt.baseURL, Timeout: 30 * time.Second}
+			_, err := performSearch(t.Context(), cfg, &SearchArgs{Query: "test"})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if gotPath != tt.wantPath {
+				t.Fatalf("request path = %q, want %q", gotPath, tt.wantPath)
+			}
+		})
+	}
+}
+
+func TestPerformSearch_UnsupportedBodySizes(t *testing.T) {
+	t.Run("oversized error body", func(t *testing.T) {
+		body := strings.Repeat("e", MaxErrorBodySize+1)
+
+		cfg := &Config{
+			SearXNGURL: "https://example.com",
+			Timeout:    30 * time.Second,
+			HTTPClient: newStaticResponseClient(http.StatusInternalServerError, "text/plain", body),
+		}
+		_, err := performSearch(t.Context(), cfg, &SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var searxngErr *SearXNGError
+		if !errors.As(err, &searxngErr) {
+			t.Fatalf("expected *SearXNGError, got %T", err)
+		}
+		if !strings.Contains(err.Error(), "error response body exceeded maximum size limit") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(searxngErr.ResponseBody) != MaxErrorDisplayChars {
+			t.Fatalf("ResponseBody length = %d, want %d", len(searxngErr.ResponseBody), MaxErrorDisplayChars)
+		}
+	})
+
+	t.Run("oversized success body", func(t *testing.T) {
+		body := strings.Repeat("s", MaxResponseBodySize+1)
+
+		cfg := &Config{
+			SearXNGURL: "https://example.com",
+			Timeout:    30 * time.Second,
+			HTTPClient: newStaticResponseClient(http.StatusOK, "application/json", body),
+		}
+		_, err := performSearch(t.Context(), cfg, &SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var searxngErr *SearXNGError
+		if !errors.As(err, &searxngErr) {
+			t.Fatalf("expected *SearXNGError, got %T", err)
+		}
+		if !strings.Contains(err.Error(), "response body exceeded maximum size limit") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(searxngErr.ResponseBody) != MaxErrorDisplayChars {
+			t.Fatalf("ResponseBody length = %d, want %d", len(searxngErr.ResponseBody), MaxErrorDisplayChars)
+		}
+	})
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+func newStaticResponseClient(statusCode int, contentType, body string) *http.Client {
+	return &http.Client{
+		Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+			headers := make(http.Header)
+			headers.Set("Content-Type", contentType)
+			return &http.Response{
+				StatusCode: statusCode,
+				Header:     headers,
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	}
+}
+
+func TestPerformSearch_EmptyHTMLBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cfg := &Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+	_, err := performSearch(t.Context(), cfg, &SearchArgs{Query: "test"})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	var htmlErr *HTMLResponseError
+	if !errors.As(err, &htmlErr) {
+		t.Fatalf("expected *HTMLResponseError, got %T", err)
+	}
+	if htmlErr.Body != "" {
+		t.Fatalf("Body = %q, want empty string", htmlErr.Body)
+	}
+	if err.Error() != "searxng returned html instead of json - json output may not be enabled on the server" {
+		t.Fatalf("unexpected error text: %v", err)
 	}
 }
 
@@ -461,7 +592,6 @@ func intPtr(i int) *int {
 	return &i
 }
 
-
 // Test that performSearch properly encodes query parameters
 func TestPerformSearch_QueryEncoding(t *testing.T) {
 	var capturedQuery string
@@ -510,10 +640,8 @@ func TestNewSearXNGSearcher_URLValidation(t *testing.T) {
 		wantErr   bool
 		errSubstr string
 	}{
-		{"empty URL", "", true, "cannot be empty"},
-		{"no scheme", "search.example.com", true, "http or https scheme"},
-		{"ftp scheme", "ftp://search.example.com", true, "http or https scheme"},
-		{"relative path only", "/search", true, "http or https scheme"},
+		{"valid URL", "https://search.example.com", false, ""},
+		{"invalid URL is wrapped", "search.example.com", true, "NewSearXNGSearcher: url must use http or https scheme"},
 	}
 
 	for _, tt := range tests {
@@ -577,74 +705,62 @@ func TestPerformSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 }
 
 func TestPerformSearch_POSTtoGETFallback(t *testing.T) {
-	var postReq *http.Request
-	var getReq *http.Request
-	var postHadQueryParams bool
-
-	searchResp := SearchResponse{
-		Results:         []SearchResult{},
-		NumberOfResults: 0,
-		Query:           "test",
-	}
-	body, _ := json.Marshal(searchResp)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" {
-			postReq = r
-			postHadQueryParams = r.URL.RawQuery != ""
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-		if r.Method == "GET" {
-			getReq = r
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			w.Write(body)
-			return
-		}
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer server.Close()
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-	}
-	args := &SearchArgs{Query: "test search", Language: "en", SafeSearch: 1}
-
-	ctx := t.Context()
-	result, err := performSearch(ctx, cfg, args)
-
-	if err != nil {
-		t.Fatalf("unexpected error after fallback: %v", err)
-	}
-	if result == nil {
-		t.Fatal("expected result, got nil")
+	tests := []struct {
+		name       string
+		statusCode int
+	}{
+		{name: "405 fallback", statusCode: http.StatusMethodNotAllowed},
+		{name: "501 fallback", statusCode: http.StatusNotImplemented},
 	}
 
-	if postReq == nil {
-		t.Fatal("POST request was never made")
-	}
-	if getReq == nil {
-		t.Fatal("GET fallback was never called")
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var postReq *http.Request
+			var getReq *http.Request
+			searchResp := SearchResponse{Results: []SearchResult{}, NumberOfResults: 0, Query: "test"}
+			body, _ := json.Marshal(searchResp)
 
-	if postHadQueryParams {
-		t.Error("POST request had query params in URI - query should only be in body")
-	}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == "POST" {
+					postReq = r
+					w.WriteHeader(tt.statusCode)
+					return
+				}
+				if r.Method == "GET" {
+					getReq = r
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+					w.Write(body)
+					return
+				}
+				w.WriteHeader(http.StatusInternalServerError)
+			}))
+			defer server.Close()
 
-	getQuery := getReq.URL.Query()
-	if getQuery.Get("q") != "test search" {
-		t.Errorf("GET query q = %q, want %q", getQuery.Get("q"), "test search")
-	}
-	if getQuery.Get("format") != "json" {
-		t.Errorf("GET query format = %q, want %q", getQuery.Get("format"), "json")
-	}
-	if getQuery.Get("language") != "en" {
-		t.Errorf("GET query language = %q, want %q", getQuery.Get("language"), "en")
-	}
-	if getQuery.Get("safesearch") != "1" {
-		t.Errorf("GET query safesearch = %q, want %q", getQuery.Get("safesearch"), "1")
+			cfg := &Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+			args := &SearchArgs{Query: "test search", Language: "en", SafeSearch: 1}
+
+			result, err := performSearch(t.Context(), cfg, args)
+			if err != nil {
+				t.Fatalf("unexpected error after fallback: %v", err)
+			}
+			if result == nil {
+				t.Fatal("expected result, got nil")
+			}
+			if postReq == nil {
+				t.Fatal("POST request was never made")
+			}
+			if getReq == nil {
+				t.Fatal("GET fallback was never called")
+			}
+			if postReq.URL.RawQuery != "" {
+				t.Error("POST request had query params in URI - query should only be in body")
+			}
+			getQuery := getReq.URL.Query()
+			if getQuery.Get("q") != "test search" || getQuery.Get("format") != "json" || getQuery.Get("language") != "en" || getQuery.Get("safesearch") != "1" {
+				t.Fatalf("unexpected GET query params: %v", getQuery)
+			}
+		})
 	}
 }
 

@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -77,53 +80,46 @@ func TestValidationExitCode(t *testing.T) {
 	binPath, cleanup := buildTestBinary(t)
 	defer cleanup()
 
+	cmd := exec.Command(binPath, "--json", "--pageno", "0", "test")
+	cmd.Dir = "."
+	out, err := cmd.CombinedOutput()
+
+	if err == nil {
+		t.Fatal("expected non-zero exit code for validation error, but process exited with 0")
+	}
+
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok {
+		t.Fatalf("expected ExitError, got %T: %v", err, err)
+	}
+
+	if exitErr.ExitCode() != 1 {
+		t.Errorf("exit code = %d, want 1\noutput: %s", exitErr.ExitCode(), out)
+	}
+
+	if !strings.Contains(string(out), "validation error") {
+		t.Errorf("output should contain 'validation error', got: %s", out)
+	}
+}
+
+func TestParseArgs_InvalidFlags(t *testing.T) {
 	tests := []struct {
-		name string
-		args []string
+		name      string
+		args      []string
+		errSubstr string
 	}{
-		{
-			name: "pageno zero",
-			args: []string{"--json", "--pageno", "0", "test"},
-		},
-		{
-			name: "safesearch out of range",
-			args: []string{"--json", "--safesearch", "3", "test"},
-		},
-		{
-			name: "invalid time_range",
-			args: []string{"--json", "--time_range", "invalid", "test"},
-		},
-		{
-			name: "pageno negative",
-			args: []string{"--json", "--pageno", "-1", "test"},
-		},
-		{
-			name: "safesearch negative",
-			args: []string{"--json", "--safesearch", "-1", "test"},
-		},
+		{name: "unknown flag", args: []string{"--unknown"}, errSubstr: "flag provided but not defined"},
+		{name: "missing query value", args: []string{"--query"}, errSubstr: "flag needs an argument"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd := exec.Command(binPath, tt.args...)
-			cmd.Dir = "."
-			out, err := cmd.CombinedOutput()
-
+			_, _, _, err := parseArgs(tt.args)
 			if err == nil {
-				t.Fatal("expected non-zero exit code for validation error, but process exited with 0")
+				t.Fatal("expected error, got nil")
 			}
-
-			exitErr, ok := err.(*exec.ExitError)
-			if !ok {
-				t.Fatalf("expected ExitError, got %T: %v", err, err)
-			}
-
-			if exitErr.ExitCode() != 1 {
-				t.Errorf("exit code = %d, want 1\noutput: %s", exitErr.ExitCode(), out)
-			}
-
-			if !strings.Contains(string(out), "validation error") {
-				t.Errorf("output should contain 'validation error', got: %s", out)
+			if !strings.Contains(err.Error(), tt.errSubstr) {
+				t.Errorf("error %q does not contain %q", err.Error(), tt.errSubstr)
 			}
 		})
 	}
@@ -190,43 +186,15 @@ func TestParseArgs(t *testing.T) {
 			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
-			name:        "--language flag alone is MCP mode with args - error",
-			args:        []string{"--language", "ja"},
+			name:        "--language and --safesearch flags in MCP mode",
+			args:        []string{"--language", "ja", "--safesearch", "2"},
 			wantCLIMode: false,
 			wantErr:     true,
 			errSubstr:   "MCP stdin mode does not accept command-line arguments",
 		},
 		{
-			name:        "--safesearch flag alone is MCP mode with args - error",
-			args:        []string{"--safesearch", "2"},
-			wantCLIMode: false,
-			wantErr:     true,
-			errSubstr:   "MCP stdin mode does not accept command-line arguments",
-		},
-		{
-			name:        "--time_range flag alone is MCP mode with args - error",
-			args:        []string{"--time_range", "month"},
-			wantCLIMode: false,
-			wantErr:     true,
-			errSubstr:   "MCP stdin mode does not accept command-line arguments",
-		},
-		{
-			name:        "--categories flag alone is MCP mode with args - error",
-			args:        []string{"--categories", "general,news"},
-			wantCLIMode: false,
-			wantErr:     true,
-			errSubstr:   "MCP stdin mode does not accept command-line arguments",
-		},
-		{
-			name:        "--engines flag alone is MCP mode with args - error",
-			args:        []string{"--engines", "google,bing"},
-			wantCLIMode: false,
-			wantErr:     true,
-			errSubstr:   "MCP stdin mode does not accept command-line arguments",
-		},
-		{
-			name:        "--pageno flag alone is MCP mode with args - error",
-			args:        []string{"--pageno", "5"},
+			name:        "--debug flag in MCP mode",
+			args:        []string{"--debug"},
 			wantCLIMode: false,
 			wantErr:     true,
 			errSubstr:   "MCP stdin mode does not accept command-line arguments",
@@ -264,43 +232,8 @@ func TestParseArgs(t *testing.T) {
 			wantErr:        false,
 		},
 		{
-			name:        "multiple server config flags only - MCP mode - error",
-			args:        []string{"--searxng-url", "https://example.com", "--language", "ja", "--safesearch", "1"},
-			wantCLIMode: false,
-			wantErr:     true,
-			errSubstr:   "MCP stdin mode does not accept command-line arguments",
-		},
-		{
-			name:        "all server config flags without query - MCP mode - error",
-			args:        []string{"--searxng-url", "https://example.com", "--language", "zh-tw", "--safesearch", "2", "--time_range", "month", "--categories", "general", "--engines", "google", "--pageno", "3"},
-			wantCLIMode: false,
-			wantErr:     true,
-			errSubstr:   "MCP stdin mode does not accept command-line arguments",
-		},
-		{
-			name:        "language and safesearch only - MCP mode - error",
-			args:        []string{"--language", "fr", "--safesearch", "1"},
-			wantCLIMode: false,
-			wantErr:     true,
-			errSubstr:   "MCP stdin mode does not accept command-line arguments",
-		},
-		{
-			name:        "categories and engines only - MCP mode - error",
-			args:        []string{"--categories", "news", "--engines", "bing"},
-			wantCLIMode: false,
-			wantErr:     true,
-			errSubstr:   "MCP stdin mode does not accept command-line arguments",
-		},
-		{
-			name:        "pageno only - MCP mode - error",
-			args:        []string{"--pageno", "2"},
-			wantCLIMode: false,
-			wantErr:     true,
-			errSubstr:   "MCP stdin mode does not accept command-line arguments",
-		},
-		{
-			name:        "--debug flag alone - MCP mode - error",
-			args:        []string{"--debug"},
+			name:        "server config flags without query - MCP mode - error",
+			args:        []string{"--searxng-url", "https://example.com", "--language", "zh-tw", "--safesearch", "2"},
 			wantCLIMode: false,
 			wantErr:     true,
 			errSubstr:   "MCP stdin mode does not accept command-line arguments",
@@ -387,6 +320,139 @@ func TestParseArgs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	fn()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(r); err != nil {
+		t.Fatalf("failed to read stdout: %v", err)
+	}
+	return buf.String()
+}
+
+func TestGetConfig_PrecedenceAndDefaultWarning(t *testing.T) {
+	t.Setenv("SEARXNG_URL", "https://env.example.com")
+
+	t.Run("flag overrides env", func(t *testing.T) {
+		cfg := getConfig(CLIFlags{SearXNGURL: "https://flag.example.com"})
+		if cfg.SearXNGURL != "https://flag.example.com" {
+			t.Fatalf("SearXNGURL = %q, want flag value", cfg.SearXNGURL)
+		}
+	})
+
+	t.Run("env used when flag empty", func(t *testing.T) {
+		cfg := getConfig(CLIFlags{})
+		if cfg.SearXNGURL != "https://env.example.com" {
+			t.Fatalf("SearXNGURL = %q, want env value", cfg.SearXNGURL)
+		}
+	})
+
+	t.Run("default warning when neither set", func(t *testing.T) {
+		t.Setenv("SEARXNG_URL", "")
+		oldStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+
+		cfg := getConfig(CLIFlags{})
+
+		w.Close()
+		os.Stderr = oldStderr
+
+		var buf bytes.Buffer
+		if _, err := buf.ReadFrom(r); err != nil {
+			t.Fatalf("failed to read stderr: %v", err)
+		}
+		if cfg.SearXNGURL != DefaultSearXNGURL {
+			t.Fatalf("SearXNGURL = %q, want default %q", cfg.SearXNGURL, DefaultSearXNGURL)
+		}
+		if !strings.Contains(buf.String(), "WARN: No SearXNG server specified") {
+			t.Fatalf("warning output missing, got %q", buf.String())
+		}
+	})
+}
+
+func TestRunCLIMode_SuccessTextOutput(t *testing.T) {
+	server := newTestSearchServer(t, SearchResponse{
+		Query:           "golang",
+		NumberOfResults: 1,
+		Results:         []SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
+	})
+
+	output := captureStdout(t, func() {
+		err := runCLIMode(CLIFlags{Query: "golang", SearXNGURL: server.URL, Pageno: 1}, nil)
+		if err != nil {
+			t.Fatalf("runCLIMode() error = %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "=== Results ===") || !strings.Contains(output, "Go") {
+		t.Fatalf("unexpected text output: %q", output)
+	}
+}
+
+func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
+	server := newTestSearchServer(t, SearchResponse{
+		Query:           "golang",
+		NumberOfResults: 1,
+		Results:         []SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
+	})
+
+	output := captureStdout(t, func() {
+		err := runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: 1}, nil)
+		if err != nil {
+			t.Fatalf("runCLIMode() error = %v", err)
+		}
+	})
+
+	var resp SearchResponse
+	if err := json.Unmarshal([]byte(output), &resp); err != nil {
+		t.Fatalf("output is not valid JSON: %v\n%s", err, output)
+	}
+	if resp.Query != "golang" || len(resp.Results) != 1 || resp.Results[0].Title != "Go" {
+		t.Fatalf("unexpected JSON output: %+v", resp)
+	}
+}
+
+func TestRunCLIMode_QueryPrecedence(t *testing.T) {
+	server := newTestSearchServer(t, SearchResponse{
+		Query:           "flag query",
+		NumberOfResults: 1,
+		Results:         []SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
+	})
+
+	output := captureStdout(t, func() {
+		err := runCLIMode(CLIFlags{Query: "flag query", SearXNGURL: server.URL, Pageno: 1}, []string{"positional query"})
+		if err != nil {
+			t.Fatalf("runCLIMode() error = %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "flag query") {
+		t.Fatalf("expected flag query to win, got %q", output)
+	}
+}
+
+func newTestSearchServer(t *testing.T, resp SearchResponse) *httptest.Server {
+	t.Helper()
+	body, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("failed to marshal response: %v", err)
+	}
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}))
 }
 
 func TestRunCLIMode_ValidationErrors(t *testing.T) {
