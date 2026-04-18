@@ -286,10 +286,31 @@ type SearchResult struct {
 	DateSource    DateSource `json:"dateSource,omitempty"`
 }
 
+// InfoboxURL represents a URL entry in an infobox.
+type InfoboxURL struct {
+	Title string `json:"title"`
+	URL   string `json:"url"`
+}
+
+// InfoboxAttribute represents a key-value attribute in an infobox.
+type InfoboxAttribute struct {
+	Label string `json:"label"`
+	Value string `json:"value"`
+}
+
+// Infobox represents a knowledge panel / infobox from SearXNG.
+type Infobox struct {
+	Infobox    string             `json:"infobox"`
+	Content    string             `json:"content"`
+	Attributes []InfoboxAttribute `json:"attributes,omitempty"`
+	URLs       []InfoboxURL       `json:"urls,omitempty"`
+}
+
 // SearchResponse represents the full search response from SearXNG
 type SearchResponse struct {
 	Query           string         `json:"query"`
 	NumberOfResults int            `json:"number_of_results"`
+	Infoboxes       []Infobox      `json:"infoboxes,omitempty"`
 	Results         []SearchResult `json:"results"`
 	Suggestions     []string       `json:"suggestions"`
 }

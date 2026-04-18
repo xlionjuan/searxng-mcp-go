@@ -147,6 +147,123 @@ func TestFormatResults(t *testing.T) {
 			},
 			wantNotContain: "Suggestions:",
 		},
+		{
+			name: "infoboxes displayed before results",
+			resp: &SearchResponse{
+				Query:           "apple inc",
+				NumberOfResults: 2,
+				Infoboxes: []Infobox{
+					{
+						Infobox: "Apple Inc.",
+						Content: "Apple Inc. is an American technology company.",
+						Attributes: []InfoboxAttribute{
+							{Label: "Type", Value: "Public"},
+							{Label: "Industry", Value: "Technology"},
+						},
+						URLs: []InfoboxURL{
+							{Title: "Official site", URL: "https://www.apple.com"},
+							{Title: "Wikipedia", URL: "https://en.wikipedia.org/wiki/Apple_Inc."},
+						},
+					},
+				},
+				Results: []SearchResult{
+					{
+						Title:   "Apple - Official Site",
+						URL:     "https://www.apple.com",
+						Content: "Think Different.",
+						Engine:  "google",
+					},
+				},
+			},
+			wantContains: []string{
+				"=== Infoboxes ===",
+				"[1] Apple Inc.",
+				"Apple Inc. is an American technology company.",
+				"Attributes:",
+				"- Type: Public",
+				"- Industry: Technology",
+				"URLs:",
+				"- Official site: https://www.apple.com",
+				"- Wikipedia: https://en.wikipedia.org/wiki/Apple_Inc.",
+				"Found 2 results for 'apple inc'",
+				"Apple - Official Site",
+			},
+		},
+		{
+			name: "infoboxes without results still show infoboxes",
+			resp: &SearchResponse{
+				Query:           "test",
+				NumberOfResults: 0,
+				Infoboxes: []Infobox{
+					{
+						Infobox: "Test Infobox",
+						Content: "Some info content",
+					},
+				},
+				Results: []SearchResult{},
+			},
+			wantContains: []string{
+				"=== Infoboxes ===",
+				"[1] Test Infobox",
+				"Some info content",
+			},
+			wantNotContain: "No results found.",
+		},
+		{
+			name: "infobox with empty content",
+			resp: &SearchResponse{
+				Query:           "test",
+				NumberOfResults: 1,
+				Infoboxes: []Infobox{
+					{
+						Infobox: "Minimal Infobox",
+						Content: "",
+						Attributes: []InfoboxAttribute{
+							{Label: "Key", Value: "Value"},
+						},
+					},
+				},
+				Results: []SearchResult{
+					{
+						Title:   "Result 1",
+						URL:     "https://example.com/1",
+						Engine:  "google",
+					},
+				},
+			},
+			wantContains: []string{
+				"=== Infoboxes ===",
+				"[1] Minimal Infobox",
+				"Attributes:",
+				"- Key: Value",
+			},
+		},
+		{
+			name: "infoboxes appear before suggestions",
+			resp: &SearchResponse{
+				Query:           "test",
+				NumberOfResults: 1,
+				Infoboxes: []Infobox{
+					{
+						Infobox: "Test IB",
+						Content: "Info content",
+					},
+				},
+				Results: []SearchResult{
+					{
+						Title:   "Result 1",
+						URL:     "https://example.com/1",
+						Engine:  "google",
+					},
+				},
+				Suggestions: []string{"suggestion 1"},
+			},
+			wantContains: []string{
+				"=== Infoboxes ===",
+				"Found 1 results",
+				"Suggestions:",
+			},
+		},
 	}
 
 	for _, tt := range tests {
