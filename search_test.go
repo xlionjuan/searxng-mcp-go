@@ -804,3 +804,72 @@ func TestDeduplicateAnswers_EmptyAnswerSkipped(t *testing.T) {
 		t.Errorf("expected 'valid answer', got %q", result[0].Answer)
 	}
 }
+
+// --- SearchResponse.MarshalJSON tests ---
+
+func TestSearchResponse_MarshalJSON_FieldOrder(t *testing.T) {
+	resp := SearchResponse{
+		Query:           "test",
+		Answers:         []Answer{{Answer: "42", Engine: "calc"}},
+		NumberOfResults: 1,
+		Infoboxes:       []Infobox{{Infobox: "Info", Content: "content"}},
+		Results:         []SearchResult{{Title: "R1", URL: "https://example.com", Engine: "google"}},
+		Suggestions:     []string{"suggestion 1"},
+	}
+
+	data, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("MarshalJSON error: %v", err)
+	}
+
+	// Verify field order by checking keys appear in expected sequence
+	raw := string(data)
+	indices := []struct {
+		label string
+		idx   int
+	}{
+		{`"query"`, strings.Index(raw, `"query"`)},
+		{`"answers"`, strings.Index(raw, `"answers"`)},
+		{`"number_of_results"`, strings.Index(raw, `"number_of_results"`)},
+		{`"infoboxes"`, strings.Index(raw, `"infoboxes"`)},
+		{`"results"`, strings.Index(raw, `"results"`)},
+		{`"suggestions"`, strings.Index(raw, `"suggestions"`)},
+	}
+
+	for i := 1; i < len(indices); i++ {
+		if indices[i].idx <= indices[i-1].idx {
+			t.Errorf("field order wrong: %s (pos %d) should come after %s (pos %d) in JSON: %s",
+				indices[i].label, indices[i].idx, indices[i-1].label, indices[i-1].idx, raw)
+		}
+	}
+}
+
+func TestSearchResponse_MarshalJSON_OmitEmpty(t *testing.T) {
+	resp := SearchResponse{
+		Query:           "test",
+		NumberOfResults: 0,
+		Results:         []SearchResult{},
+	}
+
+	data, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("MarshalJSON error: %v", err)
+	}
+
+	raw := string(data)
+
+	// answers and infoboxes with omitempty should be omitted
+	if strings.Contains(raw, `"answers"`) {
+		t.Errorf("expected 'answers' to be omitted when empty, got: %s", raw)
+	}
+	if strings.Contains(raw, `"infoboxes"`) {
+		t.Errorf("expected 'infoboxes' to be omitted when empty, got: %s", raw)
+	}
+
+	// query, number_of_results, results, suggestions should always appear
+	for _, field := range []string{`"query"`, `"number_of_results"`, `"results"`, `"suggestions"`} {
+		if !strings.Contains(raw, field) {
+			t.Errorf("expected %s to be present, got: %s", field, raw)
+		}
+	}
+}

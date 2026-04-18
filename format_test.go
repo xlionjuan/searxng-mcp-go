@@ -346,6 +346,38 @@ func TestFormatResults(t *testing.T) {
 				"=== Search Suggestions ===",
 			},
 		},
+		{
+			name: "suggestions only should not return no results found",
+			resp: &SearchResponse{
+				Query:       "typoed qurey",
+				Suggestions: []string{"typoed query", "typed query", "torpedoed"},
+			},
+			wantContains:   []string{"=== Search Suggestions ===", "  - typoed query", "  - typed query", "  - torpedoed"},
+			wantNotContain: "No results found.",
+		},
+		{
+			name: "section order: answers then infoboxes then results then suggestions",
+			resp: &SearchResponse{
+				Query: "full",
+				Answers: []Answer{
+					{Answer: "42", Engine: "calc"},
+				},
+				Infoboxes: []Infobox{
+					{Infobox: "Info", Content: "Some info."},
+				},
+				Results: []SearchResult{
+					{Title: "Result", URL: "https://example.com", Content: "Content", Engine: "google"},
+				},
+				NumberOfResults: 1,
+				Suggestions:     []string{"related query"},
+			},
+			wantContains: []string{
+				"=== Answers ===",
+				"=== Infoboxes ===",
+				"=== Results ===",
+				"=== Search Suggestions ===",
+			},
+		},
 	}
 
 	for _, tt := range tests {
