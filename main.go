@@ -106,6 +106,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 
 	// Reset and parse only the flag arguments
 	flag.CommandLine = flag.NewFlagSet("searxng-mcp-go", flag.ContinueOnError)
+	flag.CommandLine.Usage = func() {} // suppressed: main() handles error→help ordering
 	cliQuery = flag.String("query", "", "")
 	cliJSON = flag.Bool("json", false, "")
 	cliHelp = flag.Bool("help", false, "")
@@ -119,9 +120,23 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 	cliPageno = flag.Int("pageno", 1, "")
 	cliDebug = flag.Bool("debug", false, "")
 
+	// Redirect stderr to io.Discard to suppress Go flag package's automatic
+	// error output (e.g. "flag provided but not defined: -foo").
+	// We handle error display ourselves in main().
+	savedStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
 	if err := flag.CommandLine.Parse(flagArgs); err != nil {
+		w.Close()
+		os.Stderr = savedStderr
+		r.Close()
 		return false, CLIFlags{}, nil, err
 	}
+
+	w.Close()
+	os.Stderr = savedStderr
+	r.Close()
 
 	flags = CLIFlags{
 		Query:      *cliQuery,
@@ -245,7 +260,9 @@ const searchInputSchema = `{
 func main() {
 	isCLIMode, flags, positionalArgs, err := parseArgs(os.Args[1:])
 	if err != nil {
-		slog.Error("failed to parse arguments", "error", err)
+		fmt.Fprintf(os.Stderr, "\033[31mERROR: %v\033[0m\n", err)
+		fmt.Fprintln(os.Stderr, "")
+		printCLIHelp()
 		os.Exit(1)
 	}
 
@@ -279,7 +296,7 @@ func getConfig(flags CLIFlags) *Config {
 	}
 
 	if flags.SearXNGURL == "" && os.Getenv("SEARXNG_URL") == "" {
-		slog.Warn("No SearXNG server specified, using default server (https://search-4.xlion.dev). To use a different server, set the SEARXNG_URL environment variable or use the --searxng-url command line flag.")
+		fmt.Fprintf(os.Stderr, "\033[33mWARN: No SearXNG server specified, using default server (https://search-4.xlion.dev). To use a different server, set the SEARXNG_URL environment variable or use the --searxng-url command line flag.\033[0m\n")
 	}
 
 	return cfg
@@ -336,6 +353,9 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	}
 
 	if flags.JSON {
+		if debugMode {
+			fmt.Println()
+		}
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(resp); err != nil {

@@ -288,9 +288,20 @@ type SearchResult struct {
 
 // SearchResponse represents the full search response from SearXNG
 type SearchResponse struct {
-	Results         []SearchResult `json:"results"`
-	NumberOfResults int            `json:"number_of_results"`
 	Query           string         `json:"query"`
+	NumberOfResults int            `json:"number_of_results"`
+	Results         []SearchResult `json:"results"`
+	Suggestions     []string       `json:"suggestions"`
+}
+
+// MarshalJSON ensures JSON field ordering: query, number_of_results, results, suggestions.
+func (r SearchResponse) MarshalJSON() ([]byte, error) {
+	type alias SearchResponse
+	return json.Marshal(&struct {
+		alias
+	}{
+		alias: alias(r),
+	})
 }
 
 // ============================================================================
