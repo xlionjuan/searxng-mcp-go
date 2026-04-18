@@ -16,6 +16,85 @@ func TestFormatResults(t *testing.T) {
 		wantResult     string
 	}{
 		{
+			name: "single answer with engine",
+			resp: &SearchResponse{
+				Query: "sha512 hello",
+				Answers: []Answer{
+					{Answer: "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043", Engine: "plugin:hash_plugin"},
+				},
+				Results: []SearchResult{
+					{Title: "Hash Result", URL: "https://example.com", Content: "Some content", Engine: "google"},
+				},
+				NumberOfResults: 1,
+			},
+			wantContains: []string{"=== Answers ===", "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043", "Engine: plugin:hash_plugin", "Hash Result"},
+		},
+		{
+			name: "multiple answers",
+			resp: &SearchResponse{
+				Query: "random",
+				Answers: []Answer{
+					{Answer: "42", Engine: "random_plugin"},
+					{Answer: "3.14", Engine: "math_plugin"},
+				},
+				Results: []SearchResult{},
+			},
+			wantContains: []string{"=== Answers ===", "[1] 42", "Engine: random_plugin", "[2] 3.14", "Engine: math_plugin"},
+		},
+		{
+			name: "answer without engine",
+			resp: &SearchResponse{
+				Query: "ip",
+				Answers: []Answer{
+					{Answer: "203.0.113.42"},
+				},
+				Results: []SearchResult{},
+			},
+			wantContains:   []string{"=== Answers ===", "203.0.113.42"},
+			wantNotContain: "Engine:",
+		},
+		{
+			name: "answers only no results",
+			resp: &SearchResponse{
+				Query: "avg 123 548 2.04 24.2",
+				Answers: []Answer{
+					{Answer: "174.31", Engine: "stats_plugin"},
+				},
+				Results:         []SearchResult{},
+				NumberOfResults: 0,
+			},
+			wantContains:   []string{"=== Answers ===", "174.31"},
+			wantNotContain: "No results found.",
+		},
+		{
+			name: "answers before infoboxes before results",
+			resp: &SearchResponse{
+				Query: "apple",
+				Answers: []Answer{
+					{Answer: "192.168.1.1", Engine: "ip_plugin"},
+				},
+				Infoboxes: []Infobox{
+					{Infobox: "Apple", Content: "A fruit."},
+				},
+				Results: []SearchResult{
+					{Title: "Apple - Fruit", URL: "https://example.com/apple", Content: "An apple is a fruit.", Engine: "google"},
+				},
+				NumberOfResults: 1,
+			},
+			wantContains: []string{"=== Answers ===", "192.168.1.1", "=== Infoboxes ===", "Apple", "Found 1 results", "Apple - Fruit"},
+		},
+		{
+			name: "no answers when empty",
+			resp: &SearchResponse{
+				Query: "test query",
+				Results: []SearchResult{
+					{Title: "Test", URL: "https://example.com", Content: "Test content", Engine: "google"},
+				},
+				NumberOfResults: 1,
+			},
+			wantNotContain: "=== Answers ===",
+		},
+		{
 			name: "normal results with content",
 			resp: &SearchResponse{
 				Results: []SearchResult{
@@ -49,7 +128,7 @@ func TestFormatResults(t *testing.T) {
 					{
 						Title:   "Long Content Test",
 						URL:     "https://example.com/long",
-						Content: strings.Repeat("x", 4500), // 4500 chars > 4000 limit
+						Content: strings.Repeat("x", 4500),
 						Engine:  "google",
 					},
 				},
@@ -89,7 +168,7 @@ func TestFormatResults(t *testing.T) {
 				NumberOfResults: 1,
 				Query:           "empty",
 			},
-			wantNotContain: "Summary:", // Empty content should not show Summary line
+			wantNotContain: "Summary:",
 		},
 		{
 			name: "NumberOfResults greater than len(Results) - paginated response",
@@ -108,7 +187,7 @@ func TestFormatResults(t *testing.T) {
 						Engine:  "bing",
 					},
 				},
-				NumberOfResults: 100, // Total matches is 100, but only 2 on this page
+				NumberOfResults: 100,
 				Query:           "test",
 			},
 			wantContains: []string{"Found 100 results", "Result 1", "Result 2"},
@@ -225,9 +304,9 @@ func TestFormatResults(t *testing.T) {
 				},
 				Results: []SearchResult{
 					{
-						Title:   "Result 1",
-						URL:     "https://example.com/1",
-						Engine:  "google",
+						Title:  "Result 1",
+						URL:    "https://example.com/1",
+						Engine: "google",
 					},
 				},
 			},
@@ -251,9 +330,9 @@ func TestFormatResults(t *testing.T) {
 				},
 				Results: []SearchResult{
 					{
-						Title:   "Result 1",
-						URL:     "https://example.com/1",
-						Engine:  "google",
+						Title:  "Result 1",
+						URL:    "https://example.com/1",
+						Engine: "google",
 					},
 				},
 				Suggestions: []string{"suggestion 1"},

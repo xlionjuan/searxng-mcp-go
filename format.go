@@ -20,6 +20,23 @@ func unescapeIfNeeded(s string) string {
 	return html.UnescapeString(s)
 }
 
+// formatAnswers formats direct answers as a readable string.
+func formatAnswers(answers []Answer) string {
+	if len(answers) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("=== Answers ===\n\n")
+	for i, a := range answers {
+		b.WriteString(fmt.Sprintf("[%d] %s\n", i+1, a.Answer))
+		if a.Engine != "" {
+			b.WriteString(fmt.Sprintf("    Engine: %s\n", a.Engine))
+		}
+	}
+	b.WriteString("\n")
+	return b.String()
+}
+
 // formatInfoboxes formats infoboxes as a readable string.
 func formatInfoboxes(infoboxes []Infobox) string {
 	if len(infoboxes) == 0 {
@@ -62,13 +79,18 @@ func formatResults(resp *SearchResponse) string {
 	if resp == nil {
 		return "No results found."
 	}
-	if len(resp.Results) == 0 && len(resp.Infoboxes) == 0 {
+	if len(resp.Results) == 0 && len(resp.Infoboxes) == 0 && len(resp.Answers) == 0 {
 		return "No results found."
 	}
 
 	var b strings.Builder
 
-	// Infoboxes first
+	// Answers first (direct answers like IP, hash, timezone)
+	if ansText := formatAnswers(resp.Answers); ansText != "" {
+		b.WriteString(ansText)
+	}
+
+	// Infoboxes
 	if ibText := formatInfoboxes(resp.Infoboxes); ibText != "" {
 		b.WriteString(ibText)
 	}

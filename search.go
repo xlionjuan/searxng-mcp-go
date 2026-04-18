@@ -306,22 +306,39 @@ type Infobox struct {
 	URLs       []InfoboxURL       `json:"urls,omitempty"`
 }
 
+// Answer represents a direct answer from SearXNG (e.g., IP, hash, timezone, calculator).
+type Answer struct {
+	Answer   string `json:"answer"`
+	Engine   string `json:"engine"`
+	Template string `json:"template,omitempty"`
+}
+
 // SearchResponse represents the full search response from SearXNG
 type SearchResponse struct {
 	Query           string         `json:"query"`
+	Answers         []Answer       `json:"answers,omitempty"`
 	NumberOfResults int            `json:"number_of_results"`
 	Infoboxes       []Infobox      `json:"infoboxes,omitempty"`
 	Results         []SearchResult `json:"results"`
 	Suggestions     []string       `json:"suggestions"`
 }
 
-// MarshalJSON ensures JSON field ordering: query, number_of_results, results, suggestions.
+// MarshalJSON ensures JSON field ordering: query, answers, number_of_results, infoboxes, results, suggestions.
 func (r SearchResponse) MarshalJSON() ([]byte, error) {
-	type alias SearchResponse
-	return json.Marshal(&struct {
-		alias
+	return json.Marshal(struct {
+		Query           string         `json:"query"`
+		Answers         []Answer       `json:"answers,omitempty"`
+		NumberOfResults int            `json:"number_of_results"`
+		Infoboxes       []Infobox      `json:"infoboxes,omitempty"`
+		Results         []SearchResult `json:"results"`
+		Suggestions     []string       `json:"suggestions"`
 	}{
-		alias: alias(r),
+		Query:           r.Query,
+		Answers:         r.Answers,
+		NumberOfResults: r.NumberOfResults,
+		Infoboxes:       r.Infoboxes,
+		Results:         r.Results,
+		Suggestions:     r.Suggestions,
 	})
 }
 
