@@ -19,6 +19,7 @@ func TestParseRelativeDate(t *testing.T) {
 	d1 := time.Date(2024, 6, 14, 12, 0, 0, 0, time.UTC)
 	d5 := time.Date(2024, 6, 10, 12, 0, 0, 0, time.UTC)
 	d3t := time.Date(2024, 6, 12, 12, 0, 0, 0, time.UTC)
+	d2t := time.Date(2024, 6, 13, 12, 0, 0, 0, time.UTC)
 	d1t := time.Date(2024, 6, 14, 12, 0, 0, 0, time.UTC)
 	y := time.Date(2024, 6, 14, 12, 0, 0, 0, time.UTC)
 	vg := time.Date(2024, 6, 13, 12, 0, 0, 0, time.UTC)
@@ -58,6 +59,19 @@ func TestParseRelativeDate(t *testing.T) {
 		{"100 hours ago - future", "Published 100 hours ago", nil},
 		// Boundary: too old (500 days, before 2000)
 		{"500 days ago - too old", "Published 500 days ago", nil},
+		// --- Case-insensitive regression tests (uppercase) ---
+		{"uppercase YESTERDAY", "Article posted YESTERDAY", &y},
+		{"uppercase LAST WEEK", "Report from LAST WEEK suggests", &lw},
+		{"uppercase VORGESTERN", "VORGESTERN wurde bekannt gegeben", &vg},
+		{"uppercase VOR 2 TAGEN", "VOR 2 TAGEN wurde berichtet", &d2t},
+		{"uppercase 3 HOURS AGO", "3 HOURS AGO, the news was published", &h3},
+		{"uppercase 5 DAYS AGO", "Published 5 DAYS AGO", &d5},
+		// --- Case-insensitive regression tests (mixed case) ---
+		{"mixed Yesterday", "Article posted Yesterday", &y},
+		{"mixed Last Week", "Report from Last Week suggests", &lw},
+		{"mixed Vorgestern", "Vorgestern wurde bekannt gegeben", &vg},
+		{"mixed YeStErDaY", "Article posted YeStErDaY", &y},
+		{"mixed LaSt WeEk", "Report from LaSt WeEk suggests", &lw},
 	}
 
 	for _, tt := range tests {
