@@ -361,19 +361,23 @@ func setBrowserHeaders(req *http.Request) {
 	req.Header.Set("Priority", "u=0, i")
 }
 
-// deduplicateAnswers filters out answers whose text is a substring (or prefix)
+// deduplicateAnswers filters out answers whose text is a prefix (substring)
 // of any infobox content. DuckDuckGo's engine often puts the same Wikipedia
 // summary in both answers and infoboxes, causing duplicate display.
+//
+// The DDG answer may have "More at Wikipedia" appended, so we use prefix
+// matching: take the first 200 characters of the answer and check if that
+// prefix appears within the infobox content.
 func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 	if len(answers) == 0 || len(infoboxes) == 0 {
 		return answers
 	}
 
-	// Collect all infobox content texts
+	// Collect all infobox content texts (lowercased)
 	var infoboxTexts []string
 	for _, ib := range infoboxes {
 		if ib.Content != "" {
-			infoboxTexts = append(infoboxTexts, ib.Content)
+			infoboxTexts = append(infoboxTexts, strings.ToLower(ib.Content))
 		}
 	}
 
@@ -381,17 +385,26 @@ func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 		return answers
 	}
 
+	const prefixLen = 200
+
 	filtered := make([]Answer, 0, len(answers))
 	for _, a := range answers {
 		if a.Answer == "" {
 			continue
 		}
+		// Take the first prefixLen characters of the answer for matching.
+		// Strip known suffixes (e.g., DuckDuckGo appends "More at Wikipedia")
+		// so they don't pollute the prefix.
+		lowerAnswer := strings.ToLower(a.Answer)
+		lowerAnswer = strings.TrimSuffix(lowerAnswer, " more at wikipedia")
+		prefix := lowerAnswer
+		if len(lowerAnswer) > prefixLen {
+			prefix = lowerAnswer[:prefixLen]
+		}
+
 		duplicated := false
 		for _, ic := range infoboxTexts {
-			// Check if the answer text is contained within infobox content
-			// or vice versa (case-insensitive)
-			if strings.Contains(strings.ToLower(ic), strings.ToLower(a.Answer)) ||
-				strings.Contains(strings.ToLower(a.Answer), strings.ToLower(ic)) {
+			if strings.Contains(ic, prefix) {
 				duplicated = true
 				break
 			}

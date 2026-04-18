@@ -769,6 +769,24 @@ func TestDeduplicateAnswers_MultipleAnswersMixed(t *testing.T) {
 	}
 }
 
+func TestDeduplicateAnswers_DDGSuffixMoreAtWikipedia(t *testing.T) {
+	// DuckDuckGo appends "More at Wikipedia" to the answer, which breaks
+	// the old Contains(answer, infobox) check. Prefix matching fixes this.
+	infoboxContent := "Apple Inc. is an American multinational technology company headquartered in Cupertino, California. Apple is one of the Big Tech companies, alongside Amazon, Google, Meta, and Microsoft."
+	answer := infoboxContent + " More at Wikipedia"
+	answers := []Answer{
+		{Answer: answer, Engine: "duckduckgo"},
+	}
+	infoboxes := []Infobox{
+		{Infobox: "Apple Inc.", Content: infoboxContent},
+	}
+
+	result := deduplicateAnswers(answers, infoboxes)
+	if len(result) != 0 {
+		t.Errorf("expected 0 (DDG answer with 'More at Wikipedia' suffix should be deduplicated), got %d: %+v", len(result), result)
+	}
+}
+
 func TestDeduplicateAnswers_EmptyAnswerSkipped(t *testing.T) {
 	answers := []Answer{
 		{Answer: "", Engine: "duckduckgo"},
