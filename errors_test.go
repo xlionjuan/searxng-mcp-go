@@ -166,3 +166,25 @@ func TestHTMLResponseError_HTMLBodyNotInMessage(t *testing.T) {
 		t.Errorf("HTMLResponseError.Error() should not contain HTML body, got: %s", errMsg)
 	}
 }
+
+func TestSearXNGError_Error_NilUnderlying(t *testing.T) {
+	err := NewSearXNGError(500, "text/html", "", nil)
+
+	errMsg := err.Error()
+	if errMsg != "searxng error: status 500, content-type: text/html" {
+		t.Errorf("unexpected error message: %s", errMsg)
+	}
+}
+
+func TestSearXNGError_Error_WithUnderlying(t *testing.T) {
+	underlying := errors.New("connection refused")
+	err := NewSearXNGError(500, "text/html", "", underlying)
+
+	errMsg := err.Error()
+	if !strings.Contains(errMsg, "searxng error (status 500)") {
+		t.Errorf("expected error to contain 'searxng error (status 500)', got: %s", errMsg)
+	}
+	if !strings.Contains(errMsg, "connection refused") {
+		t.Errorf("expected error to contain 'connection refused', got: %s", errMsg)
+	}
+}
