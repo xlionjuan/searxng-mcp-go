@@ -45,7 +45,7 @@ The MCP server runs in stdio mode, meaning all communication happens via JSON-RP
    echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | ./searxng-mcp-go
    
    # Call tools/call (search)
-   echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search","arguments":{"query":"test","language":"en","safesearch":null,"time_range":"","categories":"","engines":"","pageno":null}}}' | ./searxng-mcp-go
+   echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search","arguments":{"query":"test","language":"en","safesearch":0,"time_range":"","categories":"","engines":"","pageno":1}}}' | ./searxng-mcp-go
    ```
 
 ---

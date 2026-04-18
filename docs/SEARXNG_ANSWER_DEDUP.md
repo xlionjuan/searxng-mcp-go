@@ -55,16 +55,13 @@ The function `deduplicateAnswers()` in `search.go` filters answers at the **sear
 
 **Algorithm:**
 
-For each answer, check if its text is:
-1. A **substring** of any infobox content (case-insensitive), OR
-2. **Contains** any infobox content (case-insensitive)
+For each answer, the following steps are applied:
+1. Lowercase the answer text.
+2. Strip the known suffix `" more at Wikipedia"` (case-insensitive) that DuckDuckGo appends.
+3. Take the first 200 characters of the stripped text as a prefix.
+4. Check if any lowercased infobox content **contains** this prefix (substring match).
 
-If either condition is true, the answer is considered a duplicate of the infobox and is removed.
-
-This catches:
-- Exact matches: answer text == infobox content
-- Prefix matches: answer text is a truncated version of infobox content
-- Superset matches: answer text contains the full infobox content
+If the prefix matches any infobox content, the answer is considered a duplicate and is removed.
 
 ### Why Search Layer, Not Format Layer
 
@@ -88,4 +85,4 @@ Deduplication happens in `performSearch()` (search.go) rather than in `formatRes
 
 - **Function**: `deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer` in `search.go`
 - **Called**: In `performSearch()` after JSON unmarshalling, before `inferDates()`
-- **Tests**: 8 test cases in `search_test.go` covering empty inputs, exact match, prefix match, case insensitivity, distinct answers (IP), and mixed scenarios
+- **Tests**: 8 test cases in `search_test.go` covering empty inputs, exact match, prefix match, DDG "More at Wikipedia" suffix stripping, case insensitivity, distinct answers (IP), and mixed scenarios
