@@ -79,7 +79,7 @@ func formatResults(resp *SearchResponse) string {
 	if resp == nil {
 		return "No results found."
 	}
-	if len(resp.Results) == 0 && len(resp.Infoboxes) == 0 && len(resp.Answers) == 0 {
+	if len(resp.Results) == 0 && len(resp.Infoboxes) == 0 && len(resp.Answers) == 0 && len(resp.Suggestions) == 0 {
 		return "No results found."
 	}
 
