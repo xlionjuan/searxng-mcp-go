@@ -413,9 +413,18 @@ func runMCPMode(flags CLIFlags) {
 			}, nil, nil
 		}
 
+		jsonBytes, err := json.Marshal(resp)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: fmt.Sprintf("json marshal error: %s", err.Error())},
+				},
+				IsError: true,
+			}, nil, nil
+		}
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
-				&mcp.TextContent{Text: formatResults(resp)},
+				&mcp.TextContent{Text: string(jsonBytes)},
 			},
 		}, nil, nil
 	})

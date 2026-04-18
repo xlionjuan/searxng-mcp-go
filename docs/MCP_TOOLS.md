@@ -8,7 +8,7 @@ Search the web using a SearXNG meta-search engine instance.
 
 ### Tool Description
 
-The `search` tool proxies web search requests to a SearXNG instance, which aggregates results from multiple search engines while maintaining user privacy. The server formats results into a human-readable structure.
+The `search` tool proxies web search requests to a SearXNG instance, which aggregates results from multiple search engines while maintaining user privacy. MCP mode always returns structured JSON for programmatic parsing.
 
 ### Parameters
 
@@ -32,26 +32,9 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 
 ### Response Format
 
-The tool returns a text response containing up to four sections (empty sections are omitted):
+The tool returns a JSON text response containing the full `SearchResponse` object. This enables programmatic parsing by MCP clients.
 
-- **=== Answers ===** — Direct answers (IP lookup, calculator, hash, timezone, etc.)
-- **=== Infoboxes ===** — Knowledge panels with content, attributes, and source URLs
-- **=== Results ===** — Search result list, preceded by `Found N results for 'query':` summary line
-- **=== Search Suggestions ===** — Related search suggestions
-
-For each result:
-  - Sequential number
-  - Title
-  - URL (plain text)
-  - Summary (content snippet from the page)
-  - Date (if available, e.g., publication date)
-  - Source search engine
-
-Note: `dateSource` is a JSON-only metadata field indicating whether the date came from the SearXNG API ("api") or was inferred from page content ("inferred"). When empty, it is omitted from JSON output (omitempty). It is not displayed in text output.
-
-**JSON Response Fields:**
-
-When using the `--json` CLI flag, the response includes:
+**Response Fields:**
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -71,7 +54,7 @@ When using the `--json` CLI flag, the response includes:
 | `content` | string | Content snippet from the page |
 | `engine` | string | Source search engine |
 | `publishedDate` | string | Publication date if available (as returned by the engine or inferred from content; no strict ISO 8601 normalization is applied) |
-| `dateSource` | string | Source of the date: "api" (from SearXNG), "inferred" (calculated from content); omitted when empty (omitempty); only in JSON output |
+| `dateSource` | string | Source of the date: "api" (from SearXNG), "inferred" (calculated from content); omitted when empty (omitempty) |
 
 **Note:** The `number_of_results` field may return 0 from SearXNG even when results are present. The server normalizes this by replacing 0 with `len(results)` when results exist.
 
@@ -152,30 +135,33 @@ When using the `--json` CLI flag, the response includes:
 
 ### Example Response
 
-```
-=== Answers ===
-
-[1] 203.0.113.42
-    Engine: ip_lookup
-
-=== Results ===
-
-Found 5 results for 'golang tutorial':
-
-1. Go Language Tutorial
-   URL: https://example.com/golang-tutorial
-   Summary: Learn Go programming from scratch with this comprehensive tutorial...
-   Date: 2024-01-15
-   Engine: google
-
-2. Building Web Applications with Go
-   URL: https://example.com/go-web-dev
-   Summary: A practical guide to building modern web applications using Go...
-   Engine: duckduckgo
-
-=== Search Suggestions ===
-  - Best Golang tutorial
-  - Golang tutorial interactive
+```json
+{
+  "query": "golang tutorial",
+  "answers": [
+    {"answer": "203.0.113.42", "engine": "ip_lookup"}
+  ],
+  "number_of_results": 2,
+  "results": [
+    {
+      "title": "Go Language Tutorial",
+      "url": "https://example.com/golang-tutorial",
+      "content": "Learn Go programming from scratch with this comprehensive tutorial...",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Building Web Applications with Go",
+      "url": "https://example.com/go-web-dev",
+      "content": "A practical guide to building modern web applications using Go...",
+      "engine": "duckduckgo"
+    }
+  ],
+  "suggestions": [
+    "Best Golang tutorial",
+    "Golang tutorial interactive"
+  ]
+}
 ```
 
 ### Error Responses

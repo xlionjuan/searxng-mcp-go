@@ -53,8 +53,18 @@ func TestMCPToolHandler_Success(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected *mcp.TextContent, got %T", result.Content[0])
 	}
-	if !strings.Contains(textContent.Text, "Go") {
-		t.Errorf("expected formatted text to contain 'Go', got: %s", textContent.Text)
+	var parsed SearchResponse
+	if err := json.Unmarshal([]byte(textContent.Text), &parsed); err != nil {
+		t.Fatalf("expected valid JSON in text content, got error: %v\nbody: %s", err, textContent.Text)
+	}
+	if parsed.Query != "golang" {
+		t.Errorf("expected query 'golang', got '%s'", parsed.Query)
+	}
+	if len(parsed.Results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(parsed.Results))
+	}
+	if parsed.Results[0].Title != "Go" {
+		t.Errorf("expected result title 'Go', got '%s'", parsed.Results[0].Title)
 	}
 }
 
@@ -154,9 +164,18 @@ func buildSearchToolHandler(searcher *SearXNGSearcher) func(context.Context, *mc
 			}, nil, nil
 		}
 
+		jsonBytes, err := json.Marshal(resp)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "json marshal error: " + err.Error()},
+				},
+				IsError: true,
+			}, nil, nil
+		}
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
-				&mcp.TextContent{Text: formatResults(resp)},
+				&mcp.TextContent{Text: string(jsonBytes)},
 			},
 		}, nil, nil
 	}
