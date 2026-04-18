@@ -52,7 +52,7 @@ When using the `--json` CLI flag, the response includes additional fields:
 | Field | Type | Description |
 |-------|------|-------------|
 | `results` | array | Array of search result objects |
-| `number_of_results` | integer | Total count of results (may be 0 even when results exist due to SearXNG API behavior) |
+| `number_of_results` | integer | Total count of results; if SearXNG returns 0 while results exist, normalized to `len(results)` |
 | `query` | string | The original search query |
 
 **Result Object Fields:**
@@ -66,7 +66,7 @@ When using the `--json` CLI flag, the response includes additional fields:
 | `publishedDate` | string | Publication date if available (ISO 8601 format) |
 | `dateSource` | string | Source of the date: "api" (from SearXNG), "inferred" (calculated from content), or "" (not available); only in JSON output |
 
-**Note:** The `number_of_results` field may return 0 even when results are present in the `results` array. This is a known behavior of the SearXNG API, and the code handles this by using the actual array length when this occurs.
+**Note:** The `number_of_results` field may return 0 from SearXNG even when results are present. The server normalizes this by replacing 0 with `len(results)` when results exist.
 
 ### Example Usage
 
@@ -146,6 +146,8 @@ When using the `--json` CLI flag, the response includes additional fields:
 ### Example Response
 
 ```
+=== Results ===
+
 Found 5 results for 'golang tutorial':
 
 1. Go Language Tutorial

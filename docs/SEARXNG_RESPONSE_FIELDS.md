@@ -159,24 +159,29 @@ sorting and iteration.
 
 ## Current Implementation Note
 
-As of the current codebase, `searxng-mcp-go` does **not** expose `corrections` or
-`answers` in the `SearchResponse` struct. The Go struct only maps:
+The `searxng-mcp-go` codebase now exposes `answers` and `infoboxes` in the
+`SearchResponse` struct. The Go struct maps:
 
 ```go
+type Answer struct {
+    Answer   string `json:"answer"`
+    Engine   string `json:"engine"`
+    Template string `json:"template,omitempty"`
+}
+
 type SearchResponse struct {
     Query           string         `json:"query"`
+    Answers         []Answer       `json:"answers,omitempty"`
     NumberOfResults int            `json:"number_of_results"`
+    Infoboxes       []Infobox      `json:"infoboxes,omitempty"`
     Results         []SearchResult `json:"results"`
     Suggestions     []string       `json:"suggestions"`
 }
 ```
 
-To support these fields, add:
-
-```go
-Corrections []string       `json:"corrections,omitempty"`
-Answers     []map[string]interface{} `json:"answers,omitempty"`
-```
+Note: `corrections` is **not** currently exposed. DuckDuckGo answers that
+overlap with infobox content are deduplicated by `deduplicateAnswers()`
+before the response is returned.
 
 ---
 

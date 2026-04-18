@@ -14,17 +14,12 @@ The SearXNG MCP Server provides two output modes: **CLI text mode** (default) an
 
 ## Example 1: Full Output (All Fields Populated)
 
-Query: `apple inc` — this query triggers Answers, Infoboxes, Results, and Suggestions simultaneously.
+Query: `apple inc` — this query triggers Infoboxes, Results, and Suggestions simultaneously. Answers from DuckDuckGo are deduplicated against infobox content and do not appear.
 
 ### CLI Text Mode
 
 ```
 $ ./searxng-mcp-go "apple inc"
-
-=== Answers ===
-
-[1] Apple Inc. is an American multinational technology company headquartered in Cupertino, California, in Silicon Valley, best known for its consumer electronics, software and online services. Founded in 1976 as Apple Computer Company by Steve Jobs, Steve Wozniak and Ronald Wayne, the company was incorporated by Jobs and Wozniak as Apple Computer, Inc. the following year. It was renamed to its current name in 2007 as the company had expanded its focus from computers to consumer electronics. More at Wikipedia
-    Engine: duckduckgo
 
 === Infoboxes ===
 
@@ -75,14 +70,8 @@ Found 16 results for 'apple inc':
 ```json
 {
   "query": "apple inc",
+  "answers": [],
   "number_of_results": 16,
-  "answers": [
-    {
-      "answer": "Apple Inc. is an American multinational technology company...",
-      "engine": "duckduckgo",
-      "template": "answer/legacy.html"
-    }
-  ],
   "infoboxes": [
     {
       "infobox": "Apple Inc.",
@@ -256,8 +245,8 @@ suggestions
 ```json
 {
   "query": "string",
-  "number_of_results": "int",
   "answers": [],
+  "number_of_results": "int",
   "infoboxes": [],
   "results": [],
   "suggestions": []
@@ -288,7 +277,7 @@ Whether each field is populated depends on the results returned by the SearXNG b
 | `content` | The engine returned a summary/description; some results may lack this field |
 | `engine` | Always populated; indicates which search engine produced this result |
 | `publishedDate` | The engine provided a publication date, or the program inferred a date from the content |
-| `dateSource` | Only appears when `publishedDate` is populated; indicates the date source (`provided` / `inferred`) |
+| `dateSource` | Only appears when `publishedDate` is populated; indicates the date source (`api` / `inferred`) |
 
 ---
 
