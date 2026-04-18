@@ -53,15 +53,23 @@ Queries where `answers` contains genuinely distinct information:
 
 The function `deduplicateAnswers()` in `search.go` filters answers at the **search response layer**, before the result reaches JSON serialization or CLI formatting. This means both output modes benefit.
 
-**Algorithm:**
+**Algorithm (exact-case fast path + lazy lowercase fallback):**
 
 For each answer, the following steps are applied:
-1. Lowercase the answer text.
-2. Strip the known suffix `" more at Wikipedia"` (case-insensitive) that DuckDuckGo appends.
-3. Take the first 200 characters of the stripped text as a prefix.
-4. Check if any lowercased infobox content **contains** this prefix (substring match).
 
-If the prefix matches any infobox content, the answer is considered a duplicate and is removed.
+*Fast path (no allocation):*
+1. Strip the known suffix `" More at Wikipedia"` (exact case) that DuckDuckGo appends.
+2. Take the first 200 characters of the stripped text as a prefix.
+3. Check if any infobox content **contains** this prefix using exact-case substring matching.
+
+*Lazy fallback (lowercase, built on first use):*
+If the fast path did not match, a lowercased copy of all infobox contents is built once and reused for subsequent answers:
+1. Lowercase the answer text.
+2. Strip the known suffix `" more at wikipedia"` (lowercase).
+3. Take the first 200 characters of the stripped text as a prefix.
+4. Check if any lowercased infobox content **contains** this prefix (case-insensitive substring match).
+
+If either path finds a match, the answer is considered a duplicate and is removed. The lazy fallback handles edge cases where the answer and infobox differ only in casing (e.g. `"Apple"` vs `"apple"`).
 
 ### Why Search Layer, Not Format Layer
 
@@ -85,4 +93,4 @@ Deduplication happens in `performSearch()` (search.go) rather than in `formatRes
 
 - **Function**: `deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer` in `search.go`
 - **Called**: In `performSearch()` after JSON unmarshalling, before `inferDates()`
-- **Tests**: 8 test cases in `search_test.go` covering empty inputs, exact match, prefix match, DDG "More at Wikipedia" suffix stripping, case insensitivity, distinct answers (IP), and mixed scenarios
+- **Tests**: 9 test cases in `search_test.go` covering empty inputs, exact match, prefix match, DDG "More at Wikipedia" suffix stripping, case insensitivity, distinct answers (IP), mixed scenarios, and empty answer skipping

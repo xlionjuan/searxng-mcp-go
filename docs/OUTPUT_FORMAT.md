@@ -70,6 +70,7 @@ Found 16 results for 'apple inc':
 ```json
 {
   "query": "apple inc",
+  "answers": [],
   "number_of_results": 16,
   "infoboxes": [
     {
@@ -180,6 +181,8 @@ Found 17 results for 'golang tutorial':
 }
 ```
 
+Note: `answers` and `infoboxes` are omitted from this output because they are empty (uses `omitempty`). In contrast, `results` and `suggestions` always appear — they are forced to `[]` (empty array) rather than omitted.
+
 ---
 
 ## Empty Field Handling
@@ -189,7 +192,7 @@ When a field in the query results has no value, the behavior is as follows:
 | Mode | Behavior |
 |------|----------|
 | **CLI text mode** | The entire section is omitted — nothing is printed. For example, if there are no Answers, the `=== Answers ===` heading will not appear. |
-| **JSON mode** | Uses Go's `json:"...,omitempty"` tag, so empty fields are completely omitted from the JSON output. |
+| **JSON mode** | `answers` and `infoboxes` use `omitempty` and are omitted when empty. `results` and `suggestions` are always present — forced to `[]` (empty array) when empty, never omitted or `null`. |
 
 ### Specific Rules
 
@@ -204,8 +207,10 @@ When a field in the query results has no value, the behavior is as follows:
 - `suggestions` is empty → omit the entire `=== Search Suggestions ===` section
 
 **JSON mode:**
-- `answers` is empty → no `answers` key in the JSON
-- `infoboxes` is empty → no `infoboxes` key in the JSON
+- `answers` is empty → no `answers` key in the JSON (omitempty)
+- `infoboxes` is empty → no `infoboxes` key in the JSON (omitempty)
+- `results` is empty → `"results": []` (always present, forced to empty array)
+- `suggestions` is empty → `"suggestions": []` (always present, forced to empty array)
 - `result.publishedDate` is empty → no `publishedDate` key in that result object
 - `result.dateSource` is empty → no `dateSource` key in that result object
 - `infobox.attributes` is empty → no `attributes` key in that infobox object
@@ -244,15 +249,15 @@ suggestions
 ```json
 {
   "query": "string",
-  "number_of_results": "int",
   "answers": [],
+  "number_of_results": "int",
   "infoboxes": [],
   "results": [],
   "suggestions": []
 }
 ```
 
-Note: JSON does not guarantee field order, but Go's `encoding/json.Marshal` serializes struct fields in declaration order. The order above is enforced by the Go struct definition and its `MarshalJSON` override.
+Note: JSON does not guarantee field order, but Go's `encoding/json.Marshal` serializes struct fields in declaration order. The order above is enforced by the Go struct definition and its `MarshalJSON` override. `answers` and `infoboxes` use `omitempty` (omitted when empty), while `results` and `suggestions` are always present (forced to `[]` when empty).
 
 ---
 

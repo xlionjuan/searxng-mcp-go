@@ -32,10 +32,14 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 
 ### Response Format
 
-The tool returns a text response containing:
+The tool returns a text response containing up to four sections (empty sections are omitted):
 
-- Total number of results found
-- For each result:
+- **=== Answers ===** — Direct answers (IP lookup, calculator, hash, timezone, etc.)
+- **=== Infoboxes ===** — Knowledge panels with content, attributes, and source URLs
+- **=== Results ===** — Search result list, preceded by `Found N results for 'query':` summary line
+- **=== Search Suggestions ===** — Related search suggestions
+
+For each result:
   - Sequential number
   - Title
   - URL (plain text)
@@ -47,13 +51,16 @@ Note: `dateSource` is a JSON-only metadata field indicating whether the date cam
 
 **JSON Response Fields:**
 
-When using the `--json` CLI flag, the response includes additional fields:
+When using the `--json` CLI flag, the response includes:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `results` | array | Array of search result objects |
-| `number_of_results` | integer | Total count of results; if SearXNG returns 0 while results exist, normalized to `len(results)` |
 | `query` | string | The original search query |
+| `answers` | array | Direct answers (omitted when empty) |
+| `number_of_results` | integer | Total count of results; if SearXNG returns 0 while results exist, normalized to `len(results)` |
+| `infoboxes` | array | Knowledge panels with content, attributes, URLs (omitted when empty) |
+| `results` | array | Array of search result objects (always present, `[]` when empty) |
+| `suggestions` | array | Related search suggestions (always present, `[]` when empty) |
 
 **Result Object Fields:**
 
@@ -146,6 +153,11 @@ When using the `--json` CLI flag, the response includes additional fields:
 ### Example Response
 
 ```
+=== Answers ===
+
+[1] 203.0.113.42
+    Engine: ip_lookup
+
 === Results ===
 
 Found 5 results for 'golang tutorial':
@@ -160,6 +172,10 @@ Found 5 results for 'golang tutorial':
    URL: https://example.com/go-web-dev
    Summary: A practical guide to building modern web applications using Go...
    Engine: duckduckgo
+
+=== Search Suggestions ===
+  - Best Golang tutorial
+  - Golang tutorial interactive
 ```
 
 ### Error Responses
