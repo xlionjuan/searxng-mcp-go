@@ -30,8 +30,37 @@ func mustCompile(pattern string) *regexp.Regexp {
 	return re
 }
 
+// mayContainRelativeDate checks for common relative-date keywords (case variants).
+// This fast path avoids expensive ToLower + regex when content clearly has no date hint.
+func mayContainRelativeDate(content string) bool {
+	if content == "" {
+		return false
+	}
+	return strings.Contains(content, "ago") ||
+		strings.Contains(content, "Ago") ||
+		strings.Contains(content, "AGO") ||
+		strings.Contains(content, "yesterday") ||
+		strings.Contains(content, "Yesterday") ||
+		strings.Contains(content, "last week") ||
+		strings.Contains(content, "Last week") ||
+		strings.Contains(content, "Last Week") ||
+		strings.Contains(content, "vor") ||
+		strings.Contains(content, "Vor") ||
+		strings.Contains(content, "vorgestern") ||
+		strings.Contains(content, "Vorgestern") ||
+		strings.Contains(content, "stunde") ||
+		strings.Contains(content, "stunden") ||
+		strings.Contains(content, "tag") ||
+		strings.Contains(content, "tagen")
+}
+
 func parseRelativeDate(content string, currentTime time.Time) *time.Time {
 	if content == "" {
+		return nil
+	}
+
+	// Fast path: skip ToLower + regex if no relative-date keyword is present
+	if !mayContainRelativeDate(content) {
 		return nil
 	}
 
