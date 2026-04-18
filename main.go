@@ -155,6 +155,12 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 
 	isCLIMode = flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
 
+	// In MCP stdin mode, all configuration must come from environment variables.
+	// Reject any command-line arguments to enforce a clean, env-only contract.
+	if !isCLIMode && len(flagArgs) > 0 {
+		return false, CLIFlags{}, nil, fmt.Errorf("MCP stdin mode does not accept command-line arguments; use environment variables (SEARXNG_URL, DEBUG) instead")
+	}
+
 	return isCLIMode, flags, positionalArgs, nil
 }
 
