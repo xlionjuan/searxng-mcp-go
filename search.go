@@ -380,38 +380,66 @@ func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 		return answers
 	}
 
-	// Collect all infobox content texts (lowercased)
-	var infoboxTexts []string
+	// Check that at least one infobox has content (avoids empty-slice edge case).
+	hasContent := false
 	for _, ib := range infoboxes {
 		if ib.Content != "" {
-			infoboxTexts = append(infoboxTexts, strings.ToLower(ib.Content))
+			hasContent = true
+			break
 		}
 	}
-
-	if len(infoboxTexts) == 0 {
+	if !hasContent {
 		return answers
 	}
 
 	const prefixLen = 200
+
+	// infoboxTexts is built lazily — only if an answer needs the lowercase fallback.
+	var infoboxTexts []string
 
 	filtered := make([]Answer, 0, len(answers))
 	for _, a := range answers {
 		if a.Answer == "" {
 			continue
 		}
-		// Take the first prefixLen characters of the answer for matching.
-		// Strip known suffixes (e.g., DuckDuckGo appends "More at Wikipedia")
-		// so they don't pollute the prefix.
-		lowerAnswer := strings.ToLower(a.Answer)
-		lowerAnswer = strings.TrimSuffix(lowerAnswer, " more at wikipedia")
-		prefix := lowerAnswer
-		if len(lowerAnswer) > prefixLen {
-			prefix = lowerAnswer[:prefixLen]
+
+		// Fast path: exact-case prefix matching (no lowercase allocation).
+		prefix := a.Answer
+		prefix = strings.TrimSuffix(prefix, " More at Wikipedia")
+		if len(prefix) > prefixLen {
+			prefix = prefix[:prefixLen]
 		}
 
 		duplicated := false
+		for _, ib := range infoboxes {
+			if ib.Content != "" && strings.Contains(ib.Content, prefix) {
+				duplicated = true
+				break
+			}
+		}
+		if duplicated {
+			continue
+		}
+
+		// Slow path: lowercase fallback — build infoboxTexts on first use.
+		if infoboxTexts == nil {
+			infoboxTexts = make([]string, 0, len(infoboxes))
+			for _, ib := range infoboxes {
+				if ib.Content != "" {
+					infoboxTexts = append(infoboxTexts, strings.ToLower(ib.Content))
+				}
+			}
+		}
+
+		lowerAnswer := strings.ToLower(a.Answer)
+		lowerAnswer = strings.TrimSuffix(lowerAnswer, " more at wikipedia")
+		lowerPrefix := lowerAnswer
+		if len(lowerAnswer) > prefixLen {
+			lowerPrefix = lowerAnswer[:prefixLen]
+		}
+
 		for _, ic := range infoboxTexts {
-			if strings.Contains(ic, prefix) {
+			if strings.Contains(ic, lowerPrefix) {
 				duplicated = true
 				break
 			}
