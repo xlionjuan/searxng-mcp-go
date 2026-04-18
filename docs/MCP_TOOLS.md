@@ -43,7 +43,7 @@ The tool returns a text response containing:
   - Date (if available, e.g., publication date)
   - Source search engine
 
-Note: `dateSource` is a JSON-only metadata field indicating whether the date came from the SearXNG API ("api") or was inferred from page content ("inferred"). It is not displayed in text output.
+Note: `dateSource` is a JSON-only metadata field indicating whether the date came from the SearXNG API ("api") or was inferred from page content ("inferred"). When empty, it is omitted from JSON output (omitempty). It is not displayed in text output.
 
 **JSON Response Fields:**
 
@@ -63,8 +63,8 @@ When using the `--json` CLI flag, the response includes additional fields:
 | `url` | string | URL of the result |
 | `content` | string | Content snippet from the page |
 | `engine` | string | Source search engine |
-| `publishedDate` | string | Publication date if available (ISO 8601 format) |
-| `dateSource` | string | Source of the date: "api" (from SearXNG), "inferred" (calculated from content), or "" (not available); only in JSON output |
+| `publishedDate` | string | Publication date if available (as returned by the engine or inferred from content; no strict ISO 8601 normalization is applied) |
+| `dateSource` | string | Source of the date: "api" (from SearXNG), "inferred" (calculated from content); omitted when empty (omitempty); only in JSON output |
 
 **Note:** The `number_of_results` field may return 0 from SearXNG even when results are present. The server normalizes this by replacing 0 with `len(results)` when results exist.
 

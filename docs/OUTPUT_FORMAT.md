@@ -70,7 +70,6 @@ Found 16 results for 'apple inc':
 ```json
 {
   "query": "apple inc",
-  "answers": [],
   "number_of_results": 16,
   "infoboxes": [
     {
@@ -245,15 +244,15 @@ suggestions
 ```json
 {
   "query": "string",
-  "answers": [],
   "number_of_results": "int",
+  "answers": [],
   "infoboxes": [],
   "results": [],
   "suggestions": []
 }
 ```
 
-Note: The JSON specification itself does not guarantee field order, but the above reflects the Go struct definition order. Actual serialization typically follows this order.
+Note: JSON does not guarantee field order, but Go's `encoding/json.Marshal` serializes struct fields in declaration order. The order above is enforced by the Go struct definition and its `MarshalJSON` override.
 
 ---
 

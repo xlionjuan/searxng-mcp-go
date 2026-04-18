@@ -45,6 +45,51 @@ go build -ldflags="-s -w" -o searxng-mcp-go .
 
 The server uses stdio transport, meaning it communicates via stdin/stdout. It is designed to be invoked by an MCP client host (such as an AI agent framework).
 
+### MCP Server Configuration
+
+Configure the MCP server via environment variables before launching it from your MCP client (e.g., Cursor, Claude Desktop, Hermes):
+
+```bash
+# Set SearXNG instance URL
+export SEARXNG_URL=https://your-searxng-instance.example.com
+
+# Enable debug logging (verbose HTTP request/response output)
+export DEBUG=1
+
+# Then run the server (or let your MCP client launch it)
+./searxng-mcp-go
+```
+
+In an MCP client configuration, set `env` in the server definition:
+
+```json
+{
+  "mcpServers": {
+    "searxng": {
+      "command": "/path/to/searxng-mcp-go",
+      "env": {
+        "SEARXNG_URL": "https://your-searxng-instance.example.com",
+        "DEBUG": "1"
+      }
+    }
+  }
+}
+```
+
+**Priority:** command-line flag > environment variable > default hardcoded value
+
+### CLI Mode Configuration
+
+When running in CLI mode (with a query argument), command-line flags can be used directly:
+
+```bash
+# Custom SearXNG server via flag
+./searxng-mcp-go "query" --searxng-url=https://your-searxng-instance.example.com
+
+# Debug mode via flag
+./searxng-mcp-go "query" --debug
+```
+
 ### Testing with MCP Inspector
 
 The Model Context Protocol Inspector allows you to test the server interactively:
@@ -61,22 +106,9 @@ This opens a web interface where you can:
 
 ## Configuration
 
-### SearXNG Instance
+### Default SearXNG Instance
 
-By default, the server uses `https://search-4.xlion.dev`. You can configure the SearXNG URL at runtime using either an environment variable or a command-line flag:
-
-**Environment variable (recommended):**
-```bash
-export SEARXNG_URL=https://your-searxng-instance.example.com
-./searxng-mcp-go
-```
-
-**Command-line flag:**
-```bash
-./searxng-mcp-go -searxng-url=https://your-searxng-instance.example.com
-```
-
-**Priority:** command-line flag > environment variable > default hardcoded value
+By default, the server uses `https://search-4.xlion.dev`. See the [MCP Server Configuration](#mcp-server-configuration) section above for how to override it via environment variables or CLI flags.
 
 ### Timeout
 
