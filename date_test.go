@@ -114,6 +114,10 @@ func assertInferredDate(t *testing.T, content string, baseTime time.Time, expect
 }
 
 func TestInferDates(t *testing.T) {
+	t.Run("nil response", func(t *testing.T) {
+		inferDates(nil, nil)
+	})
+
 	t.Run("api date preserved", func(t *testing.T) {
 		apiDate := "2024-06-10"
 		resp := &SearchResponse{
@@ -146,6 +150,19 @@ func TestInferDates(t *testing.T) {
 		resp := &SearchResponse{
 			Results: []SearchResult{
 				{Title: "Test", URL: "https://example.com", Content: "Random content without dates"},
+			},
+		}
+		inferDates(resp, nil)
+		if resp.Results[0].DateSource != DateSourceNone {
+			t.Errorf("DateSource = %v, want %v", resp.Results[0].DateSource, DateSourceNone)
+		}
+	})
+
+	t.Run("empty string PublishedDate treated as no date", func(t *testing.T) {
+		emptyDate := ""
+		resp := &SearchResponse{
+			Results: []SearchResult{
+				{Title: "Test", URL: "https://example.com", Content: "Random content without dates", PublishedDate: &emptyDate},
 			},
 		}
 		inferDates(resp, nil)

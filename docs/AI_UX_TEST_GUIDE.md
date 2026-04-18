@@ -128,7 +128,7 @@ query="What are the best practices for building MCP servers in Go in 2024 and 20
 
 ```bash
 # Empty query
-{"query": ""} → Should return "query is required" error
+{"query": ""} → Should return "validation error on \"query\": search query cannot be only whitespace" error
 
 # Invalid time_range
 {"query": "test", "time_range": "invalid"} → Should explain valid values

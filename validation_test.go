@@ -170,3 +170,29 @@ func TestValidateSearchArgs_Pageno(t *testing.T) {
 		}
 	})
 }
+
+func TestValidateSearchArgs_CategoriesAndEngines_EdgeCases(t *testing.T) {
+	t.Run("max identifier length", func(t *testing.T) {
+		longIdentifier := strings.Repeat("a", 51)
+		assertValidationError(t, &SearchArgs{Query: "test", Categories: longIdentifier}, "categories", "invalid category")
+		assertValidationError(t, &SearchArgs{Query: "test", Engines: longIdentifier}, "engines", "invalid engine")
+	})
+
+	t.Run("exactly max identifier length", func(t *testing.T) {
+		validIdentifier := strings.Repeat("a", 50)
+		assertValidSearchArgs(t, &SearchArgs{Query: "test", Categories: validIdentifier})
+		assertValidSearchArgs(t, &SearchArgs{Query: "test", Engines: validIdentifier})
+	})
+
+	t.Run("empty comma segments", func(t *testing.T) {
+		assertValidationError(t, &SearchArgs{Query: "test", Engines: "google,,bing"}, "engines", "invalid engine")
+		assertValidationError(t, &SearchArgs{Query: "test", Engines: "google,"}, "engines", "invalid engine")
+		assertValidationError(t, &SearchArgs{Query: "test", Engines: ",google"}, "engines", "invalid engine")
+		assertValidationError(t, &SearchArgs{Query: "test", Categories: "general,,news"}, "categories", "invalid category")
+	})
+
+	t.Run("whitespace-only segments", func(t *testing.T) {
+		assertValidationError(t, &SearchArgs{Query: "test", Engines: "  "}, "engines", "invalid engine")
+		assertValidationError(t, &SearchArgs{Query: "test", Engines: "google,  ,bing"}, "engines", "invalid engine")
+	})
+}

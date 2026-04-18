@@ -685,7 +685,7 @@ func TestPerformSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 
 	cfg := &Config{
 		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
+		Timeout:   30 * time.Second,
 	}
 	args := &SearchArgs{Query: "test"}
 
@@ -702,6 +702,27 @@ func TestPerformSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 	if len(result.Results) != 2 {
 		t.Errorf("len(Results) = %d, want 2", len(result.Results))
 	}
+}
+
+func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
+	t.Run("nil client", func(t *testing.T) {
+		searcher := &SearXNGSearcher{client: nil, baseURL: "https://example.com"}
+		searcher.Close()
+		searcher.Close()
+	})
+
+	t.Run("shared default client", func(t *testing.T) {
+		searcher := &SearXNGSearcher{client: getDefaultHTTPClient(), baseURL: "https://example.com"}
+		searcher.Close()
+		searcher.Close()
+	})
+
+	t.Run("custom client", func(t *testing.T) {
+		customClient := &http.Client{Timeout: 30 * time.Second}
+		searcher := &SearXNGSearcher{client: customClient, baseURL: "https://example.com"}
+		searcher.Close()
+		searcher.Close()
+	})
 }
 
 func TestPerformSearch_POSTtoGETFallback(t *testing.T) {
@@ -762,6 +783,87 @@ func TestPerformSearch_POSTtoGETFallback(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPerformSearch_BrowserHeaders(t *testing.T) {
+	t.Run("POST request headers", func(t *testing.T) {
+		var capturedHeaders http.Header
+		searchResp := SearchResponse{Results: []SearchResult{}, NumberOfResults: 0, Query: "test"}
+		body, _ := json.Marshal(searchResp)
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedHeaders = r.Header
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(body)
+		}))
+		defer server.Close()
+
+		cfg := &Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+		_, err := performSearch(t.Context(), cfg, &SearchArgs{Query: "test"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if capturedHeaders.Get("User-Agent") == "" {
+			t.Error("User-Agent header should be set")
+		}
+		if capturedHeaders.Get("Accept") == "" {
+			t.Error("Accept header should be set")
+		}
+		if !strings.Contains(capturedHeaders.Get("Accept"), "text/html") {
+			t.Errorf("Accept header should contain text/html, got: %s", capturedHeaders.Get("Accept"))
+		}
+		if capturedHeaders.Get("Accept-Language") == "" {
+			t.Error("Accept-Language header should be set")
+		}
+		if capturedHeaders.Get("Accept-Encoding") == "" {
+			t.Error("Accept-Encoding header should be set")
+		}
+		if capturedHeaders.Get("Sec-Fetch-Mode") != "navigate" {
+			t.Errorf("Sec-Fetch-Mode should be navigate, got: %s", capturedHeaders.Get("Sec-Fetch-Mode"))
+		}
+	})
+
+	t.Run("GET fallback headers", func(t *testing.T) {
+		var capturedHeaders http.Header
+		searchResp := SearchResponse{Results: []SearchResult{}, NumberOfResults: 0, Query: "test"}
+		body, _ := json.Marshal(searchResp)
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == "POST" {
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+			capturedHeaders = r.Header
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(body)
+		}))
+		defer server.Close()
+
+		cfg := &Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+		_, err := performSearch(t.Context(), cfg, &SearchArgs{Query: "test"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if capturedHeaders.Get("User-Agent") == "" {
+			t.Error("User-Agent header should be set on GET fallback")
+		}
+		if capturedHeaders.Get("Accept") == "" {
+			t.Error("Accept header should be set on GET fallback")
+		}
+		if !strings.Contains(capturedHeaders.Get("Accept"), "text/html") {
+			t.Errorf("Accept header should contain text/html on GET fallback, got: %s", capturedHeaders.Get("Accept"))
+		}
+		if capturedHeaders.Get("Accept-Language") == "" {
+			t.Error("Accept-Language header should be set on GET fallback")
+		}
+		if capturedHeaders.Get("Sec-Fetch-Mode") != "navigate" {
+			t.Errorf("Sec-Fetch-Mode should be navigate on GET fallback, got: %s", capturedHeaders.Get("Sec-Fetch-Mode"))
+		}
+	})
 }
 
 // --- deduplicateAnswers tests ---

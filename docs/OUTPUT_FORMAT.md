@@ -70,23 +70,7 @@ Found 16 results for 'apple inc':
 ```json
 {
   "query": "apple inc",
-  "answers": [],
   "number_of_results": 16,
-  "infoboxes": [
-    {
-      "infobox": "Apple Inc.",
-      "content": "Apple Inc. is an American multinational technology company...",
-      "attributes": [
-        { "label": "Formerly called", "value": "Apple Computer Company (1976–1977)..." },
-        { "label": "Type", "value": "Public" },
-        { "label": "Industry", "value": "Consumer electronics, Software services, Online services" }
-      ],
-      "urls": [
-        { "title": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Apple_Inc." },
-        { "title": "Official site", "url": "https://www.apple.com/" }
-      ]
-    }
-  ],
   "results": [
     {
       "title": "Apple Inc.",
@@ -249,9 +233,7 @@ suggestions
 ```json
 {
   "query": "string",
-  "answers": [],
   "number_of_results": "int",
-  "infoboxes": [],
   "results": [],
   "suggestions": []
 }

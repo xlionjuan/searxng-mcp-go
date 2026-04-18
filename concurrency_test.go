@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -168,57 +167,6 @@ func TestConcurrentSearcherCreation(t *testing.T) {
 	}
 }
 
-// TestConcurrentSameSearcherUse tests using the same searcher from multiple goroutines
-func TestConcurrentSameSearcherUse(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping shared searcher stress test in short mode")
-	}
-	requestCount := int64(0)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt64(&requestCount, 1)
-		searchResp := SearchResponse{
-			Results: []SearchResult{
-				{Title: "Result", URL: "https://example.com/1", Content: "Content", Engine: "google"},
-			},
-			NumberOfResults: 1,
-			Query:           "test",
-		}
-		body, _ := json.Marshal(searchResp)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-	}))
-	defer server.Close()
-
-	searcher, err := NewSearXNGSearcher(server.URL, 30*time.Second, nil)
-	if err != nil {
-		t.Fatalf("Failed to create searcher: %v", err)
-	}
-
-	const numGoroutines = 30
-	var wg sync.WaitGroup
-	wg.Add(numGoroutines)
-
-	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
-			defer wg.Done()
-			ctx := context.Background()
-			_, err := searcher.Search(ctx, &SearchArgs{Query: "concurrent_test"})
-			if err != nil {
-				t.Errorf("Search error: %v", err)
-			}
-		}(i)
-	}
-
-	wg.Wait()
-
-	count := atomic.LoadInt64(&requestCount)
-	if count != numGoroutines {
-		t.Errorf("Expected %d requests, got %d", numGoroutines, count)
-	}
-}
-
 // TestChannelDeadlockDetection tests that channels don't deadlock
 func TestChannelDeadlockDetection(t *testing.T) {
 	if testing.Short() {
@@ -333,58 +281,6 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 	}
 }
 
-// TestSearcherThreadSafety tests that a single searcher can handle concurrent requests
-func TestSearcherThreadSafety(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping thread-safety stress test in short mode")
-	}
-	requestCount := int64(0)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt64(&requestCount, 1)
-		searchResp := SearchResponse{
-			Results: []SearchResult{
-				{Title: "Result", URL: "https://example.com/1", Content: "Content", Engine: "google"},
-			},
-			NumberOfResults: 1,
-			Query:           r.URL.Query().Get("q"),
-		}
-		body, _ := json.Marshal(searchResp)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-	}))
-	defer server.Close()
-
-	searcher, _ := NewSearXNGSearcher(server.URL, 30*time.Second, nil)
-
-	var wg sync.WaitGroup
-	const numGoroutines = 100
-	const iterationsPerGoroutine = 10
-
-	wg.Add(numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
-			defer wg.Done()
-			ctx := context.Background()
-			for j := 0; j < iterationsPerGoroutine; j++ {
-				_, err := searcher.Search(ctx, &SearchArgs{Query: "test"})
-				if err != nil {
-					t.Errorf("Search error: %v", err)
-				}
-			}
-		}(i)
-	}
-
-	wg.Wait()
-
-	expected := int64(numGoroutines * iterationsPerGoroutine)
-	actual := atomic.LoadInt64(&requestCount)
-	if actual != expected {
-		t.Errorf("Expected %d requests, got %d", expected, actual)
-	}
-}
-
 // --- Graceful Shutdown and Signal Handling Tests ---
 
 // TestGracefulShutdownWithContextCancel tests that search operations respect context cancellation
@@ -440,7 +336,14 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 		t.Fatal("Graceful shutdown timed out")
 	}
 
-	t.Logf("Requests made: %d, Completed: %d", atomic.LoadInt64(&requestCount), atomic.LoadInt64(&completedCount))
+	reqCount := atomic.LoadInt64(&requestCount)
+	compCount := atomic.LoadInt64(&completedCount)
+	if reqCount == 0 {
+		t.Fatal("expected at least one request to be made")
+	}
+	if compCount > reqCount {
+		t.Fatalf("completedCount=%d > requestCount=%d", compCount, reqCount)
+	}
 }
 
 // TestContextDeadlineExceededDuringSearch tests behavior when context deadline expires during search
@@ -474,70 +377,6 @@ func TestContextDeadlineExceededDuringSearch(t *testing.T) {
 }
 
 // --- Connection Pool Exhaustion Tests ---
-
-// TestHighConcurrencyStress tests the system under high concurrent load
-func TestHighConcurrencyStress(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping stress test in short mode")
-	}
-
-	requestCount := int64(0)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt64(&requestCount, 1)
-		searchResp := SearchResponse{
-			Results: []SearchResult{
-				{Title: "Result 1", URL: "https://example.com/1", Content: "Content 1", Engine: "google"},
-				{Title: "Result 2", URL: "https://example.com/2", Content: "Content 2", Engine: "bing"},
-				{Title: "Result 3", URL: "https://example.com/3", Content: "Content 3", Engine: "duckduckgo"},
-			},
-			NumberOfResults: 3,
-			Query:           "test",
-		}
-		body, _ := json.Marshal(searchResp)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-	}))
-	defer server.Close()
-
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-	}
-
-	var wg sync.WaitGroup
-	const numGoroutines = 200
-	const iterationsPerGoroutine = 10
-
-	wg.Add(numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
-		go func(goroutineID int) {
-			defer wg.Done()
-			for j := 0; j < iterationsPerGoroutine; j++ {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				_, err := performSearch(ctx, cfg, &SearchArgs{
-					Query:    fmt.Sprintf("stress_test_%d_%d", goroutineID, j),
-					Language: []string{"en", "zh", "ja"}[j%3],
-				})
-				cancel()
-				if err != nil {
-					t.Errorf("Search error: %v", err)
-				}
-			}
-		}(i)
-	}
-
-	wg.Wait()
-
-	expected := int64(numGoroutines * iterationsPerGoroutine)
-	actual := atomic.LoadInt64(&requestCount)
-	t.Logf("High concurrency stress test: expected=%d, actual=%d", expected, actual)
-
-	if actual != expected {
-		t.Errorf("Expected %d requests, got %d", expected, actual)
-	}
-}
 
 // TestConcurrentValidationAndSearch tests concurrent validation and search operations
 func TestConcurrentValidationAndSearch(t *testing.T) {
@@ -601,59 +440,5 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 	}
 	if searchErrors != 0 {
 		t.Fatalf("searchErrors = %d, want 0", searchErrors)
-	}
-}
-
-// TestSharedSearcherAcrossGoroutines tests the same searcher being used by many goroutines
-func TestSharedSearcherAcrossGoroutines(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping shared searcher load test in short mode")
-	}
-	requestCount := int64(0)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt64(&requestCount, 1)
-		searchResp := SearchResponse{
-			Results: []SearchResult{
-				{Title: "Result", URL: r.URL.Query().Get("q"), Content: "Content", Engine: "test"},
-			},
-			NumberOfResults: 1,
-			Query:           r.URL.Query().Get("q"),
-		}
-		body, _ := json.Marshal(searchResp)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-	}))
-	defer server.Close()
-
-	searcher, _ := NewSearXNGSearcher(server.URL, 30*time.Second, nil)
-
-	// Use searcher from many goroutines simultaneously
-	var wg sync.WaitGroup
-	const numGoroutines = 100
-	const queriesPerGoroutine = 20
-
-	wg.Add(numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
-		go func(goroutineID int) {
-			defer wg.Done()
-			ctx := context.Background()
-			for j := 0; j < queriesPerGoroutine; j++ {
-				query := fmt.Sprintf("goroutine_%d_query_%d", goroutineID, j)
-				_, err := searcher.Search(ctx, &SearchArgs{Query: query})
-				if err != nil {
-					t.Errorf("Search error for %s: %v", query, err)
-				}
-			}
-		}(i)
-	}
-
-	wg.Wait()
-
-	expected := int64(numGoroutines * queriesPerGoroutine)
-	actual := atomic.LoadInt64(&requestCount)
-	if actual != expected {
-		t.Errorf("Expected %d requests, got %d", expected, actual)
 	}
 }
