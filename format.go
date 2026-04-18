@@ -124,7 +124,7 @@ func formatResults(resp *SearchResponse) string {
 
 	// Suggestions last
 	if len(resp.Suggestions) > 0 {
-		b.WriteString("Suggestions:\n")
+		b.WriteString("=== Search Suggestions ===\n\n")
 		for _, s := range resp.Suggestions {
 			b.WriteString(fmt.Sprintf("  - %s\n", s))
 		}
