@@ -361,6 +361,48 @@ func setBrowserHeaders(req *http.Request) {
 	req.Header.Set("Priority", "u=0, i")
 }
 
+// deduplicateAnswers filters out answers whose text is a substring (or prefix)
+// of any infobox content. DuckDuckGo's engine often puts the same Wikipedia
+// summary in both answers and infoboxes, causing duplicate display.
+func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
+	if len(answers) == 0 || len(infoboxes) == 0 {
+		return answers
+	}
+
+	// Collect all infobox content texts
+	var infoboxTexts []string
+	for _, ib := range infoboxes {
+		if ib.Content != "" {
+			infoboxTexts = append(infoboxTexts, ib.Content)
+		}
+	}
+
+	if len(infoboxTexts) == 0 {
+		return answers
+	}
+
+	filtered := make([]Answer, 0, len(answers))
+	for _, a := range answers {
+		if a.Answer == "" {
+			continue
+		}
+		duplicated := false
+		for _, ic := range infoboxTexts {
+			// Check if the answer text is contained within infobox content
+			// or vice versa (case-insensitive)
+			if strings.Contains(strings.ToLower(ic), strings.ToLower(a.Answer)) ||
+				strings.Contains(strings.ToLower(a.Answer), strings.ToLower(ic)) {
+				duplicated = true
+				break
+			}
+		}
+		if !duplicated {
+			filtered = append(filtered, a)
+		}
+	}
+	return filtered
+}
+
 // performSearch executes the search query against SearXNG
 func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	if err := ValidateSearchArgs(args); err != nil {
@@ -581,6 +623,10 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	if result.NumberOfResults == 0 && len(result.Results) > 0 {
 		result.NumberOfResults = len(result.Results)
 	}
+
+	// Deduplicate answers that overlap with infobox content.
+	// DuckDuckGo engine puts Wikipedia summaries in both answers and infoboxes.
+	result.Answers = deduplicateAnswers(result.Answers, result.Infoboxes)
 
 	// Infer dates before returning to avoid mutation side effects in formatResults
 	inferDates(&result, nil)
