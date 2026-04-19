@@ -13,6 +13,12 @@ import (
 	"time"
 )
 
+type cancelRoundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f cancelRoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
 // --- Concurrent Search Stress Tests ---
 
 // TestConcurrentSearches runs multiple searches simultaneously with different parameters
@@ -80,21 +86,19 @@ func TestConcurrentContextCancellation(t *testing.T) {
 	requestCount := int64(0)
 	canceledCount := int64(0)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt64(&requestCount, 1)
-		select {
-		case <-r.Context().Done():
+	client := &http.Client{
+		Transport: cancelRoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			atomic.AddInt64(&requestCount, 1)
+			<-r.Context().Done()
 			atomic.AddInt64(&canceledCount, 1)
-			return
-		case <-time.After(2 * time.Second):
-			w.WriteHeader(http.StatusOK)
-		}
-	}))
-	defer server.Close()
+			return nil, r.Context().Err()
+		}),
+	}
 
 	cfg := &Config{
-		SearXNGURL: server.URL,
+		SearXNGURL: "https://example.com",
 		Timeout:    30 * time.Second,
+		HTTPClient: client,
 	}
 
 	const numGoroutines = 10
