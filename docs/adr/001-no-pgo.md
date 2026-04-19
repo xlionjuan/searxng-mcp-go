@@ -1,71 +1,71 @@
-# ADR-001: 不使用 PGO（Profile-Guided Optimization）
+# ADR-001: Do Not Use PGO (Profile-Guided Optimization)
 
-## 狀態
+## Status
 
-已接受（Accepted）
+Accepted
 
-## 背景
+## Background
 
-在 2026-04-16 的程式碼現代化審查中，有人建議為 build 加入 `-pgo=auto` 來提升效能。
+During the code modernization review on 2026-04-16, it was suggested to add `-pgo=auto` to the build for performance improvement.
 
-## 決定
+## Decision
 
-**不使用 PGO**，並明確禁止日後在未取得具代表性的 profiling data 前重新引入。
+**Do not use PGO**, and explicitly prohibit its reintroduction in the future without first obtaining representative profiling data.
 
-## 原因
+## Reasons
 
-### 1. 工具特性不適合 PGO
+### 1. Tool Characteristics Are Not Suitable for PGO
 
-searxng-mcp-go 是 **MCP server / CLI 工具**：
-- 每次執行時間短（請求 → 響應 → 退出）
-- 無法像長期執行的 HTTP server 一樣持續收集 profiling data
-- 每次 process 退出後 profiling data 就寫入磁碟，無法跨 process 累積有意義的熱路徑資訊
+searxng-mcp-go is an **MCP server / CLI tool**:
+- Each execution is short-lived (request → response → exit)
+- Cannot continuously collect profiling data like a long-running HTTP server
+- Profiling data is written to disk after each process exit, making it impossible to accumulate meaningful hot-path information across processes
 
-### 2. 沒有具代表性的 profiling data
+### 2. No Representative Profiling Data
 
-PGO 的核心前提是：**profiling data 必須代表真實 workload**。
+The core prerequisite of PGO is: **profiling data must represent real workloads**.
 
-| 資料來源 | 問題 |
-|----------|------|
-| 手工少數幾次執行 | 樣本不足，路徑覆蓋片面 |
-| Benchmark script | 人工構造的 workload 無法代表真實使用情境 |
-| 個人使用累積 | 查詢多樣性低，無法涵蓋多數程式碼路徑 |
+| Data Source | Problem |
+|-------------|---------|
+| A few manual executions | Insufficient samples, one-sided path coverage |
+| Benchmark script | Artificially constructed workloads cannot represent real usage scenarios |
+| Accumulated personal usage | Low query diversity, cannot cover most code paths |
 
-沒有 representative data 的 PGO **可能反而讓效能變差**（編譯器對錯誤的熱路徑做錯誤的優化）。
+PGO without representative data **may actually degrade performance** (the compiler optimizes for incorrect hot paths).
 
-### 3. 瓶頸不在本地 compute
+### 3. Bottleneck Is Not Local Compute
 
-對 SearXNG MCP server 來說：
-- **真正的瓶頸是網路延遲**（打外部 SearXNG API 的時間）
-- 本地 CPU 計算所佔比例極小
-- 即使 PGO 帶來 5~15% 的本地 compute 提升，整體 end-to-end 延遲改善也微乎其微
+For the SearXNG MCP server:
+- **The real bottleneck is network latency** (time spent calling the external SearXNG API)
+- Local CPU computation accounts for a very small proportion
+- Even if PGO delivers a 5–15% local compute improvement, the overall end-to-end latency improvement would be negligible
 
-### 4. CP 值過低
+### 4. Cost-Benefit Ratio Is Too Low
 
-折騰 PGO 需要：
-- 研究如何收集 profiling data
-- 設計 representative benchmark
-- 維護 `.pgo` 檔案並持續更新
+Implementing PGO requires:
+- Researching how to collect profiling data
+- Designing representative benchmarks
+- Maintaining `.pgo` files and keeping them updated
 
-投入的時間成本遠高於實際收益。
+The time investment far outweighs the actual benefit.
 
-## 替代優化方向
+## Alternative Optimization Directions
 
-如果未來需要提升效能，以下方向更有效：
+If performance improvements are needed in the future, the following directions are more effective:
 
-1. **結果快取（result cache）** — 針對完全相同的 query 直接回傳上次結果（需另開機制，不建議現在做）
-2. **降低網路延遲** — 使用更近的 SearXNG instance
-3. **並行查詢** — 同時打多個 engine 但不等待所有結果
-4. **壓縮回應** — 減少傳輸資料量
+1. **Result caching** — return the previous result directly for identical queries (requires a separate mechanism; not recommended for now)
+2. **Reduce network latency** — use a closer SearXNG instance
+3. **Concurrent queries** — query multiple engines simultaneously without waiting for all results
+4. **Response compression** — reduce transmitted data volume
 
-## 重新考慮的條件
+## Conditions for Reconsideration
 
-如果未來發生以下情況，可以重新評估加入 PGO：
+If any of the following occur in the future, PGO can be re-evaluated:
 
-- searxng-mcp-go 變成长期运行的 MCP server 部署
-- 累积了足够多的真实 production profiling data
-- 有明确的 benchmark 证明 PGO 带来可量化的改善
+- searxng-mcp-go evolves into a long-running MCP server deployment
+- Sufficient real production profiling data has been accumulated
+- There is a clear benchmark proving PGO delivers quantifiable improvements
 
-## 生效日期
+## Effective Date
 
 2026-04-16
