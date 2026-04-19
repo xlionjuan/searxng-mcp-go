@@ -170,3 +170,10 @@ See [docs/INSTALL.md](docs/INSTALL.md) for Docker and other build options.
 - `REPORT.md` 永久列入 `.gitignore`，**嚴禁 commit**
 - 每個 Task 完成後，隨即產生對應的 Todo list，一併寫入 `REPORT.md`
 - Todo list 需包含「掌門」（Hermes Agent）待會兒派子代理時所需的所有規劃資訊
+
+## Project Rules
+
+- Do not modify `.gitignore` unless explicitly asked
+- Do not change MCP handler's User-Agent header
+- GitHub Actions `uses:` must pin to SHA with `# vX.Y.Z` version comment
+- CI `go-version` must use a fixed version, not `stable`; step/job names must not contain version numbers
