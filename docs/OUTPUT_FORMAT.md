@@ -176,7 +176,7 @@ When a field in the query results has no value, the behavior is as follows:
 | Mode | Behavior |
 |------|----------|
 | **CLI text mode** | The entire section is omitted — nothing is printed. For example, if there are no Answers, the `=== Answers ===` heading will not appear. |
-| **JSON mode** | `answers` and `infoboxes` use `omitempty` and are omitted when empty. `results` and `suggestions` are always present — forced to `[]` (empty array) when empty, never omitted or `null`. |
+| **JSON mode** | `answers` and `infoboxes` use `omitempty` and are omitted when empty. `results` and `suggestions` are always present — forced to `[]` (empty array) when empty, never omitted or `null`. `unresponsive_engines` is omitted unless debug mode is enabled. |
 
 ### Specific Rules
 
@@ -194,6 +194,8 @@ When a field in the query results has no value, the behavior is as follows:
 - `infoboxes` is empty → no `infoboxes` key in the JSON (omitempty)
 - `results` is empty → `"results": []` (always present, forced to empty array)
 - `suggestions` is empty → `"suggestions": []` (always present, forced to empty array)
+- `unresponsive_engines` is empty and debug mode is on → `"unresponsive_engines": []` (always present in debug JSON)
+- debug mode is off → no `unresponsive_engines` key in the JSON
 - `result.publishedDate` is empty → no `publishedDate` key in that result object
 - `infobox.attributes` is empty → no `attributes` key in that infobox object
 - `infobox.urls` is empty → no `urls` key in that infobox object
@@ -233,11 +235,12 @@ suggestions
   "query": "string",
   "number_of_results": "int",
   "results": [],
-  "suggestions": []
+  "suggestions": [],
+  "unresponsive_engines": []
 }
 ```
 
-Note: JSON does not guarantee field order, but Go's `encoding/json.Marshal` serializes struct fields in declaration order. The order above is enforced by the Go struct definition and its `MarshalJSON` override. `answers` and `infoboxes` use `omitempty` (omitted when empty), while `results` and `suggestions` are always present (forced to `[]` when empty).
+Note: JSON does not guarantee field order, but Go's `encoding/json.Marshal` serializes struct fields in declaration order. The order above is enforced by the Go struct definition and its `MarshalJSON` override. `answers` and `infoboxes` use `omitempty` (omitted when empty), while `results` and `suggestions` are always present (forced to `[]` when empty). `unresponsive_engines` is debug-only and omitted when debug mode is off.
 
 ---
 
