@@ -142,3 +142,66 @@ func TestMCPToolHandler_SearchError(t *testing.T) {
 		t.Errorf("expected text to contain 'Search error', got: %s", textContent.Text)
 	}
 }
+
+func TestMCPToolHandler_DebugGatesUnresponsiveEngines(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"query":"golang","number_of_results":1,"results":[{"title":"Go","url":"https://go.dev","content":"Go language","engine":"google"}],"suggestions":[],"unresponsive_engines":[["brave","Suspended:\" too many \"requests"]]}`))
+	}))
+	defer server.Close()
+
+	searcher, err := NewSearXNGSearcher(server.URL, 30*time.Second, nil)
+	if err != nil {
+		t.Fatalf("Failed to create searcher: %v", err)
+	}
+
+	handler := NewSearchToolHandler(searcher)
+	oldDebug := debugMode
+	defer func() { debugMode = oldDebug }()
+
+	run := func(debug bool) map[string]any {
+		debugMode = debug
+		result, _, err := handler(context.Background(), nil, SearchArgs{Query: "golang"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result == nil {
+			t.Fatal("expected result, got nil")
+		}
+		if result.IsError {
+			t.Fatalf("expected IsError=false, got true: %#v", result.Content)
+		}
+		textContent, ok := result.Content[0].(*mcp.TextContent)
+		if !ok {
+			t.Fatalf("expected *mcp.TextContent, got %T", result.Content[0])
+		}
+		var decoded map[string]any
+		if err := json.Unmarshal([]byte(textContent.Text), &decoded); err != nil {
+			t.Fatalf("expected valid JSON in text content, got error: %v\nbody: %s", err, textContent.Text)
+		}
+		return decoded
+	}
+
+	noDebug := run(false)
+	if _, ok := noDebug["unresponsive_engines"]; ok {
+		t.Fatalf("expected unresponsive_engines to be omitted when debug is off, got: %v", noDebug)
+	}
+
+	withDebug := run(true)
+	value, ok := withDebug["unresponsive_engines"]
+	if !ok {
+		t.Fatalf("expected unresponsive_engines when debug is on, got: %v", withDebug)
+	}
+	entries, ok := value.([]any)
+	if !ok || len(entries) != 1 {
+		t.Fatalf("expected one unresponsive engine entry, got: %#v", value)
+	}
+	pair, ok := entries[0].([]any)
+	if !ok || len(pair) != 2 {
+		t.Fatalf("expected [engine_name, error_message] pair, got: %#v", entries[0])
+	}
+	if pair[0] != "brave" {
+		t.Fatalf("expected engine name brave, got: %#v", pair[0])
+	}
+}

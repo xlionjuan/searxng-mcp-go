@@ -19,6 +19,8 @@ SearXNG's JSON response (`GET /search?format=json`) returns these top-level fiel
 }
 ```
 
+`unresponsive_engines` is included only in debug output and contains `[engine_name, error_message]` pairs.
+
 ---
 
 ## `corrections`
@@ -159,8 +161,8 @@ sorting and iteration.
 
 ## Current Implementation Note
 
-The `searxng-mcp-go` codebase now exposes `answers` and `infoboxes` in the
-`SearchResponse` struct. The Go struct maps:
+The `searxng-mcp-go` codebase now exposes `answers`, `infoboxes`, and
+`unresponsive_engines` in the `SearchResponse` struct. The Go struct maps:
 
 ```go
 type Answer struct {
@@ -170,18 +172,21 @@ type Answer struct {
 }
 
 type SearchResponse struct {
-    Query           string         `json:"query"`
-    Answers         []Answer       `json:"answers,omitempty"`
-    NumberOfResults int            `json:"number_of_results"`
-    Infoboxes       []Infobox      `json:"infoboxes,omitempty"`
-    Results         []SearchResult `json:"results"`
-    Suggestions     []string       `json:"suggestions"`
+    Query               string         `json:"query"`
+    Answers             []Answer       `json:"answers,omitempty"`
+    NumberOfResults     int            `json:"number_of_results"`
+    Infoboxes           []Infobox      `json:"infoboxes,omitempty"`
+    Results             []SearchResult `json:"results"`
+    Suggestions         []string       `json:"suggestions"`
+    UnresponsiveEngines [][]string     `json:"unresponsive_engines,omitempty"`
+    Debug               bool           `json:"-"`
 }
 ```
 
-Note: `corrections` is **not** currently exposed. DuckDuckGo answers that
-overlap with infobox content are deduplicated by `deduplicateAnswers()`
-before the response is returned.
+Note: `corrections` is **not** currently exposed. `unresponsive_engines` is
+omitted unless debug mode is enabled. DuckDuckGo answers that overlap with
+infobox content are deduplicated by `deduplicateAnswers()` before the response
+is returned.
 
 ---
 

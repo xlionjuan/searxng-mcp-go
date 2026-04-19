@@ -44,6 +44,7 @@ The tool returns a JSON text response containing the full `SearchResponse` objec
 | `infoboxes` | array | Knowledge panels with content, attributes, URLs (omitted when empty) |
 | `results` | array | Array of search result objects (always present, `[]` when empty) |
 | `suggestions` | array | Related search suggestions (always present, `[]` when empty) |
+| `unresponsive_engines` | array | Debug-only array of `[engine_name, error_message]` pairs (omitted unless debug mode is enabled) |
 
 **Result Object Fields:**
 
