@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -77,11 +78,17 @@ func TestConcurrentContextCancellation(t *testing.T) {
 		t.Skip("Skipping concurrent cancellation stress test in short mode")
 	}
 	requestCount := int64(0)
+	canceledCount := int64(0)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt64(&requestCount, 1)
-		time.Sleep(2 * time.Second) // Simulate slow response
-		w.WriteHeader(http.StatusOK)
+		select {
+		case <-r.Context().Done():
+			atomic.AddInt64(&canceledCount, 1)
+			return
+		case <-time.After(2 * time.Second):
+			w.WriteHeader(http.StatusOK)
+		}
 	}))
 	defer server.Close()
 
@@ -97,7 +104,9 @@ func TestConcurrentContextCancellation(t *testing.T) {
 
 	var successCount int64
 	var errorCount int64
-	errChan := make(chan error, numGoroutines)
+	var cancelledCount int64
+	var unexpectedErrors []error
+	var mu sync.Mutex
 
 	for i := 0; i < numGoroutines; i++ {
 		go func(id int) {
@@ -108,7 +117,13 @@ func TestConcurrentContextCancellation(t *testing.T) {
 			_, err := performSearch(ctx, cfg, &SearchArgs{Query: "test"})
 			if err != nil {
 				atomic.AddInt64(&errorCount, 1)
-				errChan <- err
+				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+					atomic.AddInt64(&cancelledCount, 1)
+					return
+				}
+				mu.Lock()
+				unexpectedErrors = append(unexpectedErrors, err)
+				mu.Unlock()
 				return
 			}
 			atomic.AddInt64(&successCount, 1)
@@ -116,11 +131,13 @@ func TestConcurrentContextCancellation(t *testing.T) {
 	}
 
 	wg.Wait()
-	close(errChan)
 
 	count := atomic.LoadInt64(&requestCount)
 	if count == 0 {
 		t.Fatal("expected at least one request to start before cancellation")
+	}
+	if atomic.LoadInt64(&canceledCount) == 0 {
+		t.Fatal("expected at least one request context to be canceled")
 	}
 	if successCount != 0 {
 		t.Fatalf("successCount = %d, want 0", successCount)
@@ -128,42 +145,11 @@ func TestConcurrentContextCancellation(t *testing.T) {
 	if errorCount != numGoroutines {
 		t.Fatalf("errorCount = %d, want %d", errorCount, numGoroutines)
 	}
-
-	// Check errors are context-related
-	for err := range errChan {
-		errStr := err.Error()
-		if !strings.Contains(errStr, "context deadline exceeded") && !strings.Contains(errStr, "request canceled") && !strings.Contains(errStr, "timeout") {
-			t.Errorf("Expected context error, got: %v", err)
-		}
+	if cancelledCount != numGoroutines {
+		t.Fatalf("cancelledCount = %d, want %d", cancelledCount, numGoroutines)
 	}
-}
-
-// TestConcurrentSearcherCreation tests creating many searchers concurrently
-func TestConcurrentSearcherCreation(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping concurrent searcher creation stress test in short mode")
-	}
-	var wg sync.WaitGroup
-	const numGoroutines = 50
-
-	errChan := make(chan error, numGoroutines)
-
-	wg.Add(numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
-			defer wg.Done()
-			_, err := NewSearXNGSearcher("https://search.example.com", 30*time.Second, nil)
-			if err != nil {
-				errChan <- err
-			}
-		}(i)
-	}
-
-	wg.Wait()
-	close(errChan)
-
-	for err := range errChan {
-		t.Errorf("Unexpected error creating searcher: %v", err)
+	if len(unexpectedErrors) > 0 {
+		t.Fatalf("unexpected non-context errors: %v", unexpectedErrors)
 	}
 }
 

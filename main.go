@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -20,24 +22,6 @@ const version = "1.0.0"
 var debugMode bool
 
 // ============================================================================
-// CLI Flags
-// ============================================================================
-
-var (
-	cliQuery      = flag.String("query", "", "Search query string (CLI mode)")
-	cliJSON       = flag.Bool("json", false, "Output results as JSON (CLI mode)")
-	cliHelp       = flag.Bool("help", false, "Show this help message")
-	cliVersion    = flag.Bool("version", false, "Show version information")
-	cliSearXNGURL = flag.String("searxng-url", "", "SearXNG URL (can also be set via SEARXNG_URL env var)")
-	cliLanguage   = flag.String("language", "", "Language code for results (e.g., en, zh-tw, ja). Leave empty for auto")
-	cliSafeSearch = flag.Int("safesearch", 0, "SafeSearch level: 0=Off, 1=Moderate, 2=Strict")
-	cliTimeRange  = flag.String("time_range", "", "Time range filter: day, month, year")
-	cliCategories = flag.String("categories", "", "Comma-separated list of categories to search")
-	cliEngines    = flag.String("engines", "", "Comma-separated list of search engines to use")
-	cliPageno     = flag.Int("pageno", 1, "Page number for pagination")
-	cliDebug      = flag.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)")
-)
-
 // CLIFlags holds parsed CLI flag values
 type CLIFlags struct {
 	Query      string
@@ -55,11 +39,10 @@ type CLIFlags struct {
 }
 
 // parseArgs parses command-line arguments and returns the mode, flags, and positional arguments.
-// This function is testable and does not depend on package-level flag globals.
+// It accepts flags anywhere before or after positional args, matching the current CLI behavior.
 func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []string, err error) {
-	flagArgs := []string{}
-	positionalArgs = []string{}
-	seenPositional := false
+	flagArgs := make([]string, 0, len(args))
+	positionalArgs = make([]string, 0, len(args))
 	afterDoubleDash := false
 
 	flagsWithValues := map[string]bool{
@@ -68,89 +51,57 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 		"--engines": true, "--pageno": true,
 	}
 
-	i := 0
-	for i < len(args) {
+	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--" {
 			afterDoubleDash = true
-			i++
 			continue
 		}
-		if afterDoubleDash {
+		if afterDoubleDash || !strings.HasPrefix(arg, "-") {
 			positionalArgs = append(positionalArgs, arg)
-			i++
 			continue
 		}
-		if len(arg) > 0 && arg[0] == '-' {
-			needsValue := flagsWithValues[arg]
-			flagArgs = append(flagArgs, arg)
-			if needsValue {
-				if i+1 < len(args) && len(args[i+1]) > 0 && args[i+1][0] != '-' {
-					flagArgs = append(flagArgs, args[i+1])
-					i += 2
-				} else {
-					i++
-				}
-			} else {
-				i++
-			}
-		} else if !seenPositional {
-			seenPositional = true
-			positionalArgs = append(positionalArgs, arg)
+		flagArgs = append(flagArgs, arg)
+		if flagsWithValues[arg] && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
 			i++
-		} else {
-			positionalArgs = append(positionalArgs, arg)
-			i++
+			flagArgs = append(flagArgs, args[i])
 		}
 	}
 
-	// Reset and parse only the flag arguments
-	flag.CommandLine = flag.NewFlagSet("searxng-mcp-go", flag.ContinueOnError)
-	flag.CommandLine.Usage = func() {} // suppressed: main() handles error→help ordering
-	cliQuery = flag.String("query", "", "")
-	cliJSON = flag.Bool("json", false, "")
-	cliHelp = flag.Bool("help", false, "")
-	cliVersion = flag.Bool("version", false, "")
-	cliSearXNGURL = flag.String("searxng-url", "", "")
-	cliLanguage = flag.String("language", "", "")
-	cliSafeSearch = flag.Int("safesearch", 0, "")
-	cliTimeRange = flag.String("time_range", "", "")
-	cliCategories = flag.String("categories", "", "")
-	cliEngines = flag.String("engines", "", "")
-	cliPageno = flag.Int("pageno", 1, "")
-	cliDebug = flag.Bool("debug", false, "")
+	fs := flag.NewFlagSet("searxng-mcp-go", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	fs.Usage = func() {}
 
-	// Redirect stderr to io.Discard to suppress Go flag package's automatic
-	// error output (e.g. "flag provided but not defined: -foo").
-	// We handle error display ourselves in main().
-	savedStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
+	query := fs.String("query", "", "Search query string (CLI mode)")
+	jsonOut := fs.Bool("json", false, "Output results as JSON (CLI mode)")
+	help := fs.Bool("help", false, "Show this help message")
+	versionFlag := fs.Bool("version", false, "Show version information")
+	searxngURL := fs.String("searxng-url", "", "SearXNG URL (can also be set via SEARXNG_URL env var)")
+	language := fs.String("language", "", "Language code for results (e.g., en, zh-tw, ja). Leave empty for auto")
+	safeSearch := fs.Int("safesearch", 0, "SafeSearch level: 0=Off, 1=Moderate, 2=Strict")
+	timeRange := fs.String("time_range", "", "Time range filter: day, month, year")
+	categories := fs.String("categories", "", "Comma-separated list of categories to search")
+	engines := fs.String("engines", "", "Comma-separated list of search engines to use")
+	pageno := fs.Int("pageno", 1, "Page number for pagination")
+	debug := fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)")
 
-	if err := flag.CommandLine.Parse(flagArgs); err != nil {
-		w.Close()
-		os.Stderr = savedStderr
-		r.Close()
+	if err := fs.Parse(flagArgs); err != nil {
 		return false, CLIFlags{}, nil, err
 	}
 
-	w.Close()
-	os.Stderr = savedStderr
-	r.Close()
-
 	flags = CLIFlags{
-		Query:      *cliQuery,
-		JSON:       *cliJSON,
-		Help:       *cliHelp,
-		Version:    *cliVersion,
-		SearXNGURL: *cliSearXNGURL,
-		Language:   *cliLanguage,
-		SafeSearch: *cliSafeSearch,
-		TimeRange:  *cliTimeRange,
-		Categories: *cliCategories,
-		Engines:    *cliEngines,
-		Pageno:     *cliPageno,
-		Debug:      *cliDebug,
+		Query:      *query,
+		JSON:       *jsonOut,
+		Help:       *help,
+		Version:    *versionFlag,
+		SearXNGURL: *searxngURL,
+		Language:   *language,
+		SafeSearch: *safeSearch,
+		TimeRange:  *timeRange,
+		Categories: *categories,
+		Engines:    *engines,
+		Pageno:     *pageno,
+		Debug:      *debug,
 	}
 
 	isCLIMode = flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
