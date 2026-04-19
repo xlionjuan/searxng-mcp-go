@@ -36,3 +36,7 @@ REPORT.md
 
 # Environment files (keep .env.example)
 .env
+
+# searxng-server-test
+searxng-server-test/.venv/
+searxng-server-test/settings.yml
