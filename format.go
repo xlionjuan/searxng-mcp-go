@@ -128,6 +128,10 @@ func formatResults(resp *SearchResponse) string {
 	}
 
 	var b strings.Builder
+	estimate := len(resp.Query) + len(resp.Results)*200
+	if estimate > 0 {
+		b.Grow(estimate)
+	}
 
 	// Answers first (direct answers like IP, hash, timezone)
 	writeAnswers(&b, resp.Answers)

@@ -74,6 +74,8 @@ type SearXNGSearcher struct {
 //     transport and let it be garbage collected; the cache entry will be replaced
 //     on the next call with a fresh client.
 func (s *SearXNGSearcher) Close() error {
+	// Close only drains idle connections on the shared transport; it does not
+	// evict or replace cached clients.
 	if s.client != nil && s.client.Transport != nil {
 		if transport, ok := s.client.Transport.(*http.Transport); ok {
 			transport.CloseIdleConnections()
@@ -502,6 +504,9 @@ func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	if err := ValidateSearchArgs(args); err != nil {
 		return nil, err
+	}
+	if debugMode {
+		slog.Warn("debug mode logs search queries and HTTP requests in plain text; avoid sensitive searches")
 	}
 	baseURL, err := url.Parse(s.baseURL)
 	if err != nil {

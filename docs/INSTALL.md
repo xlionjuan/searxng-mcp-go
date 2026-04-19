@@ -60,6 +60,8 @@ export DEBUG=1
 ./searxng-mcp-go
 ```
 
+Note: `DEBUG=1` logs search queries and HTTP requests in plain text. Avoid using it with sensitive queries.
+
 In an MCP client configuration, set `env` in the server definition:
 
 ```json
