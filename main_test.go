@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -312,6 +313,75 @@ func TestParseArgs(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestIsValidMCPInitializeMessage(t *testing.T) {
+	tests := []struct {
+		name string
+		line string
+		want bool
+	}{
+		{name: "valid initialize", line: `{"jsonrpc":"2.0","method":"initialize","id":1}` + "\n", want: true},
+		{name: "wrong method", line: `{"jsonrpc":"2.0","method":"tools/list"}` + "\n", want: false},
+		{name: "wrong version", line: `{"jsonrpc":"1.0","method":"initialize"}` + "\n", want: false},
+		{name: "not json", line: `hello` + "\n", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isValidMCPInitializeMessage([]byte(tt.line)); got != tt.want {
+				t.Fatalf("isValidMCPInitializeMessage() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPrepareMCPStdin(t *testing.T) {
+	input := `{"jsonrpc":"2.0","method":"initialize","id":1}` + "\n" + `{"jsonrpc":"2.0","method":"tools/list","id":2}` + "\n"
+	stdin, err := prepareMCPStdin(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("prepareMCPStdin() returned error: %v", err)
+	}
+
+	got, err := io.ReadAll(stdin)
+	if err != nil {
+		t.Fatalf("failed to read prepared stdin: %v", err)
+	}
+
+	if string(got) != input {
+		t.Fatalf("prepared stdin mismatch\nwant: %q\ngot:  %q", input, string(got))
+	}
+}
+
+func TestPrepareMCPStdinRejectsInvalidInput(t *testing.T) {
+	_, err := prepareMCPStdin(strings.NewReader("not initialize\n"))
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if err.Error() != "stdin does not contain a valid MCP initialize message" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestAttachStdin(t *testing.T) {
+	originalStdin := os.Stdin
+	t.Cleanup(func() {
+		os.Stdin = originalStdin
+	})
+
+	restore, err := attachStdin(strings.NewReader("stdin payload"))
+	if err != nil {
+		t.Fatalf("attachStdin() returned error: %v", err)
+	}
+	defer restore()
+
+	got, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		t.Fatalf("failed to read attached stdin: %v", err)
+	}
+	if string(got) != "stdin payload" {
+		t.Fatalf("attached stdin mismatch: got %q", string(got))
 	}
 }
 

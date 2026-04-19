@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -233,7 +235,13 @@ func main() {
 		return
 	}
 
-	runMCPMode(flags)
+	mcpStdin, err := prepareMCPStdin(os.Stdin)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
+	runMCPMode(flags, mcpStdin)
 }
 
 func getConfig(flags CLIFlags) *Config {
@@ -359,7 +367,68 @@ func NewSearchToolHandler(searcher *SearXNGSearcher) func(context.Context, *mcp.
 	}
 }
 
-func runMCPMode(flags CLIFlags) {
+type mcpInitializeMessage struct {
+	JSONRPC string `json:"jsonrpc"`
+	Method  string `json:"method"`
+}
+
+func prepareMCPStdin(stdin io.Reader) (io.Reader, error) {
+	reader := bufio.NewReader(stdin)
+	firstLine, err := reader.ReadBytes('\n')
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("stdin does not contain a valid MCP initialize message")
+	}
+	if !isValidMCPInitializeMessage(firstLine) {
+		return nil, fmt.Errorf("stdin does not contain a valid MCP initialize message")
+	}
+
+	return io.MultiReader(bytes.NewReader(firstLine), reader), nil
+}
+
+func isValidMCPInitializeMessage(line []byte) bool {
+	if len(bytes.TrimSpace(line)) == 0 {
+		return false
+	}
+
+	var msg mcpInitializeMessage
+	if err := json.Unmarshal(line, &msg); err != nil {
+		return false
+	}
+
+	return msg.JSONRPC == "2.0" && msg.Method == "initialize"
+}
+
+func attachStdin(stdin io.Reader) (restore func(), err error) {
+	originalStdin := os.Stdin
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		return nil, err
+	}
+
+	os.Stdin = pr
+
+	go func() {
+		_, copyErr := io.Copy(pw, stdin)
+		if copyErr != nil {
+			slog.Debug("failed to copy MCP stdin", "error", copyErr)
+		}
+		_ = pw.Close()
+	}()
+
+	return func() {
+		os.Stdin = originalStdin
+		_ = pr.Close()
+	}, nil
+}
+
+func runMCPMode(flags CLIFlags, stdin io.Reader) {
+	restoreStdin, err := attachStdin(stdin)
+	if err != nil {
+		slog.Error("failed to prepare MCP stdin", "error", err)
+		os.Exit(1)
+	}
+	defer restoreStdin()
+
 	cfg := getConfig(flags)
 
 	searcher, err := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
