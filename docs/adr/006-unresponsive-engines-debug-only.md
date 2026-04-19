@@ -15,9 +15,10 @@ In normal output (CLI and MCP), the field is omitted. When `--debug` or `DEBUG=1
 
 ## Rationale
 
-1. **Useful for troubleshooting, not for end users**: Regular users and AI agents do not need to know which engines failed. This is diagnostic information.
-2. **Common in practice**: Engines like Brave (rate-limited), Startpage (CAPTCHA), and Yahoo frequently appear as unresponsive on public instances. Suppressing this entirely loses diagnostic value.
-3. **Debug mode is the right filter**: Debug mode already shows HTTP request/response details. Including engine failures here is consistent with the debug UX.
+1. **SearXNG's nature**: SearXNG's core purpose is reverse-engineering search engine interfaces. It inherently calls multiple engines simultaneously, and engine breakage (rate-limiting, CAPTCHA, API changes) is an expected and routine occurrence — not a user-caused problem.
+2. **Not user-responsibility**: When an engine becomes unresponsive, the fault lies with SearXNG's engine adapter (outdated scraping logic, missing CAPTCHA bypass, etc.), not with the user's query or configuration. There is no actionable step for the end user.
+3. **Useful for troubleshooting, not for end users**: Regular users and AI agents do not need to know which engines failed. This is diagnostic information for SearXNG operators and developers.
+4. **Debug mode is the right filter**: Debug mode already shows HTTP request/response details. Including engine failures here is consistent with the debug UX.
 
 ## Consequences
 
