@@ -32,7 +32,7 @@ func TestMCPToolHandler_Success(t *testing.T) {
 		t.Fatalf("Failed to create searcher: %v", err)
 	}
 
-	handler := buildSearchToolHandler(searcher)
+	handler := NewSearchToolHandler(searcher)
 
 	args := SearchArgs{Query: "golang"}
 	result, _, err := handler(context.Background(), nil, args)
@@ -80,7 +80,7 @@ func TestMCPToolHandler_ValidationError(t *testing.T) {
 		t.Fatalf("Failed to create searcher: %v", err)
 	}
 
-	handler := buildSearchToolHandler(searcher)
+	handler := NewSearchToolHandler(searcher)
 
 	args := SearchArgs{Query: "   "}
 	result, _, err := handler(context.Background(), nil, args)
@@ -117,7 +117,7 @@ func TestMCPToolHandler_SearchError(t *testing.T) {
 		t.Fatalf("Failed to create searcher: %v", err)
 	}
 
-	handler := buildSearchToolHandler(searcher)
+	handler := NewSearchToolHandler(searcher)
 
 	args := SearchArgs{Query: "test"}
 	result, _, err := handler(context.Background(), nil, args)
@@ -140,43 +140,5 @@ func TestMCPToolHandler_SearchError(t *testing.T) {
 	}
 	if !strings.Contains(textContent.Text, "Search error") {
 		t.Errorf("expected text to contain 'Search error', got: %s", textContent.Text)
-	}
-}
-
-func buildSearchToolHandler(searcher *SearXNGSearcher) func(context.Context, *mcp.CallToolRequest, SearchArgs) (*mcp.CallToolResult, any, error) {
-	return func(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
-		if err := ValidateSearchArgs(&args); err != nil {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "validation error: " + err.Error()},
-				},
-				IsError: true,
-			}, nil, nil
-		}
-
-		resp, err := searcher.Search(ctx, &args)
-		if err != nil {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Search error: " + err.Error()},
-				},
-				IsError: true,
-			}, nil, nil
-		}
-
-		jsonBytes, err := json.Marshal(resp)
-		if err != nil {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "json marshal error: " + err.Error()},
-				},
-				IsError: true,
-			}, nil, nil
-		}
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{Text: string(jsonBytes)},
-			},
-		}, nil, nil
 	}
 }
