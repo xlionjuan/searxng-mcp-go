@@ -53,12 +53,9 @@ The tool returns a JSON text response containing the full `SearchResponse` objec
 | `url` | string | URL of the result |
 | `content` | string | Content snippet from the page |
 | `engine` | string | Source search engine |
-| `publishedDate` | string | Publication date if available (as returned by the engine or inferred only from supported relative phrases in content; no strict ISO 8601 normalization is applied) |
-| `dateSource` | string | Source of the date: "api" (from SearXNG), "inferred" (calculated from content); omitted when empty (omitempty) |
+| `publishedDate` | string | Publication date provided by SearXNG (omitted when the backend does not include it; no normalization is applied) |
 
 **Note:** The `number_of_results` field may return 0 from SearXNG even when results are present. The server normalizes this by replacing 0 with `len(results)` when results exist.
-
-**Note on `publishedDate` inference:** when the API does not provide a date, the server only infers `publishedDate` from a small set of relative phrases in result content, including English forms like `hours ago`, `days ago`, `yesterday`, `last week`, and a few German equivalents. It does not perform generic publication-date parsing.
 
 ### Example Usage
 

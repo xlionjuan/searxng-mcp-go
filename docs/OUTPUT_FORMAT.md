@@ -187,7 +187,6 @@ When a field in the query results has no value, the behavior is as follows:
 - `infobox.urls` is empty → omit the `URLs:` subsection for that infobox
 - `results` is empty → omit the entire `=== Results ===` section
 - `result.content` is empty → omit the `Summary:` line for that result
-- `result.publishedDate` is empty → omit the `Date:` line for that result
 - `suggestions` is empty → omit the entire `=== Search Suggestions ===` section
 
 **JSON mode:**
@@ -196,7 +195,6 @@ When a field in the query results has no value, the behavior is as follows:
 - `results` is empty → `"results": []` (always present, forced to empty array)
 - `suggestions` is empty → `"suggestions": []` (always present, forced to empty array)
 - `result.publishedDate` is empty → no `publishedDate` key in that result object
-- `result.dateSource` is empty → no `dateSource` key in that result object
 - `infobox.attributes` is empty → no `attributes` key in that infobox object
 - `infobox.urls` is empty → no `urls` key in that infobox object
 - `answer.template` is empty → no `template` key in that answer object
@@ -262,8 +260,7 @@ Whether each field is populated depends on the results returned by the SearXNG b
 | `url` | Always populated (required field) |
 | `content` | The engine returned a summary/description; some results may lack this field |
 | `engine` | Always populated; indicates which search engine produced this result |
-| `publishedDate` | The engine provided a publication date, or the program inferred a date from the content |
-| `dateSource` | Only appears when `publishedDate` is populated; indicates the date source (`api` / `inferred`) |
+| `publishedDate` | SearXNG provided a publication date for the result |
 
 ---
 

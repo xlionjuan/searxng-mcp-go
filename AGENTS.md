@@ -31,14 +31,12 @@ searxng-mcp-go/
 ├── errors.go            # Error types and handling
 ├── format.go            # Output formatting
 ├── validation.go        # Input validation
-├── date.go              # Date/time utilities
 ├── constants.go         # Size limits and configuration constants
 ├── main_test.go         # Main tests (CLI/MCP mode, runCLIMode)
 ├── search_test.go       # Search tests (isPrivateHost, validateBaseURL, getDefaultHTTPClient)
 ├── errors_test.go       # Error type tests
 ├── format_test.go       # Formatting tests (including pagination)
 ├── validation_test.go   # Validation edge case tests
-├── date_test.go         # Date parsing and inference tests
 ├── concurrency_test.go   # Concurrency and stress tests
 ├── error_path_test.go   # Error path coverage tests
 ├── go.mod/go.sum        # Go module/dependencies
@@ -138,10 +136,8 @@ Our headers are set via `setBrowserHeaders()` in `search.go`. POST and GET fallb
 ## Known Limitations
 
 1. **Pagination**: SearXNG API starts at page 1 (server validates `pageno >= 1`)
-2. **Date Inference**: When not provided by the API, `publishedDate` is inferred only from a small set of relative phrases in content (English forms like `hours ago`, `days ago`, `yesterday`, `last week`, plus a few German equivalents); it is not generic publication-date parsing
-3. **HTML Detection**: Returns `HTMLResponseError` if SearXNG returns HTML instead of JSON
-4. **Y2K Threshold**: 2-digit year parsing uses Y2K_THRESHOLD=2000 (needs update before 2038)
-5. **Content Length**: Summaries truncated to 4000 UTF-8 runes
+2. **HTML Detection**: Returns `HTMLResponseError` if SearXNG returns HTML instead of JSON
+3. **Content Length**: Summaries truncated to 4000 UTF-8 runes
 
 ## Development
 

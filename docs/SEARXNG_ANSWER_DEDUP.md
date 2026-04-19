@@ -92,5 +92,5 @@ Deduplication happens in `performSearch()` (search.go) rather than in `formatRes
 ## Implementation
 
 - **Function**: `deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer` in `search.go`
-- **Called**: In `performSearch()` after JSON unmarshalling, before `inferDates()`
+- **Called**: In `performSearch()` after JSON unmarshalling, before the response is returned to formatting/output code
 - **Tests**: 9 test cases in `search_test.go` covering empty inputs, exact match, prefix match, DDG "More at Wikipedia" suffix stripping, case insensitivity, distinct answers (IP), mixed scenarios, and empty answer skipping
