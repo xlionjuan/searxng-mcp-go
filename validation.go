@@ -142,7 +142,7 @@ func ValidateSearchArgs(args *SearchArgs) error {
 	}
 
 	if args.Language != "" && !languagePattern.MatchString(args.Language) {
-		return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja)")
+		return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja, en-US)")
 	}
 
 	return nil

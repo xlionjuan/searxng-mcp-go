@@ -63,7 +63,7 @@ func TestValidateSearchArgs_Language(t *testing.T) {
 	})
 
 	t.Run("valid language codes", func(t *testing.T) {
-		for _, lang := range []string{"en", "zh-tw", "ja", "en-US", "pt-BR", "sr-Latn", "es-419", "ZH-hant"} {
+		for _, lang := range []string{"en", "EN", "zh-tw", "ja", "en-US", "pt-BR", "sr-Latn", "sr-Latn-RS", "es-419", "ZH-hant"} {
 			t.Run(lang, func(t *testing.T) {
 				assertValidSearchArgs(t, &SearchArgs{Query: "test", Language: lang})
 			})
