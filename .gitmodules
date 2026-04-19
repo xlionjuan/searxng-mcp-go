@@ -1,0 +1,4 @@
+[submodule "searxng-server-test/searxng"]
+	path = searxng-server-test/searxng
+	url = https://github.com/searxng/searxng.git
+	shallow = true
