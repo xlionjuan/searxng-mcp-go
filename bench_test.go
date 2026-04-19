@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 )
 
 // ============================================================================
@@ -127,53 +126,6 @@ func makeSearchResults(n int) []SearchResult {
 			Engine:        []string{"google", "bing", "duckduckgo"}[i%3],
 			PublishedDate: &date,
 		}
-	}
-	return results
-}
-
-// makeSearchResultsNoDates generates n SearchResult entries WITHOUT PublishedDate.
-// Content includes relative date phrases so inferDates exercises the parsing path.
-func makeSearchResultsNoDates(n int) []SearchResult {
-	results := make([]SearchResult, n)
-	contents := []string{
-		"Posted 3 hours ago by community",
-		"Published yesterday by maintainers",
-		"2 days ago we added new features",
-		"5 days ago this was released",
-		"Last week there was an announcement",
-		"Report from last month about changes",
-	}
-	for i := 0; i < n; i++ {
-		results[i] = SearchResult{
-			Title:   fmt.Sprintf("Search Result Title %d", i),
-			URL:     fmt.Sprintf("https://example.com/result/%d", i),
-			Content: fmt.Sprintf("This is the content for result number %d. %s", i, contents[i%len(contents)]),
-			Engine:  []string{"google", "bing", "duckduckgo"}[i%3],
-		}
-	}
-	return results
-}
-
-// makeMixedSearchResults generates n SearchResult entries: 1/3 with API dates,
-// 1/3 with date phrases in content (inferable), 1/3 with no dates at all.
-func makeMixedSearchResults(n int) []SearchResult {
-	results := make([]SearchResult, n)
-	date := "2024-01-15"
-	for i := 0; i < n; i++ {
-		var r SearchResult
-		r.Title = fmt.Sprintf("Search Result Title %d", i)
-		r.URL = fmt.Sprintf("https://example.com/result/%d", i)
-		r.Engine = []string{"google", "bing", "duckduckgo"}[i%3]
-		switch i % 3 {
-		case 0: // API date
-			r.Content = fmt.Sprintf("This is the content for result number %d with no date phrase.", i)
-			r.PublishedDate = &date
-		case 1: // inferable date
-			r.Content = fmt.Sprintf("This is the content for result number %d. Posted %d days ago.", i, (i%30)+1)
-		default: // no date at all
-			r.Content = fmt.Sprintf("This is the content for result number %d with no date information.", i)
-		}
-		results[i] = r
 	}
 	return results
 }
@@ -340,68 +292,6 @@ func BenchmarkUnescapeIfNeeded(b *testing.B) {
 }
 
 // ============================================================================
-// Date Inference Benchmarks
-// ============================================================================
-
-func BenchmarkParseRelativeDate(b *testing.B) {
-	now := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-	cases := []struct {
-		name    string
-		content string
-	}{
-		{"no_date", "This is some random content without date information at all"},
-		{"hours_ago", "Posted 3 hours ago by the community"},
-		{"days_ago", "Published 5 days ago by maintainers"},
-		{"yesterday", "Article posted yesterday about the news"},
-		{"last_week", "Report from last week about the changes"},
-		{"german", "Nachricht vor 2 tagen veröffentlicht"},
-		{"vorgestern", "Vorgestern wurde bekannt gegeben"},
-	}
-	b.ReportAllocs()
-	for _, tc := range cases {
-		b.Run(tc.name, func(b *testing.B) {
-			for b.Loop() {
-				_ = parseRelativeDate(tc.content, now)
-			}
-		})
-	}
-}
-
-func BenchmarkInferDates(b *testing.B) {
-	now := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-	results := []SearchResult{
-		{Title: "1", URL: "https://a.com", Content: "Posted 2 hours ago", Engine: "google"},
-		{Title: "2", URL: "https://b.com", Content: "Published yesterday", Engine: "bing"},
-		{Title: "3", URL: "https://c.com", Content: "5 days ago this happened", Engine: "duckduckgo"},
-		{Title: "4", URL: "https://d.com", Content: "No date here", Engine: "google"},
-		{Title: "5", URL: "https://e.com", Content: "Last week there was a report", Engine: "bing"},
-		{Title: "6", URL: "https://f.com", Content: "Vorgestern wurde bekannt gegeben", Engine: "duckduckgo"},
-		{Title: "7", URL: "https://g.com", Content: "Random content", Engine: "google"},
-		{Title: "8", URL: "https://h.com", Content: "1 hour ago this was published", Engine: "bing"},
-		{Title: "9", URL: "https://i.com", Content: "Nachricht vor 3 stunden veröffentlicht", Engine: "duckduckgo"},
-		{Title: "10", URL: "https://j.com", Content: "Posted 10 days ago", Engine: "google"},
-	}
-	b.ReportAllocs()
-	for b.Loop() {
-		resp := &SearchResponse{Results: make([]SearchResult, len(results))}
-		copy(resp.Results, results)
-		inferDates(resp, &now)
-	}
-}
-
-func BenchmarkInferDatesLarge(b *testing.B) {
-	now := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-	// 100 results without PublishedDate so inferDates exercises the parsing path
-	results := makeSearchResultsNoDates(100)
-	b.ReportAllocs()
-	for b.Loop() {
-		resp := &SearchResponse{Results: make([]SearchResult, len(results))}
-		copy(resp.Results, results)
-		inferDates(resp, &now)
-	}
-}
-
-// ============================================================================
 // Dedup Benchmarks
 // ============================================================================
 
@@ -520,31 +410,6 @@ func BenchmarkFormatResultsLongContent(b *testing.B) {
 	}
 }
 
-// makeNoDateResults generates n results with no date keywords and no PublishedDate.
-func makeNoDateResults(n int) []SearchResult {
-	results := make([]SearchResult, n)
-	for i := 0; i < n; i++ {
-		results[i] = SearchResult{
-			Title:   fmt.Sprintf("Technical Document #%d", i),
-			URL:     fmt.Sprintf("https://docs.example.com/page/%d", i),
-			Content: fmt.Sprintf("This document describes configuration parameters and system architecture details for module %d.", i),
-			Engine:  "google",
-		}
-	}
-	return results
-}
-
-func BenchmarkInferDatesNoDatesLarge(b *testing.B) {
-	now := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-	results := makeNoDateResults(100)
-	b.ReportAllocs()
-	for b.Loop() {
-		resp := &SearchResponse{Results: make([]SearchResult, len(results))}
-		copy(resp.Results, results)
-		inferDates(resp, &now)
-	}
-}
-
 // makeEntityResults generates n results with heavy HTML entities in titles and content.
 func makeEntityResults(n int) *SearchResponse {
 	results := make([]SearchResult, n)
@@ -604,67 +469,5 @@ func BenchmarkDeduplicateAnswersScale(b *testing.B) {
 				_ = deduplicateAnswers(answers, infoboxes)
 			}
 		})
-	}
-}
-
-func BenchmarkFullPipelineLarge(b *testing.B) {
-	// Build a mixed SearchResponse: API dates, inferable dates, no dates
-	results := makeMixedSearchResults(100)
-	largeResp := &SearchResponse{
-		Query:           "golang programming",
-		NumberOfResults: 100,
-		Answers: []Answer{
-			{Answer: "42", Engine: "calculator"},
-			{Answer: "192.168.1.1", Engine: "ip_plugin"},
-		},
-		Infoboxes: []Infobox{
-			{
-				Infobox: "Test Topic",
-				Content: strings.Repeat("Go is a programming language. ", 20),
-				Attributes: []InfoboxAttribute{
-					{Label: "Type", Value: "Language"},
-					{Label: "Year", Value: "2009"},
-				},
-				URLs: []InfoboxURL{
-					{Title: "Official", URL: "https://go.dev"},
-				},
-			},
-		},
-		Suggestions: []string{"golang tutorial", "golang concurrency", "golang vs rust"},
-		Results:     results,
-	}
-	data, err := json.Marshal(largeResp)
-	if err != nil {
-		b.Fatal(err)
-	}
-	now := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-	b.ReportAllocs()
-	for b.Loop() {
-		var resp SearchResponse
-		if err := json.Unmarshal(data, &resp); err != nil {
-			b.Fatal(err)
-		}
-		resp.Answers = deduplicateAnswers(resp.Answers, resp.Infoboxes)
-		inferDates(&resp, &now)
-		_ = formatResults(&resp)
-	}
-}
-
-// ============================================================================
-// Full Pipeline Benchmark (unmarshal -> dedup -> infer -> format)
-// ============================================================================
-
-func BenchmarkFullPipeline(b *testing.B) {
-	data := []byte(sampleSearXNGJSON)
-	now := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-	b.ReportAllocs()
-	for b.Loop() {
-		var resp SearchResponse
-		if err := json.Unmarshal(data, &resp); err != nil {
-			b.Fatal(err)
-		}
-		resp.Answers = deduplicateAnswers(resp.Answers, resp.Infoboxes)
-		inferDates(&resp, &now)
-		_ = formatResults(&resp)
 	}
 }

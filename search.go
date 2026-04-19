@@ -252,10 +252,6 @@ func DefaultConfig() *Config {
 	}
 }
 
-// ============================================================================
-// Data Types
-// ============================================================================
-
 // SearchArgs defines the arguments for the search tool
 type SearchArgs struct {
 	Query      string `json:"query" jsonschema:"Search query string"`
@@ -267,23 +263,13 @@ type SearchArgs struct {
 	Pageno     *int   `json:"pageno" jsonschema:"Page number for pagination. Defaults to 1"`
 }
 
-// DateSource represents the date's source
-type DateSource string
-
-const (
-	DateSourceAPI      DateSource = "api"      // From SearXNG API
-	DateSourceInferred DateSource = "inferred" // Inferred from content
-	DateSourceNone     DateSource = ""         // Unable to determine
-)
-
 // SearchResult represents a single search result
 type SearchResult struct {
-	Title         string     `json:"title"`
-	URL           string     `json:"url"`
-	Content       string     `json:"content"`
-	Engine        string     `json:"engine"`
-	PublishedDate *string    `json:"publishedDate,omitempty"`
-	DateSource    DateSource `json:"dateSource,omitempty"`
+	Title         string  `json:"title"`
+	URL           string  `json:"url"`
+	Content       string  `json:"content"`
+	Engine        string  `json:"engine"`
+	PublishedDate *string `json:"publishedDate,omitempty"`
 }
 
 // InfoboxURL represents a URL entry in an infobox.
@@ -700,8 +686,6 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	// DuckDuckGo engine puts Wikipedia summaries in both answers and infoboxes.
 	result.Answers = deduplicateAnswers(result.Answers, result.Infoboxes)
 
-	// Infer dates before returning to avoid mutation side effects in formatResults
-	inferDates(&result, nil)
 	result.Debug = debugMode
 
 	return &result, nil
