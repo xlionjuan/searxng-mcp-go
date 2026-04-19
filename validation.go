@@ -19,6 +19,8 @@ var validTimeRanges = map[string]bool{"day": true, "month": true, "year": true}
 // Empty values are handled separately as "auto" mode.
 var languagePattern = regexp.MustCompile(`^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$`)
 
+const maxLanguageLength = 35
+
 // containsControlCharacters checks if a string contains control characters
 // (characters in the range \x00-\x1f and \x7f)
 func containsControlCharacters(s string) bool {
@@ -141,8 +143,13 @@ func ValidateSearchArgs(args *SearchArgs) error {
 		}
 	}
 
-	if args.Language != "" && !languagePattern.MatchString(args.Language) {
-		return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja, en-US)")
+	if args.Language != "" {
+		if len(args.Language) > maxLanguageLength {
+			return NewValidationError("language", "must be 35 characters or less")
+		}
+		if !languagePattern.MatchString(args.Language) {
+			return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja, en-US)")
+		}
 	}
 
 	return nil

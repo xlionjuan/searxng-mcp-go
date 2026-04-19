@@ -10,7 +10,10 @@ import (
 // --- TEST-02: ValidationError tests ---
 
 func TestValidationError(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Is matches same field and message", func(t *testing.T) {
+		t.Parallel()
 		err1 := NewValidationError("query", "is required")
 		err2 := NewValidationError("query", "is required")
 		err3 := NewValidationError("query", "must be longer")
@@ -32,6 +35,7 @@ func TestValidationError(t *testing.T) {
 	})
 
 	t.Run("IsValidationError detects ValidationError", func(t *testing.T) {
+		t.Parallel()
 		err := NewValidationError("query", "is required")
 
 		if !IsValidationError(err) {
@@ -46,6 +50,7 @@ func TestValidationError(t *testing.T) {
 	})
 
 	t.Run("ValidationError wraps with Unwrap", func(t *testing.T) {
+		t.Parallel()
 		// Create a ValidationError wrapped in another error using fmt.Errorf
 		validationErr := NewValidationError("test", "test message")
 		// Use errors.Join to create a wrapped error (Go 1.20+)
@@ -64,6 +69,8 @@ func TestValidationError(t *testing.T) {
 }
 
 func TestHTTPStatusError(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		statusCode  int
 		contentType string
@@ -83,7 +90,9 @@ func TestHTTPStatusError(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(fmt.Sprintf("status_%d", tc.statusCode), func(t *testing.T) {
+			t.Parallel()
 			err := HTTPStatusError(tc.statusCode, tc.contentType, tc.body)
 			if err == nil {
 				t.Fatalf("expected error for status %d, got nil", tc.statusCode)
@@ -108,6 +117,8 @@ func TestHTTPStatusError(t *testing.T) {
 }
 
 func TestHTTPStatusError_HTMLBodyNotInErrorMessage(t *testing.T) {
+	t.Parallel()
+
 	htmlBody := []byte("<!DOCTYPE html><html><body>Internal Server Error</body></html>")
 
 	err := HTTPStatusError(500, "text/html", htmlBody)
@@ -131,6 +142,8 @@ func TestHTTPStatusError_HTMLBodyNotInErrorMessage(t *testing.T) {
 }
 
 func TestSearXNGError_ResponseBodyField(t *testing.T) {
+	t.Parallel()
+
 	err := NewSearXNGError(400, "text/html", "error details here", errors.New("bad request"))
 
 	var searxngErr *SearXNGError
@@ -144,6 +157,8 @@ func TestSearXNGError_ResponseBodyField(t *testing.T) {
 }
 
 func TestSearXNGError_Unwrap(t *testing.T) {
+	t.Parallel()
+
 	underlying := errors.New("connection refused")
 	err := NewSearXNGError(0, "", "", underlying)
 
@@ -158,6 +173,8 @@ func TestSearXNGError_Unwrap(t *testing.T) {
 }
 
 func TestHTMLResponseError_HTMLBodyNotInMessage(t *testing.T) {
+	t.Parallel()
+
 	htmlBody := "<!DOCTYPE html><html><head><title>Error</title></head><body>JSON not enabled</body></html>"
 	err := &HTMLResponseError{Body: htmlBody, UnderlyingErr: nil}
 
@@ -168,6 +185,8 @@ func TestHTMLResponseError_HTMLBodyNotInMessage(t *testing.T) {
 }
 
 func TestSearXNGError_Error_NilUnderlying(t *testing.T) {
+	t.Parallel()
+
 	err := NewSearXNGError(500, "text/html", "", nil)
 
 	errMsg := err.Error()
@@ -177,6 +196,8 @@ func TestSearXNGError_Error_NilUnderlying(t *testing.T) {
 }
 
 func TestSearXNGError_Error_WithUnderlying(t *testing.T) {
+	t.Parallel()
+
 	underlying := errors.New("connection refused")
 	err := NewSearXNGError(500, "text/html", "", underlying)
 
