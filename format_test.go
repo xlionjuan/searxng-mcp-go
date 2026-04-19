@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"log/slog"
 	"strings"
 	"testing"
 )
@@ -437,5 +439,26 @@ func TestFormatResults_PublishedDate(t *testing.T) {
 	got := formatResults(resp)
 	if !strings.Contains(got, "Date: 2024-06-10") {
 		t.Fatalf("expected published date in output, got: %s", got)
+	}
+}
+
+func TestFormatResults_DebugLogsUnresponsiveEngines(t *testing.T) {
+	var buf bytes.Buffer
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	defer slog.SetDefault(old)
+
+	resp := &SearchResponse{
+		Query:               "test",
+		Results:             []SearchResult{},
+		NumberOfResults:     0,
+		UnresponsiveEngines: [][]string{{"brave", `Suspended:" too many "requests`}},
+		Debug:               true,
+	}
+
+	_ = formatResults(resp)
+
+	if !strings.Contains(buf.String(), "unresponsive engine") {
+		t.Fatalf("expected debug log for unresponsive engines, got: %s", buf.String())
 	}
 }

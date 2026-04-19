@@ -92,6 +92,28 @@ func TestPerformSearch_Success(t *testing.T) {
 	}
 }
 
+func TestPerformSearch_PreservesUnresponsiveEngines(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"query":"test","number_of_results":1,"results":[{"title":"Result 1","url":"https://example.com/1","content":"Content 1","engine":"google"}],"suggestions":[],"unresponsive_engines":[["brave","Suspended:\" too many \"requests"],["startpage","Suspended:\" \"CAPTCHA"]]}`))
+	}))
+	defer server.Close()
+
+	cfg := &Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+	ctx := t.Context()
+	result, err := performSearch(ctx, cfg, &SearchArgs{Query: "test"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.UnresponsiveEngines) != 2 {
+		t.Fatalf("expected 2 unresponsive engines, got %#v", result.UnresponsiveEngines)
+	}
+	if result.UnresponsiveEngines[0][0] != "brave" || result.UnresponsiveEngines[1][0] != "startpage" {
+		t.Fatalf("unexpected unresponsive engines: %#v", result.UnresponsiveEngines)
+	}
+}
+
 func TestPerformSearch_TimeRangeParam(t *testing.T) {
 	var capturedTimeRange string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -685,7 +707,7 @@ func TestPerformSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 
 	cfg := &Config{
 		SearXNGURL: server.URL,
-		Timeout:   30 * time.Second,
+		Timeout:    30 * time.Second,
 	}
 	args := &SearchArgs{Query: "test"}
 
@@ -1053,6 +1075,9 @@ func TestSearchResponse_MarshalJSON_NilSlices(t *testing.T) {
 	if !strings.Contains(raw, `"suggestions":[]`) {
 		t.Errorf("expected suggestions to be [], got: %s", raw)
 	}
+	if strings.Contains(raw, `"unresponsive_engines"`) {
+		t.Errorf("expected unresponsive_engines to be omitted when debug is off, got: %s", raw)
+	}
 }
 
 func TestSearchResponse_MarshalJSON_FieldOrder(t *testing.T) {
@@ -1119,5 +1144,35 @@ func TestSearchResponse_MarshalJSON_OmitEmpty(t *testing.T) {
 		if !strings.Contains(raw, field) {
 			t.Errorf("expected %s to be present, got: %s", field, raw)
 		}
+	}
+}
+
+func TestSearchResponse_MarshalJSON_DebugIncludesUnresponsiveEngines(t *testing.T) {
+	resp := SearchResponse{
+		Query:               "test",
+		NumberOfResults:     1,
+		Results:             []SearchResult{{Title: "R1", URL: "https://example.com", Engine: "google"}},
+		Suggestions:         []string{},
+		UnresponsiveEngines: [][]string{{"brave", `Suspended:" too many "requests`}, {"startpage", `Suspended:" "CAPTCHA`}},
+		Debug:               true,
+	}
+
+	data, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("MarshalJSON error: %v", err)
+	}
+
+	var decoded map[string]any
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("output is not valid JSON: %v", err)
+	}
+
+	value, ok := decoded["unresponsive_engines"]
+	if !ok {
+		t.Fatalf("expected unresponsive_engines in debug JSON, got: %s", string(data))
+	}
+	entries, ok := value.([]any)
+	if !ok || len(entries) != 2 {
+		t.Fatalf("expected 2 unresponsive engine entries, got: %#v", value)
 	}
 }

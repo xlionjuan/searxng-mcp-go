@@ -315,15 +315,17 @@ type Answer struct {
 
 // SearchResponse represents the full search response from SearXNG
 type SearchResponse struct {
-	Query           string         `json:"query"`
-	Answers         []Answer       `json:"answers,omitempty"`
-	NumberOfResults int            `json:"number_of_results"`
-	Infoboxes       []Infobox      `json:"infoboxes,omitempty"`
-	Results         []SearchResult `json:"results"`
-	Suggestions     []string       `json:"suggestions"`
+	Query               string         `json:"query"`
+	Answers             []Answer       `json:"answers,omitempty"`
+	NumberOfResults     int            `json:"number_of_results"`
+	Infoboxes           []Infobox      `json:"infoboxes,omitempty"`
+	Results             []SearchResult `json:"results"`
+	Suggestions         []string       `json:"suggestions"`
+	UnresponsiveEngines [][]string     `json:"unresponsive_engines,omitempty"`
+	Debug               bool           `json:"-"`
 }
 
-// MarshalJSON ensures JSON field ordering: query, answers, number_of_results, infoboxes, results, suggestions.
+// MarshalJSON ensures JSON field ordering and only exposes debug-only fields when requested.
 func (r SearchResponse) MarshalJSON() ([]byte, error) {
 	// Ensure slices are empty (not nil) so JSON serializes as [] instead of null
 	if r.Results == nil {
@@ -331,6 +333,28 @@ func (r SearchResponse) MarshalJSON() ([]byte, error) {
 	}
 	if r.Suggestions == nil {
 		r.Suggestions = []string{}
+	}
+	if r.Debug {
+		if r.UnresponsiveEngines == nil {
+			r.UnresponsiveEngines = [][]string{}
+		}
+		return json.Marshal(struct {
+			Query               string         `json:"query"`
+			Answers             []Answer       `json:"answers,omitempty"`
+			NumberOfResults     int            `json:"number_of_results"`
+			Infoboxes           []Infobox      `json:"infoboxes,omitempty"`
+			Results             []SearchResult `json:"results"`
+			Suggestions         []string       `json:"suggestions"`
+			UnresponsiveEngines [][]string     `json:"unresponsive_engines"`
+		}{
+			Query:               r.Query,
+			Answers:             r.Answers,
+			NumberOfResults:     r.NumberOfResults,
+			Infoboxes:           r.Infoboxes,
+			Results:             r.Results,
+			Suggestions:         r.Suggestions,
+			UnresponsiveEngines: r.UnresponsiveEngines,
+		})
 	}
 	return json.Marshal(struct {
 		Query           string         `json:"query"`
@@ -678,6 +702,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 
 	// Infer dates before returning to avoid mutation side effects in formatResults
 	inferDates(&result, nil)
+	result.Debug = debugMode
 
 	return &result, nil
 }

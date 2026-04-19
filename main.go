@@ -375,26 +375,8 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	return nil
 }
 
-func runMCPMode(flags CLIFlags) {
-	cfg := getConfig(flags)
-
-	searcher, err := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
-	if err != nil {
-		slog.Error("failed to create searcher", "error", err)
-		os.Exit(1)
-	}
-	defer searcher.Close()
-
-	server := mcp.NewServer(&mcp.Implementation{
-		Name:    "searxng-mcp-go",
-		Version: version,
-	}, nil)
-
-	mcp.AddTool(server, &mcp.Tool{
-		Name:        "search",
-		Description: "Search the web using SearXNG meta-search engine. Returns web results with titles, URLs, and summaries. Supports language filtering, category selection, engine selection, SafeSearch, time range restrictions, and pagination.",
-		InputSchema: json.RawMessage(searchInputSchema),
-	}, func(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
+func NewSearchToolHandler(searcher *SearXNGSearcher) func(context.Context, *mcp.CallToolRequest, SearchArgs) (*mcp.CallToolResult, any, error) {
+	return func(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
 		if err := ValidateSearchArgs(&args); err != nil {
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
@@ -428,7 +410,29 @@ func runMCPMode(flags CLIFlags) {
 				&mcp.TextContent{Text: string(jsonBytes)},
 			},
 		}, nil, nil
-	})
+	}
+}
+
+func runMCPMode(flags CLIFlags) {
+	cfg := getConfig(flags)
+
+	searcher, err := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
+	if err != nil {
+		slog.Error("failed to create searcher", "error", err)
+		os.Exit(1)
+	}
+	defer searcher.Close()
+
+	server := mcp.NewServer(&mcp.Implementation{
+		Name:    "searxng-mcp-go",
+		Version: version,
+	}, nil)
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "search",
+		Description: "Search the web using SearXNG meta-search engine. Returns web results with titles, URLs, and summaries. Supports language filtering, category selection, engine selection, SafeSearch, time range restrictions, and pagination.",
+		InputSchema: json.RawMessage(searchInputSchema),
+	}, NewSearchToolHandler(searcher))
 
 	slog.Info("starting SearXNG MCP server")
 

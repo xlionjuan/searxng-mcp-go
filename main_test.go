@@ -416,6 +416,30 @@ func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
 	}
 }
 
+func TestRunCLIMode_DebugJSONIncludesUnresponsiveEngines(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"query":"golang","number_of_results":1,"results":[{"title":"Go","url":"https://go.dev","content":"Go language","engine":"google"}],"suggestions":[],"unresponsive_engines":[["brave","Suspended:\" too many \"requests"]]}`))
+	}))
+	defer server.Close()
+
+	oldDebug := debugMode
+	debugMode = true
+	defer func() { debugMode = oldDebug }()
+
+	output := captureStdout(t, func() {
+		err := runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: 1}, nil)
+		if err != nil {
+			t.Fatalf("runCLIMode() error = %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "unresponsive_engines") {
+		t.Fatalf("expected debug JSON to include unresponsive_engines, got %q", output)
+	}
+}
+
 func TestRunCLIMode_QueryPrecedence(t *testing.T) {
 	server := newTestSearchServer(t, SearchResponse{
 		Query:           "flag query",

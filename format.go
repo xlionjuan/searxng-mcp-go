@@ -2,6 +2,7 @@ package main
 
 import (
 	"html"
+	"log/slog"
 	"strconv"
 	"strings"
 )
@@ -102,8 +103,23 @@ func writeInfoboxes(b *strings.Builder, infoboxes []Infobox) {
 	b.WriteByte('\n')
 }
 
+func logUnresponsiveEngines(resp *SearchResponse) {
+	if resp == nil || !resp.Debug || len(resp.UnresponsiveEngines) == 0 {
+		return
+	}
+	for _, entry := range resp.UnresponsiveEngines {
+		if len(entry) < 2 {
+			slog.Debug("unresponsive engine", "entry", entry)
+			continue
+		}
+		slog.Debug("unresponsive engine", "engine", entry[0], "error", entry[1])
+	}
+}
+
 // formatResults formats search results as a readable string
 func formatResults(resp *SearchResponse) string {
+	logUnresponsiveEngines(resp)
+
 	if resp == nil {
 		return "No results found."
 	}
