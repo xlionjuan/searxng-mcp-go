@@ -1,4 +1,4 @@
-# ADR-004: MCP Stdin Mode Rejects All CLI Arguments
+# ADR-004: MCP Stdin Mode Is Detected From Input
 
 - **Date**: 2026-04-19
 - **Status**: Accepted
@@ -10,16 +10,18 @@ The searxng-mcp-go server operates in two modes:
 1. **CLI mode**: Interactive command-line usage with flags like `--query`, `--json`, `--searxng-url`, etc.
 2. **MCP stdin mode**: Headless operation communicating via stdio with MCP clients (e.g., Claude Desktop).
 
-Previously, MCP stdin mode silently accepted CLI flags (e.g., `--searxng-url`, `--language`, `--debug`) and applied them alongside environment variables. This created several problems:
+The server now detects MCP stdin mode by inspecting stdin for a valid MCP `initialize` message. If the process was launched with CLI arguments, it runs in CLI mode instead. This avoids treating normal command-line usage as MCP input and matches the actual startup flow:
 
-- **Configuration ambiguity**: Users could not tell whether a setting came from a CLI flag or an environment variable, making debugging MCP connection issues harder.
-- **Inconsistent UX across MCP clients**: Different MCP client launchers (Claude Desktop, Cursor, etc.) may or may not pass CLI arguments, leading to unpredictable behavior.
-- **Security surface**: Accepting arbitrary CLI arguments in a headless stdin mode increases the attack surface without clear benefit.
-- **Convention mismatch**: The MCP ecosystem convention is that stdio servers are configured entirely through environment variables, not command-line flags. CLI flags are for human-facing interactive use.
+## Detection Flow
+
+1. CLI arguments are parsed first.
+2. Any CLI arguments, `--help`, `--version`, or explicit search flags select CLI mode.
+3. Otherwise the process reads stdin and requires the first message to be a valid MCP `initialize` request.
+4. If stdin does not look like MCP input, startup fails with an MCP-specific error.
 
 ## Decision
 
-In MCP stdin mode, the server **rejects all command-line arguments** with a clear error message. All configuration must come from environment variables:
+In MCP stdin mode, configuration comes from environment variables and MCP input, not from standalone CLI search flags. The supported environment variables are:
 
 | Environment Variable | Purpose                      |
 |----------------------|------------------------------|
@@ -34,15 +36,15 @@ The only exceptions are `--help` and `--version`, which trigger CLI mode (inform
 MCP stdin mode = no --query, no --json, no --help, no --version, no positional args
 ```
 
-If any flags are present when in MCP stdin mode, the server exits with:
+If stdin does not contain a valid MCP `initialize` message, the server exits with:
 
 ```
-ERROR: MCP stdin mode does not accept command-line arguments; use environment variables (SEARXNG_URL, DEBUG) instead
+ERROR: stdin does not contain a valid MCP initialize message
 ```
 
 ### CLI mode is unaffected
 
-All existing CLI flags continue to work normally. Only the MCP stdin code path enforces the env-only rule.
+All existing CLI flags continue to work normally. Only the MCP stdin code path enforces the stdin protocol check.
 
 ## Consequences
 

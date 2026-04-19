@@ -456,6 +456,7 @@ func TestPerformSearch_HTTPStatusErrors(t *testing.T) {
 		{401, "searxng error (status 401)"},
 		{403, "searxng error (status 403)"},
 		{404, "searxng error (status 404)"},
+		{418, "searxng error (status 418)"},
 		{429, "searxng error (status 429)"},
 		{500, "searxng error (status 500)"},
 		{502, "searxng error (status 502)"},
@@ -497,6 +498,70 @@ func TestPerformSearch_HTTPStatusErrors(t *testing.T) {
 				t.Errorf("SearXNGError.StatusCode = %d, want %d", searxngErr.StatusCode, tc.statusCode)
 			}
 		})
+	}
+}
+
+func TestPerformSearch_RedirectStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", "/search/redirected")
+		w.WriteHeader(http.StatusFound)
+		_, _ = w.Write([]byte("redirect"))
+	}))
+	defer server.Close()
+
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	cfg := &Config{SearXNGURL: server.URL, Timeout: 5 * time.Second, HTTPClient: client}
+	_, err := performSearch(context.Background(), cfg, &SearchArgs{Query: "test"})
+	if err == nil {
+		t.Fatal("expected redirect error, got nil")
+	}
+
+	var searxngErr *SearXNGError
+	if !errors.As(err, &searxngErr) {
+		t.Fatalf("expected *SearXNGError, got %T", err)
+	}
+	if searxngErr.StatusCode != http.StatusFound {
+		t.Fatalf("StatusCode = %d, want %d", searxngErr.StatusCode, http.StatusFound)
+	}
+}
+
+func TestPerformSearch_ConnectionResetMidResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			t.Fatal("response writer does not support hijacking")
+		}
+
+		conn, _, err := hj.Hijack()
+		if err != nil {
+			t.Fatalf("Hijack() failed: %v", err)
+		}
+		defer conn.Close()
+
+		_, _ = conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 128\r\n\r\n{\"query\":\"test\",\"results\":["))
+	}))
+	defer server.Close()
+
+	cfg := &Config{SearXNGURL: server.URL, Timeout: 5 * time.Second}
+	_, err := performSearch(context.Background(), cfg, &SearchArgs{Query: "test"})
+	if err == nil {
+		t.Fatal("expected connection reset error, got nil")
+	}
+
+	var searxngErr *SearXNGError
+	if !errors.As(err, &searxngErr) {
+		t.Fatalf("expected *SearXNGError, got %T", err)
+	}
+	if searxngErr.StatusCode != http.StatusOK {
+		t.Fatalf("StatusCode = %d, want %d", searxngErr.StatusCode, http.StatusOK)
+	}
+	if searxngErr.UnderlyingErr == nil {
+		t.Fatal("expected underlying read error, got nil")
 	}
 }
 

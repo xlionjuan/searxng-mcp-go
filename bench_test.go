@@ -3,8 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 // ============================================================================
@@ -236,6 +239,25 @@ func BenchmarkFormatResults(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		_ = formatResults(resp)
+	}
+}
+
+func BenchmarkPerformSearch(b *testing.B) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(sampleSearXNGJSON))
+	}))
+	defer server.Close()
+
+	cfg := &Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+	args := &SearchArgs{Query: "golang programming", Language: "en", SafeSearch: 1}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		if _, err := performSearch(b.Context(), cfg, args); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 

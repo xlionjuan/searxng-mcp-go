@@ -28,7 +28,7 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 |              |         |          |         | (e.g., general, news, music)                   |
 | `engines`    | string  | No       | -       | Comma-separated list of search engines to use  |
 |              |         |          |         | (e.g., google, bing, duckduckgo)               |
-| `pageno`     | integer, null | No       | 1       | Page number for pagination (null = backend default/page 1) |
+| `pageno`     | integer, null | No       | 1       | Page number for pagination (omitted = backend default/page 1) |
 
 ### Response Format
 
@@ -56,7 +56,7 @@ The tool returns a JSON text response containing the full `SearchResponse` objec
 | `engine` | string | Source search engine |
 | `publishedDate` | string | Publication date provided by SearXNG (omitted when the backend does not include it; no normalization is applied) |
 
-**Note:** The `number_of_results` field may return 0 from SearXNG even when results are present. The server normalizes this by replacing 0 with `len(results)` when results exist.
+**Note:** The `number_of_results` field may return 0 from SearXNG even when results are present. The server normalizes this by replacing 0 with `len(results)` when results exist. If `pageno` is omitted, the server does not send the parameter and SearXNG uses its page 1 default.
 
 ### Example Usage
 

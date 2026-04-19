@@ -432,3 +432,49 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 		t.Fatalf("searchErrors = %d, want 0", searchErrors)
 	}
 }
+
+func TestSearchCloseDuringInFlightSearch(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-started:
+		default:
+			close(started)
+		}
+		<-release
+		searchResp := SearchResponse{
+			Results:         []SearchResult{},
+			NumberOfResults: 0,
+			Query:           "test",
+			Suggestions:     []string{},
+		}
+		body, _ := json.Marshal(searchResp)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}))
+	defer server.Close()
+
+	searcher, err := NewSearXNGSearcher(server.URL, 30*time.Second, nil)
+	if err != nil {
+		t.Fatalf("failed to create searcher: %v", err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := searcher.Search(context.Background(), &SearchArgs{Query: "test"})
+		done <- err
+	}()
+
+	<-started
+	if err := searcher.Close(); err != nil {
+		t.Fatalf("Close() returned error: %v", err)
+	}
+	close(release)
+
+	if err := <-done; err != nil {
+		t.Fatalf("Search() returned error: %v", err)
+	}
+}

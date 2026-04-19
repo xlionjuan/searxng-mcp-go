@@ -59,6 +59,11 @@ func TestValidateSearchArgs_NilAndQuery(t *testing.T) {
 		assertValidSearchArgs(t, &SearchArgs{Query: "golang search"})
 	})
 
+	t.Run("emoji query", func(t *testing.T) {
+		t.Parallel()
+		assertValidSearchArgs(t, &SearchArgs{Query: "search 🔍 with emoji"})
+	})
+
 	t.Run("query with control characters", func(t *testing.T) {
 		t.Parallel()
 		assertValidationError(t, &SearchArgs{Query: "test\nquery"}, "query", "invalid control characters")
@@ -75,6 +80,16 @@ func TestValidateSearchArgs_Language(t *testing.T) {
 
 	t.Run("valid language codes", func(t *testing.T) {
 		for _, lang := range []string{"en", "EN", "zh-tw", "ja", "en-US", "pt-BR", "sr-Latn", "sr-Latn-RS", "es-419", "ZH-hant"} {
+			lang := lang
+			t.Run(lang, func(t *testing.T) {
+				t.Parallel()
+				assertValidSearchArgs(t, &SearchArgs{Query: "test", Language: lang})
+			})
+		}
+	})
+
+	t.Run("unicode language codes", func(t *testing.T) {
+		for _, lang := range []string{"日本語", "中文", "Русский"} {
 			lang := lang
 			t.Run(lang, func(t *testing.T) {
 				t.Parallel()
@@ -241,6 +256,8 @@ func TestValidateSearchArgs_CategoriesAndEngines_EdgeCases(t *testing.T) {
 		assertValidationError(t, &SearchArgs{Query: "test", Engines: "google,"}, "engines", "invalid engine")
 		assertValidationError(t, &SearchArgs{Query: "test", Engines: ",google"}, "engines", "invalid engine")
 		assertValidationError(t, &SearchArgs{Query: "test", Categories: "general,,news"}, "categories", "invalid category")
+		assertValidationError(t, &SearchArgs{Query: "test", Categories: "general,"}, "categories", "invalid category")
+		assertValidationError(t, &SearchArgs{Query: "test", Categories: ",news"}, "categories", "invalid category")
 	})
 
 	t.Run("whitespace-only segments", func(t *testing.T) {

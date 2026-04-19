@@ -17,7 +17,7 @@ var validTimeRanges = map[string]bool{"day": true, "month": true, "year": true}
 
 // languagePattern validates common BCP47-like language tags used by SearXNG.
 // Empty values are handled separately as "auto" mode.
-var languagePattern = regexp.MustCompile(`^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$`)
+var languagePattern = regexp.MustCompile(`^[\p{L}]{2,35}(?:-[\p{L}\p{N}]{1,35})*$`)
 
 const maxLanguageLength = 35
 
@@ -62,7 +62,7 @@ func isValidCategoryOrEngine(value string) bool {
 		if r < 32 || r == 127 {
 			return false
 		}
-		if !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r == '-' || r == ',') {
+		if !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r == '-') {
 			return false
 		}
 	}
@@ -75,6 +75,9 @@ func ValidateCategories(categories string) error {
 		return nil
 	}
 	for _, cat := range strings.Split(categories, ",") {
+		if strings.TrimSpace(cat) == "" {
+			return NewValidationError("categories", "contains invalid category")
+		}
 		if !isValidCategoryOrEngine(cat) {
 			return NewValidationError("categories", "contains invalid category")
 		}
@@ -88,6 +91,9 @@ func ValidateEngines(engines string) error {
 		return nil
 	}
 	for _, eng := range strings.Split(engines, ",") {
+		if strings.TrimSpace(eng) == "" {
+			return NewValidationError("engines", "contains invalid engine")
+		}
 		if !isValidCategoryOrEngine(eng) {
 			return NewValidationError("engines", "contains invalid engine")
 		}
@@ -146,6 +152,9 @@ func ValidateSearchArgs(args *SearchArgs) error {
 	if args.Language != "" {
 		if len(args.Language) > maxLanguageLength {
 			return NewValidationError("language", "must be 35 characters or less")
+		}
+		if strings.EqualFold(args.Language, "auto") {
+			return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja, en-US)")
 		}
 		if !languagePattern.MatchString(args.Language) {
 			return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja, en-US)")

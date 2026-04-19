@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"io"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -284,11 +284,27 @@ func TestPerformSearch_SearchPathNormalization(t *testing.T) {
 func TestPerformSearch_UnsupportedBodySizes(t *testing.T) {
 	t.Run("oversized error body", func(t *testing.T) {
 		body := strings.Repeat("e", MaxErrorBodySize+1)
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				t.Errorf("response writer does not support hijacking")
+				return
+			}
+			conn, _, err := hj.Hijack()
+			if err != nil {
+				t.Errorf("Hijack() failed: %v", err)
+				return
+			}
+			defer conn.Close()
+			header := fmt.Sprintf("HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n", len(body))
+			_, _ = conn.Write([]byte(header))
+			_, _ = conn.Write([]byte(body))
+		}))
+		defer server.Close()
 
 		cfg := &Config{
-			SearXNGURL: "https://example.com",
+			SearXNGURL: server.URL,
 			Timeout:    30 * time.Second,
-			HTTPClient: newStaticResponseClient(http.StatusInternalServerError, "text/plain", body),
 		}
 		_, err := performSearch(t.Context(), cfg, &SearchArgs{Query: "test"})
 		if err == nil {
@@ -298,21 +314,40 @@ func TestPerformSearch_UnsupportedBodySizes(t *testing.T) {
 		if !errors.As(err, &searxngErr) {
 			t.Fatalf("expected *SearXNGError, got %T", err)
 		}
-		if !strings.Contains(err.Error(), "error response body exceeded maximum size limit") {
-			t.Fatalf("unexpected error: %v", err)
+		if searxngErr.StatusCode != http.StatusInternalServerError {
+			t.Fatalf("StatusCode = %d, want %d", searxngErr.StatusCode, http.StatusInternalServerError)
 		}
 		if len(searxngErr.ResponseBody) != MaxErrorDisplayChars {
 			t.Fatalf("ResponseBody length = %d, want %d", len(searxngErr.ResponseBody), MaxErrorDisplayChars)
 		}
+		if !strings.HasPrefix(searxngErr.ResponseBody, "eee") {
+			t.Fatalf("ResponseBody does not contain expected body preview: %q", searxngErr.ResponseBody)
+		}
 	})
 
 	t.Run("oversized success body", func(t *testing.T) {
-		body := strings.Repeat("s", MaxResponseBodySize+1)
+		body := `{"query":"test","number_of_results":1,"results":[{"title":"Result","url":"https://example.com","content":"` + strings.Repeat("s", MaxResponseBodySize+1) + `","engine":"google"}],"suggestions":[]}`
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				t.Errorf("response writer does not support hijacking")
+				return
+			}
+			conn, _, err := hj.Hijack()
+			if err != nil {
+				t.Errorf("Hijack() failed: %v", err)
+				return
+			}
+			defer conn.Close()
+			header := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n", len(body))
+			_, _ = conn.Write([]byte(header))
+			_, _ = conn.Write([]byte(body))
+		}))
+		defer server.Close()
 
 		cfg := &Config{
-			SearXNGURL: "https://example.com",
+			SearXNGURL: server.URL,
 			Timeout:    30 * time.Second,
-			HTTPClient: newStaticResponseClient(http.StatusOK, "application/json", body),
 		}
 		_, err := performSearch(t.Context(), cfg, &SearchArgs{Query: "test"})
 		if err == nil {
@@ -329,26 +364,6 @@ func TestPerformSearch_UnsupportedBodySizes(t *testing.T) {
 			t.Fatalf("ResponseBody length = %d, want %d", len(searxngErr.ResponseBody), MaxErrorDisplayChars)
 		}
 	})
-}
-
-type roundTripperFunc func(*http.Request) (*http.Response, error)
-
-func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
-	return f(r)
-}
-
-func newStaticResponseClient(statusCode int, contentType, body string) *http.Client {
-	return &http.Client{
-		Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
-			headers := make(http.Header)
-			headers.Set("Content-Type", contentType)
-			return &http.Response{
-				StatusCode: statusCode,
-				Header:     headers,
-				Body:       io.NopCloser(strings.NewReader(body)),
-			}, nil
-		}),
-	}
 }
 
 func TestPerformSearch_EmptyHTMLBody(t *testing.T) {
