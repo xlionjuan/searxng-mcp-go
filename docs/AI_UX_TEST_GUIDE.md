@@ -100,7 +100,7 @@ echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search","a
 # Basic English
 query="MCP protocol specification", language="en"
 
-# Chinese
+# Chinese <!-- intentionally non-English: testing Chinese language search query -->
 query="測試", language="zh-tw"
 
 # Empty result expected
