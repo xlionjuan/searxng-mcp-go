@@ -178,6 +178,8 @@ When a field in the query results has no value, the behavior is as follows:
 | **CLI text mode** | The entire section is omitted — nothing is printed. For example, if there are no Answers, the `=== Answers ===` heading will not appear. |
 | **JSON mode** | `answers` and `infoboxes` use `omitempty` and are omitted when empty. `results` and `suggestions` are always present — forced to `[]` (empty array) when empty, never omitted or `null`. `unresponsive_engines` is omitted unless debug mode is enabled. |
 
+`corrections` is intentionally excluded from all output modes per ADR-005.
+
 ### Specific Rules
 
 **CLI text mode:**
@@ -205,14 +207,16 @@ When a field in the query results has no value, the behavior is as follows:
 
 ## Field Ordering
 
-### CLI Text Mode Output Order
+### JSON Mode Field Order
 
-1. **`answers`** — Direct answers (e.g., IP, hash, timezone, etc.), introduced by the `=== Answers ===` heading
-2. **`infoboxes`** — Knowledge panels, introduced by the `=== Infoboxes ===` heading
-3. **`results`** — Search result list, introduced by the `=== Results ===` heading (contains the `Found N results for 'query':` summary line)
-4. **`suggestions`** — Related search suggestions, introduced by the `=== Search Suggestions ===` heading
+1. **`query`** — Search query echoed in the response
+2. **`answers`** — Direct answers (e.g., IP, hash, timezone, etc.)
+3. **`number_of_results`** — Total result count reported in JSON output
+4. **`infoboxes`** — Knowledge panels
+5. **`results`** — Search result list
+6. **`suggestions`** — Related search suggestions
 
-Each section only appears when it contains values. Sections are separated by blank lines.
+`answers` and `infoboxes` may be omitted when empty. `results` and `suggestions` remain present as arrays.
 
 #### Output Order Diagram
 
@@ -221,6 +225,8 @@ query
   ↓
 answers
   ↓
+number_of_results
+  ↓
 infoboxes
   ↓
 results
@@ -228,19 +234,19 @@ results
 suggestions
 ```
 
-### JSON Mode Field Order
-
 ```json
 {
   "query": "string",
+  "answers": [],
   "number_of_results": "int",
+  "infoboxes": [],
   "results": [],
   "suggestions": [],
   "unresponsive_engines": []
 }
 ```
 
-Note: JSON does not guarantee field order, but Go's `encoding/json.Marshal` serializes struct fields in declaration order. The order above is enforced by the Go struct definition and its `MarshalJSON` override. `answers` and `infoboxes` use `omitempty` (omitted when empty), while `results` and `suggestions` are always present (forced to `[]` when empty). `unresponsive_engines` is debug-only and omitted when debug mode is off.
+Note: JSON does not guarantee field order, but Go's `encoding/json.Marshal` serializes struct fields in declaration order. The order above is enforced by the Go struct definition and its `MarshalJSON` override. `answers` and `infoboxes` use `omitempty` (omitted when empty), while `results` and `suggestions` are always present (forced to `[]` when empty). `corrections` is intentionally excluded per ADR-005. `unresponsive_engines` is debug-only and omitted when debug mode is off.
 
 ---
 
