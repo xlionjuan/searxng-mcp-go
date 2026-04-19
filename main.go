@@ -104,7 +104,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 		Debug:      *debug,
 	}
 
-	isCLIMode = flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
+	isCLIMode = len(args) > 0 || flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
 
 	// In MCP stdin mode, all configuration must come from environment variables.
 	// Reject any command-line arguments to enforce a clean, env-only contract.
