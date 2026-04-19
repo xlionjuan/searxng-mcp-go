@@ -10,6 +10,8 @@ import (
 // --- formatResults tests ---
 
 func TestFormatResults(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		resp           *SearchResponse
@@ -379,7 +381,9 @@ func TestFormatResults(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := formatResults(tt.resp)
 
 			if tt.wantResult != "" {
@@ -430,6 +434,8 @@ func TestFormatResults(t *testing.T) {
 }
 
 func TestFormatResults_NilInput(t *testing.T) {
+	t.Parallel()
+
 	if got := formatResults(nil); got != "No results found." {
 		t.Fatalf("formatResults(nil) = %q, want %q", got, "No results found.")
 	}

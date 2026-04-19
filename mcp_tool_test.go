@@ -186,6 +186,112 @@ func TestMCP_ToolsCall_Search(t *testing.T) {
 	}
 }
 
+func TestMCP_ToolsCall_OptionalParameters(t *testing.T) {
+	tests := []struct {
+		name       string
+		arguments  map[string]any
+		wantParams  map[string]string
+	}{
+		{
+			name: "language",
+			arguments: map[string]any{
+				"query":    "golang",
+				"language": "en",
+			},
+			wantParams: map[string]string{"language": "en"},
+		},
+		{
+			name: "safesearch",
+			arguments: map[string]any{
+				"query":      "golang",
+				"safesearch":  2,
+			},
+			wantParams: map[string]string{"safesearch": "2"},
+		},
+		{
+			name: "time_range",
+			arguments: map[string]any{
+				"query":      "golang",
+				"time_range": "year",
+			},
+			wantParams: map[string]string{"time_range": "year"},
+		},
+		{
+			name: "categories",
+			arguments: map[string]any{
+				"query":      "golang",
+				"categories": "general,news",
+			},
+			wantParams: map[string]string{"categories": "general,news"},
+		},
+		{
+			name: "engines",
+			arguments: map[string]any{
+				"query":   "golang",
+				"engines": "google,bing",
+			},
+			wantParams: map[string]string{"engines": "google,bing"},
+		},
+		{
+			name: "pageno",
+			arguments: map[string]any{
+				"query":  "golang",
+				"pageno": 3,
+			},
+			wantParams: map[string]string{"pageno": "3"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var capturedParams map[string]string
+			handler := func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost {
+					_ = r.ParseForm()
+					capturedParams = make(map[string]string, len(r.PostForm))
+					for key, values := range r.PostForm {
+						if len(values) > 0 {
+							capturedParams[key] = values[0]
+						}
+					}
+				} else {
+					query := r.URL.Query()
+					capturedParams = make(map[string]string, len(query))
+					for key, values := range query {
+						if len(values) > 0 {
+							capturedParams[key] = values[0]
+						}
+					}
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"query":"golang","number_of_results":0,"results":[]}`))
+			}
+
+			session, cleanup, _ := setupMCPSession(t, handler)
+			defer cleanup()
+
+			result, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+				Name:      "search",
+				Arguments: tt.arguments,
+			})
+			if err != nil {
+				t.Fatalf("call tool failed: %v", err)
+			}
+			if result.IsError {
+				t.Fatalf("expected IsError=false, got true with content: %v", result.Content)
+			}
+
+			for key, want := range tt.wantParams {
+				if got := capturedParams[key]; got != want {
+					t.Fatalf("%s = %q, want %q", key, got, want)
+				}
+			}
+		})
+	}
+}
+
 func TestMCP_ToolsCall_EmptyQuery(t *testing.T) {
 	session, cleanup, _ := setupMCPSession(t, mockSearXNGHandler())
 	defer cleanup()

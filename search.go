@@ -112,6 +112,15 @@ func checkBodyTruncated(body io.Reader) (bool, error) {
 	return false, err
 }
 
+func closeResponseBody(resp *http.Response) {
+	if resp == nil || resp.Body == nil {
+		return
+	}
+	if err := resp.Body.Close(); err != nil {
+		slog.Debug("failed to close response body", "error", err)
+	}
+}
+
 // isPrivateHost checks if the host is a private/internal address
 func isPrivateHost(host string) bool {
 	// Remove port if present
@@ -161,6 +170,34 @@ func isPrivateHost(host string) bool {
 		}
 		// 169.254.0.0/16 (link-local)
 		if ip4[0] == 169 && ip4[1] == 254 {
+			return true
+		}
+		// 0.0.0.0/8 (this network)
+		if ip4[0] == 0 {
+			return true
+		}
+		// 100.64.0.0/10 (CGNAT)
+		if ip4[0] == 100 && ip4[1]&0xc0 == 0x40 {
+			return true
+		}
+		// 192.0.0.0/24, 192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24,
+		// 198.18.0.0/15, 224.0.0.0/4, 240.0.0.0/4
+		if ip4[0] == 192 && ip4[1] == 0 && ip4[2] == 0 {
+			return true
+		}
+		if ip4[0] == 192 && ip4[1] == 0 && ip4[2] == 2 {
+			return true
+		}
+		if ip4[0] == 198 && (ip4[1] == 18 || ip4[1] == 19) {
+			return true
+		}
+		if ip4[0] == 198 && ip4[1] == 51 && ip4[2] == 100 {
+			return true
+		}
+		if ip4[0] == 203 && ip4[1] == 0 && ip4[2] == 113 {
+			return true
+		}
+		if ip4[0] >= 224 {
 			return true
 		}
 		return false
@@ -563,7 +600,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		if debugMode {
 			slog.Debug("Redirecting to GET fallback", "status", resp.StatusCode, "reason", "POST not supported by server")
 		}
-		resp.Body.Close()
+		closeResponseBody(resp)
 		getURL := searchURL
 		getURL.RawQuery = params.Encode()
 		getReq, reqErr := http.NewRequestWithContext(ctx, "GET", getURL.String(), nil)
@@ -593,7 +630,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	if err != nil {
 		return nil, NewSearXNGError(0, "", "", fmt.Errorf("failed to execute search request: %w", err))
 	}
-	defer resp.Body.Close()
+	defer func() { closeResponseBody(resp) }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, readErr := io.ReadAll(io.LimitReader(resp.Body, MaxErrorBodySize))
