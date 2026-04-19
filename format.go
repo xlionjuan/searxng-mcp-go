@@ -163,6 +163,11 @@ func formatResults(resp *SearchResponse) string {
 				b.WriteString(content)
 				b.WriteByte('\n')
 			}
+			if r.PublishedDate != nil && *r.PublishedDate != "" {
+				b.WriteString("   Published date: ")
+				b.WriteString(*r.PublishedDate)
+				b.WriteByte('\n')
+			}
 			b.WriteString("   Engine: ")
 			b.WriteString(r.Engine)
 			b.WriteString("\n\n")

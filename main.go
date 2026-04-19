@@ -39,7 +39,8 @@ type CLIFlags struct {
 }
 
 // parseArgs parses command-line arguments and returns the mode, flags, and positional arguments.
-// It accepts flags anywhere before or after positional args, matching the current CLI behavior.
+// Any supplied arguments route the process into CLI mode; otherwise the server runs in MCP mode.
+// Flags are accepted anywhere before or after positional args, matching the current CLI behavior.
 func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []string, err error) {
 	flagArgs := make([]string, 0, len(args))
 	positionalArgs = make([]string, 0, len(args))
@@ -105,12 +106,6 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 	}
 
 	isCLIMode = len(args) > 0 || flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
-
-	// In MCP stdin mode, all configuration must come from environment variables.
-	// Reject any command-line arguments to enforce a clean, env-only contract.
-	if !isCLIMode && len(flagArgs) > 0 {
-		return false, CLIFlags{}, nil, fmt.Errorf("MCP stdin mode does not accept command-line arguments; use environment variables (SEARXNG_URL, DEBUG) instead")
-	}
 
 	return isCLIMode, flags, positionalArgs, nil
 }

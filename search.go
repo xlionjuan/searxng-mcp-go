@@ -20,9 +20,8 @@ import (
 // you should set your own instance via the SEARXNG_URL environment variable.
 const DefaultSearXNGURL = "https://search-4.xlion.dev"
 
-// defaultHTTPClient is a singleton HTTP client shared across all searchers.
-// This avoids creating new transport goroutines for each search while preventing
-// unbounded memory growth.
+// defaultHTTPClient is the shared client used when callers do not request a custom timeout.
+// Searchers that need a different timeout get a fresh client instead.
 var defaultHTTPClient *http.Client
 var defaultHTTPClientOnce sync.Once
 
@@ -40,7 +39,7 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 	}
 }
 
-// getDefaultHTTPClient returns the singleton HTTP client.
+// getDefaultHTTPClient returns the shared default HTTP client.
 func getDefaultHTTPClient() *http.Client {
 	defaultHTTPClientOnce.Do(func() {
 		defaultHTTPClient = newHTTPClient(30 * time.Second)
