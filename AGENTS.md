@@ -138,7 +138,7 @@ Our headers are set via `setBrowserHeaders()` in `search.go`. POST and GET fallb
 ## Known Limitations
 
 1. **Pagination**: SearXNG API starts at page 1 (server validates `pageno >= 1`)
-2. **Date Inference**: Dates inferred from content when not provided by API
+2. **Date Inference**: When not provided by the API, `publishedDate` is inferred only from a small set of relative phrases in content (English forms like `hours ago`, `days ago`, `yesterday`, `last week`, plus a few German equivalents); it is not generic publication-date parsing
 3. **HTML Detection**: Returns `HTMLResponseError` if SearXNG returns HTML instead of JSON
 4. **Y2K Threshold**: 2-digit year parsing uses Y2K_THRESHOLD=2000 (needs update before 2038)
 5. **Content Length**: Summaries truncated to 4000 UTF-8 runes

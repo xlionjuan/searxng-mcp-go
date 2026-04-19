@@ -78,6 +78,8 @@ In an MCP client configuration, set `env` in the server definition:
 
 **Priority:** command-line flag > environment variable > default hardcoded value
 
+Note: in MCP stdin mode, command-line flags are rejected entirely; use environment variables only (see [ADR-004](adr/004-mcp-stdin-env-only.md)).
+
 ### CLI Mode Configuration
 
 When running in CLI mode (with a query argument), command-line flags can be used directly:

@@ -1,4 +1,4 @@
-# ADR-001: MCP Stdin Mode Rejects All CLI Arguments
+# ADR-004: MCP Stdin Mode Rejects All CLI Arguments
 
 - **Date**: 2026-04-19
 - **Status**: Accepted
