@@ -116,7 +116,7 @@ func TestFormatResults(t *testing.T) {
 				NumberOfResults: 2,
 				Query:           "test query",
 			},
-			wantContains: []string{"=== Results ===", "Found 2 results", "test query", "Test Title 1", "https://example.com/1", "Test content 1", "Test Title 2", "Summary:"},
+			wantContains: []string{"=== Results ===", "Found 2 results", "test query", "Test Title 1", "https://example.com/1", "1. Test Title 1\n   URL: https://example.com/1\n   Summary: Test content 1", "Test Title 2"},
 		},
 		{
 			name:       "empty results",
@@ -407,6 +407,17 @@ func TestFormatResults(t *testing.T) {
 			for _, want := range tt.wantContains {
 				if !strings.Contains(result, want) {
 					t.Errorf("expected %q in output, got: %s", want, result)
+				}
+			}
+			if tt.name == "normal results with content" {
+				firstTitle := strings.Index(result, "1. Test Title 1")
+				firstSummary := strings.Index(result, "   Summary: Test content 1")
+				secondTitle := strings.Index(result, "2. Test Title 2")
+				if firstTitle == -1 || firstSummary == -1 || secondTitle == -1 {
+					t.Fatalf("expected both result blocks and the first summary in output, got: %s", result)
+				}
+				if !(firstTitle < firstSummary && firstSummary < secondTitle) {
+					t.Fatalf("expected first result summary to belong to the first result block, got: %s", result)
 				}
 			}
 			if tt.wantNotContain != "" && strings.Contains(result, tt.wantNotContain) {

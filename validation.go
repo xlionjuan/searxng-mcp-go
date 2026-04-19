@@ -15,8 +15,9 @@ const MaxQueryLength = 500
 // validTimeRanges contains the set of valid time range values
 var validTimeRanges = map[string]bool{"day": true, "month": true, "year": true}
 
-// languagePattern validates language codes: 2 letter (ISO 639-1) or with optional country suffix (e.g., zh-tw, zh-cn)
-var languagePattern = regexp.MustCompile(`^[a-z]{2}(-[a-z]{2,3})?$`)
+// languagePattern validates common BCP47-like language tags used by SearXNG.
+// Empty values are handled separately as "auto" mode.
+var languagePattern = regexp.MustCompile(`^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$`)
 
 // containsControlCharacters checks if a string contains control characters
 // (characters in the range \x00-\x1f and \x7f)
