@@ -225,6 +225,7 @@ func performSearch(ctx context.Context, cfg *Config, args *SearchArgs) (*SearchR
 	if err != nil {
 		return nil, err
 	}
+	defer searcher.Close()
 	return searcher.performSearch(ctx, args)
 }
 
