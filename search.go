@@ -36,6 +36,19 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 			MaxIdleConns:          100,
 			MaxIdleConnsPerHost:   10,
 		},
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Block redirects to private/internal hosts to prevent SSRF.
+			// If the SearXNG instance redirects to an internal address,
+			// the request must not be followed.
+			if req.URL != nil && isPrivateHost(req.URL.Host) {
+				return fmt.Errorf("redirect to private host blocked: %s", req.URL.Host)
+			}
+			// Allow at most 10 redirects (Go default).
+			if len(via) >= 10 {
+				return errors.New("stopped after 10 redirects")
+			}
+			return nil
+		},
 	}
 }
 
