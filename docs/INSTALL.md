@@ -31,7 +31,7 @@ go build -o searxng-mcp-go .
 # Build for a different output name
 go build -o my-search-server .
 
-# Build with version info (edit main.go to set version)
+# Build with stripped debug info
 go build -ldflags="-s -w" -o searxng-mcp-go .
 ```
 
