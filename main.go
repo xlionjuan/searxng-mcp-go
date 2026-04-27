@@ -225,6 +225,7 @@ func main() {
 	if debugMode {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 		slog.Debug("debug mode enabled", "version", version)
+		slog.Warn("debug mode logs search queries and HTTP requests in plain text; avoid sensitive searches")
 	}
 
 	if isCLIMode {

@@ -518,9 +518,6 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	if err := ValidateSearchArgs(args); err != nil {
 		return nil, err
 	}
-	if debugMode {
-		slog.Warn("debug mode logs search queries and HTTP requests in plain text; avoid sensitive searches")
-	}
 	baseURL, err := url.Parse(s.baseURL)
 	if err != nil {
 		return nil, NewSearXNGError(0, "", "", fmt.Errorf("invalid SearXNG URL: %w", err))
