@@ -44,33 +44,9 @@ type CLIFlags struct {
 // Any supplied arguments route the process into CLI mode; otherwise the server runs in MCP mode.
 // Flags are accepted anywhere before or after positional args, matching the current CLI behavior.
 func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []string, err error) {
-	flagArgs := make([]string, 0, len(args))
-	positionalArgs = make([]string, 0, len(args))
-	afterDoubleDash := false
-
-	flagsWithValues := map[string]bool{
-		"--query": true, "--searxng-url": true, "--language": true,
-		"--safesearch": true, "--time_range": true, "--categories": true,
-		"--engines": true, "--pageno": true,
-	}
-
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == "--" {
-			afterDoubleDash = true
-			continue
-		}
-		if afterDoubleDash || !strings.HasPrefix(arg, "-") {
-			positionalArgs = append(positionalArgs, arg)
-			continue
-		}
-		flagArgs = append(flagArgs, arg)
-		if flagsWithValues[arg] && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
-			i++
-			flagArgs = append(flagArgs, args[i])
-		}
-	}
-
+	// Build the FlagSet first so we can use Lookup to determine whether a
+	// flag takes a value (via the IsBoolFlag interface) during the
+	// interleaved scan, avoiding the need to hard-code a parallel map.
 	fs := flag.NewFlagSet("searxng-mcp-go", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	fs.Usage = func() {}
@@ -87,6 +63,40 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 	engines := fs.String("engines", "", "Comma-separated list of search engines to use")
 	pageno := fs.Int("pageno", 1, "Page number for pagination")
 	debug := fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)")
+
+	// Interleaved scan: extract flag tokens (with their values) while
+	// collecting positional args.  Flags are accepted before or after
+	// positional arguments and are passed to fs.Parse() afterwards.
+	flagArgs := make([]string, 0, len(args))
+	positionalArgs = make([]string, 0, len(args))
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			// Everything after -- is positional (standard convention).
+			positionalArgs = append(positionalArgs, args[i+1:]...)
+			break
+		}
+		if !strings.HasPrefix(arg, "-") {
+			positionalArgs = append(positionalArgs, arg)
+			continue
+		}
+
+		flagArgs = append(flagArgs, arg)
+
+		// Consult the FlagSet to decide whether this flag expects a value.
+		// Bool flags (--help, --json, --version, --debug) do not consume
+		// the next token; all other flags do.
+		name := strings.TrimLeft(arg, "-")
+		if fl := fs.Lookup(name); fl != nil {
+			if _, isBool := fl.Value.(interface{ IsBoolFlag() bool }); !isBool {
+				if i+1 < len(args) {
+					i++
+					flagArgs = append(flagArgs, args[i])
+				}
+			}
+		}
+	}
 
 	if err := fs.Parse(flagArgs); err != nil {
 		return false, CLIFlags{}, nil, err
