@@ -177,3 +177,4 @@ See [docs/INSTALL.md](docs/INSTALL.md) for Docker and other build options.
 - All documentation (`docs/*.md`) must be in English
 - Edit files with `patch` (find-and-replace), not `sed`; new files with `write_file`
 - Subagent code changes must be verified by compiling and running tests before committing
+- **Critical: Never trust your own knowledge of version numbers, release dates, or specification statuses.** Any information that is time-sensitive (language versions, dependency versions, API stability, RFC status, etc.) MUST be verified via web search before being stated as fact. Training data is frozen at a cutoff date; asserting version facts without verification has repeatedly caused serious errors.
