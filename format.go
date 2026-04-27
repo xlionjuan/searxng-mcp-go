@@ -128,7 +128,7 @@ func formatResults(resp *SearchResponse) string {
 	}
 
 	var b strings.Builder
-	estimate := len(resp.Query) + len(resp.Results)*200
+	estimate := len(resp.Query) + len(resp.Results)*ResultSizeEstimate
 	if estimate > 0 {
 		b.Grow(estimate)
 	}
