@@ -76,7 +76,7 @@ Search the web via SearXNG.
 | Parameter    | Type   | Required | Default | Description                              |
 |--------------|--------|----------|---------|------------------------------------------|
 | `query`      | string | Yes      | -       | Search query string                      |
-| `language`   | string | No       | auto    | Language code (en, zh-tw, ja, etc.); empty = SearXNG decides |
+| `language`   | string | No       |         | Language code (en, zh-tw, ja, etc.); empty = SearXNG decides |
 | `safesearch` | int    | No       | 0       | 0=Off, 1=Moderate, 2=Strict              |
 | `time_range` | string | No       | -       | day, month, year                         |
 | `categories` | string | No       | -       | Comma-separated categories               |
@@ -151,8 +151,8 @@ Validation errors (all returned as `validation error on "<field>": <message>`):
 - **safesearch**: not in 0–2 range → `must be 0 off, 1 moderate, or 2 strict`
 - **categories**: contains invalid identifier (only `[a-z0-9_-]`, max 50 chars each) → `contains invalid category`
 - **engines**: contains invalid identifier (only `[a-z0-9_-]`, max 50 chars each) → `contains invalid engine`
-- **language**: set to `"auto"` → `must be a valid language code (e.g., en, zh-tw, ja, en-US)` (use empty string to let SearXNG decide)
 - **language**: non-BCP47 pattern or >35 chars → `must be a valid language code (e.g., en, zh-tw, ja, en-US)`
+- **language**: set to `"auto"` → silently normalized to empty string (let SearXNG decide)
 - **pageno**: < 1 → `must be >= 1`
 
 Runtime errors:
@@ -166,11 +166,11 @@ Runtime errors:
 
 1. **Max Query Length**: Queries are limited to 500 characters (`MaxQueryLength`); longer queries are rejected with a validation error
 2. **Fixed Timeout**: All search requests use a fixed 30-second HTTP client timeout; this is not controllable by MCP client parameters
-3. **Language `"auto"` Rejected**: Passing `language="auto"` is rejected by validation — use an empty string to let SearXNG auto-detect the language
+3. **Language `"auto"` Normalized**: Passing `language="auto"` is silently normalized to empty string; use empty string to let SearXNG decide
 4. **Categories/Engines Character Limits**: Only lowercase letters, digits, underscore, and hyphen (`[a-z0-9_-]`) are allowed; each identifier is limited to 50 characters
 5. **Pagination**: SearXNG API starts at page 1 (server validates `pageno >= 1`)
 6. **HTML Detection**: Returns `HTMLResponseError` if SearXNG returns HTML instead of JSON
-7. **Content Length**: Summaries truncated to 4000 UTF-8 runes
+7. **Content Length**: Summaries truncated to 4000 Unicode characters (runes)
 
 ## Development
 

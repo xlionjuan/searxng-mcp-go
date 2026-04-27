@@ -15,7 +15,7 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 | Parameter    | Type    | Required | Default | Description                                      |
 |--------------|---------|----------|---------|--------------------------------------------------|
 | `query`      | string  | Yes      | -       | The search query string                          |
-| `language`   | string  | No       | auto    | Language code for results (e.g., en, zh-tw, ja). Empty = SearXNG decides |
+| `language`   | string  | No       |         | Language code for results (e.g., en, zh-tw, ja). Empty = SearXNG decides |
 | `safesearch` | integer | No       | 0       | SafeSearch filtering level:                     |
 |              |         |          |         | - `0` = Off (show all results)                   |
 |              |         |          |         | - `1` = Moderate (filter some adult content)    |
@@ -199,4 +199,4 @@ Actual error message formats from the server:
 - **Protocol**: MCP (Model Context Protocol)
 - **SearXNG Format**: JSON (`format=json`)
 - **Timeout**: 30 seconds (configurable in source code; not adjustable via MCP client parameters)
-- **POST→GET fallback**: 當 POST 請求失敗時（例如部分 SearXNG 設定回傳 405），伺服器會自動以 GET 重試 `/search` 請求
+- **POST→GET fallback**: When a POST request fails (for example, some SearXNG configurations return 405), the server automatically retries the `/search` request with GET
