@@ -81,7 +81,7 @@ Search the web via SearXNG.
 | `time_range` | string | No       | -       | day, month, year                         |
 | `categories` | string | No       | -       | Comma-separated categories               |
 | `engines`    | string | No       | -       | Comma-separated engines                  |
-| `pageno`     | int    | No       | 1       | Page number (≥1)                         |
+| `pageno`     | int (nullable) | No       | 1       | Page number (≥1)，*int；nil 時不發送參數 |
 
 See [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) for full details.
 
