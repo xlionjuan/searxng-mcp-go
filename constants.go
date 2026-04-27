@@ -11,3 +11,7 @@ const MaxResponseBodySize = 2 * 1024 * 1024
 
 // MaxErrorDisplayChars is the maximum number of characters to display from an error body
 const MaxErrorDisplayChars = 200
+
+// ResultSizeEstimate is an empirical estimate of bytes per result for pre-allocating the response buffer.
+// Derived from typical SearXNG JSON result sizes.
+const ResultSizeEstimate = 200
