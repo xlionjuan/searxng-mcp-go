@@ -233,6 +233,126 @@ func TestValidateSearchArgs_Pageno(t *testing.T) {
 	})
 }
 
+// --- containsControlCharacters 獨立單元測試 ---
+
+func TestContainsControlCharacters(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty string", func(t *testing.T) {
+		t.Parallel()
+		if containsControlCharacters("") {
+			t.Error("containsControlCharacters(\"\") = true, want false")
+		}
+	})
+
+	t.Run("normal printable ASCII", func(t *testing.T) {
+		t.Parallel()
+		if containsControlCharacters("hello world") {
+			t.Error("containsControlCharacters(hello world) = true, want false")
+		}
+	})
+
+	t.Run("tab character", func(t *testing.T) {
+		t.Parallel()
+		if !containsControlCharacters("hello\tworld") {
+			t.Error("containsControlCharacters(hello\\tworld) = false, want true")
+		}
+	})
+
+	t.Run("newline character", func(t *testing.T) {
+		t.Parallel()
+		if !containsControlCharacters("hello\nworld") {
+			t.Error("containsControlCharacters(hello\\nworld) = false, want true")
+		}
+	})
+
+	t.Run("carriage return", func(t *testing.T) {
+		t.Parallel()
+		if !containsControlCharacters("hello\rworld") {
+			t.Error("containsControlCharacters(hello\\rworld) = false, want true")
+		}
+	})
+
+	t.Run("null character \\x00", func(t *testing.T) {
+		t.Parallel()
+		if !containsControlCharacters("test\x00null") {
+			t.Error("containsControlCharacters(test\\x00null) = false, want true")
+		}
+	})
+
+	t.Run("boundary \\x1f (last control char)", func(t *testing.T) {
+		t.Parallel()
+		if !containsControlCharacters("test\x1fctrl") {
+			t.Error("containsControlCharacters(test\\x1fctrl) = false, want true")
+		}
+	})
+
+	t.Run("space \\x20 (first printable)", func(t *testing.T) {
+		t.Parallel()
+		if containsControlCharacters("hello world") {
+			t.Error("containsControlCharacters(hello world) = true, want false (space is printable)")
+		}
+	})
+
+	t.Run("DEL character \\x7f", func(t *testing.T) {
+		t.Parallel()
+		if !containsControlCharacters("test\x7fdel") {
+			t.Error("containsControlCharacters(test\\x7fdel) = false, want true")
+		}
+	})
+
+	t.Run("boundary \\x80 (above DEL)", func(t *testing.T) {
+		t.Parallel()
+		if containsControlCharacters("test\x80above") {
+			t.Error("containsControlCharacters(test\\x80above) = true, want false (\\x80 is not a control char)")
+		}
+	})
+
+	t.Run("unicode CJK characters", func(t *testing.T) {
+		t.Parallel()
+		if containsControlCharacters("你好世界") {
+			t.Error("containsControlCharacters(你好世界) = true, want false")
+		}
+	})
+
+	t.Run("unicode emoji", func(t *testing.T) {
+		t.Parallel()
+		if containsControlCharacters("🔥🎉😀") {
+			t.Error("containsControlCharacters(🔥🎉😀) = true, want false")
+		}
+	})
+
+	t.Run("mixed printable and unicode", func(t *testing.T) {
+		t.Parallel()
+		if containsControlCharacters("hello 你好 🔥") {
+			t.Error("containsControlCharacters(hello 你好 🔥) = true, want false")
+		}
+	})
+
+	t.Run("only control characters", func(t *testing.T) {
+		t.Parallel()
+		if !containsControlCharacters("\x00\x01\x02\x1f\x7f") {
+			t.Error("containsControlCharacters(only controls) = false, want true")
+		}
+	})
+
+	t.Run("digits and punctuation", func(t *testing.T) {
+		t.Parallel()
+		if containsControlCharacters("123!@#$%^&*()") {
+			t.Error("containsControlCharacters(digits+punctuation) = true, want false")
+		}
+	})
+
+	t.Run("non-breaking space U+00A0", func(t *testing.T) {
+		t.Parallel()
+		// Non-breaking space is not a control character (0xA0 > 0x7f, but not 127)
+		// U+00A0 is 0xC2 0xA0 in UTF-8. As a rune it's 160 which is > 127.
+		if containsControlCharacters("hello\u00a0world") {
+			t.Error("containsControlCharacters(hello\\u00a0world) = true, want false")
+		}
+	})
+}
+
 func TestValidateSearchArgs_CategoriesAndEngines_EdgeCases(t *testing.T) {
 	t.Parallel()
 
