@@ -21,6 +21,10 @@ import (
 const version = "1.0.0"
 
 // debugMode is set to true when --debug flag or DEBUG=1 env var is active.
+//
+// 目前無 race condition：賦值發生在 goroutine 啟動之前（parseArgs → main → runMCPMode
+// / runCLIMode 皆在單一 goroutine 中完成）。若未來需要在執行期間動態修改此變數，
+// 應改用 atomic.Bool 以確保 concurrent-safe。
 var debugMode bool
 
 // ============================================================================
@@ -431,6 +435,9 @@ func attachStdin(stdin io.Reader) (restore func(), err error) {
 	go func() {
 		_, copyErr := io.Copy(pw, stdin)
 		if copyErr != nil {
+			// MCP stdio 場景中，pipe 寫入失敗通常發生在 MCP client 關閉 stdin
+			// 或行程即將結束之時，屬於預期內的正常關閉行為，僅以 Debug 層級記錄即可，
+			// 無需做額外的錯誤處理或重試。
 			slog.Debug("failed to copy MCP stdin", "error", copyErr)
 		}
 		_ = pw.Close()
