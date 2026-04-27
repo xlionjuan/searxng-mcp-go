@@ -238,13 +238,13 @@ func isPrivateHost(host string) bool {
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration
 func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Client) (*SearXNGSearcher, error) {
 	if err := validateBaseURL(baseURL); err != nil {
-		return nil, fmt.Errorf("NewSearXNGSearcher: %w", err)
+		return nil, fmt.Errorf("newSearXNGSearcher: %w", err)
 	}
 
 	// Parse URL to check scheme and host
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
-		return nil, fmt.Errorf("NewSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error): %w", err)
+		return nil, fmt.Errorf("newSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error): %w", err)
 	}
 
 	// Warn if using HTTP with non-private host
@@ -661,7 +661,10 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 				"body_preview", errBodyPreview,
 			)
 		}
-		truncated, _ := isBodyTruncated(resp.Body)
+		truncated, truncErr := isBodyTruncated(resp.Body)
+		if truncErr != nil {
+			slog.Debug("isBodyTruncated read error", "error", truncErr)
+		}
 		if truncated {
 			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), fmt.Errorf("error response body exceeded maximum size limit of %d bytes", MaxErrorBodySize))
 		}
@@ -672,7 +675,10 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	if err != nil {
 		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read response body: %w", err))
 	}
-	truncated, _ := isBodyTruncated(resp.Body)
+	truncated, truncErr := isBodyTruncated(resp.Body)
+	if truncErr != nil {
+		slog.Debug("isBodyTruncated read error", "error", truncErr)
+	}
 	if truncated {
 		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), fmt.Errorf("response body exceeded maximum size limit of %d bytes", MaxResponseBodySize))
 	}

@@ -140,27 +140,30 @@ func TestPerformSearch_TimeRangeParam(t *testing.T) {
 	}
 
 	tests := []struct {
+		name      string
 		timeRange string
 		want      string
 	}{
-		{"day", "day"},
-		{"month", "month"},
-		{"year", "year"},
-		{"", ""},
+		{name: "day", timeRange: "day", want: "day"},
+		{name: "month", timeRange: "month", want: "month"},
+		{name: "year", timeRange: "year", want: "year"},
+		{name: "empty", timeRange: "", want: ""},
 	}
 
 	for _, tt := range tests {
-		capturedTimeRange = ""
-		args := &SearchArgs{Query: "test", TimeRange: tt.timeRange}
-		ctx := t.Context()
-		_, err := performSearch(ctx, cfg, args)
-		if err != nil {
-			t.Errorf("performSearch() error = %v", err)
-			continue
-		}
-		if capturedTimeRange != tt.want {
-			t.Errorf("time_range = %q, want %q", capturedTimeRange, tt.want)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			capturedTimeRange = ""
+			args := &SearchArgs{Query: "test", TimeRange: tt.timeRange}
+			ctx := t.Context()
+			_, err := performSearch(ctx, cfg, args)
+			if err != nil {
+				t.Errorf("performSearch() error = %v", err)
+				return
+			}
+			if capturedTimeRange != tt.want {
+				t.Errorf("time_range = %q, want %q", capturedTimeRange, tt.want)
+			}
+		})
 	}
 }
 
@@ -454,6 +457,8 @@ func TestPerformSearch_HTMLResponseError(t *testing.T) {
 // --- isPrivateHost tests ---
 
 func TestIsPrivateHost(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		host      string
@@ -576,6 +581,8 @@ func TestIsPrivateHost(t *testing.T) {
 // --- validateBaseURL tests ---
 
 func TestValidateBaseURL(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		baseURL   string
@@ -630,6 +637,8 @@ func TestValidateBaseURL(t *testing.T) {
 // --- getDefaultHTTPClient tests ---
 
 func TestGetDefaultHTTPClient_Singleton(t *testing.T) {
+	t.Parallel()
+
 	client1 := getDefaultHTTPClient()
 	client2 := getDefaultHTTPClient()
 
@@ -639,6 +648,8 @@ func TestGetDefaultHTTPClient_Singleton(t *testing.T) {
 }
 
 func TestGetDefaultHTTPClient_Transport(t *testing.T) {
+	t.Parallel()
+
 	client := getDefaultHTTPClient()
 	transport := client.Transport.(*http.Transport)
 
@@ -695,6 +706,8 @@ func TestPerformSearch_QueryEncoding(t *testing.T) {
 
 // Test URL validation edge cases
 func TestNewSearXNGSearcher_URLValidation(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		baseURL   string
@@ -702,7 +715,7 @@ func TestNewSearXNGSearcher_URLValidation(t *testing.T) {
 		errSubstr string
 	}{
 		{"valid URL", "https://search.example.com", false, ""},
-		{"invalid URL is wrapped", "search.example.com", true, "NewSearXNGSearcher: url must use http or https scheme"},
+		{"invalid URL is wrapped", "search.example.com", true, "newSearXNGSearcher: url must use http or https scheme"},
 	}
 
 	for _, tt := range tests {
@@ -930,6 +943,8 @@ func TestPerformSearch_BrowserHeaders(t *testing.T) {
 // --- deduplicateAnswers tests ---
 
 func TestDeduplicateAnswers_EmptyInputs(t *testing.T) {
+	t.Parallel()
+
 	// Both empty
 	result := deduplicateAnswers(nil, nil)
 	if len(result) != 0 {
@@ -951,6 +966,8 @@ func TestDeduplicateAnswers_EmptyInputs(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_RemovesDuplicateWikipedia(t *testing.T) {
+	t.Parallel()
+
 	// Simulate DuckDuckGo putting Wikipedia summary in both answers and infoboxes
 	wikiSummary := "Apple Inc. is an American multinational technology company headquartered in Cupertino, California."
 	answers := []Answer{
@@ -967,6 +984,8 @@ func TestDeduplicateAnswers_RemovesDuplicateWikipedia(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_RemovesPrefixMatch(t *testing.T) {
+	t.Parallel()
+
 	// Answer is a prefix of infobox content (truncated answer)
 	answers := []Answer{
 		{Answer: "Apple Inc. is an American multinational technology company", Engine: "duckduckgo"},
@@ -982,6 +1001,8 @@ func TestDeduplicateAnswers_RemovesPrefixMatch(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_KeepsDistinctAnswer(t *testing.T) {
+	t.Parallel()
+
 	// "ip" query: answer is an IP address, infobox has unrelated content
 	answers := []Answer{
 		{Answer: "203.0.113.42", Engine: "ip"},
@@ -1000,6 +1021,8 @@ func TestDeduplicateAnswers_KeepsDistinctAnswer(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_CaseInsensitive(t *testing.T) {
+	t.Parallel()
+
 	answers := []Answer{
 		{Answer: "apple inc. is an american company", Engine: "duckduckgo"},
 	}
@@ -1014,6 +1037,8 @@ func TestDeduplicateAnswers_CaseInsensitive(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_InfoboxContentOnly(t *testing.T) {
+	t.Parallel()
+
 	// Infobox with empty content should not cause filtering
 	answers := []Answer{
 		{Answer: "test answer", Engine: "test"},
@@ -1030,6 +1055,8 @@ func TestDeduplicateAnswers_InfoboxContentOnly(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_MultipleAnswersMixed(t *testing.T) {
+	t.Parallel()
+
 	wikiSummary := "Apple Inc. is an American multinational technology company."
 	answers := []Answer{
 		{Answer: wikiSummary, Engine: "duckduckgo"},
@@ -1049,6 +1076,8 @@ func TestDeduplicateAnswers_MultipleAnswersMixed(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_DDGSuffixMoreAtWikipedia(t *testing.T) {
+	t.Parallel()
+
 	// DuckDuckGo appends "More at Wikipedia" to the answer, which breaks
 	// the old Contains(answer, infobox) check. Prefix matching fixes this.
 	infoboxContent := "Apple Inc. is an American multinational technology company headquartered in Cupertino, California. Apple is one of the Big Tech companies, alongside Amazon, Google, Meta, and Microsoft."
@@ -1067,6 +1096,8 @@ func TestDeduplicateAnswers_DDGSuffixMoreAtWikipedia(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_EmptyAnswerSkipped(t *testing.T) {
+	t.Parallel()
+
 	answers := []Answer{
 		{Answer: "", Engine: "duckduckgo"},
 		{Answer: "valid answer", Engine: "test"},
@@ -1087,6 +1118,8 @@ func TestDeduplicateAnswers_EmptyAnswerSkipped(t *testing.T) {
 // --- SearchResponse.MarshalJSON tests ---
 
 func TestSearchResponse_MarshalJSON_NilSlices(t *testing.T) {
+	t.Parallel()
+
 	resp := SearchResponse{
 		Query:           "test",
 		NumberOfResults: 0,
@@ -1120,6 +1153,8 @@ func TestSearchResponse_MarshalJSON_NilSlices(t *testing.T) {
 }
 
 func TestSearchResponse_MarshalJSON_FieldOrder(t *testing.T) {
+	t.Parallel()
+
 	resp := SearchResponse{
 		Query:           "test",
 		Answers:         []Answer{{Answer: "42", Engine: "calc"}},
@@ -1157,6 +1192,8 @@ func TestSearchResponse_MarshalJSON_FieldOrder(t *testing.T) {
 }
 
 func TestSearchResponse_MarshalJSON_OmitEmpty(t *testing.T) {
+	t.Parallel()
+
 	resp := SearchResponse{
 		Query:           "test",
 		NumberOfResults: 0,
@@ -1187,6 +1224,8 @@ func TestSearchResponse_MarshalJSON_OmitEmpty(t *testing.T) {
 }
 
 func TestSearchResponse_MarshalJSON_DebugIncludesUnresponsiveEngines(t *testing.T) {
+	t.Parallel()
+
 	resp := SearchResponse{
 		Query:               "test",
 		NumberOfResults:     1,

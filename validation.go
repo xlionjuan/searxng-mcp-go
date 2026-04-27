@@ -34,22 +34,6 @@ func containsControlCharacters(s string) bool {
 
 const maxIdentifierLength = 50
 
-func isValidIdentifier(value string, validSet map[string]bool) bool {
-	trimmed := strings.TrimSpace(value)
-	if len(trimmed) == 0 {
-		return false
-	}
-	if !validSet[trimmed] {
-		return false
-	}
-	for _, r := range trimmed {
-		if !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')) {
-			return false
-		}
-	}
-	return true
-}
-
 func isValidCategoryOrEngine(value string) bool {
 	trimmed := strings.TrimSpace(value)
 	if len(trimmed) == 0 {
@@ -101,7 +85,11 @@ func ValidateEngines(engines string) error {
 	return nil
 }
 
-// ValidateSearchArgs validates the search arguments and returns a ValidationError if invalid
+// ValidateSearchArgs validates and normalizes search arguments, returning a ValidationError if invalid.
+//
+// Normalization side effects:
+//   - Language set to "auto" (case-insensitive) is silently normalized to ""
+//     (empty string), letting SearXNG decide the language automatically.
 func ValidateSearchArgs(args *SearchArgs) error {
 	if args == nil {
 		return NewValidationError("args", "search arguments cannot be nil")

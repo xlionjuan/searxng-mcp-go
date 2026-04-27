@@ -7,6 +7,40 @@ import (
 	"testing"
 )
 
+// --- unescapeIfNeeded tests ---
+
+func TestUnescapeIfNeeded(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "empty string", input: "", want: ""},
+		{name: "no HTML entity", input: "hello world", want: "hello world"},
+		{name: "ampersand entity", input: "hello &amp; world", want: "hello & world"},
+		{name: "lt and gt entities", input: "&lt;div&gt;", want: "<div>"},
+		{name: "quot entity", input: `&quot;quoted&quot;`, want: `"quoted"`},
+		{name: "numeric entity &#39;", input: "&#39;", want: "'"},
+		{name: "hex entity &#x27;", input: "&#x27;", want: "'"},
+		{name: "mixed entities", input: "a &amp; b &lt; c", want: "a & b < c"},
+		{name: "bare ampersand no valid entity", input: "only & symbol", want: "only & symbol"},
+		{name: "unicode with entities", input: "日本語 &amp; 中文", want: "日本語 & 中文"},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := unescapeIfNeeded(tt.input)
+			if got != tt.want {
+				t.Errorf("unescapeIfNeeded(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 // --- formatResults tests ---
 
 func TestFormatResults(t *testing.T) {

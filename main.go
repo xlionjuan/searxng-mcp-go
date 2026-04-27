@@ -103,7 +103,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 	}
 
 	if err := fs.Parse(flagArgs); err != nil {
-		return false, CLIFlags{}, nil, err
+		return false, CLIFlags{}, nil, fmt.Errorf("failed to parse arguments: %w", err)
 	}
 
 	// Use flag.Visit to determine whether --pageno was explicitly set.
@@ -307,7 +307,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	}
 
 	if query == "" {
-		return fmt.Errorf("search query is required use --help for usage information")
+		return fmt.Errorf("search query is required; use --help for usage information")
 	}
 
 	cfg := getConfig(flags)
@@ -354,6 +354,9 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	return nil
 }
 
+// NewSearchToolHandler creates an MCP tool handler function that performs SearXNG searches.
+// It returns a function suitable for use as an mcp.ToolHandler, which validates the search
+// arguments, executes the search, and returns the formatted results.
 func NewSearchToolHandler(searcher *SearXNGSearcher) func(context.Context, *mcp.CallToolRequest, SearchArgs) (*mcp.CallToolResult, any, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
 		if err := ValidateSearchArgs(&args); err != nil {
