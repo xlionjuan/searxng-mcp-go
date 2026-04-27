@@ -142,8 +142,21 @@ Our headers are set via `setBrowserHeaders()` in `search.go`. POST and GET fallb
 
 ## Error Handling
 
-- Empty or whitespace-only `query` rejected
-- Invalid `time_range` values (must be: day, month, year)
+Validation errors (all returned as `validation error on "<field>": <message>`):
+
+- **query**: empty or whitespace-only → `search query cannot be only whitespace`
+- **query**: exceeds 500 characters → `must be 500 characters or less`
+- **query**: contains control characters (U+0000–U+001F, U+007F) → `contains invalid control characters`
+- **time_range**: not one of day/month/year → `must be one of day, month or year`
+- **safesearch**: not in 0–2 range → `must be 0 off, 1 moderate, or 2 strict`
+- **categories**: contains invalid identifier (only `[a-z0-9_-]`, max 50 chars each) → `contains invalid category`
+- **engines**: contains invalid identifier (only `[a-z0-9_-]`, max 50 chars each) → `contains invalid engine`
+- **language**: set to `"auto"` → `must be a valid language code (e.g., en, zh-tw, ja, en-US)` (use empty string to let SearXNG decide)
+- **language**: non-BCP47 pattern or >35 chars → `must be a valid language code (e.g., en, zh-tw, ja, en-US)`
+- **pageno**: < 1 → `must be >= 1`
+
+Runtime errors:
+
 - Network/connectivity failures
 - SearXNG API errors (non-200, malformed JSON, HTML responses)
 - HTML responses use the fixed message `searxng returned html instead of json - json output may not be enabled on the server`
