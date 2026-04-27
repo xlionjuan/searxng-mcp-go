@@ -26,6 +26,8 @@ Earlier versions of this project and this document discussed a `lang` parameter 
 - `validation.go`
 - `main.go`
 
+> **注意：** 以下 curl 範例同時使用 `lang` 與 `language` 參數進行對比測試，屬於研究用途。實際程式碼（`search.go` / `performSearch()`）僅發送 `language` 參數，不使用 `lang`。
+
 ### Query: python programming
 
 ```bash
