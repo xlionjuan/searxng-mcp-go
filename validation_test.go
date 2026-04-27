@@ -155,7 +155,7 @@ func TestValidateSearchArgs_CategoriesAndEngines(t *testing.T) {
 		})
 		t.Run("invalid control characters", func(t *testing.T) {
 			t.Parallel()
-			assertValidationError(t, &SearchArgs{Query: "test", Categories: "general\nnews"}, "categories", "invalid control characters")
+			assertValidationError(t, &SearchArgs{Query: "test", Categories: "general\nnews"}, "categories", "invalid category")
 		})
 		t.Run("invalid identifier", func(t *testing.T) {
 			t.Parallel()
@@ -171,7 +171,7 @@ func TestValidateSearchArgs_CategoriesAndEngines(t *testing.T) {
 		})
 		t.Run("invalid control characters", func(t *testing.T) {
 			t.Parallel()
-			assertValidationError(t, &SearchArgs{Query: "test", Engines: "google\tbing"}, "engines", "invalid control characters")
+			assertValidationError(t, &SearchArgs{Query: "test", Engines: "google\tbing"}, "engines", "invalid engine")
 		})
 		t.Run("invalid identifier", func(t *testing.T) {
 			t.Parallel()
