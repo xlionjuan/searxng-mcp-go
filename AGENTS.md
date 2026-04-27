@@ -37,8 +37,12 @@ searxng-mcp-go/
 ├── errors_test.go       # Error type tests
 ├── format_test.go       # Formatting tests (including pagination)
 ├── validation_test.go   # Validation edge case tests
-├── concurrency_test.go   # Concurrency and stress tests
+├── concurrency_test.go  # Concurrency and stress tests
 ├── error_path_test.go   # Error path coverage tests
+├── bench_test.go        # Benchmark tests
+├── mcp_tool_test.go     # MCP tool integration tests
+├── golden_capture_test.go # Golden file/capture tests
+├── README.md            # Project README
 ├── go.mod/go.sum        # Go module/dependencies
 ├── .golangci.yml        # Linter configuration
 ├── codecov.yml          # Code coverage configuration
@@ -47,8 +51,20 @@ searxng-mcp-go/
 └── docs/
     ├── INSTALL.md           # Installation, build, configuration
     ├── MCP_TOOLS.md         # MCP tool documentation
+    ├── MCP_TESTING.md       # MCP testing guide
+    ├── OUTPUT_FORMAT.md     # Output format specification
     ├── AI_UX_TEST_GUIDE.md  # AI UX testing guide
-    └── LANGUAGE_PARAMETER_RESEARCH.md  # Language parameter research
+    ├── LANGUAGE_PARAMETER_RESEARCH.md  # Language parameter research
+    ├── SEARXNG_RESPONSE_FIELDS.md  # SearXNG response fields reference
+    ├── SEARXNG_ANSWER_DEDUP.md     # Answer deduplication design
+    ├── SEARXNG_TEST_QUERIES.md     # Test queries reference
+    ├── REPORT_PERF_2026-04-19.md   # Performance report
+    └── adr/
+        ├── 001-no-pgo.md                      # ADR: No PGO optimization
+        ├── 003-http-warning-for-non-private-hosts.md  # ADR: HTTP warning for non-private hosts
+        ├── 004-mcp-stdin-env-only.md          # ADR: MCP stdin mode env-only
+        ├── 005-no-corrections.md              # ADR: No corrections exposure
+        └── 006-unresponsive-engines-debug-only.md  # ADR: unresponsive_engines debug-only
 ```
 
 ## MCP Tools
