@@ -40,7 +40,7 @@ func setupMCPSession(t *testing.T, handler http.HandlerFunc) (*mcp.ClientSession
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
 
 	// Server must connect first (client sends initialize on Connect)
-	_, err = server.Connect(context.Background(), serverTransport, nil)
+	serverSession, err := server.Connect(context.Background(), serverTransport, nil)
 	if err != nil {
 		searcher.Close()
 		mockServer.Close()
@@ -61,6 +61,7 @@ func setupMCPSession(t *testing.T, handler http.HandlerFunc) (*mcp.ClientSession
 
 	cleanup := func() {
 		clientSession.Close()
+		serverSession.Wait()
 		searcher.Close()
 		mockServer.Close()
 	}
