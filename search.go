@@ -518,19 +518,11 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	if err := ValidateSearchArgs(args); err != nil {
 		return nil, err
 	}
+	// baseURL is already validated by NewSearXNGSearcher via validateBaseURL;
+	// url.Parse is only needed here to obtain the parsed URL for building the search request.
 	baseURL, err := url.Parse(s.baseURL)
 	if err != nil {
 		return nil, NewSearXNGError(0, "", "", fmt.Errorf("invalid SearXNG URL: %w", err))
-	}
-
-	// Validate URL scheme
-	if baseURL.Scheme != "http" && baseURL.Scheme != "https" {
-		return nil, NewSearXNGError(0, "", "", fmt.Errorf("searxng url must use http or https scheme"))
-	}
-
-	// Validate URL has a host
-	if baseURL.Host == "" {
-		return nil, NewSearXNGError(0, "", "", fmt.Errorf("searxng url must include a host (e.g., search.example.com)"))
 	}
 
 	params := url.Values{}
