@@ -82,13 +82,15 @@ An array of typed answer objects. Each object's structure depends on the answer 
 ```json
 {
   "answer": "The computed result or information",
-  "url": "https://example.com/optional-link"
+  "engine": "engine_name",
+  "template": "template_name"
 }
 ```
 
 Fields:
 - `answer` (string): The answer text.
-- `url` (string, optional): Related resource URL.
+- `engine` (string): The engine that produced the answer.
+- `template` (string, optional): The engine's answer template name.
 
 #### 2. `Translations` (translation results)
 
