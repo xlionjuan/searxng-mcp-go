@@ -40,7 +40,7 @@ searxng-mcp-go "recipes" --pageno 2
 | `--query`         | string |         | Search query (alternative to positional argument)     |
 | `--json`          | bool   | false   | Output results as formatted JSON                      |
 | `--searxng-url`   | string |         | SearXNG instance URL (overrides `SEARXNG_URL` env)    |
-| `--language`      | string | auto    | Language code (en, zh-tw, ja, etc.); empty = SearXNG decides |
+| `--language`      | string |  | Language code (en, zh-tw, ja, etc.); empty = SearXNG decides |
 | `--safesearch`    | int    | 0       | SafeSearch: 0=Off, 1=Moderate, 2=Strict               |
 | `--time_range`    | string |         | Time filter: day, month, year                         |
 | `--categories`    | string |         | Comma-separated categories (general, news, music)     |
