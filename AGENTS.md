@@ -121,7 +121,7 @@ export DEBUG=1
 ./searxng-mcp-go "query"
 ```
 
-Debug output includes: HTTP method, URL, request body, response status, content-type, and response body preview (first 500 chars).
+Debug output includes: HTTP method, URL, Content-Type, Accept header, request body, response status, content-type, and response body preview (first 500 chars). On error responses, debug mode also logs `body_size` and a `body_preview`. Additionally, the `unresponsive_engines` field (listing engines that failed to respond, e.g., rate-limited or CAPTCHA) is **only included in the JSON response when debug mode is enabled**; it is omitted entirely in non-debug mode (see ADR-006).
 
 ## HTTP Headers & Bot Detection
 
