@@ -132,18 +132,12 @@ func ValidateSearchArgs(args *SearchArgs) error {
 	}
 
 	if args.Categories != "" {
-		if containsControlCharacters(args.Categories) {
-			return NewValidationError("categories", "contains invalid control characters")
-		}
 		if err := ValidateCategories(args.Categories); err != nil {
 			return err
 		}
 	}
 
 	if args.Engines != "" {
-		if containsControlCharacters(args.Engines) {
-			return NewValidationError("engines", "contains invalid control characters")
-		}
 		if err := ValidateEngines(args.Engines); err != nil {
 			return err
 		}

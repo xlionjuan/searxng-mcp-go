@@ -115,7 +115,7 @@ func validateBaseURL(baseURL string) error {
 	return nil
 }
 
-func checkBodyTruncated(body io.Reader) (bool, error) {
+func isBodyTruncated(body io.Reader) (bool, error) {
 	buf := make([]byte, 1)
 	_, err := body.Read(buf)
 	if err == nil {
@@ -363,6 +363,11 @@ type SearchResponse struct {
 	Debug               bool           `json:"-"`
 }
 
+// MarshalJSON uses a value receiver (not pointer) to avoid concurrent
+// modification of the SearchResponse during serialization. Since r is a copy,
+// mutations to normalize slices (e.g., setting nil to empty) are isolated to
+// the local copy and do not affect the original struct. This is a deliberate
+// safety design to prevent data races in concurrent search scenarios.
 // MarshalJSON ensures JSON field ordering and only exposes debug-only fields when requested.
 func (r SearchResponse) MarshalJSON() ([]byte, error) {
 	// Ensure slices are empty (not nil) so JSON serializes as [] instead of null
@@ -656,7 +661,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 				"body_preview", errBodyPreview,
 			)
 		}
-		truncated, _ := checkBodyTruncated(resp.Body)
+		truncated, _ := isBodyTruncated(resp.Body)
 		if truncated {
 			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), fmt.Errorf("error response body exceeded maximum size limit of %d bytes", MaxErrorBodySize))
 		}
@@ -667,7 +672,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	if err != nil {
 		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read response body: %w", err))
 	}
-	truncated, _ := checkBodyTruncated(resp.Body)
+	truncated, _ := isBodyTruncated(resp.Body)
 	if truncated {
 		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), fmt.Errorf("response body exceeded maximum size limit of %d bytes", MaxResponseBodySize))
 	}
