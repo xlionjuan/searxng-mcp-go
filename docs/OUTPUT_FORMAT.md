@@ -242,7 +242,7 @@ suggestions
   "infoboxes": [],
   "results": [],
   "suggestions": [],
-  "unresponsive_engines": []
+  "unresponsive_engines": []  // 僅 debug mode
 }
 ```
 
