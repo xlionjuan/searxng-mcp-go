@@ -118,6 +118,10 @@ By default, the server uses `https://search-4.xlion.dev`. See the [MCP Server Co
 
 The default timeout for search requests is 30 seconds. This value is configurable in the source code but cannot be adjusted via MCP client parameters.
 
+### POST→GET Fallback
+
+當 POST 請求失敗時（例如部分 SearXNG 設定回傳 405 Method Not Allowed），伺服器會自動以 GET 重試 `/search` 請求，確保與不同 SearXNG 部署的相容性。
+
 ## Running Tests
 
 ### Race Detector
