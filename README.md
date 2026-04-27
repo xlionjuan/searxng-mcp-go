@@ -82,7 +82,7 @@ SEARXNG_URL=https://my-instance.example.com searxng-mcp-go
 | Parameter    | Type          | Required | Default | Description                                              |
 |--------------|---------------|----------|---------|----------------------------------------------------------|
 | `query`      | string        | Yes      |         | Search query string                                      |
-| `language`   | string        | No       | auto    | Language code (en, zh-tw, ja, etc.); empty = SearXNG decides |
+| `language`   | string        | No       |         | Language code (en, zh-tw, ja, etc.); empty = SearXNG decides |
 | `safesearch` | integer       | No       | 0       | 0=Off, 1=Moderate, 2=Strict                              |
 | `time_range` | string        | No       |         | day, month, year                                         |
 | `categories` | string        | No       |         | Comma-separated categories                               |

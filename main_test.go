@@ -11,7 +11,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"go.uber.org/goleak"
 )
+
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m)
+}
 
 func TestPrintCLIHelp(t *testing.T) {
 	oldStdout := os.Stdout
@@ -459,6 +465,7 @@ func TestRunCLIMode_SuccessTextOutput(t *testing.T) {
 		NumberOfResults: 1,
 		Results:         []SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
 	})
+	defer server.Close()
 
 	output := captureStdout(t, func() {
 		err := runCLIMode(CLIFlags{Query: "golang", SearXNGURL: server.URL, Pageno: nil}, nil)
@@ -478,6 +485,7 @@ func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
 		NumberOfResults: 1,
 		Results:         []SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
 	})
+	defer server.Close()
 
 	output := captureStdout(t, func() {
 		err := runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: nil}, nil)
@@ -525,6 +533,7 @@ func TestRunCLIMode_QueryPrecedence(t *testing.T) {
 		NumberOfResults: 1,
 		Results:         []SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
 	})
+	defer server.Close()
 
 	output := captureStdout(t, func() {
 		err := runCLIMode(CLIFlags{Query: "flag query", SearXNGURL: server.URL, Pageno: nil}, []string{"positional query"})

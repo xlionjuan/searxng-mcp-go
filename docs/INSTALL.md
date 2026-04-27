@@ -120,7 +120,7 @@ The default timeout for search requests is 30 seconds. This value is configurabl
 
 ### POST→GET Fallback
 
-當 POST 請求失敗時（例如部分 SearXNG 設定回傳 405 Method Not Allowed），伺服器會自動以 GET 重試 `/search` 請求，確保與不同 SearXNG 部署的相容性。
+When a POST request fails (for example, some SearXNG configurations return 405 Method Not Allowed), the server automatically retries the `/search` request with GET, ensuring compatibility with different SearXNG deployments.
 
 ## Running Tests
 
