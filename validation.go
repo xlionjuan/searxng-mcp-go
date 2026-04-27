@@ -144,14 +144,16 @@ func ValidateSearchArgs(args *SearchArgs) error {
 	}
 
 	if args.Language != "" {
-		if len(args.Language) > maxLanguageLength {
-			return NewValidationError("language", "must be 35 characters or less")
-		}
 		if strings.EqualFold(args.Language, "auto") {
-			return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja, en-US)")
-		}
-		if !languagePattern.MatchString(args.Language) {
-			return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja, en-US)")
+			// normalize "auto" to empty string (let SearXNG decide)
+			args.Language = ""
+		} else {
+			if len(args.Language) > maxLanguageLength {
+				return NewValidationError("language", "must be 35 characters or less")
+			}
+			if !languagePattern.MatchString(args.Language) {
+				return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja, en-US)")
+			}
 		}
 	}
 
