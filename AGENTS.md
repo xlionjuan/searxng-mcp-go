@@ -164,9 +164,13 @@ Runtime errors:
 
 ## Known Limitations
 
-1. **Pagination**: SearXNG API starts at page 1 (server validates `pageno >= 1`)
-2. **HTML Detection**: Returns `HTMLResponseError` if SearXNG returns HTML instead of JSON
-3. **Content Length**: Summaries truncated to 4000 UTF-8 runes
+1. **Max Query Length**: Queries are limited to 500 characters (`MaxQueryLength`); longer queries are rejected with a validation error
+2. **Fixed Timeout**: All search requests use a fixed 30-second HTTP client timeout; this is not controllable by MCP client parameters
+3. **Language `"auto"` Rejected**: Passing `language="auto"` is rejected by validation — use an empty string to let SearXNG auto-detect the language
+4. **Categories/Engines Character Limits**: Only lowercase letters, digits, underscore, and hyphen (`[a-z0-9_-]`) are allowed; each identifier is limited to 50 characters
+5. **Pagination**: SearXNG API starts at page 1 (server validates `pageno >= 1`)
+6. **HTML Detection**: Returns `HTMLResponseError` if SearXNG returns HTML instead of JSON
+7. **Content Length**: Summaries truncated to 4000 UTF-8 runes
 
 ## Development
 
