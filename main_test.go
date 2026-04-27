@@ -20,21 +20,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestPrintCLIHelp(t *testing.T) {
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	t.Parallel()
 
-	printCLIHelp()
-
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	_, err := buf.ReadFrom(r)
-	if err != nil {
-		t.Fatalf("failed to read captured stdout: %v", err)
-	}
-	output := buf.String()
+	output := captureStdout(t, func() {
+		printCLIHelp()
+	})
 
 	expectedContent := []string{
 		"SearXNG MCP Server - CLI Mode",
@@ -84,6 +74,8 @@ func buildTestBinary(t *testing.T) (string, func()) {
 // TestValidationExitCode verifies that all validation errors in CLI mode
 // produce exit code 1. This is an end-to-end test using exec.Command.
 func TestValidationExitCode(t *testing.T) {
+	t.Parallel()
+
 	binPath, cleanup := buildTestBinary(t)
 	defer cleanup()
 
@@ -110,6 +102,8 @@ func TestValidationExitCode(t *testing.T) {
 }
 
 func TestParseArgs_InvalidFlags(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		args      []string
@@ -133,6 +127,8 @@ func TestParseArgs_InvalidFlags(t *testing.T) {
 }
 
 func TestParseArgs(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		args           []string
@@ -332,6 +328,8 @@ func TestParseArgs(t *testing.T) {
 }
 
 func TestIsValidMCPInitializeMessage(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		line string
@@ -353,6 +351,8 @@ func TestIsValidMCPInitializeMessage(t *testing.T) {
 }
 
 func TestPrepareMCPStdin(t *testing.T) {
+	t.Parallel()
+
 	input := `{"jsonrpc":"2.0","method":"initialize","id":1}` + "\n" + `{"jsonrpc":"2.0","method":"tools/list","id":2}` + "\n"
 	stdin, err := prepareMCPStdin(strings.NewReader(input))
 	if err != nil {
@@ -370,7 +370,9 @@ func TestPrepareMCPStdin(t *testing.T) {
 }
 
 func TestPrepareMCPStdinRejectsInvalidInput(t *testing.T) {
-	_, err := prepareMCPStdin(strings.NewReader("not initialize\n"))
+	t.Parallel()
+
+_, err := prepareMCPStdin(strings.NewReader("not initialize\\n"))
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -561,6 +563,8 @@ func newTestSearchServer(t *testing.T, resp SearchResponse) *httptest.Server {
 }
 
 func TestRunCLIMode_ValidationErrors(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		flags     CLIFlags
@@ -627,22 +631,13 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 func TestRunCLIMode_HelpFlag(t *testing.T) {
 	flags := CLIFlags{Help: true, Language: "", SafeSearch: 0, Pageno: nil}
 
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	output := captureStdout(t, func() {
+		err := runCLIMode(flags, []string{})
+		if err != nil {
+			t.Errorf("runCLIMode() with --help should return nil, got: %v", err)
+		}
+	})
 
-	err := runCLIMode(flags, []string{})
-
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
-	output := buf.String()
-
-	if err != nil {
-		t.Errorf("runCLIMode() with --help should return nil, got: %v", err)
-	}
 	if !strings.Contains(output, "SearXNG") {
 		t.Errorf("expected help output to contain 'SearXNG', got output: %q", output)
 	}
@@ -654,22 +649,13 @@ func TestRunCLIMode_HelpFlag(t *testing.T) {
 func TestRunCLIMode_VersionFlag(t *testing.T) {
 	flags := CLIFlags{Version: true, Language: "", SafeSearch: 0, Pageno: nil}
 
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	output := captureStdout(t, func() {
+		err := runCLIMode(flags, []string{})
+		if err != nil {
+			t.Errorf("runCLIMode() with --version should return nil, got: %v", err)
+		}
+	})
 
-	err := runCLIMode(flags, []string{})
-
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
-	output := buf.String()
-
-	if err != nil {
-		t.Errorf("runCLIMode() with --version should return nil, got: %v", err)
-	}
 	if !strings.Contains(output, "version") {
 		t.Errorf("expected version output to contain 'version', got output: %q", output)
 	}
@@ -679,6 +665,8 @@ func TestRunCLIMode_VersionFlag(t *testing.T) {
 }
 
 func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
+	t.Parallel()
+
 	flags := CLIFlags{Query: "test", SearXNGURL: "http://localhost:99999", Language: "", SafeSearch: 0, Pageno: nil}
 
 	err := runCLIMode(flags, []string{})
@@ -691,6 +679,8 @@ func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
 }
 
 func TestRunCLIMode_FlagOnlyInvocations(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		flags     CLIFlags

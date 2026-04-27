@@ -1,3 +1,5 @@
+//go:build integration
+
 package main
 
 import (
@@ -370,57 +372,44 @@ func TestMCP_ToolsCall_SearchError(t *testing.T) {
 }
 
 func TestMCP_DebugGatesUnresponsiveEngines(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{
-			"query":"golang",
-			"number_of_results":1,
-			"results":[{"title":"Go","url":"https://go.dev","content":"Go language","engine":"google"}],
-			"suggestions":[],
-			"unresponsive_engines":[["brave","Suspended:\" too many \"requests"]]
-		}`))
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
 	}
 
-	oldDebug := debugMode
-	defer func() { debugMode = oldDebug }()
-
-	run := func(t *testing.T, debug bool) map[string]any {
-		debugMode = debug
-		session, cleanup, _ := setupMCPSession(t, handler)
-		defer cleanup()
-
-		result, err := session.CallTool(context.Background(), &mcp.CallToolParams{
-			Name:      "search",
-			Arguments: map[string]any{"query": "golang"},
-		})
-		if err != nil {
-			t.Fatalf("call tool failed: %v", err)
-		}
-		if result.IsError {
-			t.Fatalf("expected IsError=false, got true: %v", result.Content)
-		}
-		textContent, ok := result.Content[0].(*mcp.TextContent)
-		if !ok {
-			t.Fatalf("expected *mcp.TextContent, got %T", result.Content[0])
-		}
-		var decoded map[string]any
-		if err := json.Unmarshal([]byte(textContent.Text), &decoded); err != nil {
-			t.Fatalf("expected valid JSON: %v\nbody: %s", err, textContent.Text)
-		}
-		return decoded
+	// Test SearchResponse.MarshalJSON directly instead of mutating the global
+	// debugMode variable (which would be a race in parallel test runs).
+	// The MarshalJSON method gates unresponsive_engines on the struct's Debug
+	// field, which is set from global debugMode at search time in production.
+	sr := SearchResponse{
+		Query:               "golang",
+		NumberOfResults:     1,
+		Results:             []SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
+		Suggestions:         []string{},
+		UnresponsiveEngines: [][]string{{"brave", `Suspended: " too many "requests"`}},
 	}
 
 	t.Run("debug_off", func(t *testing.T) {
-		noDebug := run(t, false)
-		if _, ok := noDebug["unresponsive_engines"]; ok {
+		sr.Debug = false
+		data, err := sr.MarshalJSON()
+		if err != nil {
+			t.Fatalf("MarshalJSON failed: %v", err)
+		}
+		if strings.Contains(string(data), "unresponsive_engines") {
 			t.Fatal("expected unresponsive_engines to be omitted when debug is off")
 		}
 	})
 
 	t.Run("debug_on", func(t *testing.T) {
-		withDebug := run(t, true)
-		value, ok := withDebug["unresponsive_engines"]
+		sr.Debug = true
+		data, err := sr.MarshalJSON()
+		if err != nil {
+			t.Fatalf("MarshalJSON failed: %v", err)
+		}
+		var decoded map[string]any
+		if err := json.Unmarshal(data, &decoded); err != nil {
+			t.Fatalf("expected valid JSON: %v\nbody: %s", err, string(data))
+		}
+		value, ok := decoded["unresponsive_engines"]
 		if !ok {
 			t.Fatal("expected unresponsive_engines when debug is on")
 		}
