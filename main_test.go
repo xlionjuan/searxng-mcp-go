@@ -140,14 +140,14 @@ func TestParseArgs(t *testing.T) {
 			name:        "empty args",
 			args:        []string{},
 			wantCLIMode: false,
-			wantFlags:   CLIFlags{Language: "", SafeSearch: 0, Pageno: 1},
+			wantFlags:   CLIFlags{Language: "", SafeSearch: 0, Pageno: nil},
 			wantErr:     false,
 		},
 		{
 			name:           "positional query only",
 			args:           []string{"test query"},
 			wantCLIMode:    true,
-			wantFlags:      CLIFlags{Language: "", SafeSearch: 0, Pageno: 1},
+			wantFlags:      CLIFlags{Language: "", SafeSearch: 0, Pageno: nil},
 			wantPositional: []string{"test query"},
 			wantErr:        false,
 		},
@@ -155,49 +155,49 @@ func TestParseArgs(t *testing.T) {
 			name:        "--help flag",
 			args:        []string{"--help"},
 			wantCLIMode: true,
-			wantFlags:   CLIFlags{Help: true, Language: "", SafeSearch: 0, Pageno: 1},
+			wantFlags:   CLIFlags{Help: true, Language: "", SafeSearch: 0, Pageno: nil},
 			wantErr:     false,
 		},
 		{
 			name:        "--version flag",
 			args:        []string{"--version"},
 			wantCLIMode: true,
-			wantFlags:   CLIFlags{Version: true, Language: "", SafeSearch: 0, Pageno: 1},
+			wantFlags:   CLIFlags{Version: true, Language: "", SafeSearch: 0, Pageno: nil},
 			wantErr:     false,
 		},
 		{
 			name:        "--query flag",
 			args:        []string{"--query", "my search"},
 			wantCLIMode: true,
-			wantFlags:   CLIFlags{Query: "my search", Language: "", SafeSearch: 0, Pageno: 1},
+			wantFlags:   CLIFlags{Query: "my search", Language: "", SafeSearch: 0, Pageno: nil},
 			wantErr:     false,
 		},
 		{
 			name:        "--json flag",
 			args:        []string{"--json"},
 			wantCLIMode: true,
-			wantFlags:   CLIFlags{JSON: true, Language: "", SafeSearch: 0, Pageno: 1},
+			wantFlags:   CLIFlags{JSON: true, Language: "", SafeSearch: 0, Pageno: nil},
 			wantErr:     false,
 		},
 		{
 			name:        "searxng-url flag without query",
 			args:        []string{"--searxng-url", "https://example.com"},
 			wantCLIMode: true,
-			wantFlags:   CLIFlags{SearXNGURL: "https://example.com", Language: "", SafeSearch: 0, Pageno: 1},
+			wantFlags:   CLIFlags{SearXNGURL: "https://example.com", Language: "", SafeSearch: 0, Pageno: nil},
 			wantErr:     false,
 		},
 		{
 			name:        "language and safesearch flags without query",
 			args:        []string{"--language", "ja", "--safesearch", "2"},
 			wantCLIMode: true,
-			wantFlags:   CLIFlags{Language: "ja", SafeSearch: 2, Pageno: 1},
+			wantFlags:   CLIFlags{Language: "ja", SafeSearch: 2, Pageno: nil},
 			wantErr:     false,
 		},
 		{
 			name:           "multiple flags with positional",
 			args:           []string{"--language", "fr", "--safesearch", "1", "positional query"},
 			wantCLIMode:    true,
-			wantFlags:      CLIFlags{Language: "fr", SafeSearch: 1, Pageno: 1},
+			wantFlags:      CLIFlags{Language: "fr", SafeSearch: 1, Pageno: nil},
 			wantPositional: []string{"positional query"},
 			wantErr:        false,
 		},
@@ -205,7 +205,7 @@ func TestParseArgs(t *testing.T) {
 			name:           "flags after positional",
 			args:           []string{"positional", "--json"},
 			wantCLIMode:    true,
-			wantFlags:      CLIFlags{JSON: true, Language: "", SafeSearch: 0, Pageno: 1},
+			wantFlags:      CLIFlags{JSON: true, Language: "", SafeSearch: 0, Pageno: nil},
 			wantPositional: []string{"positional"},
 			wantErr:        false,
 		},
@@ -213,7 +213,7 @@ func TestParseArgs(t *testing.T) {
 			name:           "double dash separator treats subsequent args as positional",
 			args:           []string{"--", "--help"},
 			wantCLIMode:    true,
-			wantFlags:      CLIFlags{Language: "", SafeSearch: 0, Pageno: 1},
+			wantFlags:      CLIFlags{Language: "", SafeSearch: 0, Pageno: nil},
 			wantPositional: []string{"--help"},
 			wantErr:        false,
 		},
@@ -221,7 +221,7 @@ func TestParseArgs(t *testing.T) {
 			name:           "double dash with leading dash query",
 			args:           []string{"--", "-leading-dash-query"},
 			wantCLIMode:    true,
-			wantFlags:      CLIFlags{Language: "", SafeSearch: 0, Pageno: 1},
+			wantFlags:      CLIFlags{Language: "", SafeSearch: 0, Pageno: nil},
 			wantPositional: []string{"-leading-dash-query"},
 			wantErr:        false,
 		},
@@ -229,16 +229,24 @@ func TestParseArgs(t *testing.T) {
 			name:        "server config flags without query",
 			args:        []string{"--searxng-url", "https://example.com", "--language", "zh-tw", "--safesearch", "2"},
 			wantCLIMode: true,
-			wantFlags:   CLIFlags{SearXNGURL: "https://example.com", Language: "zh-tw", SafeSearch: 2, Pageno: 1},
+			wantFlags:   CLIFlags{SearXNGURL: "https://example.com", Language: "zh-tw", SafeSearch: 2, Pageno: nil},
 			wantErr:     false,
 		},
 		{
 			name:           "--debug flag with query",
 			args:           []string{"--debug", "test query"},
 			wantCLIMode:    true,
-			wantFlags:      CLIFlags{Debug: true, Language: "", SafeSearch: 0, Pageno: 1},
+			wantFlags:      CLIFlags{Debug: true, Language: "", SafeSearch: 0, Pageno: nil},
 			wantPositional: []string{"test query"},
 			wantErr:        false,
+		},
+		{
+			name:        "--pageno explicitly set",
+			args:        []string{"--pageno", "3", "test query"},
+			wantCLIMode: true,
+			wantFlags:   CLIFlags{Language: "", SafeSearch: 0, Pageno: intPtr(3)},
+			wantPositional: []string{"test query"},
+			wantErr:     false,
 		},
 	}
 
@@ -270,8 +278,9 @@ func TestParseArgs(t *testing.T) {
 			if flags.SafeSearch != tt.wantFlags.SafeSearch {
 				t.Errorf("flags.SafeSearch = %d, want %d", flags.SafeSearch, tt.wantFlags.SafeSearch)
 			}
-			if flags.Pageno != tt.wantFlags.Pageno {
-				t.Errorf("flags.Pageno = %d, want %d", flags.Pageno, tt.wantFlags.Pageno)
+			if (flags.Pageno == nil) != (tt.wantFlags.Pageno == nil) ||
+				(flags.Pageno != nil && tt.wantFlags.Pageno != nil && *flags.Pageno != *tt.wantFlags.Pageno) {
+				t.Errorf("flags.Pageno = %v, want %v", flags.Pageno, tt.wantFlags.Pageno)
 			}
 			if flags.Query != tt.wantFlags.Query {
 				t.Errorf("flags.Query = %q, want %q", flags.Query, tt.wantFlags.Query)
@@ -452,7 +461,7 @@ func TestRunCLIMode_SuccessTextOutput(t *testing.T) {
 	})
 
 	output := captureStdout(t, func() {
-		err := runCLIMode(CLIFlags{Query: "golang", SearXNGURL: server.URL, Pageno: 1}, nil)
+		err := runCLIMode(CLIFlags{Query: "golang", SearXNGURL: server.URL, Pageno: nil}, nil)
 		if err != nil {
 			t.Fatalf("runCLIMode() error = %v", err)
 		}
@@ -471,7 +480,7 @@ func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
 	})
 
 	output := captureStdout(t, func() {
-		err := runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: 1}, nil)
+		err := runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: nil}, nil)
 		if err != nil {
 			t.Fatalf("runCLIMode() error = %v", err)
 		}
@@ -499,7 +508,7 @@ func TestRunCLIMode_DebugJSONIncludesUnresponsiveEngines(t *testing.T) {
 	defer func() { debugMode = oldDebug }()
 
 	output := captureStdout(t, func() {
-		err := runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: 1}, nil)
+		err := runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: nil}, nil)
 		if err != nil {
 			t.Fatalf("runCLIMode() error = %v", err)
 		}
@@ -518,7 +527,7 @@ func TestRunCLIMode_QueryPrecedence(t *testing.T) {
 	})
 
 	output := captureStdout(t, func() {
-		err := runCLIMode(CLIFlags{Query: "flag query", SearXNGURL: server.URL, Pageno: 1}, []string{"positional query"})
+		err := runCLIMode(CLIFlags{Query: "flag query", SearXNGURL: server.URL, Pageno: nil}, []string{"positional query"})
 		if err != nil {
 			t.Fatalf("runCLIMode() error = %v", err)
 		}
@@ -552,35 +561,35 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 	}{
 		{
 			name:      "missing query",
-			flags:     CLIFlags{Language: "", SafeSearch: 0, Pageno: 1},
+			flags:     CLIFlags{Language: "", SafeSearch: 0, Pageno: nil},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "search query is required",
 		},
 		{
 			name:      "safesearch out of range",
-			flags:     CLIFlags{Query: "test", Language: "", SafeSearch: -1, Pageno: 1},
+			flags:     CLIFlags{Query: "test", Language: "", SafeSearch: -1, Pageno: nil},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
 		},
 		{
 			name:      "invalid time_range",
-			flags:     CLIFlags{Query: "test", Language: "", SafeSearch: 0, TimeRange: "invalid", Pageno: 1},
+			flags:     CLIFlags{Query: "test", Language: "", SafeSearch: 0, TimeRange: "invalid", Pageno: nil},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
 		},
 		{
 			name:      "pageno zero",
-			flags:     CLIFlags{Query: "test", Language: "", SafeSearch: 0, Pageno: 0},
+			flags:     CLIFlags{Query: "test", Language: "", SafeSearch: 0, Pageno: intPtr(0)},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
 		},
 		{
 			name:      "query too long",
-			flags:     CLIFlags{Query: strings.Repeat("a", 501), Language: "", SafeSearch: 0, Pageno: 1},
+			flags:     CLIFlags{Query: strings.Repeat("a", 501), Language: "", SafeSearch: 0, Pageno: nil},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
@@ -607,7 +616,7 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 }
 
 func TestRunCLIMode_HelpFlag(t *testing.T) {
-	flags := CLIFlags{Help: true, Language: "", SafeSearch: 0, Pageno: 1}
+	flags := CLIFlags{Help: true, Language: "", SafeSearch: 0, Pageno: nil}
 
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
@@ -634,7 +643,7 @@ func TestRunCLIMode_HelpFlag(t *testing.T) {
 }
 
 func TestRunCLIMode_VersionFlag(t *testing.T) {
-	flags := CLIFlags{Version: true, Language: "", SafeSearch: 0, Pageno: 1}
+	flags := CLIFlags{Version: true, Language: "", SafeSearch: 0, Pageno: nil}
 
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
@@ -661,7 +670,7 @@ func TestRunCLIMode_VersionFlag(t *testing.T) {
 }
 
 func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
-	flags := CLIFlags{Query: "test", SearXNGURL: "http://localhost:99999", Language: "", SafeSearch: 0, Pageno: 1}
+	flags := CLIFlags{Query: "test", SearXNGURL: "http://localhost:99999", Language: "", SafeSearch: 0, Pageno: nil}
 
 	err := runCLIMode(flags, []string{})
 	if err == nil {
@@ -681,25 +690,25 @@ func TestRunCLIMode_FlagOnlyInvocations(t *testing.T) {
 	}{
 		{
 			name:      "language flag only - no query",
-			flags:     CLIFlags{Language: "ja", SafeSearch: 0, Pageno: 1},
+			flags:     CLIFlags{Language: "ja", SafeSearch: 0, Pageno: nil},
 			wantErr:   true,
 			errSubstr: "search query is required",
 		},
 		{
 			name:      "searxng-url flag only - no query",
-			flags:     CLIFlags{SearXNGURL: "https://example.com", Language: "", SafeSearch: 0, Pageno: 1},
+			flags:     CLIFlags{SearXNGURL: "https://example.com", Language: "", SafeSearch: 0, Pageno: nil},
 			wantErr:   true,
 			errSubstr: "search query is required",
 		},
 		{
 			name:      "multiple flags only - no query",
-			flags:     CLIFlags{Language: "", SafeSearch: 1, Pageno: 1},
+			flags:     CLIFlags{Language: "", SafeSearch: 1, Pageno: nil},
 			wantErr:   true,
 			errSubstr: "search query is required",
 		},
 		{
 			name:      "all optional flags without query",
-			flags:     CLIFlags{Language: "zh-tw", SafeSearch: 2, TimeRange: "month", Categories: "general", Engines: "google", Pageno: 1},
+			flags:     CLIFlags{Language: "zh-tw", SafeSearch: 2, TimeRange: "month", Categories: "general", Engines: "google", Pageno: nil},
 			wantErr:   true,
 			errSubstr: "search query is required",
 		},

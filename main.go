@@ -36,7 +36,7 @@ type CLIFlags struct {
 	TimeRange  string
 	Categories string
 	Engines    string
-	Pageno     int
+	Pageno     *int
 	Debug      bool
 }
 
@@ -92,6 +92,17 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 		return false, CLIFlags{}, nil, err
 	}
 
+	// Use flag.Visit to determine whether --pageno was explicitly set.
+	// When not set, leave Pageno nil so CLI mode omits pageno from the
+	// search request (matching MCP mode behaviour and the documented
+	// "omitted = backend default/page 1" contract).
+	var pagenoPtr *int
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "pageno" {
+			pagenoPtr = pageno
+		}
+	})
+
 	flags = CLIFlags{
 		Query:      *query,
 		JSON:       *jsonOut,
@@ -103,7 +114,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 		TimeRange:  *timeRange,
 		Categories: *categories,
 		Engines:    *engines,
-		Pageno:     *pageno,
+		Pageno:     pagenoPtr,
 		Debug:      *debug,
 	}
 
@@ -286,7 +297,6 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	}
 
 	cfg := getConfig(flags)
-	pageno := flags.Pageno
 	args := &SearchArgs{
 		Query:      query,
 		Language:   flags.Language,
@@ -294,7 +304,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 		TimeRange:  flags.TimeRange,
 		Categories: flags.Categories,
 		Engines:    flags.Engines,
-		Pageno:     &pageno,
+		Pageno:     flags.Pageno,
 	}
 
 	if err := ValidateSearchArgs(args); err != nil {
