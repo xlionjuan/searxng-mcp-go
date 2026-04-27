@@ -14,10 +14,21 @@ This warning cannot be disabled - there is no opt-out mechanism.
 
 The following hosts are considered "private" and will NOT trigger a warning:
 
+- Hostname: localhost (exact match) and *.localhost (suffix match)
 - TLD suffixes: .lan, .internal, .local, .home
 - IPv4 private ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
 - IPv4 loopback: 127.0.0.0/8
 - IPv4 link-local: 169.254.0.0/16
+- IPv4 this network: 0.0.0.0/8
+- IPv4 CGNAT: 100.64.0.0/10
+- IPv4 documentation / reserved:
+  - 192.0.0.0/24
+  - 192.0.2.0/24 (TEST-NET-1)
+  - 198.18.0.0/15 (benchmarking)
+  - 198.51.100.0/24 (TEST-NET-2)
+  - 203.0.113.0/24 (TEST-NET-3)
+- IPv4 multicast: 224.0.0.0/4
+- IPv4 reserved (former Class E): 240.0.0.0/4
 - IPv6 private: fc00::/7, fe80::/10
 - IPv6 loopback: ::1
 
