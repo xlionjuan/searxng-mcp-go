@@ -62,6 +62,18 @@ export DEBUG=1
 
 Note: `DEBUG=1` logs search queries and HTTP requests in plain text. Avoid using it with sensitive queries.
 
+#### Debug Output Details
+
+When debug mode is enabled, the following information is logged for each search request:
+
+- HTTP method, URL, Content-Type, and Accept header
+- Request body
+- Response status code and content-type
+- Response body preview (first 500 characters)
+- On error responses: `body_size` and `body_preview`
+
+Additionally, the `unresponsive_engines` field (listing engines that failed to respond, e.g., rate-limited or CAPTCHA) is **only included in the JSON response when debug mode is enabled**; it is omitted entirely in non-debug mode (see [ADR-006](adr/006-unresponsive-engines-debug-only.md)).
+
 In an MCP client configuration, set `env` in the server definition:
 
 ```json
@@ -79,6 +91,8 @@ In an MCP client configuration, set `env` in the server definition:
 ```
 
 **Priority:** command-line flag > environment variable > default hardcoded value
+
+**ENV Naming Convention ⚠️:** Environment variable names should be neutral. **Only the SearXNG server URL variable may contain `searxng`** (e.g. `SEARXNG_URL`). All other functional ENV vars must NOT use the `SEARXNG_` prefix.
 
 Note: in MCP stdin mode, command-line flags are rejected entirely; use environment variables only (see [ADR-004](adr/004-mcp-stdin-env-only.md)).
 
