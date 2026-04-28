@@ -15,7 +15,7 @@ import (
 //   - infoboxes (with content, attributes, URLs; HTML entities in title)
 //   - results (3 items: HTML entities in title/content, long content truncation, empty content)
 //   - suggestions
-//   - HTML entity unescaping (&amp; &lt; &gt; &quot;)
+//   - HTML entity unescaping (&amp; &lt; &gt; &quot;) in infobox titles and queries
 //   - content exceeding MaxContentRunes (4000) is truncated
 func TestFormatResultsGoldenOutput(t *testing.T) {
 	longContent := strings.Repeat("x", 4500)
@@ -80,7 +80,7 @@ func TestFormatResultsGoldenOutput(t *testing.T) {
 		"\n" +
 		"=== Infoboxes ===\n" +
 		"\n" +
-		"[1] Go &amp; Golang\n" +
+		"[1] Go & Golang\n" +
 		"    Go is a statically typed, compiled programming language.\n" +
 		"It was designed at Google.\n" +
 		"It is syntactically similar to C.\n" +
@@ -92,7 +92,7 @@ func TestFormatResultsGoldenOutput(t *testing.T) {
 		"\n" +
 		"=== Results ===\n" +
 		"\n" +
-		"Found 42 results for 'golang &amp; html &quot;entities&quot;':\n" +
+		"Found 42 results for 'golang & html \"entities\"':\n" +
 		"\n" +
 		"1. First & Result <test>\n" +
 		"   URL: https://example.com/1\n" +
