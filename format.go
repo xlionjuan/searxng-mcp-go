@@ -67,7 +67,7 @@ func writeInfoboxes(b *strings.Builder, infoboxes []Infobox) {
 		b.WriteByte('[')
 		b.WriteString(strconv.Itoa(i + 1))
 		b.WriteString("] ")
-		b.WriteString(ib.Infobox)
+		b.WriteString(unescapeIfNeeded(ib.Infobox))
 		b.WriteByte('\n')
 		if ib.Content != "" {
 			content := unescapeIfNeeded(ib.Content)
@@ -149,7 +149,7 @@ func formatResults(resp *SearchResponse) string {
 		b.WriteString("Found ")
 		b.WriteString(strconv.Itoa(total))
 		b.WriteString(" results for '")
-		b.WriteString(resp.Query)
+		b.WriteString(unescapeIfNeeded(resp.Query))
 		b.WriteString("':\n\n")
 		for i, r := range resp.Results {
 			title := unescapeIfNeeded(r.Title)
