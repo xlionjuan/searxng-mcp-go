@@ -53,6 +53,7 @@ searxng-mcp-go "recipes" --pageno 2
 ### MCP Mode
 
 When run without CLI arguments, the server starts in **MCP stdio mode** — it reads JSON-RPC messages from stdin and writes responses to stdout.
+The first stdin message must be a valid JSON-RPC `initialize` request; otherwise the server will error and exit.
 
 ```bash
 # Start MCP server (no arguments = MCP mode)
