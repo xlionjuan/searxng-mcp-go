@@ -271,6 +271,8 @@ Whether each field is populated depends on the results returned by the SearXNG b
 | `engine` | Always populated; indicates which search engine produced this result |
 | `publishedDate` | SearXNG provided a publication date for the result |
 
+**Content Truncation:** Result summaries (`content` field) are truncated to **4000 Unicode characters (runes)** to keep output manageable for LLM context windows.
+
 ---
 
 ## Quick Reference

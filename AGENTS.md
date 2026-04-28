@@ -6,22 +6,6 @@ A Model Context Protocol (MCP) server providing web search via the SearXNG meta-
 
 AI agents (like Hermes) call this server to perform web searches without direct internet access. The server proxies requests to a SearXNG instance and returns formatted results.
 
-## Quick Start
-
-```bash
-# Build
-go build -o searxng-mcp-go .
-
-# Run tests
-go test ./...
-
-# Execute (stdio transport - invoked by MCP client host)
-./searxng-mcp-go
-
-# Test with MCP Inspector
-npx @modelcontextprotocol/inspector ./searxng-mcp-go
-```
-
 ## Project Structure
 
 ```
@@ -58,6 +42,7 @@ searxng-mcp-go/
     ├── SEARXNG_RESPONSE_FIELDS.md  # SearXNG response fields reference
     ├── SEARXNG_ANSWER_DEDUP.md     # Answer deduplication design
     ├── SEARXNG_TEST_QUERIES.md     # Test queries reference
+    ├── SEARXNG_BOT_DETECTION.md    # SearXNG limiter & bot detection
     ├── REPORT_PERF_2026-04-19.md   # Performance report
     └── adr/
         ├── 001-no-pgo.md                      # ADR: No PGO optimization
@@ -67,121 +52,24 @@ searxng-mcp-go/
         └── 006-unresponsive-engines-debug-only.md  # ADR: unresponsive_engines debug-only
 ```
 
-## MCP Tools
+## Documentation Index
 
-### `search`
+All detailed documentation lives in `docs/`. Here's where to find what:
 
-Search the web via SearXNG.
-
-| Parameter    | Type   | Required | Default | Description                              |
-|--------------|--------|----------|---------|------------------------------------------|
-| `query`      | string | Yes      | -       | Search query string                      |
-| `language`   | string | No       |         | Language code (en, zh-tw, ja, etc.); empty = SearXNG decides |
-| `safesearch` | int    | No       | 0       | 0=Off, 1=Moderate, 2=Strict              |
-| `time_range` | string | No       | -       | day, month, year                         |
-| `categories` | string | No       | -       | Comma-separated categories               |
-| `engines`    | string | No       | -       | Comma-separated engines                  |
-| `pageno`     | int (nullable) | No       | 1       | Page number (≥1)，*int；nil 時不發送參數 |
-
-See [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) for full details.
-
-## Configuration
-
-Default SearXNG URL: `https://search-4.xlion.dev`
-
-**ENV Naming Convention ⚠️**
-
-Environment variable names should be neutral. **Only the SearXNG server URL variable may contain `searxng`** (e.g. `SEARXNG_URL`). All other functional ENV vars must NOT use the `SEARXNG_` prefix.
-
-```bash
-# Environment variable
-export SEARXNG_URL=https://your-searxng-instance.example.com
-
-# Command-line flag (overrides env var)
-./searxng-mcp-go -searxng-url=https://your-searxng-instance.example.com
-
-# JSON output
-./searxng-mcp-go "search query" --json
-```
-
-Priority: command-line flag > environment variable > default
-
-See [docs/INSTALL.md](docs/INSTALL.md) for full configuration details.
-
-## Debug Mode
-
-Enable verbose HTTP request/response logging for troubleshooting SearXNG communication.
-
-```bash
-# CLI flag
-./searxng-mcp-go "query" --debug
-
-# Environment variable
-export DEBUG=1
-./searxng-mcp-go "query"
-```
-
-Debug output includes: HTTP method, URL, Content-Type, Accept header, request body, response status, content-type, and response body preview (first 500 chars). On error responses, debug mode also logs `body_size` and a `body_preview`. Additionally, the `unresponsive_engines` field (listing engines that failed to respond, e.g., rate-limited or CAPTCHA) is **only included in the JSON response when debug mode is enabled**; it is omitted entirely in non-debug mode (see ADR-006).
-
-## HTTP Headers & Bot Detection
-
-SearXNG's `limiter` (enabled when `server.limiter: true` or `public_instance: true`) blocks non-browser requests via header validation. Each filter returns 429 on failure:
-
-| Filter | Condition |
-|--------|-----------|
-| `http_user_agent` | UA must not match bot regex (curl, wget, Go-http-client, Python, etc.) |
-| `http_accept` | Must contain `text/html` |
-| `http_accept_language` | Must be non-empty |
-| `http_accept_encoding` | Must contain `gzip` or `deflate` |
-| `http_sec_fetch` | Sec-Fetch-Mode must be `navigate` or `cors` (HTTPS only) |
-| `ip_limit` | `format=json` in URL query triggers 4 requests/hour limit |
-
-**Additional protections**: `link_token` (forced on for `public_instance`) requires browser CSS challenge — non-browser clients accumulate in a suspicious IP counter (3 requests/30 days → 302 redirect). This cannot be bypassed with headers alone.
-
-Our headers are set via `setBrowserHeaders()` in `search.go`. POST and GET fallback share the same function.
-
-## Error Handling
-
-Validation errors (all returned as `validation error on "<field>": <message>`):
-
-- **query**: empty or whitespace-only → `search query cannot be only whitespace`
-- **query**: exceeds 500 characters → `must be 500 characters or less`
-- **query**: contains control characters (U+0000–U+001F, U+007F) → `contains invalid control characters`
-- **time_range**: not one of day/month/year → `must be one of day, month or year`
-- **safesearch**: not in 0–2 range → `must be 0 off, 1 moderate, or 2 strict`
-- **categories**: contains invalid identifier (only `[a-z0-9_-]`, max 50 chars each) → `contains invalid category`
-- **engines**: contains invalid identifier (only `[a-z0-9_-]`, max 50 chars each) → `contains invalid engine`
-- **language**: non-BCP47 pattern or >35 chars → `must be a valid language code (e.g., en, zh-tw, ja, en-US)`
-- **language**: set to `"auto"` → silently normalized to empty string (let SearXNG decide)
-- **pageno**: < 1 → `must be >= 1`
-
-Runtime errors:
-
-- Network/connectivity failures
-- SearXNG API errors (non-200, malformed JSON, HTML responses)
-- HTML responses use the fixed message `searxng returned html instead of json - json output may not be enabled on the server`
-- Malformed JSON is reported as `searxng error (status N): failed to parse JSON response: ...`
-
-## Known Limitations
-
-1. **Max Query Length**: Queries are limited to 500 characters (`MaxQueryLength`); longer queries are rejected with a validation error
-2. **Fixed Timeout**: All search requests use a fixed 30-second HTTP client timeout; this is not controllable by MCP client parameters
-3. **Language `"auto"` Normalized**: Passing `language="auto"` is silently normalized to empty string; use empty string to let SearXNG decide
-4. **Categories/Engines Character Limits**: Only lowercase letters, digits, underscore, and hyphen (`[a-z0-9_-]`) are allowed; each identifier is limited to 50 characters
-5. **Pagination**: SearXNG API starts at page 1 (server validates `pageno >= 1`)
-6. **HTML Detection**: Returns `HTMLResponseError` if SearXNG returns HTML instead of JSON
-7. **Content Length**: Summaries truncated to 4000 Unicode characters (runes)
-
-## Development
-
-```bash
-go build -o searxng-mcp-go .  # Build
-go mod tidy                   # Tidy dependencies
-go fmt ./...                  # Format code
-go test ./...                 # Run tests
-```
-
-See [docs/INSTALL.md](docs/INSTALL.md) for Docker and other build options.
+| Topic | Document |
+|-------|----------|
+| Build, install, configuration, debug mode | [docs/INSTALL.md](docs/INSTALL.md) |
+| MCP tool parameters & error reference | [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) |
+| MCP testing guide | [docs/MCP_TESTING.md](docs/MCP_TESTING.md) |
+| Output format (CLI + JSON) & truncation limits | [docs/OUTPUT_FORMAT.md](docs/OUTPUT_FORMAT.md) |
+| SearXNG bot detection / limiter internals | [docs/SEARXNG_BOT_DETECTION.md](docs/SEARXNG_BOT_DETECTION.md) |
+| AI UX testing guide | [docs/AI_UX_TEST_GUIDE.md](docs/AI_UX_TEST_GUIDE.md) |
+| Language parameter research | [docs/LANGUAGE_PARAMETER_RESEARCH.md](docs/LANGUAGE_PARAMETER_RESEARCH.md) |
+| SearXNG response fields reference | [docs/SEARXNG_RESPONSE_FIELDS.md](docs/SEARXNG_RESPONSE_FIELDS.md) |
+| Answer deduplication design | [docs/SEARXNG_ANSWER_DEDUP.md](docs/SEARXNG_ANSWER_DEDUP.md) |
+| Test queries reference | [docs/SEARXNG_TEST_QUERIES.md](docs/SEARXNG_TEST_QUERIES.md) |
+| Performance report | [docs/REPORT_PERF_2026-04-19.md](docs/REPORT_PERF_2026-04-19.md) |
+| Architecture Decision Records | [docs/adr/](docs/adr/) |
 
 ## Code Cleanliness
 
