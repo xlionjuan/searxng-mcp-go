@@ -23,11 +23,13 @@ searxng-mcp-go/
 ├── validation_test.go   # Validation edge case tests
 ├── concurrency_test.go  # Concurrency and stress tests
 ├── error_path_test.go   # Error path coverage tests
+├── fuzz_test.go         # Fuzz tests
 ├── bench_test.go        # Benchmark tests
 ├── mcp_tool_test.go     # MCP tool integration tests
 ├── golden_capture_test.go # Golden file/capture tests
 ├── README.md            # Project README
-├── go.mod/go.sum        # Go module/dependencies
+├── go.mod               # Go module definition
+├── go.sum               # Go dependency checksums
 ├── .golangci.yml        # Linter configuration
 ├── codecov.yml          # Code coverage configuration
 ├── .env.example         # Environment variable template
@@ -46,6 +48,7 @@ searxng-mcp-go/
     ├── REPORT_PERF_2026-04-19.md   # Performance report
     └── adr/
         ├── 001-no-pgo.md                      # ADR: No PGO optimization
+        ├── 002-missing.md                    # ADR: Skipped / never created
         ├── 003-http-warning-for-non-private-hosts.md  # ADR: HTTP warning for non-private hosts
         ├── 004-mcp-stdin-env-only.md          # ADR: MCP stdin mode env-only
         ├── 005-no-corrections.md              # ADR: No corrections exposure
