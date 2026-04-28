@@ -420,11 +420,16 @@ func captureStdout(t *testing.T, fn func()) string {
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+	defer func() {
+		os.Stdout = oldStdout
+	}()
 
-	fn()
-
-	w.Close()
-	os.Stdout = oldStdout
+	func() {
+		defer func() {
+			_ = w.Close()
+		}()
+		fn()
+	}()
 
 	var buf bytes.Buffer
 	if _, err := buf.ReadFrom(r); err != nil {
@@ -450,20 +455,25 @@ func TestGetConfig_PrecedenceAndDefaultWarning(t *testing.T) {
 		}
 	})
 
-	t.Run("default warning when neither set", func(t *testing.T) {
-		t.Setenv("SEARXNG_URL", "")
-		oldStderr := os.Stderr
-		r, w, _ := os.Pipe()
-		os.Stderr = w
+		t.Run("default warning when neither set", func(t *testing.T) {
+			t.Setenv("SEARXNG_URL", "")
+			oldStderr := os.Stderr
+			r, w, _ := os.Pipe()
+			os.Stderr = w
+			defer func() {
+				os.Stderr = oldStderr
+			}()
+			var cfg *Config
+			func() {
+				defer func() {
+					_ = w.Close()
+				}()
+				cfg = getConfig(CLIFlags{})
+			}()
 
-		cfg := getConfig(CLIFlags{})
-
-		w.Close()
-		os.Stderr = oldStderr
-
-		var buf bytes.Buffer
-		if _, err := buf.ReadFrom(r); err != nil {
-			t.Fatalf("failed to read stderr: %v", err)
+			var buf bytes.Buffer
+			if _, err := buf.ReadFrom(r); err != nil {
+				t.Fatalf("failed to read stderr: %v", err)
 		}
 		if cfg.SearXNGURL != DefaultSearXNGURL {
 			t.Fatalf("SearXNGURL = %q, want default %q", cfg.SearXNGURL, DefaultSearXNGURL)
@@ -482,12 +492,13 @@ func TestRunCLIMode_SuccessTextOutput(t *testing.T) {
 	})
 	defer server.Close()
 
+	var err error
 	output := captureStdout(t, func() {
-		err := runCLIMode(CLIFlags{Query: "golang", SearXNGURL: server.URL, Pageno: nil}, nil)
-		if err != nil {
-			t.Fatalf("runCLIMode() error = %v", err)
-		}
+		err = runCLIMode(CLIFlags{Query: "golang", SearXNGURL: server.URL, Pageno: nil}, nil)
 	})
+	if err != nil {
+		t.Fatalf("runCLIMode() error = %v", err)
+	}
 
 	if !strings.Contains(output, "=== Results ===") || !strings.Contains(output, "Go") {
 		t.Fatalf("unexpected text output: %q", output)
@@ -502,12 +513,13 @@ func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
 	})
 	defer server.Close()
 
+	var err error
 	output := captureStdout(t, func() {
-		err := runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: nil}, nil)
-		if err != nil {
-			t.Fatalf("runCLIMode() error = %v", err)
-		}
+		err = runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: nil}, nil)
 	})
+	if err != nil {
+		t.Fatalf("runCLIMode() error = %v", err)
+	}
 
 	var resp SearchResponse
 	if err := json.Unmarshal([]byte(output), &resp); err != nil {
@@ -530,12 +542,13 @@ func TestRunCLIMode_DebugJSONIncludesUnresponsiveEngines(t *testing.T) {
 	debugMode = true
 	defer func() { debugMode = oldDebug }()
 
+	var err error
 	output := captureStdout(t, func() {
-		err := runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: nil}, nil)
-		if err != nil {
-			t.Fatalf("runCLIMode() error = %v", err)
-		}
+		err = runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: nil}, nil)
 	})
+	if err != nil {
+		t.Fatalf("runCLIMode() error = %v", err)
+	}
 
 	if !strings.Contains(output, "unresponsive_engines") {
 		t.Fatalf("expected debug JSON to include unresponsive_engines, got %q", output)
@@ -550,12 +563,13 @@ func TestRunCLIMode_QueryPrecedence(t *testing.T) {
 	})
 	defer server.Close()
 
+	var err error
 	output := captureStdout(t, func() {
-		err := runCLIMode(CLIFlags{Query: "flag query", SearXNGURL: server.URL, Pageno: nil}, []string{"positional query"})
-		if err != nil {
-			t.Fatalf("runCLIMode() error = %v", err)
-		}
+		err = runCLIMode(CLIFlags{Query: "flag query", SearXNGURL: server.URL, Pageno: nil}, []string{"positional query"})
 	})
+	if err != nil {
+		t.Fatalf("runCLIMode() error = %v", err)
+	}
 
 	if !strings.Contains(output, "flag query") {
 		t.Fatalf("expected flag query to win, got %q", output)
