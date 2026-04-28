@@ -44,6 +44,7 @@ go build -ldflags="-s -w" -o searxng-mcp-go .
 ```
 
 The server uses stdio transport, meaning it communicates via stdin/stdout. It is designed to be invoked by an MCP client host (such as an AI agent framework).
+When started this way, the first stdin message must be a valid JSON-RPC `initialize` request; if it is not, the server will error and exit.
 
 ### MCP Server Configuration
 
@@ -121,6 +122,8 @@ This opens a web interface where you can:
 - List available tools
 - Call the search tool with different parameters
 - Inspect request/response payloads
+
+For manual testing, use the MCP Inspector or the existing test harness rather than typing stdin messages by hand.
 
 ## Configuration
 
