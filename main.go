@@ -400,17 +400,44 @@ type mcpInitializeMessage struct {
 	Method  string `json:"method"`
 }
 
+const (
+	mcpInitializeMaxBytes    = 1 << 20
+	mcpInitializeReadTimeout = 5 * time.Second
+)
+
 func prepareMCPStdin(stdin io.Reader) (io.Reader, error) {
-	reader := bufio.NewReader(stdin)
-	firstLine, err := reader.ReadBytes('\n')
-	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("stdin does not contain a valid MCP initialize message")
-	}
-	if !isValidMCPInitializeMessage(firstLine) {
-		return nil, fmt.Errorf("stdin does not contain a valid MCP initialize message")
+	ctx, cancel := context.WithTimeout(context.Background(), mcpInitializeReadTimeout)
+	defer cancel()
+
+	type result struct {
+		reader io.Reader
+		err    error
 	}
 
-	return io.MultiReader(bytes.NewReader(firstLine), reader), nil
+	resultCh := make(chan result, 1)
+	go func() {
+		reader := bufio.NewReader(io.LimitReader(stdin, mcpInitializeMaxBytes+1))
+		firstLine, err := reader.ReadBytes('\n')
+		if err != nil && err != io.EOF {
+			resultCh <- result{err: fmt.Errorf("stdin does not contain a valid MCP initialize message")}
+			return
+		}
+		if len(firstLine) > mcpInitializeMaxBytes || !isValidMCPInitializeMessage(firstLine) {
+			resultCh <- result{err: fmt.Errorf("stdin does not contain a valid MCP initialize message")}
+			return
+		}
+		resultCh <- result{reader: io.MultiReader(bytes.NewReader(firstLine), reader)}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("stdin does not contain a valid MCP initialize message")
+	case res := <-resultCh:
+		if res.err != nil {
+			return nil, res.err
+		}
+		return res.reader, nil
+	}
 }
 
 func isValidMCPInitializeMessage(line []byte) bool {

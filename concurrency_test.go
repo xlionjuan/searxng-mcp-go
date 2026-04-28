@@ -273,7 +273,10 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 
 // --- Graceful Shutdown and Signal Handling Tests ---
 
-// TestGracefulShutdownWithContextCancel tests that search operations respect context cancellation
+// TestGracefulShutdownWithContextCancel tests that search operations respect context cancellation.
+// It uses a custom RoundTripper that blocks until context cancellation, simulating a slow SearXNG
+// instance that gets interrupted by a graceful shutdown. When the shared context is cancelled,
+// all in-flight performSearch calls must return context.Canceled.
 func TestGracefulShutdownWithContextCancel(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping graceful shutdown stress test in short mode")
@@ -287,24 +290,28 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 	allRequestsEntered := make(chan struct{})
 	var closeOnce sync.Once
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if atomic.AddInt64(&requestCount, 1) == numGoroutines {
-			closeOnce.Do(func() {
-				close(allRequestsEntered)
-			})
-		}
-		time.Sleep(500 * time.Millisecond) // Simulate work
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"results":[],"number_of_results":0,"query":"test"}`))
-	}))
-	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	cfg := &Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
+	// Use a custom RoundTripper that blocks until context cancellation,
+	// simulating a slow SearXNG that gets interrupted. This ensures
+	// the HTTP client returns context.Canceled (not an HTTP-level error).
+	client := &http.Client{
+		Transport: cancelRoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			if atomic.AddInt64(&requestCount, 1) == numGoroutines {
+				closeOnce.Do(func() {
+					close(allRequestsEntered)
+				})
+			}
+			<-r.Context().Done()
+			return nil, r.Context().Err()
+		}),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	cfg := &Config{
+		SearXNGURL: "https://example.com",
+		Timeout:    30 * time.Second,
+		HTTPClient: client,
+	}
 
 	var wg sync.WaitGroup
 
@@ -371,10 +378,13 @@ func TestContextDeadlineExceededDuringSearch(t *testing.T) {
 		t.Skip("Skipping deadline stress test in short mode")
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(2 * time.Second) // Longer than any reasonable timeout
-		w.WriteHeader(http.StatusOK)
+		select {
+		case <-r.Context().Done():
+			return
+		}
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
+	t.Cleanup(server.CloseClientConnections)
 
 	cfg := &Config{
 		SearXNGURL: server.URL,
