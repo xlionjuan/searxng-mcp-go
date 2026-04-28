@@ -377,18 +377,19 @@ func TestContextDeadlineExceededDuringSearch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping deadline stress test in short mode")
 	}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		select {
-		case <-r.Context().Done():
-			return
-		}
-	}))
-	t.Cleanup(server.Close)
-	t.Cleanup(server.CloseClientConnections)
+	// Use a custom RoundTripper that blocks until context cancellation,
+	// avoiding httptest.Server.Close() blocking on active connections.
+	client := &http.Client{
+		Transport: cancelRoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			<-r.Context().Done()
+			return nil, r.Context().Err()
+		}),
+	}
 
 	cfg := &Config{
-		SearXNGURL: server.URL,
+		SearXNGURL: "https://example.com",
 		Timeout:    30 * time.Second,
+		HTTPClient: client,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
