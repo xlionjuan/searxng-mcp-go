@@ -267,16 +267,9 @@ func TestTruncateBody(t *testing.T) {
 	t.Run("negative maxLen", func(t *testing.T) {
 		t.Parallel()
 		body := []byte("hello")
-		// With maxLen=-1, the function might behave unexpectedly (maxLen is int).
-		// The comparison previewLen > maxLen with negative maxLen: since len("hello")=5 > -1,
-		// previewLen becomes -1, and body[:previewLen] will panic.
-		// This test documents the current behavior expectation.
-		defer func() {
-			if r := recover(); r != nil {
-				t.Logf("truncateBody(hello, -1) panicked as expected: %v", r)
-			}
-		}()
-		_ = truncateBody(body, -1)
+		if got := truncateBody(body, -1); got != "" {
+			t.Errorf("truncateBody(hello, -1) = %q, want %q", got, "")
+		}
 	})
 
 	t.Run("unicode emoji", func(t *testing.T) {
