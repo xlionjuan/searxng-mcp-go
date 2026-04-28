@@ -278,11 +278,21 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping graceful shutdown stress test in short mode")
 	}
+	const numGoroutines = 20
+
 	requestCount := int64(0)
-	completedCount := int64(0)
+	sentCount := int64(0)
+	successCount := int64(0)
+	cancelledCount := int64(0)
+	allRequestsEntered := make(chan struct{})
+	var closeOnce sync.Once
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt64(&requestCount, 1)
+		if atomic.AddInt64(&requestCount, 1) == numGoroutines {
+			closeOnce.Do(func() {
+				close(allRequestsEntered)
+			})
+		}
 		time.Sleep(500 * time.Millisecond) // Simulate work
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"results":[],"number_of_results":0,"query":"test"}`))
@@ -297,19 +307,26 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	var wg sync.WaitGroup
-	const numGoroutines = 20
 
 	wg.Add(numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
 		go func(id int) {
 			defer wg.Done()
-			_, _ = performSearch(ctx, cfg, &SearchArgs{Query: "test"})
-			atomic.AddInt64(&completedCount, 1)
+			atomic.AddInt64(&sentCount, 1)
+			_, err := performSearch(ctx, cfg, &SearchArgs{Query: "test"})
+			if err != nil {
+				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+					atomic.AddInt64(&cancelledCount, 1)
+					return
+				}
+				t.Errorf("unexpected search error: %v", err)
+				return
+			}
+			atomic.AddInt64(&successCount, 1)
 		}(i)
 	}
 
-	// Cancel context after some requests have started
-	time.Sleep(100 * time.Millisecond)
+	<-allRequestsEntered
 	cancel()
 
 	// Wait with timeout
@@ -327,12 +344,24 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 	}
 
 	reqCount := atomic.LoadInt64(&requestCount)
-	compCount := atomic.LoadInt64(&completedCount)
-	if reqCount == 0 {
-		t.Fatal("expected at least one request to be made")
+	sent := atomic.LoadInt64(&sentCount)
+	success := atomic.LoadInt64(&successCount)
+	cancelled := atomic.LoadInt64(&cancelledCount)
+	compCount := success + cancelled
+	if sent != numGoroutines {
+		t.Fatalf("sentCount = %d, want %d", sent, numGoroutines)
 	}
-	if compCount > reqCount {
-		t.Fatalf("completedCount=%d > requestCount=%d", compCount, reqCount)
+	if reqCount != numGoroutines {
+		t.Fatalf("requestCount = %d, want %d", reqCount, numGoroutines)
+	}
+	if success != 0 {
+		t.Fatalf("successCount = %d, want 0", success)
+	}
+	if cancelled != numGoroutines {
+		t.Fatalf("cancelledCount = %d, want %d", cancelled, numGoroutines)
+	}
+	if compCount != numGoroutines {
+		t.Fatalf("completed requests = %d, want %d", compCount, numGoroutines)
 	}
 }
 
