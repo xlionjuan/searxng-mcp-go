@@ -243,12 +243,12 @@ func TestParseArgs(t *testing.T) {
 			wantErr:        false,
 		},
 		{
-			name:        "--pageno explicitly set",
-			args:        []string{"--pageno", "3", "test query"},
-			wantCLIMode: true,
-			wantFlags:   CLIFlags{Language: "", SafeSearch: 0, Pageno: intPtr(3)},
+			name:           "--pageno explicitly set",
+			args:           []string{"--pageno", "3", "test query"},
+			wantCLIMode:    true,
+			wantFlags:      CLIFlags{Language: "", SafeSearch: 0, Pageno: intPtr(3)},
 			wantPositional: []string{"test query"},
-			wantErr:     false,
+			wantErr:        false,
 		},
 	}
 
@@ -372,7 +372,20 @@ func TestPrepareMCPStdin(t *testing.T) {
 func TestPrepareMCPStdinRejectsInvalidInput(t *testing.T) {
 	t.Parallel()
 
-_, err := prepareMCPStdin(strings.NewReader("not initialize\\n"))
+	_, err := prepareMCPStdin(strings.NewReader("not initialize\\n"))
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if err.Error() != "stdin does not contain a valid MCP initialize message" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestPrepareMCPStdinRejectsOversizedInput(t *testing.T) {
+	t.Parallel()
+
+	input := `{"jsonrpc":"2.0","method":"initialize","padding":"` + strings.Repeat("a", mcpInitializeMaxBytes) + `"}` + "\n"
+	_, err := prepareMCPStdin(strings.NewReader(input))
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

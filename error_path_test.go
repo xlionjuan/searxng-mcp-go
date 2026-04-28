@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,9 +17,20 @@ import (
 
 // TestPerformSearch_DNSFailure tests that DNS failures are properly wrapped with context
 func TestPerformSearch_DNSFailure(t *testing.T) {
+	client := &http.Client{
+		Transport: cancelRoundTripperFunc(func(*http.Request) (*http.Response, error) {
+			return nil, &net.DNSError{
+				Err:        "no such host",
+				Name:       "nonexistent.invalid-domain.test",
+				IsNotFound: true,
+			}
+		}),
+	}
+
 	cfg := &Config{
-		SearXNGURL: "http://nonexistent.invalid-domain.test", // Unresolvable DNS
+		SearXNGURL: "http://example.com",
 		Timeout:    5 * time.Second,
+		HTTPClient: client,
 	}
 	args := &SearchArgs{Query: "test"}
 
@@ -385,10 +397,13 @@ func TestPerformSearch_NetworkError_ConnectionClose(t *testing.T) {
 
 func TestPerformSearch_TimeoutExceeded(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(10 * time.Second)
-		w.WriteHeader(http.StatusOK)
+		select {
+		case <-r.Context().Done():
+			return
+		}
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
+	t.Cleanup(server.CloseClientConnections)
 
 	cfg := &Config{
 		SearXNGURL: server.URL,
@@ -416,10 +431,13 @@ func TestPerformSearch_TimeoutExceeded(t *testing.T) {
 
 func TestPerformSearch_ContextDeadlineExceeded(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(5 * time.Second)
-		w.WriteHeader(http.StatusOK)
+		select {
+		case <-r.Context().Done():
+			return
+		}
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
+	t.Cleanup(server.CloseClientConnections)
 
 	cfg := &Config{
 		SearXNGURL: server.URL,
