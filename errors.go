@@ -36,7 +36,7 @@ func NewValidationError(field, message string) *ValidationError {
 
 // truncateBody returns a truncated preview of body for error messages
 func truncateBody(body []byte, maxLen int) string {
-	if len(body) == 0 {
+	if len(body) == 0 || maxLen <= 0 {
 		return ""
 	}
 	previewLen := len(body)
