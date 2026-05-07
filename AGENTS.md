@@ -46,6 +46,7 @@ searxng-mcp-go/
     ├── SEARXNG_TEST_QUERIES.md     # Test queries reference
     ├── SEARXNG_BOT_DETECTION.md    # SearXNG limiter & bot detection
     ├── REPORT_PERF_2026-04-19.md   # Performance report
+    ├── PROMPT_INJECTION_SAFETY.md  # External content warning research
     └── adr/
         ├── 001-no-pgo.md                      # ADR: No PGO optimization
         ├── 002-missing.md                    # ADR: Skipped / never created
@@ -72,6 +73,7 @@ All detailed documentation lives in `docs/`. Here's where to find what:
 | Answer deduplication design | [docs/SEARXNG_ANSWER_DEDUP.md](docs/SEARXNG_ANSWER_DEDUP.md) |
 | Test queries reference | [docs/SEARXNG_TEST_QUERIES.md](docs/SEARXNG_TEST_QUERIES.md) |
 | Performance report | [docs/REPORT_PERF_2026-04-19.md](docs/REPORT_PERF_2026-04-19.md) |
+| Prompt injection & external content safety research | [docs/PROMPT_INJECTION_SAFETY.md](docs/PROMPT_INJECTION_SAFETY.md) |
 | Architecture Decision Records | [docs/adr/](docs/adr/) |
 
 ## Code Cleanliness
