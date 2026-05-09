@@ -313,6 +313,7 @@ type SearchArgs struct {
 	Categories string `json:"categories" jsonschema:"Comma-separated list of categories to search (e.g., general, news, music)"`
 	Engines    string `json:"engines" jsonschema:"Comma-separated list of search engines to use (e.g., google, bing, duckduckgo)"`
 	Pageno     *int   `json:"pageno" jsonschema:"Page number for pagination. Defaults to 1"`
+	Limit      *int   `json:"limit" jsonschema:"Maximum number of results to return (1-20). Defaults to 10 in MCP mode"`
 }
 
 // SearchResult represents a single search result
@@ -740,6 +741,11 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	// Deduplicate answers that overlap with infobox content.
 	// DuckDuckGo engine puts Wikipedia summaries in both answers and infoboxes.
 	result.Answers = deduplicateAnswers(result.Answers, result.Infoboxes)
+
+	// Truncate results if limit is specified
+	if args.Limit != nil && *args.Limit >= 0 && len(result.Results) > *args.Limit {
+		result.Results = result.Results[:*args.Limit]
+	}
 
 	result.Debug = debugMode
 

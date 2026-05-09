@@ -119,6 +119,10 @@ func ValidateSearchArgs(args *SearchArgs) error {
 		return NewValidationError("pageno", "must be >= 1")
 	}
 
+	if args.Limit != nil && (*args.Limit < 1 || *args.Limit > 20) {
+		return NewValidationError("limit", "must be between 1 and 20")
+	}
+
 	if args.Categories != "" {
 		if err := ValidateCategories(args.Categories); err != nil {
 			return err
