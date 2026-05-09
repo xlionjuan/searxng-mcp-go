@@ -41,6 +41,7 @@ type CLIFlags struct {
 	Categories string
 	Engines    string
 	Pageno     *int
+	Limit      *int
 	Debug      bool
 }
 
@@ -66,6 +67,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 	categories := fs.String("categories", "", "Comma-separated list of categories to search")
 	engines := fs.String("engines", "", "Comma-separated list of search engines to use")
 	pageno := fs.Int("pageno", 1, "Page number for pagination")
+	limit := fs.Int("limit", 10, "Maximum number of results to return (1-20)")
 	debug := fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)")
 
 	// Interleaved scan: extract flag tokens (with their values) while
@@ -111,9 +113,13 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 	// search request (matching MCP mode behaviour and the documented
 	// "omitted = backend default/page 1" contract).
 	var pagenoPtr *int
+	var limitPtr *int
 	fs.Visit(func(f *flag.Flag) {
 		if f.Name == "pageno" {
 			pagenoPtr = pageno
+		}
+		if f.Name == "limit" {
+			limitPtr = limit
 		}
 	})
 
@@ -129,6 +135,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 		Categories: *categories,
 		Engines:    *engines,
 		Pageno:     pagenoPtr,
+		Limit:      limitPtr,
 		Debug:      *debug,
 	}
 
@@ -201,31 +208,37 @@ const searchInputSchema = `{
 		},
 		"language": {
 			"type": "string",
-			"description": "Language code for results (e.g., en, zh-tw, ja). Defaults to auto (SearXNG decides)"
+			"description": "Language code for results. Common codes: en, zh-tw, zh, ja, fr, de, es, pt, ru, ar. Leave empty for auto-detect (SearXNG decides based on query)"
 		},
 		"safesearch": {
 			"type": "integer",
-			"description": "SafeSearch level: 0=Off, 1=Moderate, 2=Strict. Defaults to 0",
+			"description": "SafeSearch level. 0=Off (no filtering), 1=Moderate (filter moderate explicit content), 2=Strict (filter all explicit content). Defaults to 0",
 			"minimum": 0,
 			"maximum": 2
 		},
 		"time_range": {
 			"type": "string",
-			"description": "Time range filter: day, month, year, or empty for all time",
+			"description": "Time range filter. Available values: empty (all time), day, month, year. Defaults to empty (all time)",
 			"enum": ["", "day", "month", "year"]
 		},
 		"categories": {
 			"type": "string",
-			"description": "Comma-separated list of categories to search (e.g., general, news, music)"
+			"description": "Comma-separated list of categories to search. Common categories: general, news, images, videos, music, science, files, it, social_media, map. Leave empty for all categories"
 		},
 		"engines": {
 			"type": "string",
-			"description": "Comma-separated list of search engines to use (e.g., google, bing, duckduckgo)"
+			"description": "Comma-separated list of search engines to use (e.g., google, bing, duckduckgo). Leave empty to use SearXNG default engines"
 		},
 		"pageno": {
 			"type": ["null", "integer"],
 			"description": "Page number for pagination. Defaults to 1",
 			"minimum": 1
+		},
+		"limit": {
+			"type": "integer",
+			"description": "Maximum number of results to return (1-20). Defaults to 10",
+			"minimum": 1,
+			"maximum": 20
 		}
 	},
 	"required": ["query"],
@@ -319,6 +332,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 		Categories: flags.Categories,
 		Engines:    flags.Engines,
 		Pageno:     flags.Pageno,
+		Limit:      flags.Limit,
 	}
 
 	if err := ValidateSearchArgs(args); err != nil {
@@ -503,7 +517,7 @@ func runMCPMode(flags CLIFlags, stdin io.Reader) {
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search",
-		Description: "Search the web using SearXNG meta-search engine. Returns web results with titles, URLs, and summaries. Supports language filtering, category selection, engine selection, SafeSearch, time range restrictions, and pagination.",
+		Description: "Search the web using SearXNG meta-search engine. Returns web results with titles, URLs, summaries, published dates, and engine source information. Parameters: query (required) - search query string; language - language code (e.g., en, zh-tw, ja, fr, de, es), auto-detect if empty; safesearch - 0=Off, 1=Moderate, 2=Strict (default 0); time_range - empty (all time), day, month, year; categories - comma-separated (e.g., general, news, images, videos, music, science, files, it, social_media, map); engines - comma-separated (e.g., google, bing, duckduckgo), SearXNG defaults if empty; pageno - page number (default 1); limit - max results 1-20 (default 10).",
 		InputSchema: json.RawMessage(searchInputSchema),
 	}, NewSearchToolHandler(searcher))
 
