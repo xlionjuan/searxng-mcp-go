@@ -37,11 +37,15 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 			MaxIdleConnsPerHost:   10,
 		},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			// Block redirects to private/internal hosts to prevent SSRF.
-			// If the SearXNG instance redirects to an internal address,
-			// the request must not be followed.
-			if req.URL != nil && isPrivateHost(req.URL.Host) {
-				return fmt.Errorf("redirect to private host blocked: %s", req.URL.Host)
+			// Same-hostname-only redirect policy (ADR-008).
+			// Only follow redirects that stay within the same hostname.
+			// This eliminates SSRF attack surface entirely — no private IP detection,
+			// no DNS resolution, no normalization edge cases needed.
+			if req.URL != nil && len(via) > 0 {
+				prevHost := via[len(via)-1].URL.Host
+				if req.URL.Host != prevHost {
+					return fmt.Errorf("redirect to different host blocked: %s → %s", prevHost, req.URL.Host)
+				}
 			}
 			// Allow at most 10 redirects (Go default).
 			if len(via) >= 10 {
