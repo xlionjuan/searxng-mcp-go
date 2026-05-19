@@ -518,7 +518,7 @@ func TestNewSearXNGSearcher_URLValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := searxng.NewSearXNGSearcher(tt.baseURL, 30*time.Second, nil, false)
+			_, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: tt.baseURL, Timeout: 30 * time.Second}, false)
 			if tt.wantErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -578,7 +578,7 @@ func TestSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 
 func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 	t.Run("nil client", func(t *testing.T) {
-		searcher, err := searxng.NewSearXNGSearcher("https://example.com", 0, nil, false)
+		searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: "https://example.com"}, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -587,7 +587,7 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 	})
 
 	t.Run("shared default client", func(t *testing.T) {
-		searcher, err := searxng.NewSearXNGSearcher("https://example.com", 0, nil, false)
+		searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: "https://example.com"}, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -597,7 +597,7 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 
 	t.Run("custom client", func(t *testing.T) {
 		customClient := &http.Client{Timeout: 30 * time.Second}
-		searcher, err := searxng.NewSearXNGSearcher("https://example.com", 0, customClient, false)
+		searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: "https://example.com", HTTPClient: customClient}, false)
 		if err != nil {
 			t.Fatal(err)
 		}

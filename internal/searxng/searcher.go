@@ -188,8 +188,13 @@ func isPrivateHost(host string) bool {
 	return false
 }
 
-// NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration
-func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Client, debug bool) (*SearXNGSearcher, error) {
+// NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
+func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
+	if cfg == nil {
+		return nil, errors.New("newSearXNGSearcher: config cannot be nil")
+	}
+
+	baseURL := cfg.SearXNGURL
 	if err := validateBaseURL(baseURL); err != nil {
 		return nil, fmt.Errorf("newSearXNGSearcher: %w", err)
 	}
@@ -203,9 +208,10 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 		slog.Warn("Using HTTP for non-private host. Search queries may be transmitted in clear text. Search results could be intercepted and modified by a MITM attacker")
 	}
 
+	client := cfg.HTTPClient
 	if client == nil {
-		if timeout > 0 {
-			client = newHTTPClient(timeout)
+		if cfg.Timeout > 0 {
+			client = newHTTPClient(cfg.Timeout)
 		} else {
 			client = getDefaultHTTPClient()
 		}

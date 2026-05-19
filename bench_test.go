@@ -3,14 +3,34 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	"searxng-mcp-go/internal/searxng"
 )
+
+type staticRoundTripper struct {
+	statusCode int
+	header     http.Header
+	body       string
+	err        error
+}
+
+func (rt *staticRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if rt.err != nil {
+		return nil, rt.err
+	}
+	return &http.Response{
+		StatusCode: rt.statusCode,
+		Status:     fmt.Sprintf("%d %s", rt.statusCode, http.StatusText(rt.statusCode)),
+		Header:     rt.header.Clone(),
+		Body:       io.NopCloser(strings.NewReader(rt.body)),
+		Request:    req,
+	}, nil
+}
 
 // ============================================================================
 // Test Fixtures
@@ -245,13 +265,17 @@ func BenchmarkFormatResults(b *testing.B) {
 }
 
 func BenchmarkSearch(b *testing.B) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(sampleSearXNGJSON))
-	}))
-	defer server.Close()
-
-	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+	cfg := &searxng.Config{
+		SearXNGURL: "http://127.0.0.1",
+		Timeout:    30 * time.Second,
+		HTTPClient: &http.Client{
+			Transport: &staticRoundTripper{
+				statusCode: http.StatusOK,
+				header:     http.Header{"Content-Type": []string{"application/json"}},
+				body:       sampleSearXNGJSON,
+			},
+		},
+	}
 	args := &searxng.SearchArgs{Query: "golang programming", Language: "en", SafeSearch: 1}
 
 	b.ReportAllocs()
