@@ -620,6 +620,21 @@ func TestRunCLIMode_QueryPrecedence(t *testing.T) {
 	}
 }
 
+func TestRunCLIMode_MultiplePositionalArgsError(t *testing.T) {
+	t.Parallel()
+
+	err := runCLIMode(CLIFlags{Pageno: nil}, []string{"golang", "programming"})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "only one query is accepted") {
+		t.Fatalf("error %q does not contain %q", err.Error(), "only one query is accepted")
+	}
+	if !strings.Contains(err.Error(), "use quotes") {
+		t.Fatalf("error %q does not contain %q", err.Error(), "use quotes")
+	}
+}
+
 func newTestSearchServer(t *testing.T, resp searxng.SearchResponse) *httptest.Server {
 	t.Helper()
 	body, err := json.Marshal(resp)

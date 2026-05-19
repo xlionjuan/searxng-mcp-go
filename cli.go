@@ -74,8 +74,13 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	}
 
 	query := flags.Query
-	if query == "" && len(positionalArgs) > 0 {
-		query = positionalArgs[0]
+	if query == "" {
+		if len(positionalArgs) > 1 {
+			return fmt.Errorf("only one query is accepted; use quotes for multi-word queries")
+		}
+		if len(positionalArgs) > 0 {
+			query = positionalArgs[0]
+		}
 	}
 
 	if query == "" {
