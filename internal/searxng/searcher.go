@@ -408,7 +408,7 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), fmt.Errorf("response body exceeded maximum size limit of %d bytes", MaxResponseBodySize))
 	}
 
-	if	s.debug {
+	if s.debug {
 		bodyPreview := string(body)
 		if len(bodyPreview) > 500 {
 			bodyPreview = bodyPreview[:500]
@@ -477,7 +477,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		return nil, err
 	}
 
-	if	s.debug {
+	if s.debug {
 		bodyPreview := postBodyStr
 		if len(bodyPreview) > 500 {
 			bodyPreview = bodyPreview[:500]
@@ -501,7 +501,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	}
 
 	if err == nil && resp != nil && (resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
-		if	s.debug {
+		if s.debug {
 			slog.Debug("Redirecting to GET fallback", "status", resp.StatusCode, "reason", "POST not supported by server")
 		}
 		closeResponseBody(resp)
@@ -513,7 +513,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		}
 		setBrowserHeaders(getReq)
 
-		if	s.debug {
+		if s.debug {
 			slog.Debug("HTTP request",
 				"method", getReq.Method,
 				"url", getReq.URL.String(),
@@ -541,7 +541,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		if readErr != nil {
 			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read error response body: %w", readErr))
 		}
-		if	s.debug {
+		if s.debug {
 			errBodyPreview := string(body)
 			if len(errBodyPreview) > 500 {
 				errBodyPreview = errBodyPreview[:500]
