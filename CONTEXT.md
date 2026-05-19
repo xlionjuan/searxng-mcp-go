@@ -63,7 +63,7 @@ _Avoid_: BotHeaders, StealthHeaders
 **GET Fallback**: The automatic retry mechanism that re-issues a failed POST search as a GET request when the SearXNG instance returns HTTP 405 (Method Not Allowed) or 501 (Not Implemented).
 _Avoid_: POSTtoGETFallback (internal test function name)
 
-**Private Host Detection**: The validation that checks whether a hostname resolves to a private/internal IP address range (10.x, 172.16-31, 192.168, localhost, `*.local`, `*.internal`, IPv6 unique-local, link-local, etc.) — used to warn when HTTP is used to reach non-private hosts.
+**Private Host Detection**: The validation that classifies literal IP addresses and known private hostname suffixes (10.x, 172.16-31, 192.168, localhost, `*.local`, `*.internal`, IPv6 unique-local, link-local, etc.) without DNS resolution — used to warn when HTTP is used to reach non-private hosts.
 
 **prepareMCPStdin**: The function that peeks at the first line of stdin to verify it contains a valid MCP initialize message (JSON-RPC 2.0 with method `initialize`), preventing the MCP server from hanging when piped non-MCP input.
 
@@ -101,13 +101,13 @@ _Avoid_: POSTtoGETFallback (internal test function name)
 >
 > **Dev:** "The server at `search.internal` uses plain HTTP. I got a warning about non-private hosts, but `192.168.1.50` doesn't get one. Why?"
 >
-> **Domain expert:** "That's **Private Host Detection**. The code checks if the host resolves to a private IP range (10.x, 172.16-31, 192.168, localhost, `*.local`, `*.internal`, IPv6 unique-local, etc.). If the host is private, the HTTP warning is suppressed because local networks are trusted. For a hostname like `search.internal`, it's recognized by its TLD suffix."
+> **Domain expert:** "That's **Private Host Detection**. The code classifies literal IP addresses and known private hostname suffixes (10.x, 172.16-31, 192.168, localhost, `*.local`, `*.internal`, IPv6 unique-local, etc.); it does not perform DNS resolution. If the host is private, the HTTP warning is suppressed because local networks are trusted. For a hostname like `search.internal`, it's recognized by its TLD suffix."
 
 ## Flagged ambiguities
 
 1. **"Answer" ambiguity**: The term `Answer` refers both to the Go struct (with `Answer`, `Engine`, `Template` fields) and to the top-level `answers` array in the SearXNG JSON response. Additionally, SearXNG documentation mentions a legacy `{"answer": "..."}` result format that is a flat string, which is distinct from the typed struct used in this project.
 
-2. **"Searcher" vs "SearXNGSearcher"**: The broader term "Searcher" appears in function-level docstrings and developer discussion but is not a separate exported type — only `SearXNGSearcher` exists in code. The standalone `performSearch()` function is a backward-compatible wrapper that creates a temporary `SearXNGSearcher` from `Config`, adding another layer of terminology.
+2. **"Searcher" vs "SearXNGSearcher"**: The broader term "Searcher" appears in function-level docstrings and developer discussion but is not a separate exported type — only `SearXNGSearcher` exists in code. Its `performSearch` helper is an unexported method on `SearXNGSearcher`, with `Search` as the public entry point.
 
 3. **`NumberOfResults` post-processing**: SearXNG may return `number_of_results = 0` even when results exist. The code silently corrects this by setting it to `len(results)` when the field is zero but results are non-empty. Consumers cannot rely on this field being an unmodified pass-through from SearXNG.
 
