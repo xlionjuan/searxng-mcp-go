@@ -185,7 +185,7 @@ Accept that warning addition is Hermes's responsibility, and Hermes currently do
 
 ## 6. References
 
-- OpenClaw source: `src/security/external-content.ts` (cloned at `local checkout`)
+- OpenClaw source: `src/security/external-content.ts` in a local checkout
 - OpenClaw web wrappers: `extensions/tavily/`, `extensions/minimax/`, `extensions/moonshot/`
 - Hermes Agent: `~/.hermes/hermes-agent/`
 - Hermes web tools: `tools/web_tools.py`, `acp_adapter/tools.py`

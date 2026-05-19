@@ -19,8 +19,8 @@ Evaluate the user experience of the SearXNG MCP server from an AI agent perspect
 
 ### Required Environment
 
-- **Project location**: `repository root`
-- **Binary**: `repository root/searxng-mcp-go`
+- **Project location**: repository root
+- **Binary**: `./searxng-mcp-go`
 - **SearXNG instance**: `https://search-4.xlion.dev/`
 - **Available toolsets**: `terminal`, `file`, `web`, `skills`, `session_search`
 
