@@ -368,6 +368,20 @@ type SearchResponse struct {
 	Debug               bool           `json:"-"`
 }
 
+// searchResponseJSON is an intermediate type used by MarshalJSON to avoid
+// anonymous struct definitions. It mirrors SearchResponse's JSON fields
+// without the Debug field, and uses omitempty for UnresponsiveEngines so
+// that the field is naturally omitted when debug mode is disabled.
+type searchResponseJSON struct {
+	Query               string         `json:"query"`
+	Answers             []Answer       `json:"answers,omitempty"`
+	NumberOfResults     int            `json:"number_of_results"`
+	Infoboxes           []Infobox      `json:"infoboxes,omitempty"`
+	Results             []SearchResult `json:"results"`
+	Suggestions         []string       `json:"suggestions"`
+	UnresponsiveEngines [][]string     `json:"unresponsive_engines,omitempty"`
+}
+
 // MarshalJSON uses a value receiver (not pointer) to avoid concurrent
 // modification of the SearchResponse during serialization. Since r is a copy,
 // mutations to normalize slices (e.g., setting nil to empty) are isolated to
@@ -382,43 +396,21 @@ func (r SearchResponse) MarshalJSON() ([]byte, error) {
 	if r.Suggestions == nil {
 		r.Suggestions = []string{}
 	}
-	if r.Debug {
-		if r.UnresponsiveEngines == nil {
-			r.UnresponsiveEngines = [][]string{}
-		}
-		return json.Marshal(struct {
-			Query               string         `json:"query"`
-			Answers             []Answer       `json:"answers,omitempty"`
-			NumberOfResults     int            `json:"number_of_results"`
-			Infoboxes           []Infobox      `json:"infoboxes,omitempty"`
-			Results             []SearchResult `json:"results"`
-			Suggestions         []string       `json:"suggestions"`
-			UnresponsiveEngines [][]string     `json:"unresponsive_engines"`
-		}{
-			Query:               r.Query,
-			Answers:             r.Answers,
-			NumberOfResults:     r.NumberOfResults,
-			Infoboxes:           r.Infoboxes,
-			Results:             r.Results,
-			Suggestions:         r.Suggestions,
-			UnresponsiveEngines: r.UnresponsiveEngines,
-		})
-	}
-	return json.Marshal(struct {
-		Query           string         `json:"query"`
-		Answers         []Answer       `json:"answers,omitempty"`
-		NumberOfResults int            `json:"number_of_results"`
-		Infoboxes       []Infobox      `json:"infoboxes,omitempty"`
-		Results         []SearchResult `json:"results"`
-		Suggestions     []string       `json:"suggestions"`
-	}{
+	base := searchResponseJSON{
 		Query:           r.Query,
 		Answers:         r.Answers,
 		NumberOfResults: r.NumberOfResults,
 		Infoboxes:       r.Infoboxes,
 		Results:         r.Results,
 		Suggestions:     r.Suggestions,
-	})
+	}
+	if r.Debug {
+		if r.UnresponsiveEngines == nil {
+			r.UnresponsiveEngines = [][]string{}
+		}
+		base.UnresponsiveEngines = r.UnresponsiveEngines
+	}
+	return json.Marshal(base)
 }
 
 // ============================================================================
