@@ -515,16 +515,15 @@ func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 	return filtered
 }
 
-// performSearch executes the search query against SearXNG
-func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
-	if err := ValidateSearchArgs(args); err != nil {
-		return nil, err
-	}
-	// baseURL is already validated by NewSearXNGSearcher via validateBaseURL;
-	// url.Parse is only needed here to obtain the parsed URL for building the search request.
+// buildSearchRequest constructs an HTTP request for searching SearXNG.
+// It parses the base URL, builds query parameters from the search args,
+// determines the search URL path (appending /search while avoiding duplication),
+// and sets browser-like headers. Returns the request, the raw POST body string
+// for debug logging, and any error encountered.
+func (s *SearXNGSearcher) buildSearchRequest(ctx context.Context, args *SearchArgs) (*http.Request, string, error) {
 	baseURL, err := url.Parse(s.baseURL)
 	if err != nil {
-		return nil, NewSearXNGError(0, "", "", fmt.Errorf("invalid SearXNG URL: %w", err))
+		return nil, "", NewSearXNGError(0, "", "", fmt.Errorf("invalid SearXNG URL: %w", err))
 	}
 
 	params := url.Values{}
@@ -572,37 +571,128 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		searchURL.Path = trimmedPath
 	}
 
-	var resp *http.Response
-
-	// Save the raw body string so debug logging shows exactly what was sent
 	postBodyStr := params.Encode()
 	postReq, err := http.NewRequestWithContext(ctx, "POST", searchURL.String(), strings.NewReader(postBodyStr))
-	if err == nil {
-		postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		setBrowserHeaders(postReq)
+	if err != nil {
+		return nil, "", NewSearXNGError(0, "", "", fmt.Errorf("failed to create request: %w", err))
+	}
+	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	setBrowserHeaders(postReq)
 
-		if debugMode {
-			bodyPreview := postBodyStr
-			if len(bodyPreview) > 500 {
-				bodyPreview = bodyPreview[:500]
-			}
-			slog.Debug("HTTP request",
-				"method", postReq.Method,
-				"url", postReq.URL.String(),
-				"Content-Type", postReq.Header.Get("Content-Type"),
-				"Accept", postReq.Header.Get("Accept"),
-				"body", bodyPreview,
-			)
+	return postReq, postBodyStr, nil
+}
+
+// parseSearchResponse reads and parses the response from a SearXNG search request.
+// It reads the body with a size limit, checks the Content-Type for HTML/JSON,
+// unmarshals the JSON response, applies post-processing (NumberOfResults fix,
+// answer deduplication, result truncation by limit), and sets the Debug flag.
+func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchArgs) (*SearchResponse, error) {
+	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBodySize))
+	if err != nil {
+		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read response body: %w", err))
+	}
+	truncated, truncErr := isBodyTruncated(resp.Body)
+	if truncErr != nil {
+		slog.Debug("isBodyTruncated read error", "error", truncErr)
+	}
+	if truncated {
+		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), fmt.Errorf("response body exceeded maximum size limit of %d bytes", MaxResponseBodySize))
+	}
+
+	if debugMode {
+		bodyPreview := string(body)
+		if len(bodyPreview) > 500 {
+			bodyPreview = bodyPreview[:500]
 		}
+		slog.Debug("HTTP response body",
+			"status", resp.StatusCode,
+			"content_type", resp.Header.Get("Content-Type"),
+			"body_size", len(body),
+			"body_preview", bodyPreview,
+		)
+	}
 
-		resp, err = s.client.Do(postReq)
+	// Check Content-Type to provide better error messages for non-JSON responses
+	contentType := resp.Header.Get("Content-Type")
+	isHTMLResponse := strings.Contains(contentType, "text/html") || strings.HasPrefix(strings.TrimSpace(string(body)), "<!DOCTYPE") || strings.HasPrefix(strings.TrimSpace(string(body)), "<html")
 
-		if debugMode && err == nil && resp != nil {
-			slog.Debug("HTTP response",
-				"status", resp.StatusCode,
-				"content_type", resp.Header.Get("Content-Type"),
-			)
+	if isHTMLResponse {
+		bodyLen := len(body)
+		if bodyLen == 0 {
+			return nil, &HTMLResponseError{Body: "", UnderlyingErr: nil}
 		}
+		previewLen := bodyLen
+		if previewLen > MaxErrorDisplayChars {
+			previewLen = MaxErrorDisplayChars
+		}
+		slog.Debug("HTMLResponseError: received HTML instead of JSON", "preview", string(body[:previewLen]))
+		return nil, &HTMLResponseError{Body: string(body[:previewLen]), UnderlyingErr: nil}
+	}
+
+	if !strings.Contains(contentType, "application/json") && !strings.Contains(contentType, "text/json") {
+		bodyPreview := string(body)
+		if len(bodyPreview) > MaxErrorDisplayChars {
+			bodyPreview = bodyPreview[:MaxErrorDisplayChars] + "..."
+		}
+		slog.Debug("UnexpectedContentTypeError", "content_type", contentType, "body_preview", bodyPreview)
+		return nil, NewSearXNGError(resp.StatusCode, contentType, "", fmt.Errorf("unexpected content type: expected application/json"))
+	}
+
+	var result SearchResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		slog.Debug("JSONParseError: failed to parse JSON response", "error", err)
+		return nil, NewSearXNGError(resp.StatusCode, contentType, "", fmt.Errorf("failed to parse JSON response: %w", err))
+	}
+
+	// SearXNG may return number_of_results=0 even when results exist
+	if result.NumberOfResults == 0 && len(result.Results) > 0 {
+		result.NumberOfResults = len(result.Results)
+	}
+
+	// Deduplicate answers that overlap with infobox content.
+	result.Answers = deduplicateAnswers(result.Answers, result.Infoboxes)
+
+	// Truncate results if limit is specified
+	if args.Limit != nil && *args.Limit >= 0 && len(result.Results) > *args.Limit {
+		result.Results = result.Results[:*args.Limit]
+	}
+
+	result.Debug = debugMode
+
+	return &result, nil
+}
+
+// performSearch executes the search query against SearXNG
+func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
+	if err := ValidateSearchArgs(args); err != nil {
+		return nil, err
+	}
+	postReq, postBodyStr, err := s.buildSearchRequest(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+
+	if debugMode {
+		bodyPreview := postBodyStr
+		if len(bodyPreview) > 500 {
+			bodyPreview = bodyPreview[:500]
+		}
+		slog.Debug("HTTP request",
+			"method", postReq.Method,
+			"url", postReq.URL.String(),
+			"Content-Type", postReq.Header.Get("Content-Type"),
+			"Accept", postReq.Header.Get("Accept"),
+			"body", bodyPreview,
+		)
+	}
+
+	resp, err := s.client.Do(postReq)
+
+	if debugMode && err == nil && resp != nil {
+		slog.Debug("HTTP response",
+			"status", resp.StatusCode,
+			"content_type", resp.Header.Get("Content-Type"),
+		)
 	}
 
 	if err == nil && resp != nil && (resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
@@ -610,8 +700,8 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 			slog.Debug("Redirecting to GET fallback", "status", resp.StatusCode, "reason", "POST not supported by server")
 		}
 		closeResponseBody(resp)
-		getURL := searchURL
-		getURL.RawQuery = params.Encode()
+		getURL := *postReq.URL
+		getURL.RawQuery = postBodyStr
 		getReq, reqErr := http.NewRequestWithContext(ctx, "GET", getURL.String(), nil)
 		if reqErr != nil {
 			return nil, NewSearXNGError(0, "", "", fmt.Errorf("failed to create request: %w", reqErr))
@@ -668,82 +758,5 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		return nil, HTTPStatusError(resp.StatusCode, resp.Header.Get("Content-Type"), body)
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBodySize))
-	if err != nil {
-		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read response body: %w", err))
-	}
-	truncated, truncErr := isBodyTruncated(resp.Body)
-	if truncErr != nil {
-		slog.Debug("isBodyTruncated read error", "error", truncErr)
-	}
-	if truncated {
-		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), fmt.Errorf("response body exceeded maximum size limit of %d bytes", MaxResponseBodySize))
-	}
-
-	if debugMode {
-		bodyPreview := string(body)
-		if len(bodyPreview) > 500 {
-			bodyPreview = bodyPreview[:500]
-		}
-		slog.Debug("HTTP response body",
-			"status", resp.StatusCode,
-			"content_type", resp.Header.Get("Content-Type"),
-			"body_size", len(body),
-			"body_preview", bodyPreview,
-		)
-	}
-
-	// Check Content-Type to provide better error messages for non-JSON responses
-	contentType := resp.Header.Get("Content-Type")
-	isHTMLResponse := strings.Contains(contentType, "text/html") || strings.HasPrefix(strings.TrimSpace(string(body)), "<!DOCTYPE") || strings.HasPrefix(strings.TrimSpace(string(body)), "<html")
-
-	if isHTMLResponse {
-		// Log the HTML response body for debugging, but don't expose it to clients
-		bodyLen := len(body)
-		if bodyLen == 0 {
-			return nil, &HTMLResponseError{Body: "", UnderlyingErr: nil}
-		}
-		// Log preview internally for debugging
-		previewLen := bodyLen
-		if previewLen > MaxErrorDisplayChars {
-			previewLen = MaxErrorDisplayChars
-		}
-		slog.Debug("HTMLResponseError: received HTML instead of JSON", "preview", string(body[:previewLen]))
-		return nil, &HTMLResponseError{Body: string(body[:previewLen]), UnderlyingErr: nil}
-	}
-
-	if !strings.Contains(contentType, "application/json") && !strings.Contains(contentType, "text/json") {
-		// Log the unexpected content for debugging, but don't expose it to clients
-		bodyPreview := string(body)
-		if len(bodyPreview) > MaxErrorDisplayChars {
-			bodyPreview = bodyPreview[:MaxErrorDisplayChars] + "..."
-		}
-		slog.Debug("UnexpectedContentTypeError", "content_type", contentType, "body_preview", bodyPreview)
-		return nil, NewSearXNGError(resp.StatusCode, contentType, "", fmt.Errorf("unexpected content type: expected application/json"))
-	}
-
-	var result SearchResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		// Log the JSON parse error for debugging, but don't expose the body to clients
-		slog.Debug("JSONParseError: failed to parse JSON response", "error", err)
-		return nil, NewSearXNGError(resp.StatusCode, contentType, "", fmt.Errorf("failed to parse JSON response: %w", err))
-	}
-
-	// SearXNG may return number_of_results=0 even when results exist
-	if result.NumberOfResults == 0 && len(result.Results) > 0 {
-		result.NumberOfResults = len(result.Results)
-	}
-
-	// Deduplicate answers that overlap with infobox content.
-	// DuckDuckGo engine puts Wikipedia summaries in both answers and infoboxes.
-	result.Answers = deduplicateAnswers(result.Answers, result.Infoboxes)
-
-	// Truncate results if limit is specified
-	if args.Limit != nil && *args.Limit >= 0 && len(result.Results) > *args.Limit {
-		result.Results = result.Results[:*args.Limit]
-	}
-
-	result.Debug = debugMode
-
-	return &result, nil
+	return s.parseSearchResponse(resp, args)
 }
