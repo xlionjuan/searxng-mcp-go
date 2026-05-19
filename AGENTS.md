@@ -10,7 +10,9 @@ AI agents (like Hermes) call this server to perform web searches without direct 
 
 ```
 searxng-mcp-go/
-├── main.go              # Main server implementation (CLI + MCP entry points)
+├── main.go              # Entry point: main(), parseArgs(), CLIFlags, getConfig()
+├── cli.go               # CLI mode: printCLIHelp(), runCLIMode()
+├── mcp.go                # MCP mode: runMCPMode(), prepareMCPStdin(), NewSearchToolHandler(), etc.
 ├── search.go            # Search functionality, HTTP client, SearXNGSearcher
 ├── errors.go            # Error types and handling
 ├── format.go            # Output formatting
