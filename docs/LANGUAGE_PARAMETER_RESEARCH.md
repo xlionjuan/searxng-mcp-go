@@ -26,7 +26,7 @@ Earlier versions of this project and this document discussed a `lang` parameter 
 - `internal/searxng/validation.go`
 - `mcp.go`
 
-> **注意：** 以下 curl 範例同時使用 `lang` 與 `language` 參數進行對比測試，屬於研究用途。實際程式碼（`internal/searxng/searcher.go` / `SearXNGSearcher.performSearch`）僅發送 `language` 參數，不使用 `lang`。
+> **Note:** The curl examples below use both the `lang` and `language` parameters for comparison testing and are for research purposes. The actual code (`internal/searxng/searcher.go` / `SearXNGSearcher.performSearch`) only sends the `language` parameter and does not use `lang`.
 
 ### Query: python programming
 
