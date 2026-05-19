@@ -53,25 +53,12 @@ func getDefaultHTTPClient() *http.Client {
 	return defaultHTTPClient
 }
 
-// ============================================================================
-// SearXNG Searcher
-// ============================================================================
-
-// Searcher is the interface for performing SearXNG searches.
-type Searcher interface {
-	Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error)
-	Close() error
-}
-
 // SearXNGSearcher performs web searches via a SearXNG instance
 type SearXNGSearcher struct {
 	client  *http.Client // Configurable HTTP client
 	baseURL string
 	debug   bool // When true, enables verbose HTTP request/response logging
 }
-
-// ensure *SearXNGSearcher implements Searcher
-var _ Searcher = (*SearXNGSearcher)(nil)
 
 // Close releases resources held by the searcher.
 func (s *SearXNGSearcher) Close() error {

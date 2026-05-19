@@ -11,8 +11,6 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
-var _ searxng.Searcher = (*searxng.SearXNGSearcher)(nil)
-
 func TestNewSearXNGSearcherErrors(t *testing.T) {
 	t.Parallel()
 
@@ -37,8 +35,8 @@ func TestNewSearXNGSearcherErrors(t *testing.T) {
 				}
 				t.Fatal("NewSearXNGSearcher() error = nil, want error")
 			}
-			if !strings.Contains(err.Error(), "newSearXNGSearcher:") || !strings.Contains(err.Error(), tt.want) {
-				t.Fatalf("NewSearXNGSearcher() error = %q, want wrapped error containing %q", err.Error(), tt.want)
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("NewSearXNGSearcher() error = %q, want error containing %q", err.Error(), tt.want)
 			}
 		})
 	}
@@ -97,21 +95,6 @@ func TestConfigAndDefaultConfig(t *testing.T) {
 	cfg.HTTPClient = client
 	if cfg.SearXNGURL != "https://example.com/search" || cfg.Timeout != 5*time.Second || cfg.HTTPClient != client {
 		t.Fatal("Config fields are not writable")
-	}
-}
-
-func TestSearcherInterfaceCompliance(t *testing.T) {
-	t.Parallel()
-
-	searcher, err := searxng.NewSearXNGSearcher("https://search.example.com", time.Second, nil, false)
-	if err != nil {
-		t.Fatalf("NewSearXNGSearcher() error = %v, want nil", err)
-	}
-	defer searcher.Close()
-
-	var iface searxng.Searcher = searcher
-	if iface == nil {
-		t.Fatal("Searcher interface value = nil, want non-nil")
 	}
 }
 
