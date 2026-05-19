@@ -5,6 +5,19 @@ import (
 	"fmt"
 )
 
+var (
+	errBadRequest          = errors.New("bad request: the query parameters may be invalid")
+	errUnauthorized        = errors.New("unauthorized: authentication is required")
+	errForbidden           = errors.New("forbidden: access denied")
+	errNotFound            = errors.New("not found: the search endpoint could not be found")
+	errRateLimited         = errors.New("rate limited: too many requests, please wait before making more searches")
+	errInternalServerError = errors.New("internal server error: the search engine encountered an internal error")
+	errBadGateway          = errors.New("bad gateway: received an invalid response from an upstream server")
+	errServiceUnavailable  = errors.New("service unavailable: the search engine is temporarily unavailable")
+	errGatewayTimeout      = errors.New("gateway timeout: timed out waiting for an upstream server")
+	errUnexpectedStatus    = errors.New("unexpected status code received")
+)
+
 // ValidationError represents a user-provided parameter validation failure.
 type ValidationError struct {
 	Field   string // Field is the name of the invalid field
@@ -85,31 +98,31 @@ func NewSearXNGError(statusCode int, contentType, body string, err error) *SearX
 func HTTPStatusError(statusCode int, contentType string, body []byte) error {
 	bodyStr := TruncateBody(body, MaxErrorDisplayChars)
 
-	var msg string
+	var err error
 	switch statusCode {
 	case 400:
-		msg = "bad request: the query parameters may be invalid"
+		err = errBadRequest
 	case 401:
-		msg = "unauthorized: authentication is required"
+		err = errUnauthorized
 	case 403:
-		msg = "forbidden: access denied"
+		err = errForbidden
 	case 404:
-		msg = "not found: the search endpoint could not be found"
+		err = errNotFound
 	case 429:
-		msg = "rate limited: too many requests, please wait before making more searches"
+		err = errRateLimited
 	case 500:
-		msg = "internal server error: the search engine encountered an internal error"
+		err = errInternalServerError
 	case 502:
-		msg = "bad gateway: received an invalid response from an upstream server"
+		err = errBadGateway
 	case 503:
-		msg = "service unavailable: the search engine is temporarily unavailable"
+		err = errServiceUnavailable
 	case 504:
-		msg = "gateway timeout: timed out waiting for an upstream server"
+		err = errGatewayTimeout
 	default:
-		msg = "unexpected status code received"
+		err = errUnexpectedStatus
 	}
 
-	return NewSearXNGError(statusCode, contentType, bodyStr, errors.New(msg))
+	return NewSearXNGError(statusCode, contentType, bodyStr, err)
 }
 
 // HTMLResponseError creates a specialized error for HTML responses (JSON not enabled)

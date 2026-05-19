@@ -2,17 +2,20 @@ package searxng
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 )
 
+var errInvalidSearXNGURL = errors.New("invalid SearXNG URL")
+
 // buildSearchRequest constructs an HTTP request for searching SearXNG.
 func (s *SearXNGSearcher) buildSearchRequest(ctx context.Context, args *SearchArgs) (*http.Request, string, error) {
 	baseURL, err := url.Parse(s.baseURL)
 	if err != nil {
-		return nil, "", NewSearXNGError(0, "", "", fmt.Errorf("invalid SearXNG URL: %w", err))
+		return nil, "", NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errInvalidSearXNGURL, err))
 	}
 
 	params := url.Values{}
@@ -62,7 +65,7 @@ func (s *SearXNGSearcher) buildSearchRequest(ctx context.Context, args *SearchAr
 	postBodyStr := params.Encode()
 	postReq, err := http.NewRequestWithContext(ctx, "POST", searchURL.String(), strings.NewReader(postBodyStr))
 	if err != nil {
-		return nil, "", NewSearXNGError(0, "", "", fmt.Errorf("failed to create request: %w", err))
+		return nil, "", NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errRequestCreateFailed, err))
 	}
 	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	setBrowserHeaders(postReq)

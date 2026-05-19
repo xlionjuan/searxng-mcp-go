@@ -18,6 +18,20 @@ import (
 var defaultHTTPClient *http.Client
 var defaultHTTPClientOnce sync.Once
 
+var (
+	errRedirectDifferentHost    = errors.New("redirect to different host blocked")
+	errTooManyRedirects         = errors.New("stopped after 10 redirects")
+	errBaseURLEmpty             = errors.New("baseurl cannot be empty")
+	errInvalidURL               = errors.New("invalid URL")
+	errUnsupportedURLScheme     = errors.New("url must use http or https scheme")
+	errURLMissingHost           = errors.New("url must include a host (e.g., search.example.com)")
+	errSearcherConfigRequired   = errors.New("newSearXNGSearcher: config cannot be nil")
+	errSearcherURLParseInternal = errors.New("newSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error)")
+	errRequestCreateFailed      = errors.New("failed to create request")
+	errSearchRequestFailed      = errors.New("failed to execute search request")
+	errErrorBodyTooLarge        = errors.New("error response body exceeded maximum size limit")
+)
+
 func newHTTPClient(timeout time.Duration) *http.Client {
 	return &http.Client{
 		Timeout: timeout,
@@ -37,11 +51,11 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 	if req.URL != nil && len(via) > 0 {
 		prevHost := via[len(via)-1].URL.Host
 		if req.URL.Host != prevHost {
-			return fmt.Errorf("redirect to different host blocked: %s → %s", prevHost, req.URL.Host)
+			return fmt.Errorf("%w: %s -> %s", errRedirectDifferentHost, prevHost, req.URL.Host)
 		}
 	}
 	if len(via) >= 10 {
-		return errors.New("stopped after 10 redirects")
+		return errTooManyRedirects
 	}
 	return nil
 }
@@ -93,17 +107,17 @@ func (s *SearXNGSearcher) Close() error {
 // validateBaseURL checks that the baseURL is valid and returns an error if not
 func validateBaseURL(baseURL string) error {
 	if baseURL == "" {
-		return errors.New("baseurl cannot be empty")
+		return errBaseURLEmpty
 	}
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
-		return fmt.Errorf("invalid URL: %w", err)
+		return fmt.Errorf("%w: %w", errInvalidURL, err)
 	}
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return errors.New("url must use http or https scheme")
+		return errUnsupportedURLScheme
 	}
 	if parsed.Host == "" {
-		return errors.New("url must include a host (e.g., search.example.com)")
+		return errURLMissingHost
 	}
 	return nil
 }
@@ -211,7 +225,7 @@ func isPrivateHost(host string) bool {
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
 func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	if cfg == nil {
-		return nil, errors.New("newSearXNGSearcher: config cannot be nil")
+		return nil, errSearcherConfigRequired
 	}
 
 	baseURL := cfg.SearXNGURL
@@ -221,7 +235,7 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
-		return nil, fmt.Errorf("newSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error): %w", err)
+		return nil, fmt.Errorf("%w: %w", errSearcherURLParseInternal, err)
 	}
 
 	if parsed.Scheme == "http" && !isPrivateHost(parsed.Host) {
@@ -375,7 +389,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		getURL.RawQuery = postBodyStr
 		getReq, reqErr := http.NewRequestWithContext(ctx, "GET", getURL.String(), nil)
 		if reqErr != nil {
-			return nil, NewSearXNGError(0, "", "", fmt.Errorf("failed to create request: %w", reqErr))
+			return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errRequestCreateFailed, reqErr))
 		}
 		setBrowserHeaders(getReq)
 
@@ -398,7 +412,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	}
 
 	if err != nil {
-		return nil, NewSearXNGError(0, "", "", fmt.Errorf("failed to execute search request: %w", err))
+		return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, err))
 	}
 	defer func() { closeResponseBody(resp) }()
 
@@ -424,7 +438,9 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 			slog.Debug("isBodyTruncated read error", "error", truncErr)
 		}
 		if truncated {
-			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), fmt.Errorf("error response body exceeded maximum size limit of %d bytes", MaxErrorBodySize))
+			err := fmt.Errorf("%w of %d bytes", errErrorBodyTooLarge, MaxErrorBodySize)
+
+			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), err)
 		}
 		return nil, HTTPStatusError(resp.StatusCode, resp.Header.Get("Content-Type"), body)
 	}

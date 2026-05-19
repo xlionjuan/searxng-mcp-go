@@ -3,11 +3,22 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"time"
 
 	"searxng-mcp-go/internal/searxng"
+)
+
+var (
+	errMultipleQueries     = errors.New("only one query is accepted; use quotes for multi-word queries")
+	errSearchQueryRequired = errors.New("search query is required; use --help for usage information")
+	errConfigurationFailed = errors.New("configuration error")
+	errSearchValidation    = errors.New("validation error")
+	errSearcherCreation    = errors.New("failed to create searcher")
+	errSearchFailed        = errors.New("search error")
+	errJSONEncodeFailed    = errors.New("failed to encode json")
 )
 
 // printCLIHelp prints the help message for CLI mode
@@ -76,7 +87,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	query := flags.Query
 	if query == "" {
 		if len(positionalArgs) > 1 {
-			return fmt.Errorf("only one query is accepted; use quotes for multi-word queries")
+			return errMultipleQueries
 		}
 		if len(positionalArgs) > 0 {
 			query = positionalArgs[0]
@@ -84,12 +95,12 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	}
 
 	if query == "" {
-		return fmt.Errorf("search query is required; use --help for usage information")
+		return errSearchQueryRequired
 	}
 
 	cfg, err := getConfig(flags)
 	if err != nil {
-		return fmt.Errorf("configuration error: %w", err)
+		return fmt.Errorf("%w: %w", errConfigurationFailed, err)
 	}
 	args := &searxng.SearchArgs{
 		Query:      query,
@@ -103,12 +114,12 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	}
 
 	if err := searxng.ValidateSearchArgs(args); err != nil {
-		return fmt.Errorf("validation error: %w", err)
+		return fmt.Errorf("%w: %w", errSearchValidation, err)
 	}
 
 	searcher, err := searxng.NewSearXNGSearcher(cfg, debugMode)
 	if err != nil {
-		return fmt.Errorf("failed to create searcher: %w", err)
+		return fmt.Errorf("%w: %w", errSearcherCreation, err)
 	}
 	defer searcher.Close()
 
@@ -116,7 +127,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	defer cancel()
 	resp, err := searcher.Search(ctx, args)
 	if err != nil {
-		return fmt.Errorf("search error: %w", err)
+		return fmt.Errorf("%w: %w", errSearchFailed, err)
 	}
 
 	if flags.JSON {
@@ -126,7 +137,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(resp); err != nil {
-			return fmt.Errorf("failed to encode json: %w", err)
+			return fmt.Errorf("%w: %w", errJSONEncodeFailed, err)
 		}
 	} else {
 		fmt.Print(formatResults(resp))

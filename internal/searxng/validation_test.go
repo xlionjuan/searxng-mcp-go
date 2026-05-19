@@ -9,6 +9,11 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
+var (
+	errPlainTestError   = errors.New("plain error")
+	errNetworkTestError = errors.New("network failed")
+)
+
 func requireValidationError(t *testing.T, err error, field string) {
 	t.Helper()
 	if err == nil {
@@ -201,7 +206,8 @@ func TestValidationError(t *testing.T) {
 	if !searxng.IsValidationError(fmt.Errorf("wrapped: %w", err)) {
 		t.Fatal("IsValidationError() = false, want true for wrapped ValidationError")
 	}
-	if searxng.IsValidationError(errors.New("plain error")) {
+
+	if searxng.IsValidationError(errPlainTestError) {
 		t.Fatal("IsValidationError() = true, want false for non-validation error")
 	}
 }
@@ -209,7 +215,7 @@ func TestValidationError(t *testing.T) {
 func TestSearXNGErrorAndHTMLResponseError(t *testing.T) {
 	t.Parallel()
 
-	underlying := errors.New("network failed")
+	underlying := errNetworkTestError
 	searxErr := searxng.NewSearXNGError(503, "text/plain", strings.Repeat("x", searxng.MaxErrorDisplayChars+1), underlying)
 	if !errors.Is(searxErr, underlying) {
 		t.Fatal("errors.Is() = false, want true for SearXNGError underlying error")

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -22,6 +23,12 @@ const (
 // / runCLIMode 皆在單一 goroutine 中完成）。若未來需要在執行期間動態修改此變數，
 // 應改用 atomic.Bool 以確保 concurrent-safe。
 var debugMode bool
+
+var (
+	errArgumentParseFailed = errors.New("failed to parse arguments")
+	errSearXNGURLRequired  = errors.New("SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
+	errTestConfigRequired  = errors.New("testPerformSearch: cfg cannot be nil")
+)
 
 // ============================================================================
 // CLIFlags holds parsed CLI flag values
@@ -101,7 +108,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 	}
 
 	if err := fs.Parse(flagArgs); err != nil {
-		return false, CLIFlags{}, nil, fmt.Errorf("failed to parse arguments: %w", err)
+		return false, CLIFlags{}, nil, fmt.Errorf("%w: %w", errArgumentParseFailed, err)
 	}
 
 	// Use flag.Visit to determine whether optional pointer flags were explicitly set.
@@ -192,7 +199,7 @@ func getConfig(flags CLIFlags) (*searxng.Config, error) {
 	}
 
 	if searxngURL == "" {
-		return nil, fmt.Errorf("SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
+		return nil, errSearXNGURLRequired
 	}
 
 	cfg.SearXNGURL = searxngURL

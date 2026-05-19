@@ -19,6 +19,22 @@ linters:
       branch-max-lines: 2
     cyclop:
       max-complexity: 15
+    depguard:
+      rules:
+        main:
+          list-mode: lax
+          files:
+            - main.go
+            - cli.go
+            - mcp.go
+            - testhelpers.go
+          allow:
+            - $gostd
+            - "github.com/modelcontextprotocol/go-sdk/mcp"
+            - "searxng-mcp-go/internal/searxng"
+          deny:
+            - pkg: "net/http"
+              desc: "Use internal client wrapper instead"
     dupl:
       threshold: 150
     gocognit:

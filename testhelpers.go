@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"searxng-mcp-go/internal/searxng"
@@ -13,7 +12,7 @@ import (
 // It is only available in tests.
 func testPerformSearch(t testing.TB, ctx context.Context, cfg *searxng.Config, args *searxng.SearchArgs) (*searxng.SearchResponse, error) {
 	if cfg == nil {
-		return nil, searxng.NewSearXNGError(0, "", "", fmt.Errorf("testPerformSearch: cfg cannot be nil"))
+		return nil, searxng.NewSearXNGError(0, "", "", errTestConfigRequired)
 	}
 	s, err := searxng.NewSearXNGSearcher(cfg, false)
 	if err != nil {

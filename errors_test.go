@@ -9,6 +9,13 @@ import (
 	searxng "searxng-mcp-go/internal/searxng"
 )
 
+var (
+	errSomeTestError          = errors.New("some error")
+	errNotValidationTestError = errors.New("not a validation error")
+	errBadRequestTest         = errors.New("bad request")
+	errConnectionRefusedTest  = errors.New("connection refused")
+)
+
 // --- TEST-02: ValidationError tests ---
 
 func TestValidationError(t *testing.T) {
@@ -31,7 +38,7 @@ func TestValidationError(t *testing.T) {
 			t.Errorf("err1.Is(err4) = true, want false (different field)")
 		}
 		// Non-ValidationError target
-		if err1.Is(errors.New("some error")) {
+		if err1.Is(errSomeTestError) {
 			t.Errorf("err1.Is(non-ValidationError) = true, want false")
 		}
 	})
@@ -43,7 +50,8 @@ func TestValidationError(t *testing.T) {
 		if !searxng.IsValidationError(err) {
 			t.Errorf("IsValidationError(err) = false, want true")
 		}
-		if searxng.IsValidationError(errors.New("not a validation error")) {
+
+		if searxng.IsValidationError(errNotValidationTestError) {
 			t.Errorf("IsValidationError(non-ValidationError) = true, want false")
 		}
 		if searxng.IsValidationError(nil) {
@@ -145,7 +153,7 @@ func TestHTTPStatusError_HTMLBodyNotInErrorMessage(t *testing.T) {
 func TestSearXNGError_ResponseBodyField(t *testing.T) {
 	t.Parallel()
 
-	err := searxng.NewSearXNGError(400, "text/html", "error details here", errors.New("bad request"))
+	err := searxng.NewSearXNGError(400, "text/html", "error details here", errBadRequestTest)
 
 	var searxngErr *searxng.SearXNGError
 	if !errors.As(err, &searxngErr) {
@@ -160,11 +168,11 @@ func TestSearXNGError_ResponseBodyField(t *testing.T) {
 func TestSearXNGError_Unwrap(t *testing.T) {
 	t.Parallel()
 
-	underlying := errors.New("connection refused")
+	underlying := errConnectionRefusedTest
 	err := searxng.NewSearXNGError(0, "", "", underlying)
 
 	unwrapped := errors.Unwrap(err)
-	if unwrapped != underlying {
+	if !errors.Is(unwrapped, underlying) {
 		t.Errorf("Unwrap() = %v, want %v", unwrapped, underlying)
 	}
 
@@ -309,7 +317,7 @@ func TestSearXNGError_Error_NilUnderlying(t *testing.T) {
 func TestSearXNGError_Error_WithUnderlying(t *testing.T) {
 	t.Parallel()
 
-	underlying := errors.New("connection refused")
+	underlying := errConnectionRefusedTest
 	err := searxng.NewSearXNGError(500, "text/html", "", underlying)
 
 	errMsg := err.Error()

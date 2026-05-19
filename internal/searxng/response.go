@@ -2,6 +2,7 @@ package searxng
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -9,18 +10,27 @@ import (
 	"strings"
 )
 
+var (
+	errResponseReadFailed      = errors.New("failed to read response body")
+	errResponseBodyTooLarge    = errors.New("response body exceeded maximum size limit")
+	errUnexpectedContentType   = errors.New("unexpected content type: expected application/json")
+	errJSONResponseParseFailed = errors.New("failed to parse JSON response")
+)
+
 // parseSearchResponse reads and parses the response from a SearXNG search request.
 func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchArgs) (*SearchResponse, error) {
 	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBodySize))
 	if err != nil {
-		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read response body: %w", err))
+		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("%w: %w", errResponseReadFailed, err))
 	}
 	truncated, truncErr := isBodyTruncated(resp.Body)
 	if truncErr != nil {
 		slog.Debug("isBodyTruncated read error", "error", truncErr)
 	}
 	if truncated {
-		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), fmt.Errorf("response body exceeded maximum size limit of %d bytes", MaxResponseBodySize))
+		err := fmt.Errorf("%w of %d bytes", errResponseBodyTooLarge, MaxResponseBodySize)
+
+		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), err)
 	}
 
 	if s.debug {
@@ -58,13 +68,15 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 			bodyPreview = bodyPreview[:MaxErrorDisplayChars] + "..."
 		}
 		slog.Debug("UnexpectedContentTypeError", "content_type", contentType, "body_preview", bodyPreview)
-		return nil, NewSearXNGError(resp.StatusCode, contentType, "", fmt.Errorf("unexpected content type: expected application/json"))
+
+		return nil, NewSearXNGError(resp.StatusCode, contentType, "", errUnexpectedContentType)
 	}
 
 	var result SearchResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		slog.Debug("JSONParseError: failed to parse JSON response", "error", err)
-		return nil, NewSearXNGError(resp.StatusCode, contentType, "", fmt.Errorf("failed to parse JSON response: %w", err))
+
+		return nil, NewSearXNGError(resp.StatusCode, contentType, "", fmt.Errorf("%w: %w", errJSONResponseParseFailed, err))
 	}
 
 	if result.NumberOfResults == 0 && len(result.Results) > 0 {

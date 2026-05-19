@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -75,6 +76,8 @@ const (
 	mcpInitializeReadTimeout = 5 * time.Second
 )
 
+var errInvalidMCPInitializeMessage = errors.New("stdin does not contain a valid MCP initialize message")
+
 // prepareMCPStdin reads the first line of stdin to verify it contains a valid
 // MCP initialize message (JSON-RPC 2.0 with method "initialize"), preventing
 // the MCP server from hanging when piped non-MCP input.
@@ -95,7 +98,7 @@ func prepareMCPStdin(stdin io.Reader) (io.Reader, error) {
 			fragment, err := reader.ReadSlice('\n')
 			firstLine = append(firstLine, fragment...)
 			if len(firstLine) > mcpInitializeMaxBytes {
-				resultCh <- result{err: fmt.Errorf("stdin does not contain a valid MCP initialize message")}
+				resultCh <- result{reader: nil, err: errInvalidMCPInitializeMessage}
 				return
 			}
 			if err == nil {
@@ -104,13 +107,14 @@ func prepareMCPStdin(stdin io.Reader) (io.Reader, error) {
 			if err == io.EOF {
 				break
 			}
-			if err != bufio.ErrBufferFull {
-				resultCh <- result{err: fmt.Errorf("stdin does not contain a valid MCP initialize message")}
+
+			if !errors.Is(err, bufio.ErrBufferFull) {
+				resultCh <- result{reader: nil, err: errInvalidMCPInitializeMessage}
 				return
 			}
 		}
 		if len(firstLine) > mcpInitializeMaxBytes || !isValidMCPInitializeMessage(firstLine) {
-			resultCh <- result{err: fmt.Errorf("stdin does not contain a valid MCP initialize message")}
+			resultCh <- result{reader: nil, err: errInvalidMCPInitializeMessage}
 			return
 		}
 		resultCh <- result{reader: io.MultiReader(bytes.NewReader(firstLine), reader)}
@@ -118,7 +122,7 @@ func prepareMCPStdin(stdin io.Reader) (io.Reader, error) {
 
 	select {
 	case <-ctx.Done():
-		return nil, fmt.Errorf("stdin does not contain a valid MCP initialize message")
+		return nil, errInvalidMCPInitializeMessage
 	case res := <-resultCh:
 		if res.err != nil {
 			return nil, res.err
