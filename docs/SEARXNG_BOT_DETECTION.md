@@ -25,4 +25,4 @@ SearXNG's `limiter` is enabled when `server.limiter: true` or `public_instance: 
 
 ## MCP Server Implementation
 
-Our HTTP headers are set via `setBrowserHeaders()` in `search.go`. Both POST and GET fallback share the same function to emulate browser-like headers and pass the limiter filters.
+Our HTTP headers are set via `setBrowserHeaders()` in `internal/searxng/searcher.go`. Both POST and GET fallback share the same function to emulate browser-like headers and pass the limiter filters.

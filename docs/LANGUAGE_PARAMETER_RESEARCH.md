@@ -6,7 +6,7 @@ The implementation uses the `language` parameter end-to-end.
 
 - MCP schema exposes `language`
 - `SearchArgs.Language` maps to `language`
-- `performSearch()` sends `language` to SearXNG when the field is non-empty
+- `SearXNGSearcher.performSearch` sends `language` to SearXNG when the field is non-empty
 - `ValidateSearchArgs()` rejects invalid language codes
 
 ## Semantics
@@ -22,11 +22,11 @@ Earlier versions of this project and this document discussed a `lang` parameter 
 
 ## Reference Points
 
-- `search.go`
-- `validation.go`
-- `main.go`
+- `internal/searxng/searcher.go`
+- `internal/searxng/validation.go`
+- `mcp.go`
 
-> **注意：** 以下 curl 範例同時使用 `lang` 與 `language` 參數進行對比測試，屬於研究用途。實際程式碼（`search.go` / `performSearch()`）僅發送 `language` 參數，不使用 `lang`。
+> **注意：** 以下 curl 範例同時使用 `lang` 與 `language` 參數進行對比測試，屬於研究用途。實際程式碼（`internal/searxng/searcher.go` / `SearXNGSearcher.performSearch`）僅發送 `language` 參數，不使用 `lang`。
 
 ### Query: python programming
 
@@ -50,6 +50,7 @@ curl -s "https://search-4.xlion.dev/search?q=artificial+intelligence&format=json
 
 ## Reference Points
 
-- `search.go` — `SearchArgs` struct, `performSearch()` API call construction
-- `validation.go` — `ValidateSearchArgs()` language validation
-- `main.go` — MCP tool schema definition
+- `internal/searxng/types.go` — `SearchArgs` struct
+- `internal/searxng/searcher.go` — `SearXNGSearcher.performSearch` API call construction
+- `internal/searxng/validation.go` — `ValidateSearchArgs()` language validation
+- `mcp.go` — MCP tool schema definition

@@ -1,5 +1,7 @@
 # Performance Profiling Review
 
+NOTE: This report refers to the pre-refactoring codebase. Since then, core types and HTTP logic have moved to `internal/searxng/`. See CONTEXT.md for the current module structure.
+
 Date: 2026-04-19
 Project: `searxng-mcp-go`
 Scope reviewed: `bench_test.go`, `format.go`, `date.go`, `search.go`, prior `REPORT_PERF.md`

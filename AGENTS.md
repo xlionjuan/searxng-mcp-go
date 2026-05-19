@@ -13,10 +13,7 @@ searxng-mcp-go/
 ├── main.go              # Entry point: main(), parseArgs(), CLIFlags, getConfig()
 ├── cli.go               # CLI mode: printCLIHelp(), runCLIMode()
 ├── mcp.go                # MCP mode: runMCPMode(), prepareMCPStdin(), NewSearchToolHandler(), etc.
-├── errors.go            # Error types and handling
 ├── format.go            # Output formatting
-├── validation.go        # Input validation
-├── constants.go         # Size limits and configuration constants
 ├── main_test.go         # Main tests (CLI/MCP mode, runCLIMode)
 ├── search_test.go       # Search tests (SearXNGSearcher, DeduplicateAnswers)
 ├── errors_test.go       # Error type tests
@@ -39,10 +36,10 @@ searxng-mcp-go/
 ├── .github/workflows/   # CI: lint, security, test
 ├── internal/
 │   └── searxng/         # SearXNG client library
-│       ├── searcher.go  # SearXNGSearcher, NewSearXNGSearcher, Search, performSearch, DeduplicateAnswers
+│       ├── searcher.go  # SearXNGSearcher, NewSearXNGSearcher, Search, performSearch method, DeduplicateAnswers, HTTP client/host checks
 │       ├── types.go     # SearchArgs, SearchResponse, SearchResult, Answer, Infobox, InfoboxAttribute, InfoboxURL
 │       ├── errors.go    # Error types and handling
-│       ├── validation.go # Input validation (ValidateBaseURL, IsPrivateHost)
+│       ├── validation.go # Search argument validation
 │       └── constants.go # Size limits and configuration constants
 └── docs/
     ├── INSTALL.md           # Installation, build, configuration

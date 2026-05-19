@@ -51,7 +51,7 @@ Queries where `answers` contains genuinely distinct information:
 
 ### Deduplication Strategy
 
-The function `deduplicateAnswers()` in `search.go` filters answers at the **search response layer**, before the result reaches JSON serialization or CLI formatting. This means both output modes benefit.
+The function `DeduplicateAnswers` in `internal/searxng/searcher.go` filters answers at the **search response layer**, before the result reaches JSON serialization or CLI formatting. This means both output modes benefit.
 
 **Algorithm (exact-case fast path + lazy lowercase fallback):**
 
@@ -73,7 +73,7 @@ If either path finds a match, the answer is considered a duplicate and is remove
 
 ### Why Search Layer, Not Format Layer
 
-Deduplication happens in `performSearch()` (search.go) rather than in `formatResults()` (format.go) so that:
+Deduplication happens in the `SearXNGSearcher.performSearch` method (`internal/searxng/searcher.go`) rather than in `formatResults()` (format.go) so that:
 - **JSON output** (`--json` flag or MCP mode) also has clean results
 - **CLI output** benefits automatically
 - Single point of truth — no scattered filtering logic
@@ -91,6 +91,6 @@ Deduplication happens in `performSearch()` (search.go) rather than in `formatRes
 
 ## Implementation
 
-- **Function**: `deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer` in `search.go`
-- **Called**: In `performSearch()` after JSON unmarshalling, before the response is returned to formatting/output code
+- **Function**: `DeduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer` in `internal/searxng/searcher.go`
+- **Called**: In `SearXNGSearcher.performSearch` after JSON unmarshalling, before the response is returned to formatting/output code
 - **Tests**: 9 test cases in `search_test.go` covering empty inputs, exact match, prefix match, DDG "More at Wikipedia" suffix stripping, case insensitivity, distinct answers (IP), mixed scenarios, and empty answer skipping

@@ -187,7 +187,7 @@ type SearchResponse struct {
 
 Note: `corrections` is **not** currently exposed. `unresponsive_engines` is
 omitted unless debug mode is enabled. DuckDuckGo answers that overlap with
-infobox content are deduplicated by `deduplicateAnswers()` before the response
+infobox content are deduplicated by `DeduplicateAnswers` before the response
 is returned.
 
 ---
