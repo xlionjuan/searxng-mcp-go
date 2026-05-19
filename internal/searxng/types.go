@@ -95,7 +95,7 @@ type searchResponseJSON struct {
 	Infoboxes           []Infobox      `json:"infoboxes,omitempty"`
 	Results             []SearchResult `json:"results"`
 	Suggestions         []string       `json:"suggestions"`
-	UnresponsiveEngines [][]string     `json:"unresponsive_engines,omitempty"`
+	UnresponsiveEngines *[][]string    `json:"unresponsive_engines,omitempty"`
 }
 
 // MarshalJSON uses a value receiver (not pointer) to avoid concurrent
@@ -119,7 +119,7 @@ func (r SearchResponse) MarshalJSON() ([]byte, error) {
 		if r.UnresponsiveEngines == nil {
 			r.UnresponsiveEngines = [][]string{}
 		}
-		base.UnresponsiveEngines = r.UnresponsiveEngines
+		base.UnresponsiveEngines = &r.UnresponsiveEngines
 	}
 	return json.Marshal(base)
 }
