@@ -164,15 +164,15 @@ func TestValidateSearchArgs_CategoriesAndEngines(t *testing.T) {
 		t.Parallel()
 		t.Run("valid", func(t *testing.T) {
 			t.Parallel()
-			assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Categories: "general,news"})
+			assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Categories: "general,news,software wikis"})
 		})
 		t.Run("invalid control characters", func(t *testing.T) {
 			t.Parallel()
 			assertValidationError(t, &searxng.SearchArgs{Query: "test", Categories: "general\nnews"}, "categories", "invalid category")
 		})
-		t.Run("invalid identifier", func(t *testing.T) {
+		t.Run("invalid path separator", func(t *testing.T) {
 			t.Parallel()
-			assertValidationError(t, &searxng.SearchArgs{Query: "test", Categories: "general!@#"}, "categories", "invalid category")
+			assertValidationError(t, &searxng.SearchArgs{Query: "test", Categories: "general/news"}, "categories", "invalid category")
 		})
 	})
 
@@ -180,15 +180,16 @@ func TestValidateSearchArgs_CategoriesAndEngines(t *testing.T) {
 		t.Parallel()
 		t.Run("valid", func(t *testing.T) {
 			t.Parallel()
-			assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Engines: "google,bing"})
+			assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Engines: "google,bing,docker hub,google news,Torznab EZTV"})
 		})
 		t.Run("invalid control characters", func(t *testing.T) {
 			t.Parallel()
 			assertValidationError(t, &searxng.SearchArgs{Query: "test", Engines: "google\tbing"}, "engines", "invalid engine")
 		})
-		t.Run("invalid identifier", func(t *testing.T) {
+		t.Run("invalid path separator", func(t *testing.T) {
 			t.Parallel()
-			assertValidationError(t, &searxng.SearchArgs{Query: "test", Engines: "google!@#"}, "engines", "invalid engine")
+			assertValidationError(t, &searxng.SearchArgs{Query: "test", Engines: "google/bing"}, "engines", "invalid engine")
+			assertValidationError(t, &searxng.SearchArgs{Query: "test", Engines: "google\\bing"}, "engines", "invalid engine")
 		})
 	})
 }

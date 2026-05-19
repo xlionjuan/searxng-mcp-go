@@ -42,7 +42,7 @@ func isValidCategoryOrEngine(value string) bool {
 		if r < 32 || r == 127 {
 			return false
 		}
-		if !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r == '-') {
+		if r == '/' || r == '\\' {
 			return false
 		}
 	}

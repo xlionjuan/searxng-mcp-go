@@ -134,8 +134,9 @@ func TestValidateCategories(t *testing.T) {
 		wantErr    bool
 	}{
 		{name: "empty", categories: ""},
-		{name: "valid categories", categories: "general,news,science-technology"},
-		{name: "invalid characters", categories: "general,news!", wantErr: true},
+		{name: "valid categories", categories: "general,news,science-technology,software wikis"},
+		{name: "path separator", categories: "general/news", wantErr: true},
+		{name: "control characters", categories: "general\nnews", wantErr: true},
 		{name: "empty segment", categories: "general,,news", wantErr: true},
 	}
 
@@ -164,8 +165,9 @@ func TestValidateEngines(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "empty", engines: ""},
-		{name: "valid engines", engines: "google,bing,duckduckgo-lite"},
-		{name: "invalid characters", engines: "google,bing!", wantErr: true},
+		{name: "valid engines", engines: "google,bing,duckduckgo-lite,docker hub,google news,Torznab EZTV"},
+		{name: "path separator", engines: "google/bing", wantErr: true},
+		{name: "control characters", engines: "google\tbing", wantErr: true},
 		{name: "empty segment", engines: "google,,bing", wantErr: true},
 	}
 
