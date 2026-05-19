@@ -142,8 +142,3 @@ func ValidateSearchArgs(args *SearchArgs) error {
 
 	return nil
 }
-
-// ContainsControlCharacters is exposed for testing.
-func ContainsControlCharacters(s string) bool {
-	return containsControlCharacters(s)
-}

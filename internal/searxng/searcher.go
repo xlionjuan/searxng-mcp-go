@@ -45,8 +45,8 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 	}
 }
 
-// GetDefaultHTTPClient returns the shared default HTTP client.
-func GetDefaultHTTPClient() *http.Client {
+// getDefaultHTTPClient returns the shared default HTTP client.
+func getDefaultHTTPClient() *http.Client {
 	defaultHTTPClientOnce.Do(func() {
 		defaultHTTPClient = newHTTPClient(30 * time.Second)
 	})
@@ -67,7 +67,7 @@ type Searcher interface {
 type SearXNGSearcher struct {
 	client  *http.Client // Configurable HTTP client
 	baseURL string
-	Debug   bool // When true, enables verbose HTTP request/response logging
+	debug   bool // When true, enables verbose HTTP request/response logging
 }
 
 // ensure *SearXNGSearcher implements Searcher
@@ -83,8 +83,8 @@ func (s *SearXNGSearcher) Close() error {
 	return nil
 }
 
-// ValidateBaseURL checks that the baseURL is valid and returns an error if not
-func ValidateBaseURL(baseURL string) error {
+// validateBaseURL checks that the baseURL is valid and returns an error if not
+func validateBaseURL(baseURL string) error {
 	if baseURL == "" {
 		return errors.New("baseurl cannot be empty")
 	}
@@ -122,8 +122,8 @@ func closeResponseBody(resp *http.Response) {
 	}
 }
 
-// IsPrivateHost checks if the host is a private/internal address
-func IsPrivateHost(host string) bool {
+// isPrivateHost checks if the host is a private/internal address
+func isPrivateHost(host string) bool {
 	if h, _, err := net.SplitHostPort(host); err == nil {
 		host = h
 	}
@@ -202,8 +202,8 @@ func IsPrivateHost(host string) bool {
 }
 
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration
-func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Client) (*SearXNGSearcher, error) {
-	if err := ValidateBaseURL(baseURL); err != nil {
+func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Client, debug bool) (*SearXNGSearcher, error) {
+	if err := validateBaseURL(baseURL); err != nil {
 		return nil, fmt.Errorf("newSearXNGSearcher: %w", err)
 	}
 
@@ -212,7 +212,7 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 		return nil, fmt.Errorf("newSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error): %w", err)
 	}
 
-	if parsed.Scheme == "http" && !IsPrivateHost(parsed.Host) {
+	if parsed.Scheme == "http" && !isPrivateHost(parsed.Host) {
 		slog.Warn("Using HTTP for non-private host. Search queries may be transmitted in clear text. Search results could be intercepted and modified by a MITM attacker")
 	}
 
@@ -220,13 +220,14 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 		if timeout > 0 {
 			client = newHTTPClient(timeout)
 		} else {
-			client = GetDefaultHTTPClient()
+			client = getDefaultHTTPClient()
 		}
 	}
 
 	return &SearXNGSearcher{
 		client:  client,
 		baseURL: baseURL,
+		debug:   debug,
 	}, nil
 }
 
@@ -256,6 +257,9 @@ func setBrowserHeaders(req *http.Request) {
 
 // DeduplicateAnswers filters out answers whose text is a prefix (substring)
 // of any infobox content.
+//
+// DeduplicateAnswers is exported for testing. External consumers should use
+// Search/SearchResponse instead.
 func DeduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 	if len(answers) == 0 || len(infoboxes) == 0 {
 		return answers
@@ -404,7 +408,7 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), fmt.Errorf("response body exceeded maximum size limit of %d bytes", MaxResponseBodySize))
 	}
 
-	if s.Debug {
+	if	s.debug {
 		bodyPreview := string(body)
 		if len(bodyPreview) > 500 {
 			bodyPreview = bodyPreview[:500]
@@ -458,7 +462,7 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 		result.Results = result.Results[:*args.Limit]
 	}
 
-	result.Debug = s.Debug
+	result.Debug = s.debug
 
 	return &result, nil
 }
@@ -473,7 +477,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		return nil, err
 	}
 
-	if s.Debug {
+	if	s.debug {
 		bodyPreview := postBodyStr
 		if len(bodyPreview) > 500 {
 			bodyPreview = bodyPreview[:500]
@@ -489,7 +493,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 
 	resp, err := s.client.Do(postReq)
 
-	if s.Debug && err == nil && resp != nil {
+	if s.debug && err == nil && resp != nil {
 		slog.Debug("HTTP response",
 			"status", resp.StatusCode,
 			"content_type", resp.Header.Get("Content-Type"),
@@ -497,7 +501,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	}
 
 	if err == nil && resp != nil && (resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
-		if s.Debug {
+		if	s.debug {
 			slog.Debug("Redirecting to GET fallback", "status", resp.StatusCode, "reason", "POST not supported by server")
 		}
 		closeResponseBody(resp)
@@ -509,7 +513,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		}
 		setBrowserHeaders(getReq)
 
-		if s.Debug {
+		if	s.debug {
 			slog.Debug("HTTP request",
 				"method", getReq.Method,
 				"url", getReq.URL.String(),
@@ -519,7 +523,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 
 		resp, err = s.client.Do(getReq)
 
-		if s.Debug && err == nil && resp != nil {
+		if s.debug && err == nil && resp != nil {
 			slog.Debug("HTTP response",
 				"status", resp.StatusCode,
 				"content_type", resp.Header.Get("Content-Type"),
@@ -537,7 +541,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		if readErr != nil {
 			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read error response body: %w", readErr))
 		}
-		if s.Debug {
+		if	s.debug {
 			errBodyPreview := string(body)
 			if len(errBodyPreview) > 500 {
 				errBodyPreview = errBodyPreview[:500]

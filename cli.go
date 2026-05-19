@@ -97,13 +97,11 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 		return fmt.Errorf("validation error: %w", err)
 	}
 
-	searcher, err := searxng.NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
+	searcher, err := searxng.NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient, debugMode)
 	if err != nil {
 		return fmt.Errorf("failed to create searcher: %w", err)
 	}
 	defer searcher.Close()
-
-	searcher.Debug = debugMode
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
