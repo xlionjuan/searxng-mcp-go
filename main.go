@@ -31,7 +31,7 @@ var (
 )
 
 // ============================================================================
-// CLIFlags holds parsed CLI flag values
+// CLIFlags holds parsed CLI flag values.
 type CLIFlags struct {
 	Query      string
 	JSON       bool
@@ -84,10 +84,13 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 		if arg == "--" {
 			// Everything after -- is positional (standard convention).
 			positionalArgs = append(positionalArgs, args[i+1:]...)
+
 			break
 		}
+
 		if !strings.HasPrefix(arg, "-") {
 			positionalArgs = append(positionalArgs, arg)
+
 			continue
 		}
 
@@ -113,19 +116,24 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 
 	// Use flag.Visit to determine whether optional pointer flags were explicitly set.
 	// When --pageno is not set, leave Pageno nil so CLI mode omits pageno from the
-	// search request (matching MCP mode behaviour and the documented
+	// search request (matching MCP mode behavior and the documented
 	// "omitted = backend default/page 1" contract). Limit always has an effective
 	// default so response truncation is consistent with the documented CLI default.
-	var pagenoPtr *int
-	var limitPtr *int
+	var (
+		pagenoPtr *int
+		limitPtr  *int
+	)
+
 	fs.Visit(func(f *flag.Flag) {
 		if f.Name == "pageno" {
 			pagenoPtr = pageno
 		}
+
 		if f.Name == "limit" {
 			limitPtr = limit
 		}
 	})
+
 	if limitPtr == nil {
 		defaultLimit := defaultResultLimit
 		limitPtr = &defaultLimit
@@ -174,10 +182,12 @@ func main() {
 	}
 
 	if isCLIMode {
-		if err := runCLIMode(flags, positionalArgs); err != nil {
+		err := runCLIMode(flags, positionalArgs)
+		if err != nil {
 			slog.Error("CLI error", "error", err)
 			os.Exit(1)
 		}
+
 		return
 	}
 
@@ -203,5 +213,6 @@ func getConfig(flags CLIFlags) (*searxng.Config, error) {
 	}
 
 	cfg.SearXNGURL = searxngURL
+
 	return cfg, nil
 }

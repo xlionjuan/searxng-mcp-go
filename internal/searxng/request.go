@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -27,7 +28,7 @@ func (s *SearXNGSearcher) buildSearchRequest(ctx context.Context, args *SearchAr
 	}
 
 	safesearch := args.SafeSearch
-	params.Set("safesearch", fmt.Sprintf("%d", safesearch))
+	params.Set("safesearch", strconv.Itoa(safesearch))
 
 	if args.TimeRange != "" {
 		params.Set("time_range", args.TimeRange)
@@ -42,16 +43,18 @@ func (s *SearXNGSearcher) buildSearchRequest(ctx context.Context, args *SearchAr
 	}
 
 	if args.Pageno != nil {
-		params.Set("pageno", fmt.Sprintf("%d", *args.Pageno))
+		params.Set("pageno", strconv.Itoa(*args.Pageno))
 	}
 
 	searchURL := *baseURL
 	searchURL.RawQuery = ""
 	trimmedPath := strings.TrimRight(searchURL.Path, "/")
+
 	lastSegment := trimmedPath
 	if idx := strings.LastIndex(trimmedPath, "/"); idx >= 0 {
 		lastSegment = trimmedPath[idx+1:]
 	}
+
 	if lastSegment != "search" {
 		if trimmedPath == "" {
 			searchURL.Path = "/search"
@@ -63,10 +66,12 @@ func (s *SearXNGSearcher) buildSearchRequest(ctx context.Context, args *SearchAr
 	}
 
 	postBodyStr := params.Encode()
-	postReq, err := http.NewRequestWithContext(ctx, "POST", searchURL.String(), strings.NewReader(postBodyStr))
+
+	postReq, err := http.NewRequestWithContext(ctx, http.MethodPost, searchURL.String(), strings.NewReader(postBodyStr))
 	if err != nil {
 		return nil, "", NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errRequestCreateFailed, err))
 	}
+
 	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	setBrowserHeaders(postReq)
 

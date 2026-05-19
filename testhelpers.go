@@ -14,10 +14,12 @@ func testPerformSearch(t testing.TB, ctx context.Context, cfg *searxng.Config, a
 	if cfg == nil {
 		return nil, searxng.NewSearXNGError(0, "", "", errTestConfigRequired)
 	}
+
 	s, err := searxng.NewSearXNGSearcher(cfg, false)
 	if err != nil {
 		return nil, err
 	}
 	defer s.Close()
+
 	return s.Search(ctx, args)
 }

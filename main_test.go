@@ -66,10 +66,12 @@ func buildTestBinary(t *testing.T) (string, func()) {
 	t.Helper()
 	binPath := filepath.Join(t.TempDir(), "searxng-mcp-go")
 	cmd := exec.Command("go", "build", "-o", binPath, ".")
+
 	cmd.Dir = "."
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("failed to build binary: %v\n%s", err, out)
 	}
+
 	return binPath, func() { os.Remove(binPath) }
 }
 
@@ -83,8 +85,8 @@ func TestValidationExitCode(t *testing.T) {
 
 	cmd := exec.Command(binPath, "--json", "--searxng-url", "http://localhost:9999", "--pageno", "0", "test")
 	cmd.Dir = "."
-	out, err := cmd.CombinedOutput()
 
+	out, err := cmd.CombinedOutput()
 	if err == nil {
 		t.Fatal("expected non-zero exit code for validation error, but process exited with 0")
 	}
@@ -110,9 +112,11 @@ func TestParseArgs_DefaultLimit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseArgs() error = %v, want nil", err)
 	}
+
 	if flags.Limit == nil {
 		t.Fatal("flags.Limit = nil, want default limit pointer")
 	}
+
 	if *flags.Limit != defaultResultLimit {
 		t.Fatalf("flags.Limit = %d, want %d", *flags.Limit, defaultResultLimit)
 	}
@@ -125,9 +129,11 @@ func TestParseArgs_ExplicitLimit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseArgs() error = %v, want nil", err)
 	}
+
 	if flags.Limit == nil {
 		t.Fatal("flags.Limit = nil, want explicit limit pointer")
 	}
+
 	if *flags.Limit != 7 {
 		t.Fatalf("flags.Limit = %d, want 7", *flags.Limit)
 	}
@@ -151,6 +157,7 @@ func TestParseArgs_InvalidFlags(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
+
 			if !strings.Contains(err.Error(), tt.errSubstr) {
 				t.Errorf("error %q does not contain %q", err.Error(), tt.errSubstr)
 			}
@@ -278,7 +285,7 @@ func TestParseArgs(t *testing.T) {
 			name:           "--pageno explicitly set",
 			args:           []string{"--pageno", "3", "test query"},
 			wantCLIMode:    true,
-			wantFlags:      CLIFlags{Language: "", SafeSearch: 0, Pageno: intPtr(3)},
+			wantFlags:      CLIFlags{Language: "", SafeSearch: 0, Pageno: new(3)},
 			wantPositional: []string{"test query"},
 			wantErr:        false,
 		},
@@ -292,9 +299,11 @@ func TestParseArgs(t *testing.T) {
 				if err == nil {
 					t.Fatal("expected error, got nil")
 				}
+
 				if tt.errSubstr != "" && !strings.Contains(err.Error(), tt.errSubstr) {
 					t.Errorf("error %q does not contain %q", err.Error(), tt.errSubstr)
 				}
+
 				return
 			}
 
@@ -309,37 +318,48 @@ func TestParseArgs(t *testing.T) {
 			if flags.Language != tt.wantFlags.Language {
 				t.Errorf("flags.Language = %q, want %q", flags.Language, tt.wantFlags.Language)
 			}
+
 			if flags.SafeSearch != tt.wantFlags.SafeSearch {
 				t.Errorf("flags.SafeSearch = %d, want %d", flags.SafeSearch, tt.wantFlags.SafeSearch)
 			}
+
 			if (flags.Pageno == nil) != (tt.wantFlags.Pageno == nil) ||
 				(flags.Pageno != nil && tt.wantFlags.Pageno != nil && *flags.Pageno != *tt.wantFlags.Pageno) {
 				t.Errorf("flags.Pageno = %v, want %v", flags.Pageno, tt.wantFlags.Pageno)
 			}
+
 			if flags.Query != tt.wantFlags.Query {
 				t.Errorf("flags.Query = %q, want %q", flags.Query, tt.wantFlags.Query)
 			}
+
 			if flags.Help != tt.wantFlags.Help {
 				t.Errorf("flags.Help = %v, want %v", flags.Help, tt.wantFlags.Help)
 			}
+
 			if flags.Version != tt.wantFlags.Version {
 				t.Errorf("flags.Version = %v, want %v", flags.Version, tt.wantFlags.Version)
 			}
+
 			if flags.JSON != tt.wantFlags.JSON {
 				t.Errorf("flags.JSON = %v, want %v", flags.JSON, tt.wantFlags.JSON)
 			}
+
 			if flags.SearXNGURL != tt.wantFlags.SearXNGURL {
 				t.Errorf("flags.SearXNGURL = %q, want %q", flags.SearXNGURL, tt.wantFlags.SearXNGURL)
 			}
+
 			if flags.TimeRange != tt.wantFlags.TimeRange {
 				t.Errorf("flags.TimeRange = %q, want %q", flags.TimeRange, tt.wantFlags.TimeRange)
 			}
+
 			if flags.Categories != tt.wantFlags.Categories {
 				t.Errorf("flags.Categories = %q, want %q", flags.Categories, tt.wantFlags.Categories)
 			}
+
 			if flags.Engines != tt.wantFlags.Engines {
 				t.Errorf("flags.Engines = %q, want %q", flags.Engines, tt.wantFlags.Engines)
 			}
+
 			if flags.Debug != tt.wantFlags.Debug {
 				t.Errorf("flags.Debug = %v, want %v", flags.Debug, tt.wantFlags.Debug)
 			}
@@ -347,10 +367,12 @@ func TestParseArgs(t *testing.T) {
 			if len(positionalArgs) != len(tt.wantPositional) {
 				t.Errorf("positionalArgs = %v, want %v", positionalArgs, tt.wantPositional)
 			}
+
 			for i, pos := range positionalArgs {
 				if i >= len(tt.wantPositional) {
 					break
 				}
+
 				if pos != tt.wantPositional[i] {
 					t.Errorf("positionalArgs[%d] = %q, want %q", i, pos, tt.wantPositional[i])
 				}
@@ -386,6 +408,7 @@ func TestPrepareMCPStdin(t *testing.T) {
 	t.Parallel()
 
 	input := `{"jsonrpc":"2.0","method":"initialize","id":1}` + "\n" + `{"jsonrpc":"2.0","method":"tools/list","id":2}` + "\n"
+
 	stdin, err := prepareMCPStdin(strings.NewReader(input))
 	if err != nil {
 		t.Fatalf("prepareMCPStdin() returned error: %v", err)
@@ -431,6 +454,7 @@ func TestPrepareMCPStdinRejectsInvalidInput(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
+
 	if err.Error() != "stdin does not contain a valid MCP initialize message" {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -440,10 +464,12 @@ func TestPrepareMCPStdinRejectsOversizedInitializeLine(t *testing.T) {
 	t.Parallel()
 
 	input := `{"jsonrpc":"2.0","method":"initialize","padding":"` + strings.Repeat("a", mcpInitializeMaxBytes) + `"}` + "\n"
+
 	_, err := prepareMCPStdin(strings.NewReader(input))
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
+
 	if err.Error() != "stdin does not contain a valid MCP initialize message" {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -451,6 +477,7 @@ func TestPrepareMCPStdinRejectsOversizedInitializeLine(t *testing.T) {
 
 func TestAttachStdin(t *testing.T) {
 	originalStdin := os.Stdin
+
 	t.Cleanup(func() {
 		os.Stdin = originalStdin
 	})
@@ -465,6 +492,7 @@ func TestAttachStdin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read attached stdin: %v", err)
 	}
+
 	if string(got) != "stdin payload" {
 		t.Fatalf("attached stdin mismatch: got %q", string(got))
 	}
@@ -472,9 +500,11 @@ func TestAttachStdin(t *testing.T) {
 
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
+
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+
 	defer func() {
 		os.Stdout = oldStdout
 	}()
@@ -483,6 +513,7 @@ func captureStdout(t *testing.T, fn func()) string {
 		defer func() {
 			_ = w.Close()
 		}()
+
 		fn()
 	}()
 
@@ -490,6 +521,7 @@ func captureStdout(t *testing.T, fn func()) string {
 	if _, err := buf.ReadFrom(r); err != nil {
 		t.Fatalf("failed to read stdout: %v", err)
 	}
+
 	return buf.String()
 }
 
@@ -501,6 +533,7 @@ func TestGetConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
+
 		if cfg.SearXNGURL != "https://flag.example.com" {
 			t.Fatalf("SearXNGURL = %q, want flag value", cfg.SearXNGURL)
 		}
@@ -511,6 +544,7 @@ func TestGetConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
+
 		if cfg.SearXNGURL != "https://env.example.com" {
 			t.Fatalf("SearXNGURL = %q, want env value", cfg.SearXNGURL)
 		}
@@ -518,10 +552,12 @@ func TestGetConfig(t *testing.T) {
 
 	t.Run("error when neither set", func(t *testing.T) {
 		t.Setenv("SEARXNG_URL", "")
+
 		_, err := getConfig(CLIFlags{})
 		if err == nil {
 			t.Fatal("getConfig() error = nil, want error")
 		}
+
 		if !strings.Contains(err.Error(), "SearXNG_URL") || !strings.Contains(err.Error(), "required") {
 			t.Fatalf("getConfig() error = %q, want error mentioning 'SearXNG_URL' and 'required'", err.Error())
 		}
@@ -537,6 +573,7 @@ func TestRunCLIMode_SuccessTextOutput(t *testing.T) {
 	defer server.Close()
 
 	var err error
+
 	output := captureStdout(t, func() {
 		err = runCLIMode(CLIFlags{Query: "golang", SearXNGURL: server.URL, Pageno: nil}, nil)
 	})
@@ -558,6 +595,7 @@ func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
 	defer server.Close()
 
 	var err error
+
 	output := captureStdout(t, func() {
 		err = runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: nil}, nil)
 	})
@@ -569,6 +607,7 @@ func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
 	if err := json.Unmarshal([]byte(output), &resp); err != nil {
 		t.Fatalf("output is not valid JSON: %v\n%s", err, output)
 	}
+
 	if resp.Query != "golang" || len(resp.Results) != 1 || resp.Results[0].Title != "Go" {
 		t.Fatalf("unexpected JSON output: %+v", resp)
 	}
@@ -584,9 +623,11 @@ func TestRunCLIMode_DebugJSONIncludesUnresponsiveEngines(t *testing.T) {
 
 	oldDebug := debugMode
 	debugMode = true
+
 	defer func() { debugMode = oldDebug }()
 
 	var err error
+
 	output := captureStdout(t, func() {
 		err = runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: nil}, nil)
 	})
@@ -608,6 +649,7 @@ func TestRunCLIMode_QueryPrecedence(t *testing.T) {
 	defer server.Close()
 
 	var err error
+
 	output := captureStdout(t, func() {
 		err = runCLIMode(CLIFlags{Query: "flag query", SearXNGURL: server.URL, Pageno: nil}, []string{"positional query"})
 	})
@@ -627,9 +669,11 @@ func TestRunCLIMode_MultiplePositionalArgsError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
+
 	if !strings.Contains(err.Error(), "only one query is accepted") {
 		t.Fatalf("error %q does not contain %q", err.Error(), "only one query is accepted")
 	}
+
 	if !strings.Contains(err.Error(), "use quotes") {
 		t.Fatalf("error %q does not contain %q", err.Error(), "use quotes")
 	}
@@ -637,10 +681,12 @@ func TestRunCLIMode_MultiplePositionalArgsError(t *testing.T) {
 
 func newTestSearchServer(t *testing.T, resp searxng.SearchResponse) *httptest.Server {
 	t.Helper()
+
 	body, err := json.Marshal(resp)
 	if err != nil {
 		t.Fatalf("failed to marshal response: %v", err)
 	}
+
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -681,7 +727,7 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 		},
 		{
 			name:      "pageno zero",
-			flags:     CLIFlags{Query: "test", SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: 0, Pageno: intPtr(0)},
+			flags:     CLIFlags{Query: "test", SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: 0, Pageno: new(0)},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
@@ -702,6 +748,7 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 				if err == nil {
 					t.Fatal("expected error, got nil")
 				}
+
 				if !strings.Contains(err.Error(), tt.errSubstr) {
 					t.Errorf("error %q does not contain %q", err.Error(), tt.errSubstr)
 				}
@@ -727,6 +774,7 @@ func TestRunCLIMode_HelpFlag(t *testing.T) {
 	if !strings.Contains(output, "SearXNG") {
 		t.Errorf("expected help output to contain 'SearXNG', got output: %q", output)
 	}
+
 	if !strings.Contains(output, "USAGE:") {
 		t.Errorf("expected help output to contain 'USAGE:', got output: %q", output)
 	}
@@ -745,6 +793,7 @@ func TestRunCLIMode_VersionFlag(t *testing.T) {
 	if !strings.Contains(output, "version") {
 		t.Errorf("expected version output to contain 'version', got output: %q", output)
 	}
+
 	if !strings.Contains(output, "searxng-mcp-go") {
 		t.Errorf("expected version output to contain 'searxng-mcp-go', got output: %q", output)
 	}
@@ -759,6 +808,7 @@ func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid URL, got nil")
 	}
+
 	if !strings.Contains(err.Error(), "search error") && !strings.Contains(err.Error(), "invalid") {
 		t.Errorf("expected search error with 'invalid', got: %v", err)
 	}
@@ -806,6 +856,7 @@ func TestRunCLIMode_FlagOnlyInvocations(t *testing.T) {
 				if err == nil {
 					t.Fatal("expected error, got nil")
 				}
+
 				if !strings.Contains(err.Error(), tt.errSubstr) {
 					t.Errorf("error %q does not contain %q", err.Error(), tt.errSubstr)
 				}

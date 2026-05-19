@@ -21,7 +21,7 @@ var (
 	errJSONEncodeFailed    = errors.New("failed to encode json")
 )
 
-// printCLIHelp prints the help message for CLI mode
+// printCLIHelp prints the help message for CLI mode.
 func printCLIHelp() {
 	fmt.Println(`SearXNG MCP Server - CLI Mode (v` + version + `)
 
@@ -75,12 +75,14 @@ For more information, see: https://github.com/xlionjuan/searxng-mcp-go`)
 func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	if flags.Help {
 		printCLIHelp()
+
 		return nil
 	}
 
 	if flags.Version {
 		fmt.Println("searxng-mcp-go version " + version)
 		fmt.Println("SearXNG MCP Server - CLI + MCP stdio dual-mode")
+
 		return nil
 	}
 
@@ -89,6 +91,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 		if len(positionalArgs) > 1 {
 			return errMultipleQueries
 		}
+
 		if len(positionalArgs) > 0 {
 			query = positionalArgs[0]
 		}
@@ -102,6 +105,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	if err != nil {
 		return fmt.Errorf("%w: %w", errConfigurationFailed, err)
 	}
+
 	args := &searxng.SearchArgs{
 		Query:      query,
 		Language:   flags.Language,
@@ -125,6 +129,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
 	resp, err := searcher.Search(ctx, args)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errSearchFailed, err)
@@ -134,9 +139,12 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 		if debugMode {
 			fmt.Println()
 		}
+
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		if err := enc.Encode(resp); err != nil {
+
+		err := enc.Encode(resp)
+		if err != nil {
 			return fmt.Errorf("%w: %w", errJSONEncodeFailed, err)
 		}
 	} else {

@@ -91,32 +91,42 @@ func prepareMCPStdin(stdin io.Reader) (io.Reader, error) {
 	}
 
 	resultCh := make(chan result, 1)
+
 	go func() {
 		reader := bufio.NewReader(stdin)
 		firstLine := make([]byte, 0)
+
 		for {
 			fragment, err := reader.ReadSlice('\n')
+
 			firstLine = append(firstLine, fragment...)
 			if len(firstLine) > mcpInitializeMaxBytes {
 				resultCh <- result{reader: nil, err: errInvalidMCPInitializeMessage}
+
 				return
 			}
+
 			if err == nil {
 				break
 			}
+
 			if err == io.EOF {
 				break
 			}
 
 			if !errors.Is(err, bufio.ErrBufferFull) {
 				resultCh <- result{reader: nil, err: errInvalidMCPInitializeMessage}
+
 				return
 			}
 		}
+
 		if len(firstLine) > mcpInitializeMaxBytes || !isValidMCPInitializeMessage(firstLine) {
 			resultCh <- result{reader: nil, err: errInvalidMCPInitializeMessage}
+
 			return
 		}
+
 		resultCh <- result{reader: io.MultiReader(bytes.NewReader(firstLine), reader)}
 	}()
 
@@ -127,6 +137,7 @@ func prepareMCPStdin(stdin io.Reader) (io.Reader, error) {
 		if res.err != nil {
 			return nil, res.err
 		}
+
 		return res.reader, nil
 	}
 }
@@ -139,7 +150,8 @@ func isValidMCPInitializeMessage(line []byte) bool {
 	}
 
 	var msg mcpInitializeMessage
-	if err := json.Unmarshal(line, &msg); err != nil {
+	err := json.Unmarshal(line, &msg)
+	if err != nil {
 		return false
 	}
 
@@ -151,6 +163,7 @@ func isValidMCPInitializeMessage(line []byte) bool {
 // restore function to revert os.Stdin to its original value.
 func attachStdin(stdin io.Reader) (restore func(), err error) {
 	originalStdin := os.Stdin
+
 	pr, pw, err := os.Pipe()
 	if err != nil {
 		return nil, err
@@ -163,6 +176,7 @@ func attachStdin(stdin io.Reader) (restore func(), err error) {
 		if copyErr != nil {
 			slog.Debug("failed to copy MCP stdin", "error", copyErr)
 		}
+
 		_ = pw.Close()
 	}()
 
@@ -245,7 +259,7 @@ func NewSearchToolHandler(searcher searchTool) func(context.Context, *mcp.CallTo
 		if err != nil {
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: fmt.Sprintf("Search error: %s", err.Error())},
+					&mcp.TextContent{Text: "Search error: " + err.Error()},
 				},
 				IsError: true,
 			}, nil, nil
@@ -255,11 +269,12 @@ func NewSearchToolHandler(searcher searchTool) func(context.Context, *mcp.CallTo
 		if err != nil {
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: fmt.Sprintf("json marshal error: %s", err.Error())},
+					&mcp.TextContent{Text: "json marshal error: " + err.Error()},
 				},
 				IsError: true,
 			}, nil, nil
 		}
+
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: string(jsonBytes)},

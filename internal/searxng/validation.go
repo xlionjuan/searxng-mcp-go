@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-// MaxQueryLength is the maximum allowed length for search queries
+// MaxQueryLength is the maximum allowed length for search queries.
 const MaxQueryLength = 500
 
-// validTimeRanges contains the set of valid time range values
+// validTimeRanges contains the set of valid time range values.
 var validTimeRanges = map[string]bool{"day": true, "month": true, "year": true}
 
 // languagePattern validates common BCP47-like language tags used by SearXNG.
@@ -18,13 +18,14 @@ var languagePattern = regexp.MustCompile(`^[\p{L}]{2,35}(?:-[\p{L}\p{N}]{1,35})*
 const maxLanguageLength = 35
 
 // containsControlCharacters checks if a string contains control characters
-// (characters in the range \x00-\x1f and \x7f)
+// (characters in the range \x00-\x1f and \x7f).
 func containsControlCharacters(s string) bool {
 	for _, r := range s {
 		if r < 32 || r == 127 {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -35,49 +36,59 @@ func isValidCategoryOrEngine(value string) bool {
 	if len(trimmed) == 0 {
 		return false
 	}
+
 	if len(trimmed) > maxIdentifierLength {
 		return false
 	}
+
 	for _, r := range trimmed {
 		if r < 32 || r == 127 {
 			return false
 		}
+
 		if r == '/' || r == '\\' {
 			return false
 		}
 	}
+
 	return true
 }
 
-// ValidateCategories validates a comma-separated list of categories
+// ValidateCategories validates a comma-separated list of categories.
 func ValidateCategories(categories string) error {
 	if categories == "" {
 		return nil
 	}
-	for _, cat := range strings.Split(categories, ",") {
+
+	for cat := range strings.SplitSeq(categories, ",") {
 		if strings.TrimSpace(cat) == "" {
 			return NewValidationError("categories", "contains invalid category")
 		}
+
 		if !isValidCategoryOrEngine(cat) {
 			return NewValidationError("categories", "contains invalid category")
 		}
 	}
+
 	return nil
 }
 
-// ValidateEngines validates a comma-separated list of engines
+// ValidateEngines validates a comma-separated list of engines.
 func ValidateEngines(engines string) error {
 	if engines == "" {
 		return nil
 	}
-	for _, eng := range strings.Split(engines, ",") {
+
+	for eng := range strings.SplitSeq(engines, ",") {
 		if strings.TrimSpace(eng) == "" {
 			return NewValidationError("engines", "contains invalid engine")
 		}
+
 		if !isValidCategoryOrEngine(eng) {
 			return NewValidationError("engines", "contains invalid engine")
 		}
 	}
+
 	return nil
 }
 
@@ -116,13 +127,15 @@ func ValidateSearchArgs(args *SearchArgs) error {
 	}
 
 	if args.Categories != "" {
-		if err := ValidateCategories(args.Categories); err != nil {
+		err := ValidateCategories(args.Categories)
+		if err != nil {
 			return err
 		}
 	}
 
 	if args.Engines != "" {
-		if err := ValidateEngines(args.Engines); err != nil {
+		err := ValidateEngines(args.Engines)
+		if err != nil {
 			return err
 		}
 	}
@@ -134,6 +147,7 @@ func ValidateSearchArgs(args *SearchArgs) error {
 			if len(args.Language) > maxLanguageLength {
 				return NewValidationError("language", "must be 35 characters or less")
 			}
+
 			if !languagePattern.MatchString(args.Language) {
 				return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja, en-US)")
 			}

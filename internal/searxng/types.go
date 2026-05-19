@@ -8,14 +8,14 @@ import (
 	"time"
 )
 
-// Config holds the SearXNG configuration
+// Config holds the SearXNG configuration.
 type Config struct {
 	SearXNGURL string
 	Timeout    time.Duration
 	HTTPClient *http.Client // Optional custom HTTP client
 }
 
-// DefaultConfig returns the default configuration
+// DefaultConfig returns the default configuration.
 func DefaultConfig() *Config {
 	return &Config{
 		SearXNGURL: "",
@@ -23,7 +23,7 @@ func DefaultConfig() *Config {
 	}
 }
 
-// SearchArgs defines the arguments for the search tool
+// SearchArgs defines the arguments for the search tool.
 type SearchArgs struct {
 	Query      string `json:"query"`
 	Language   string `json:"language"`
@@ -35,7 +35,7 @@ type SearchArgs struct {
 	Limit      *int   `json:"limit"`
 }
 
-// SearchResult represents a single search result
+// SearchResult represents a single search result.
 type SearchResult struct {
 	Title         string  `json:"title"`
 	URL           string  `json:"url"`
@@ -129,12 +129,16 @@ type WeatherMeasure struct {
 // typed answers do not include the legacy answer string.
 func (a *Answer) UnmarshalJSON(data []byte) error {
 	type answerAlias Answer
+
 	var parsed answerAlias
-	if err := json.Unmarshal(data, &parsed); err != nil {
+	err := json.Unmarshal(data, &parsed)
+	if err != nil {
 		return err
 	}
+
 	*a = Answer(parsed)
 	a.EnsureFallback()
+
 	return nil
 }
 
@@ -143,10 +147,13 @@ func (a *Answer) EnsureFallback() {
 	if strings.TrimSpace(a.Answer) != "" {
 		return
 	}
+
 	if fallback := a.translationFallback(); fallback != "" {
 		a.Answer = fallback
+
 		return
 	}
+
 	if fallback := a.weatherFallback(); fallback != "" {
 		a.Answer = fallback
 	}
@@ -156,6 +163,7 @@ func (a Answer) translationFallback() string {
 	if len(a.Translations) == 0 {
 		return ""
 	}
+
 	parts := make([]string, 0, len(a.Translations))
 	for _, item := range a.Translations {
 		text := strings.TrimSpace(item.Text)
@@ -163,9 +171,11 @@ func (a Answer) translationFallback() string {
 			parts = append(parts, text)
 		}
 	}
+
 	if len(parts) == 0 {
 		return ""
 	}
+
 	return "Translation: " + strings.Join(parts, "; ")
 }
 
@@ -173,6 +183,7 @@ func (a Answer) weatherFallback() string {
 	if a.Current == nil {
 		return ""
 	}
+
 	current := a.Current
 	if summary := strings.TrimSpace(current.Summary); summary != "" {
 		return summary
@@ -182,15 +193,19 @@ func (a Answer) weatherFallback() string {
 	if location := strings.TrimSpace(current.Location.Name); location != "" {
 		parts = append(parts, location)
 	}
+
 	if temperature := current.Temperature.String(); temperature != "" {
 		parts = append(parts, temperature)
 	}
+
 	if condition := strings.TrimSpace(current.Condition); condition != "" {
 		parts = append(parts, condition)
 	}
+
 	if len(parts) == 0 {
 		return ""
 	}
+
 	return "Weather: " + strings.Join(parts, ", ")
 }
 
@@ -199,14 +214,16 @@ func (m WeatherMeasure) String() string {
 	if m.Val == 0 && m.Unit == "" {
 		return ""
 	}
+
 	value := strconv.FormatFloat(m.Val, 'f', -1, 64)
 	if m.Unit == "" {
 		return value
 	}
+
 	return value + " " + m.Unit
 }
 
-// SearchResponse represents the full search response from SearXNG
+// SearchResponse represents the full search response from SearXNG.
 type SearchResponse struct {
 	Query               string         `json:"query"`
 	Answers             []Answer       `json:"answers,omitempty"`
@@ -236,9 +253,11 @@ func (r SearchResponse) MarshalJSON() ([]byte, error) {
 	if r.Results == nil {
 		r.Results = []SearchResult{}
 	}
+
 	if r.Suggestions == nil {
 		r.Suggestions = []string{}
 	}
+
 	base := searchResponseJSON{
 		Query:           r.Query,
 		Answers:         r.Answers,
@@ -251,7 +270,9 @@ func (r SearchResponse) MarshalJSON() ([]byte, error) {
 		if r.UnresponsiveEngines == nil {
 			r.UnresponsiveEngines = [][]string{}
 		}
+
 		base.UnresponsiveEngines = &r.UnresponsiveEngines
 	}
+
 	return json.Marshal(base)
 }

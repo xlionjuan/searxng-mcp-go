@@ -28,35 +28,36 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("validation error on %q: %s", e.Field, e.Message)
 }
 
-// Is implements the errors.Is interface for ValidationError
+// Is implements the errors.Is interface for ValidationError.
 func (e *ValidationError) Is(target error) bool {
 	ve, ok := target.(*ValidationError)
 	if !ok {
 		return false
 	}
+
 	return e.Field == ve.Field && e.Message == ve.Message
 }
 
-// NewValidationError creates a new ValidationError
+// NewValidationError creates a new ValidationError.
 func NewValidationError(field, message string) *ValidationError {
 	return &ValidationError{Field: field, Message: message}
 }
 
-// TruncateBody returns a truncated preview of body for error messages
+// TruncateBody returns a truncated preview of body for error messages.
 func TruncateBody(body []byte, maxLen int) string {
 	if len(body) == 0 || maxLen <= 0 {
 		return ""
 	}
-	previewLen := len(body)
-	if previewLen > maxLen {
-		previewLen = maxLen
-	}
+
+	previewLen := min(len(body), maxLen)
+
 	return string(body[:previewLen])
 }
 
-// IsValidationError checks if an error is a ValidationError
+// IsValidationError checks if an error is a ValidationError.
 func IsValidationError(err error) bool {
 	var ve *ValidationError
+
 	return errors.As(err, &ve)
 }
 
@@ -74,17 +75,19 @@ func (e *SearXNGError) Error() string {
 		if e.RespContentType != "" {
 			return fmt.Sprintf("searxng error (status %d) - content-type %s: %v", e.StatusCode, e.RespContentType, e.UnderlyingErr)
 		}
+
 		return fmt.Sprintf("searxng error (status %d): %v", e.StatusCode, e.UnderlyingErr)
 	}
+
 	return fmt.Sprintf("searxng error: status %d, content-type: %s", e.StatusCode, e.RespContentType)
 }
 
-// Unwrap returns the underlying error for errors.Is/ errors.As support
+// Unwrap returns the underlying error for errors.Is/ errors.As support.
 func (e *SearXNGError) Unwrap() error {
 	return e.UnderlyingErr
 }
 
-// NewSearXNGError creates a new SearXNGError
+// NewSearXNGError creates a new SearXNGError.
 func NewSearXNGError(statusCode int, contentType, body string, err error) *SearXNGError {
 	return &SearXNGError{
 		StatusCode:      statusCode,
@@ -94,11 +97,12 @@ func NewSearXNGError(statusCode int, contentType, body string, err error) *SearX
 	}
 }
 
-// HTTPStatusError creates a SearXNGError from an HTTP status code
+// HTTPStatusError creates a SearXNGError from an HTTP status code.
 func HTTPStatusError(statusCode int, contentType string, body []byte) error {
 	bodyStr := TruncateBody(body, MaxErrorDisplayChars)
 
 	var err error
+
 	switch statusCode {
 	case 400:
 		err = errBadRequest
@@ -125,7 +129,7 @@ func HTTPStatusError(statusCode int, contentType string, body []byte) error {
 	return NewSearXNGError(statusCode, contentType, bodyStr, err)
 }
 
-// HTMLResponseError creates a specialized error for HTML responses (JSON not enabled)
+// HTMLResponseError creates a specialized error for HTML responses (JSON not enabled).
 type HTMLResponseError struct {
 	Body          string // Truncated HTML body
 	UnderlyingErr error  // The underlying network error if any

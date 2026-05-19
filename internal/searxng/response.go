@@ -23,10 +23,12 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 	if err != nil {
 		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("%w: %w", errResponseReadFailed, err))
 	}
+
 	truncated, truncErr := isBodyTruncated(resp.Body)
 	if truncErr != nil {
 		slog.Debug("isBodyTruncated read error", "error", truncErr)
 	}
+
 	if truncated {
 		err := fmt.Errorf("%w of %d bytes", errResponseBodyTooLarge, MaxResponseBodySize)
 
@@ -38,6 +40,7 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 		if len(bodyPreview) > 500 {
 			bodyPreview = bodyPreview[:500]
 		}
+
 		slog.Debug("HTTP response body",
 			"status", resp.StatusCode,
 			"content_type", resp.Header.Get("Content-Type"),
@@ -54,11 +57,11 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 		if bodyLen == 0 {
 			return nil, &HTMLResponseError{Body: "", UnderlyingErr: nil}
 		}
-		previewLen := bodyLen
-		if previewLen > MaxErrorDisplayChars {
-			previewLen = MaxErrorDisplayChars
-		}
+
+		previewLen := min(bodyLen, MaxErrorDisplayChars)
+
 		slog.Debug("HTMLResponseError: received HTML instead of JSON", "preview", string(body[:previewLen]))
+
 		return nil, &HTMLResponseError{Body: string(body[:previewLen]), UnderlyingErr: nil}
 	}
 
@@ -67,6 +70,7 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 		if len(bodyPreview) > MaxErrorDisplayChars {
 			bodyPreview = bodyPreview[:MaxErrorDisplayChars] + "..."
 		}
+
 		slog.Debug("UnexpectedContentTypeError", "content_type", contentType, "body_preview", bodyPreview)
 
 		return nil, NewSearXNGError(resp.StatusCode, contentType, "", errUnexpectedContentType)

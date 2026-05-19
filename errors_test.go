@@ -23,6 +23,7 @@ func TestValidationError(t *testing.T) {
 
 	t.Run("Is matches same field and message", func(t *testing.T) {
 		t.Parallel()
+
 		err1 := searxng.NewValidationError("query", "is required")
 		err2 := searxng.NewValidationError("query", "is required")
 		err3 := searxng.NewValidationError("query", "must be longer")
@@ -31,9 +32,11 @@ func TestValidationError(t *testing.T) {
 		if !err1.Is(err2) {
 			t.Errorf("err1.Is(err2) = false, want true (same field and message)")
 		}
+
 		if err1.Is(err3) {
 			t.Errorf("err1.Is(err3) = true, want false (different message)")
 		}
+
 		if err1.Is(err4) {
 			t.Errorf("err1.Is(err4) = true, want false (different field)")
 		}
@@ -45,6 +48,7 @@ func TestValidationError(t *testing.T) {
 
 	t.Run("IsValidationError detects ValidationError", func(t *testing.T) {
 		t.Parallel()
+
 		err := searxng.NewValidationError("query", "is required")
 
 		if !searxng.IsValidationError(err) {
@@ -54,6 +58,7 @@ func TestValidationError(t *testing.T) {
 		if searxng.IsValidationError(errNotValidationTestError) {
 			t.Errorf("IsValidationError(non-ValidationError) = true, want false")
 		}
+
 		if searxng.IsValidationError(nil) {
 			t.Errorf("IsValidationError(nil) = true, want false")
 		}
@@ -102,10 +107,12 @@ func TestHTTPStatusError(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("status_%d", tc.statusCode), func(t *testing.T) {
 			t.Parallel()
+
 			err := searxng.HTTPStatusError(tc.statusCode, tc.contentType, tc.body)
 			if err == nil {
 				t.Fatalf("expected error for status %d, got nil", tc.statusCode)
 			}
+
 			if !strings.Contains(strings.ToLower(err.Error()), tc.errContains) {
 				t.Errorf("expected error containing %q, got: %v", tc.errContains, err)
 			}
@@ -118,6 +125,7 @@ func TestHTTPStatusError(t *testing.T) {
 			if searxngErr.StatusCode != tc.statusCode {
 				t.Errorf("SearXNGError.StatusCode = %d, want %d", searxngErr.StatusCode, tc.statusCode)
 			}
+
 			if searxngErr.RespContentType != tc.contentType {
 				t.Errorf("SearXNGError.RespContentType = %q, want %q", searxngErr.RespContentType, tc.contentType)
 			}
@@ -200,6 +208,7 @@ func TestTruncateBody(t *testing.T) {
 
 	t.Run("nil input", func(t *testing.T) {
 		t.Parallel()
+
 		if got := searxng.TruncateBody(nil, 10); got != "" {
 			t.Errorf("TruncateBody(nil, 10) = %q, want %q", got, "")
 		}
@@ -207,6 +216,7 @@ func TestTruncateBody(t *testing.T) {
 
 	t.Run("empty input", func(t *testing.T) {
 		t.Parallel()
+
 		if got := searxng.TruncateBody([]byte{}, 10); got != "" {
 			t.Errorf("TruncateBody({}, 10) = %q, want %q", got, "")
 		}
@@ -214,6 +224,7 @@ func TestTruncateBody(t *testing.T) {
 
 	t.Run("shorter than maxLen", func(t *testing.T) {
 		t.Parallel()
+
 		body := []byte("hello")
 		if got := searxng.TruncateBody(body, 10); got != "hello" {
 			t.Errorf("TruncateBody(hello, 10) = %q, want %q", got, "hello")
@@ -222,6 +233,7 @@ func TestTruncateBody(t *testing.T) {
 
 	t.Run("exactly maxLen", func(t *testing.T) {
 		t.Parallel()
+
 		body := []byte("hello")
 		if got := searxng.TruncateBody(body, 5); got != "hello" {
 			t.Errorf("TruncateBody(hello, 5) = %q, want %q", got, "hello")
@@ -230,6 +242,7 @@ func TestTruncateBody(t *testing.T) {
 
 	t.Run("longer than maxLen", func(t *testing.T) {
 		t.Parallel()
+
 		body := []byte("hello world")
 		if got := searxng.TruncateBody(body, 5); got != "hello" {
 			t.Errorf("TruncateBody(hello world, 5) = %q, want %q", got, "hello")
@@ -259,6 +272,7 @@ func TestTruncateBody(t *testing.T) {
 		t.Parallel()
 		// "abc你" is 6 bytes (3 ASCII + 3 for 你)
 		body := []byte("abc你")
+
 		got := searxng.TruncateBody(body, 6)
 		if got != "abc你" {
 			t.Errorf("TruncateBody(abc你, 6) = %q, want %q", got, "abc你")
@@ -267,6 +281,7 @@ func TestTruncateBody(t *testing.T) {
 
 	t.Run("zero maxLen", func(t *testing.T) {
 		t.Parallel()
+
 		body := []byte("hello")
 		if got := searxng.TruncateBody(body, 0); got != "" {
 			t.Errorf("TruncateBody(hello, 0) = %q, want %q", got, "")
@@ -275,6 +290,7 @@ func TestTruncateBody(t *testing.T) {
 
 	t.Run("negative maxLen", func(t *testing.T) {
 		t.Parallel()
+
 		body := []byte("hello")
 		if got := searxng.TruncateBody(body, -1); got != "" {
 			t.Errorf("TruncateBody(hello, -1) = %q, want %q", got, "")
@@ -300,6 +316,7 @@ func containsRune(s string, r rune) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -324,6 +341,7 @@ func TestSearXNGError_Error_WithUnderlying(t *testing.T) {
 	if !strings.Contains(errMsg, "searxng error (status 500)") {
 		t.Errorf("expected error to contain 'searxng error (status 500)', got: %s", errMsg)
 	}
+
 	if !strings.Contains(errMsg, "connection refused") {
 		t.Errorf("expected error to contain 'connection refused', got: %s", errMsg)
 	}

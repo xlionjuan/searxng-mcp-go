@@ -10,24 +10,30 @@ import (
 
 func assertValidSearchArgs(t *testing.T, args *searxng.SearchArgs) {
 	t.Helper()
-	if err := searxng.ValidateSearchArgs(args); err != nil {
+
+	err := searxng.ValidateSearchArgs(args)
+	if err != nil {
 		t.Fatalf("expected valid args, got %v", err)
 	}
 }
 
 func assertValidationError(t *testing.T, args *searxng.SearchArgs, field, contains string) {
 	t.Helper()
+
 	err := searxng.ValidateSearchArgs(args)
 	if err == nil {
 		t.Fatalf("expected validation error for %s", field)
 	}
+
 	ve, ok := err.(*searxng.ValidationError)
 	if !ok {
 		t.Fatalf("expected ValidationError, got %T", err)
 	}
+
 	if ve.Field != field {
 		t.Fatalf("field = %q, want %q", ve.Field, field)
 	}
+
 	if contains != "" && !strings.Contains(err.Error(), contains) {
 		t.Fatalf("error %q does not contain %q", err.Error(), contains)
 	}
@@ -100,10 +106,13 @@ func TestValidateSearchArgs_Language(t *testing.T) {
 
 	t.Run("auto is normalized to empty", func(t *testing.T) {
 		t.Parallel()
+
 		args := &searxng.SearchArgs{Query: "test", Language: "auto"}
-		if err := searxng.ValidateSearchArgs(args); err != nil {
+		err := searxng.ValidateSearchArgs(args)
+		if err != nil {
 			t.Fatalf("expected auto to be valid, got %v", err)
 		}
+
 		if args.Language != "" {
 			t.Fatalf("expected Language to be empty after normalization, got %q", args.Language)
 		}
@@ -120,6 +129,7 @@ func TestValidateSearchArgs_Language(t *testing.T) {
 
 	t.Run("too long language tag", func(t *testing.T) {
 		t.Parallel()
+
 		longLang := strings.Repeat("a-", 40) + "a"
 		assertValidationError(t, &searxng.SearchArgs{Query: "test", Language: longLang}, "language", "35 characters or less")
 	})
@@ -243,6 +253,7 @@ func TestValidateSearchArgs_CategoriesAndEngines_EdgeCases(t *testing.T) {
 
 	t.Run("max identifier length", func(t *testing.T) {
 		t.Parallel()
+
 		longIdentifier := strings.Repeat("a", 51)
 		assertValidationError(t, &searxng.SearchArgs{Query: "test", Categories: longIdentifier}, "categories", "invalid category")
 		assertValidationError(t, &searxng.SearchArgs{Query: "test", Engines: longIdentifier}, "engines", "invalid engine")
@@ -250,6 +261,7 @@ func TestValidateSearchArgs_CategoriesAndEngines_EdgeCases(t *testing.T) {
 
 	t.Run("exactly max identifier length", func(t *testing.T) {
 		t.Parallel()
+
 		validIdentifier := strings.Repeat("a", 50)
 		assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Categories: validIdentifier})
 		assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Engines: validIdentifier})

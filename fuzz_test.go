@@ -65,10 +65,8 @@ func FuzzValidateSearchArgs(f *testing.F) {
 
 		// ValidateSearchArgs must not panic on any input
 		err := searxng.ValidateSearchArgs(args)
-
 		// Invariant: nil args must return error
 		// (args is always non-nil here, but we verify the nil path separately)
-
 		// Invariant: if err is non-nil, it should be a *ValidationError
 		if err != nil {
 			if _, ok := err.(*searxng.ValidationError); !ok {
@@ -146,6 +144,7 @@ func FuzzUnescapeIfNeeded(f *testing.F) {
 			if next == current {
 				break
 			}
+
 			current = next
 		}
 		// After stabilization, one more pass should be identity
@@ -189,6 +188,7 @@ func FuzzValidateSearchArgs_NilArgs(f *testing.F) {
 				t.Error("ValidateSearchArgs(nil) returned nil, expected error")
 			}
 		}
+
 		_ = err
 	})
 }

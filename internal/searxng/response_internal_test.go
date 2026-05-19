@@ -52,12 +52,15 @@ func TestParseSearchResponse_TypedAnswersGetFallbackText(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parseSearchResponse() error = %v", err)
 			}
+
 			if len(result.Answers) != 1 {
 				t.Fatalf("len(Answers) = %d, want 1", len(result.Answers))
 			}
+
 			if result.Answers[0].Answer != tt.wantAnswer {
 				t.Fatalf("Answer = %q, want %q", result.Answers[0].Answer, tt.wantAnswer)
 			}
+
 			if result.Answers[0].Template != tt.wantTmpl {
 				t.Fatalf("Template = %q, want %q", result.Answers[0].Template, tt.wantTmpl)
 			}

@@ -117,20 +117,22 @@ func TestFormatResultsGoldenOutput(t *testing.T) {
 
 	if got != golden {
 		// Find first differing byte for diagnostics.
-		minLen := len(got)
-		if len(golden) < minLen {
-			minLen = len(golden)
-		}
+		minLen := min(len(golden), len(got))
+
 		diffAt := -1
-		for i := 0; i < minLen; i++ {
+
+		for i := range minLen {
 			if got[i] != golden[i] {
 				diffAt = i
+
 				break
 			}
 		}
+
 		if diffAt == -1 {
 			diffAt = minLen
 		}
+
 		t.Fatalf("golden output mismatch at byte %d (got len=%d, want len=%d):\n  got [%d..%d]: %q\n  want[%d..%d]: %q",
 			diffAt, len(got), len(golden),
 			max(0, diffAt-20), min(len(got), diffAt+20),

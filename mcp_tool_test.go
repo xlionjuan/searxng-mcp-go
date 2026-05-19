@@ -22,6 +22,7 @@ func mockSearXNGHandler() http.HandlerFunc {
 		},
 		Suggestions: []string{"golang tutorial"},
 	})
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -50,7 +51,8 @@ func newTestSearcher(t *testing.T, handler http.HandlerFunc) (*searxng.SearXNGSe
 
 func TestSearchInputSchema(t *testing.T) {
 	var schema map[string]any
-	if err := json.Unmarshal([]byte(searchInputSchema), &schema); err != nil {
+	err := json.Unmarshal([]byte(searchInputSchema), &schema)
+	if err != nil {
 		t.Fatalf("failed to parse search input schema: %v", err)
 	}
 
@@ -67,6 +69,7 @@ func TestSearchInputSchema(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected query property map, got %T", props["query"])
 	}
+
 	if got := query["type"]; got != "string" {
 		t.Fatalf("query type = %v, want string", got)
 	}
@@ -75,6 +78,7 @@ func TestSearchInputSchema(t *testing.T) {
 	if !ok || len(required) == 0 {
 		t.Fatalf("expected non-empty required list, got %T: %#v", schema["required"], schema["required"])
 	}
+
 	if required[0] != "query" {
 		t.Fatalf("required[0] = %v, want query", required[0])
 	}
@@ -89,6 +93,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 
 	t.Run("validates input", func(t *testing.T) {
 		handler := NewSearchToolHandler(&searxng.SearXNGSearcher{})
+
 		for _, tt := range []struct {
 			name string
 			args searxng.SearchArgs
@@ -101,13 +106,16 @@ func TestNewSearchToolHandler(t *testing.T) {
 				if err != nil {
 					t.Fatalf("call tool failed: %v", err)
 				}
+
 				if !result.IsError {
 					t.Fatalf("expected IsError=true, got false with content: %v", result.Content)
 				}
+
 				textContent, ok := result.Content[0].(*mcp.TextContent)
 				if !ok {
 					t.Fatalf("expected *mcp.TextContent, got %T", result.Content[0])
 				}
+
 				if !strings.Contains(textContent.Text, "validation error") {
 					t.Fatalf("expected validation error, got: %s", textContent.Text)
 				}
@@ -120,13 +128,16 @@ func TestNewSearchToolHandler(t *testing.T) {
 		defer cleanup()
 
 		handler := NewSearchToolHandler(searcher)
+
 		result, _, err := handler(context.Background(), nil, searxng.SearchArgs{Query: "golang"})
 		if err != nil {
 			t.Fatalf("call tool failed: %v", err)
 		}
+
 		if result.IsError {
 			t.Fatalf("expected IsError=false, got true with content: %v", result.Content)
 		}
+
 		if len(result.Content) != 1 {
 			t.Fatalf("expected 1 content item, got %d", len(result.Content))
 		}
@@ -140,12 +151,15 @@ func TestNewSearchToolHandler(t *testing.T) {
 		if err := json.Unmarshal([]byte(textContent.Text), &parsed); err != nil {
 			t.Fatalf("expected valid JSON, got error: %v\nbody: %s", err, textContent.Text)
 		}
+
 		if parsed.Query != "golang" {
 			t.Fatalf("query = %q, want golang", parsed.Query)
 		}
+
 		if len(parsed.Results) != 1 || parsed.Results[0].Title != "Go" || parsed.Results[0].URL != "https://go.dev" {
 			t.Fatalf("unexpected results: %#v", parsed.Results)
 		}
+
 		if len(parsed.Suggestions) != 1 || parsed.Suggestions[0] != "golang tutorial" {
 			t.Fatalf("unexpected suggestions: %#v", parsed.Suggestions)
 		}
@@ -161,11 +175,13 @@ func TestNewSearchToolHandler(t *testing.T) {
 				Engine:  "test",
 			}
 		}
+
 		body, _ := json.Marshal(searxng.SearchResponse{
 			Query:           "golang",
 			NumberOfResults: len(results),
 			Results:         results,
 		})
+
 		searcher, cleanup := newTestSearcher(t, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
@@ -174,10 +190,12 @@ func TestNewSearchToolHandler(t *testing.T) {
 		defer cleanup()
 
 		handler := NewSearchToolHandler(searcher)
+
 		result, _, err := handler(context.Background(), nil, searxng.SearchArgs{Query: "golang"})
 		if err != nil {
 			t.Fatalf("call tool failed: %v", err)
 		}
+
 		if result.IsError {
 			t.Fatalf("expected IsError=false, got true with content: %v", result.Content)
 		}
@@ -186,10 +204,12 @@ func TestNewSearchToolHandler(t *testing.T) {
 		if !ok {
 			t.Fatalf("expected *mcp.TextContent, got %T", result.Content[0])
 		}
+
 		var parsed searxng.SearchResponse
 		if err := json.Unmarshal([]byte(textContent.Text), &parsed); err != nil {
 			t.Fatalf("expected valid JSON, got error: %v\nbody: %s", err, textContent.Text)
 		}
+
 		if len(parsed.Results) != defaultResultLimit {
 			t.Fatalf("result count = %d, want %d", len(parsed.Results), defaultResultLimit)
 		}
@@ -197,9 +217,11 @@ func TestNewSearchToolHandler(t *testing.T) {
 
 	t.Run("forwards optional parameters", func(t *testing.T) {
 		var capturedParams map[string]string
+
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost {
 				_ = r.ParseForm()
+
 				capturedParams = make(map[string]string, len(r.PostForm))
 				for key, values := range r.PostForm {
 					if len(values) > 0 {
@@ -208,6 +230,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 				}
 			} else {
 				query := r.URL.Query()
+
 				capturedParams = make(map[string]string, len(query))
 				for key, values := range query {
 					if len(values) > 0 {
@@ -226,6 +249,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 
 		handlerFn := NewSearchToolHandler(searcher)
 		pageno := 3
+
 		result, _, err := handlerFn(context.Background(), nil, searxng.SearchArgs{
 			Query:      "golang",
 			Language:   "en",
@@ -238,6 +262,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 		if err != nil {
 			t.Fatalf("call tool failed: %v", err)
 		}
+
 		if result.IsError {
 			t.Fatalf("expected IsError=false, got true with content: %v", result.Content)
 		}
@@ -263,17 +288,21 @@ func TestNewSearchToolHandler(t *testing.T) {
 		defer cleanup()
 
 		handler := NewSearchToolHandler(searcher)
+
 		result, _, err := handler(context.Background(), nil, searxng.SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("call tool failed: %v", err)
 		}
+
 		if !result.IsError {
 			t.Fatalf("expected IsError=true, got false with content: %v", result.Content)
 		}
+
 		textContent, ok := result.Content[0].(*mcp.TextContent)
 		if !ok {
 			t.Fatalf("expected *mcp.TextContent, got %T", result.Content[0])
 		}
+
 		if !strings.Contains(textContent.Text, "Search error") {
 			t.Fatalf("expected search error, got: %s", textContent.Text)
 		}
@@ -291,10 +320,12 @@ func TestMCP_DebugGatesUnresponsiveEngines(t *testing.T) {
 
 	t.Run("debug_off", func(t *testing.T) {
 		sr.Debug = false
+
 		data, err := sr.MarshalJSON()
 		if err != nil {
 			t.Fatalf("MarshalJSON failed: %v", err)
 		}
+
 		if strings.Contains(string(data), "unresponsive_engines") {
 			t.Fatal("expected unresponsive_engines to be omitted when debug is off")
 		}
@@ -302,26 +333,32 @@ func TestMCP_DebugGatesUnresponsiveEngines(t *testing.T) {
 
 	t.Run("debug_on", func(t *testing.T) {
 		sr.Debug = true
+
 		data, err := sr.MarshalJSON()
 		if err != nil {
 			t.Fatalf("MarshalJSON failed: %v", err)
 		}
+
 		var decoded map[string]any
 		if err := json.Unmarshal(data, &decoded); err != nil {
 			t.Fatalf("expected valid JSON: %v\nbody: %s", err, string(data))
 		}
+
 		value, ok := decoded["unresponsive_engines"]
 		if !ok {
 			t.Fatal("expected unresponsive_engines when debug is on")
 		}
+
 		entries, ok := value.([]any)
 		if !ok || len(entries) != 1 {
 			t.Fatalf("expected one unresponsive engine entry, got: %#v", value)
 		}
+
 		pair, ok := entries[0].([]any)
 		if !ok || len(pair) != 2 {
 			t.Fatalf("expected [engine_name, error_message] pair, got: %#v", entries[0])
 		}
+
 		if pair[0] != "brave" {
 			t.Fatalf("expected engine name brave, got: %#v", pair[0])
 		}

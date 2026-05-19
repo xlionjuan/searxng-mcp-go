@@ -37,6 +37,7 @@ func TestUnescapeIfNeeded(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			got := unescapeIfNeeded(tt.input)
 			if got != tt.want {
 				t.Errorf("unescapeIfNeeded(%q) = %q, want %q", tt.input, got, tt.want)
@@ -141,11 +142,14 @@ func TestFormatResults(t *testing.T) {
 			resp: &searxng.SearchResponse{
 				Results: []searxng.SearchResult{
 					{
-						Title:         "Test Title 1",
-						URL:           "https://example.com/1",
-						Content:       "Test content 1",
-						Engine:        "google",
-						PublishedDate: func() *string { s := "2026-04-20"; return &s }(),
+						Title:   "Test Title 1",
+						URL:     "https://example.com/1",
+						Content: "Test content 1",
+						Engine:  "google",
+						PublishedDate: func() *string {
+							s := "2026-04-20"
+							return &s
+						}(),
 					},
 					{
 						Title:   "Test Title 2",
@@ -421,6 +425,7 @@ func TestFormatResults(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			result := formatResults(tt.resp)
 
 			if tt.wantResult != "" {
@@ -429,6 +434,7 @@ func TestFormatResults(t *testing.T) {
 					headers := []string{"=== Answers ===", "=== Infoboxes ===", "=== Results ===", "=== Search Suggestions ==="}
 					for i := 1; i < len(headers); i++ {
 						prev := strings.Index(result, headers[i-1])
+
 						curr := strings.Index(result, headers[i])
 						if prev == -1 {
 							t.Errorf("expected %q in output", headers[i-1])
@@ -438,11 +444,14 @@ func TestFormatResults(t *testing.T) {
 							t.Errorf("section order wrong: %q (pos %d) should come after %q (pos %d)", headers[i], curr, headers[i-1], prev)
 						}
 					}
+
 					return
 				}
+
 				if result != tt.wantResult {
 					t.Errorf("expected %q, got: %s", tt.wantResult, result)
 				}
+
 				return
 			}
 
@@ -451,18 +460,22 @@ func TestFormatResults(t *testing.T) {
 					t.Errorf("expected %q in output, got: %s", want, result)
 				}
 			}
+
 			if tt.name == "normal results with content" {
 				firstTitle := strings.Index(result, "1. Test Title 1")
 				firstSummary := strings.Index(result, "   Summary: Test content 1")
 				firstPublished := strings.Index(result, "   Published date: 2026-04-20")
+
 				secondTitle := strings.Index(result, "2. Test Title 2")
 				if firstTitle == -1 || firstSummary == -1 || firstPublished == -1 || secondTitle == -1 {
 					t.Fatalf("expected both result blocks and the first summary in output, got: %s", result)
 				}
-				if !(firstTitle < firstSummary && firstSummary < firstPublished && firstPublished < secondTitle) {
+
+				if firstTitle >= firstSummary || firstSummary >= firstPublished || firstPublished >= secondTitle {
 					t.Fatalf("expected first result summary and published date to belong to the first result block, got: %s", result)
 				}
 			}
+
 			if tt.wantNotContain != "" && strings.Contains(result, tt.wantNotContain) {
 				t.Errorf("did not expect %q in output, got: %s", tt.wantNotContain, result)
 			}
@@ -501,6 +514,7 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ReadFile() error = %v", err)
 			}
+
 			var resp searxng.SearchResponse
 			if err := json.Unmarshal(body, &resp); err != nil {
 				t.Fatalf("Unmarshal() error = %v", err)
@@ -531,6 +545,7 @@ func TestTruncateRunes(t *testing.T) {
 
 	t.Run("empty string", func(t *testing.T) {
 		t.Parallel()
+
 		if got := truncateRunes("", 10); got != "" {
 			t.Errorf("truncateRunes(\"\", 10) = %q, want %q", got, "")
 		}
@@ -538,6 +553,7 @@ func TestTruncateRunes(t *testing.T) {
 
 	t.Run("limit zero", func(t *testing.T) {
 		t.Parallel()
+
 		if got := truncateRunes("hello", 0); got != "" {
 			t.Errorf("truncateRunes(hello, 0) = %q, want %q", got, "")
 		}
@@ -545,6 +561,7 @@ func TestTruncateRunes(t *testing.T) {
 
 	t.Run("limit negative", func(t *testing.T) {
 		t.Parallel()
+
 		if got := truncateRunes("hello", -1); got != "" {
 			t.Errorf("truncateRunes(hello, -1) = %q, want %q", got, "")
 		}
@@ -552,6 +569,7 @@ func TestTruncateRunes(t *testing.T) {
 
 	t.Run("shorter than limit", func(t *testing.T) {
 		t.Parallel()
+
 		if got := truncateRunes("hi", 10); got != "hi" {
 			t.Errorf("truncateRunes(hi, 10) = %q, want %q", got, "hi")
 		}
@@ -559,6 +577,7 @@ func TestTruncateRunes(t *testing.T) {
 
 	t.Run("exactly limit", func(t *testing.T) {
 		t.Parallel()
+
 		if got := truncateRunes("hello", 5); got != "hello" {
 			t.Errorf("truncateRunes(hello, 5) = %q, want %q", got, "hello")
 		}
@@ -566,6 +585,7 @@ func TestTruncateRunes(t *testing.T) {
 
 	t.Run("longer than limit", func(t *testing.T) {
 		t.Parallel()
+
 		if got := truncateRunes("hello world", 5); got != "hello" {
 			t.Errorf("truncateRunes(hello world, 5) = %q, want %q", got, "hello")
 		}
@@ -597,6 +617,7 @@ func TestTruncateRunes(t *testing.T) {
 
 	t.Run("unicode emoji - exactly limit", func(t *testing.T) {
 		t.Parallel()
+
 		if got := truncateRunes("🔥🔥", 2); got != "🔥🔥" {
 			t.Errorf("truncateRunes(🔥🔥, 2) = %q, want %q", got, "🔥🔥")
 		}
@@ -615,6 +636,7 @@ func TestTruncateRunes(t *testing.T) {
 		// "你" is 3 bytes in UTF-8. truncateRunes works on runes,
 		// so it should never split a multi-byte character.
 		s := "你你你"
+
 		got := truncateRunes(s, 2)
 		if got != "你你" {
 			t.Errorf("truncateRunes(你你你, 2) = %q, want %q", got, "你你")
@@ -629,6 +651,7 @@ func TestTruncateRunes(t *testing.T) {
 
 	t.Run("large limit - no truncation", func(t *testing.T) {
 		t.Parallel()
+
 		longString := "hello world, this is a longer string for testing"
 		if got := truncateRunes(longString, 9999); got != longString {
 			t.Errorf("truncateRunes(long, 9999) should return original string, got %q", got)
@@ -638,7 +661,9 @@ func TestTruncateRunes(t *testing.T) {
 
 func TestFormatResults_DebugLogsUnresponsiveEngines(t *testing.T) {
 	var buf bytes.Buffer
+
 	old := slog.Default()
+
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
 	defer slog.SetDefault(old)
 

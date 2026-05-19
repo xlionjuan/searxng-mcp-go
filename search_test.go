@@ -20,11 +20,12 @@ import (
 
 func TestSearch_CfgNil(t *testing.T) {
 	ctx := t.Context()
-	_, err := testPerformSearch(t, ctx, nil, &searxng.SearchArgs{Query: "test"})
 
+	_, err := testPerformSearch(t, ctx, nil, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
 		t.Fatal("expected error for cfg == nil, got nil")
 	}
+
 	if !strings.Contains(err.Error(), "cfg cannot be nil") {
 		t.Errorf("expected cfg cannot be nil error, got: %v", err)
 	}
@@ -42,13 +43,15 @@ func TestSearch_Success(t *testing.T) {
 	body, _ := json.Marshal(searchResp)
 
 	var capturedQuery url.Values
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" {
+		if r.Method == http.MethodPost {
 			r.ParseForm()
 			capturedQuery = r.PostForm
 		} else {
 			capturedQuery = r.URL.Query()
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(body)
@@ -66,14 +69,16 @@ func TestSearch_Success(t *testing.T) {
 	}
 
 	ctx := t.Context()
-	result, err := testPerformSearch(t, ctx, cfg, args)
 
+	result, err := testPerformSearch(t, ctx, cfg, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if len(result.Results) != 2 {
 		t.Errorf("expected 2 results, got %d", len(result.Results))
 	}
+
 	if result.Results[0].Title != "Result 1" {
 		t.Errorf("expected 'Result 1', got %s", result.Results[0].Title)
 	}
@@ -106,13 +111,16 @@ func TestSearch_PreservesUnresponsiveEngines(t *testing.T) {
 
 	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
 	ctx := t.Context()
+
 	result, err := testPerformSearch(t, ctx, cfg, &searxng.SearchArgs{Query: "test"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if len(result.UnresponsiveEngines) != 2 {
 		t.Fatalf("expected 2 unresponsive engines, got %#v", result.UnresponsiveEngines)
 	}
+
 	if result.UnresponsiveEngines[0][0] != "brave" || result.UnresponsiveEngines[1][0] != "startpage" {
 		t.Fatalf("unexpected unresponsive engines: %#v", result.UnresponsiveEngines)
 	}
@@ -120,18 +128,21 @@ func TestSearch_PreservesUnresponsiveEngines(t *testing.T) {
 
 func TestSearch_TimeRangeParam(t *testing.T) {
 	var capturedTimeRange string
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" {
+		if r.Method == http.MethodPost {
 			capturedTimeRange = r.PostFormValue("time_range")
 		} else {
 			capturedTimeRange = r.URL.Query().Get("time_range")
 		}
+
 		searchResp := searxng.SearchResponse{
 			Results:         []searxng.SearchResult{},
 			NumberOfResults: 0,
 			Query:           "test",
 		}
 		body, _ := json.Marshal(searchResp)
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(body)
@@ -159,11 +170,14 @@ func TestSearch_TimeRangeParam(t *testing.T) {
 			capturedTimeRange = ""
 			args := &searxng.SearchArgs{Query: "test", TimeRange: tt.timeRange}
 			ctx := t.Context()
+
 			_, err := testPerformSearch(t, ctx, cfg, args)
 			if err != nil {
 				t.Errorf("testPerformSearch() error = %v", err)
+
 				return
 			}
+
 			if capturedTimeRange != tt.want {
 				t.Errorf("time_range = %q, want %q", capturedTimeRange, tt.want)
 			}
@@ -173,18 +187,21 @@ func TestSearch_TimeRangeParam(t *testing.T) {
 
 func TestSearch_DefaultLanguage(t *testing.T) {
 	var capturedLanguage string
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" {
+		if r.Method == http.MethodPost {
 			capturedLanguage = r.PostFormValue("language")
 		} else {
 			capturedLanguage = r.URL.Query().Get("language")
 		}
+
 		searchResp := searxng.SearchResponse{
 			Results:         []searxng.SearchResult{},
 			NumberOfResults: 0,
 			Query:           "test",
 		}
 		body, _ := json.Marshal(searchResp)
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(body)
@@ -198,10 +215,12 @@ func TestSearch_DefaultLanguage(t *testing.T) {
 	args := &searxng.SearchArgs{Query: "test"} // Language is empty, should not be sent to SearXNG
 
 	ctx := t.Context()
+
 	_, err := testPerformSearch(t, ctx, cfg, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if capturedLanguage != "" {
 		t.Errorf("expected no language param when empty, got %q", capturedLanguage)
 	}
@@ -209,15 +228,18 @@ func TestSearch_DefaultLanguage(t *testing.T) {
 
 func TestSearch_OptionalParams(t *testing.T) {
 	var capturedParams url.Values
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" {
+		if r.Method == http.MethodPost {
 			r.ParseForm()
 			capturedParams = r.PostForm
 		} else {
 			capturedParams = r.URL.Query()
 		}
+
 		searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
 		body, _ := json.Marshal(searchResp)
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(body)
@@ -234,17 +256,19 @@ func TestSearch_OptionalParams(t *testing.T) {
 	}{
 		{"categories forwarded", &searxng.SearchArgs{Query: "test", Categories: "general,news"}, "categories", "general,news"},
 		{"engines forwarded", &searxng.SearchArgs{Query: "test", Engines: "google,bing"}, "engines", "google,bing"},
-		{"pageno forwarded", &searxng.SearchArgs{Query: "test", Pageno: intPtr(2)}, "pageno", "2"},
+		{"pageno forwarded", &searxng.SearchArgs{Query: "test", Pageno: new(2)}, "pageno", "2"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			capturedParams = nil
 			ctx := t.Context()
+
 			_, err := testPerformSearch(t, ctx, cfg, tt.args)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
+
 			if capturedParams.Get(tt.param) != tt.wantVal {
 				t.Errorf("param %q = %q, want %q", tt.param, capturedParams.Get(tt.param), tt.wantVal)
 			}
@@ -266,10 +290,12 @@ func TestSearch_SearchPathNormalization(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var gotPath string
+
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotPath = r.URL.Path
 				searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
 				body, _ := json.Marshal(searchResp)
+
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
 				w.Write(body)
@@ -277,10 +303,12 @@ func TestSearch_SearchPathNormalization(t *testing.T) {
 			defer server.Close()
 
 			cfg := &searxng.Config{SearXNGURL: server.URL + tt.baseURL, Timeout: 30 * time.Second}
+
 			_, err := testPerformSearch(t, t.Context(), cfg, &searxng.SearchArgs{Query: "test"})
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
+
 			if gotPath != tt.wantPath {
 				t.Fatalf("request path = %q, want %q", gotPath, tt.wantPath)
 			}
@@ -291,18 +319,23 @@ func TestSearch_SearchPathNormalization(t *testing.T) {
 func TestSearch_UnsupportedBodySizes(t *testing.T) {
 	t.Run("oversized error body", func(t *testing.T) {
 		body := strings.Repeat("e", searxng.MaxErrorBodySize+1)
+
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			hj, ok := w.(http.Hijacker)
 			if !ok {
 				t.Errorf("response writer does not support hijacking")
+
 				return
 			}
+
 			conn, _, err := hj.Hijack()
 			if err != nil {
 				t.Errorf("Hijack() failed: %v", err)
+
 				return
 			}
 			defer conn.Close()
+
 			header := fmt.Sprintf("HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n", len(body))
 			_, _ = conn.Write([]byte(header))
 			_, _ = conn.Write([]byte(body))
@@ -313,20 +346,25 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 			SearXNGURL: server.URL,
 			Timeout:    30 * time.Second,
 		}
+
 		_, err := testPerformSearch(t, t.Context(), cfg, &searxng.SearchArgs{Query: "test"})
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
+
 		var searxngErr *searxng.SearXNGError
 		if !errors.As(err, &searxngErr) {
 			t.Fatalf("expected *SearXNGError, got %T", err)
 		}
+
 		if searxngErr.StatusCode != http.StatusInternalServerError {
 			t.Fatalf("StatusCode = %d, want %d", searxngErr.StatusCode, http.StatusInternalServerError)
 		}
+
 		if len(searxngErr.ResponseBody) != searxng.MaxErrorDisplayChars {
 			t.Fatalf("ResponseBody length = %d, want %d", len(searxngErr.ResponseBody), searxng.MaxErrorDisplayChars)
 		}
+
 		if !strings.HasPrefix(searxngErr.ResponseBody, "eee") {
 			t.Fatalf("ResponseBody does not contain expected body preview: %q", searxngErr.ResponseBody)
 		}
@@ -334,18 +372,23 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 
 	t.Run("oversized success body", func(t *testing.T) {
 		body := `{"query":"test","number_of_results":1,"results":[{"title":"Result","url":"https://example.com","content":"` + strings.Repeat("s", searxng.MaxResponseBodySize+1) + `","engine":"google"}],"suggestions":[]}`
+
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			hj, ok := w.(http.Hijacker)
 			if !ok {
 				t.Errorf("response writer does not support hijacking")
+
 				return
 			}
+
 			conn, _, err := hj.Hijack()
 			if err != nil {
 				t.Errorf("Hijack() failed: %v", err)
+
 				return
 			}
 			defer conn.Close()
+
 			header := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n", len(body))
 			_, _ = conn.Write([]byte(header))
 			_, _ = conn.Write([]byte(body))
@@ -356,17 +399,21 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 			SearXNGURL: server.URL,
 			Timeout:    30 * time.Second,
 		}
+
 		_, err := testPerformSearch(t, t.Context(), cfg, &searxng.SearchArgs{Query: "test"})
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
+
 		var searxngErr *searxng.SearXNGError
 		if !errors.As(err, &searxngErr) {
 			t.Fatalf("expected *SearXNGError, got %T", err)
 		}
+
 		if !strings.Contains(err.Error(), "response body exceeded maximum size limit") {
 			t.Fatalf("unexpected error: %v", err)
 		}
+
 		if len(searxngErr.ResponseBody) != searxng.MaxErrorDisplayChars {
 			t.Fatalf("ResponseBody length = %d, want %d", len(searxngErr.ResponseBody), searxng.MaxErrorDisplayChars)
 		}
@@ -381,17 +428,21 @@ func TestSearch_EmptyHTMLBody(t *testing.T) {
 	defer server.Close()
 
 	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+
 	_, err := testPerformSearch(t, t.Context(), cfg, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
+
 	var htmlErr *searxng.HTMLResponseError
 	if !errors.As(err, &htmlErr) {
 		t.Fatalf("expected *HTMLResponseError, got %T", err)
 	}
+
 	if htmlErr.Body != "" {
 		t.Fatalf("Body = %q, want empty string", htmlErr.Body)
 	}
+
 	if err.Error() != "searxng returned html instead of json - json output may not be enabled on the server" {
 		t.Fatalf("unexpected error text: %v", err)
 	}
@@ -440,8 +491,8 @@ func TestSearch_HTMLResponseError(t *testing.T) {
 			args := &searxng.SearchArgs{Query: "test"}
 
 			ctx := t.Context()
-			_, err := testPerformSearch(t, ctx, cfg, args)
 
+			_, err := testPerformSearch(t, ctx, cfg, args)
 			if err == nil {
 				t.Fatal("expected HTMLResponseError, got nil")
 			}
@@ -460,25 +511,29 @@ func TestSearch_HTMLResponseError(t *testing.T) {
 
 // --- helper functions and test utilities ---
 
+//go:fix inline
 func intPtr(i int) *int {
-	return &i
+	return new(i)
 }
 
-// Test that Search properly encodes query parameters
+// Test that Search properly encodes query parameters.
 func TestSearch_QueryEncoding(t *testing.T) {
 	var capturedQuery string
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" {
+		if r.Method == http.MethodPost {
 			capturedQuery = r.PostFormValue("q")
 		} else {
 			capturedQuery = r.URL.Query().Get("q")
 		}
+
 		searchResp := searxng.SearchResponse{
 			Results:         []searxng.SearchResult{},
 			NumberOfResults: 0,
 			Query:           capturedQuery,
 		}
 		body, _ := json.Marshal(searchResp)
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(body)
@@ -494,6 +549,7 @@ func TestSearch_QueryEncoding(t *testing.T) {
 	args := &searxng.SearchArgs{Query: "test query with spaces & special=chars"}
 
 	ctx := t.Context()
+
 	_, err := testPerformSearch(t, ctx, cfg, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -504,7 +560,7 @@ func TestSearch_QueryEncoding(t *testing.T) {
 	}
 }
 
-// Test URL validation edge cases
+// Test URL validation edge cases.
 func TestNewSearXNGSearcher_URLValidation(t *testing.T) {
 	t.Parallel()
 
@@ -525,6 +581,7 @@ func TestNewSearXNGSearcher_URLValidation(t *testing.T) {
 				if err == nil {
 					t.Fatal("expected error, got nil")
 				}
+
 				if tt.errSubstr != "" && !strings.Contains(err.Error(), tt.errSubstr) {
 					t.Errorf("error %q does not contain %q", err.Error(), tt.errSubstr)
 				}
@@ -537,7 +594,7 @@ func TestNewSearXNGSearcher_URLValidation(t *testing.T) {
 	}
 }
 
-// Test NumberOfResults=0 with actual results (SearXNG quirk)
+// Test NumberOfResults=0 with actual results (SearXNG quirk).
 func TestSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 	// SearXNG may return number_of_results=0 even when results exist
 	searchResp := searxng.SearchResponse{
@@ -564,8 +621,8 @@ func TestSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx := t.Context()
-	result, err := testPerformSearch(t, ctx, cfg, args)
 
+	result, err := testPerformSearch(t, ctx, cfg, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -573,6 +630,7 @@ func TestSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 	if result.NumberOfResults != 2 {
 		t.Errorf("NumberOfResults = %d, want 2", result.NumberOfResults)
 	}
+
 	if len(result.Results) != 2 {
 		t.Errorf("len(Results) = %d, want 2", len(result.Results))
 	}
@@ -584,6 +642,7 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		searcher.Close()
 		searcher.Close()
 	})
@@ -593,16 +652,19 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		searcher.Close()
 		searcher.Close()
 	})
 
 	t.Run("custom client", func(t *testing.T) {
 		customClient := &http.Client{Timeout: 30 * time.Second}
+
 		searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: "https://example.com", HTTPClient: customClient}, false)
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		searcher.Close()
 		searcher.Close()
 	})
@@ -619,24 +681,33 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var postReq *http.Request
-			var getReq *http.Request
+			var (
+				postReq *http.Request
+				getReq  *http.Request
+			)
+
 			searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
 			body, _ := json.Marshal(searchResp)
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method == "POST" {
+				if r.Method == http.MethodPost {
 					postReq = r
+
 					w.WriteHeader(tt.statusCode)
+
 					return
 				}
-				if r.Method == "GET" {
+
+				if r.Method == http.MethodGet {
 					getReq = r
+
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusOK)
 					w.Write(body)
+
 					return
 				}
+
 				w.WriteHeader(http.StatusInternalServerError)
 			}))
 			defer server.Close()
@@ -648,18 +719,23 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error after fallback: %v", err)
 			}
+
 			if result == nil {
 				t.Fatal("expected result, got nil")
 			}
+
 			if postReq == nil {
 				t.Fatal("POST request was never made")
 			}
+
 			if getReq == nil {
 				t.Fatal("GET fallback was never called")
 			}
+
 			if postReq.URL.RawQuery != "" {
 				t.Error("POST request had query params in URI - query should only be in body")
 			}
+
 			getQuery := getReq.URL.Query()
 			if getQuery.Get("q") != "test search" || getQuery.Get("format") != "json" || getQuery.Get("language") != "en" || getQuery.Get("safesearch") != "1" {
 				t.Fatalf("unexpected GET query params: %v", getQuery)
@@ -671,6 +747,7 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 func TestSearch_BrowserHeaders(t *testing.T) {
 	t.Run("POST request headers", func(t *testing.T) {
 		var capturedHeaders http.Header
+
 		searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
 		body, _ := json.Marshal(searchResp)
 
@@ -683,6 +760,7 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 		defer server.Close()
 
 		cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+
 		_, err := testPerformSearch(t, t.Context(), cfg, &searxng.SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -691,18 +769,23 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 		if capturedHeaders.Get("User-Agent") == "" {
 			t.Error("User-Agent header should be set")
 		}
+
 		if capturedHeaders.Get("Accept") == "" {
 			t.Error("Accept header should be set")
 		}
+
 		if !strings.Contains(capturedHeaders.Get("Accept"), "text/html") {
 			t.Errorf("Accept header should contain text/html, got: %s", capturedHeaders.Get("Accept"))
 		}
+
 		if capturedHeaders.Get("Accept-Language") == "" {
 			t.Error("Accept-Language header should be set")
 		}
+
 		if capturedHeaders.Get("Accept-Encoding") == "" {
 			t.Error("Accept-Encoding header should be set")
 		}
+
 		if capturedHeaders.Get("Sec-Fetch-Mode") != "navigate" {
 			t.Errorf("Sec-Fetch-Mode should be navigate, got: %s", capturedHeaders.Get("Sec-Fetch-Mode"))
 		}
@@ -710,14 +793,17 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 
 	t.Run("GET fallback headers", func(t *testing.T) {
 		var capturedHeaders http.Header
+
 		searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
 		body, _ := json.Marshal(searchResp)
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "POST" {
+			if r.Method == http.MethodPost {
 				w.WriteHeader(http.StatusMethodNotAllowed)
+
 				return
 			}
+
 			capturedHeaders = r.Header
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
@@ -726,6 +812,7 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 		defer server.Close()
 
 		cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+
 		_, err := testPerformSearch(t, t.Context(), cfg, &searxng.SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -734,15 +821,19 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 		if capturedHeaders.Get("User-Agent") == "" {
 			t.Error("User-Agent header should be set on GET fallback")
 		}
+
 		if capturedHeaders.Get("Accept") == "" {
 			t.Error("Accept header should be set on GET fallback")
 		}
+
 		if !strings.Contains(capturedHeaders.Get("Accept"), "text/html") {
 			t.Errorf("Accept header should contain text/html on GET fallback, got: %s", capturedHeaders.Get("Accept"))
 		}
+
 		if capturedHeaders.Get("Accept-Language") == "" {
 			t.Error("Accept-Language header should be set on GET fallback")
 		}
+
 		if capturedHeaders.Get("Sec-Fetch-Mode") != "navigate" {
 			t.Errorf("Sec-Fetch-Mode should be navigate on GET fallback, got: %s", capturedHeaders.Get("Sec-Fetch-Mode"))
 		}
@@ -768,6 +859,7 @@ func TestDeduplicateAnswers_EmptyInputs(t *testing.T) {
 
 	// Empty infoboxes
 	answers := []searxng.Answer{{Answer: "test", Engine: "duckduckgo"}}
+
 	result = searxng.DeduplicateAnswers(answers, nil)
 	if len(result) != 1 {
 		t.Errorf("expected 1, got %d", len(result))
@@ -824,6 +916,7 @@ func TestDeduplicateAnswers_KeepsDistinctAnswer(t *testing.T) {
 	if len(result) != 1 {
 		t.Errorf("expected 1 (distinct answer kept), got %d", len(result))
 	}
+
 	if result[0].Answer != "203.0.113.42" {
 		t.Errorf("expected '203.0.113.42', got %q", result[0].Answer)
 	}
@@ -879,6 +972,7 @@ func TestDeduplicateAnswers_MultipleAnswersMixed(t *testing.T) {
 	if len(result) != 1 {
 		t.Errorf("expected 1 (only IP answer kept), got %d", len(result))
 	}
+
 	if result[0].Answer != "203.0.113.42" {
 		t.Errorf("expected '203.0.113.42', got %q", result[0].Answer)
 	}
@@ -919,6 +1013,7 @@ func TestDeduplicateAnswers_EmptyAnswerSkipped(t *testing.T) {
 	if len(result) != 1 {
 		t.Errorf("expected 1, got %d", len(result))
 	}
+
 	if result[0].Answer != "valid answer" {
 		t.Errorf("expected 'valid answer', got %q", result[0].Answer)
 	}
@@ -953,9 +1048,11 @@ func TestDeduplicateAnswers_TypedAnswersGetFallbackText(t *testing.T) {
 	if len(result) != 2 {
 		t.Fatalf("expected 2 typed answers, got %d: %+v", len(result), result)
 	}
+
 	if result[0].Answer != "Translation: bonjour" {
 		t.Fatalf("translation fallback = %q", result[0].Answer)
 	}
+
 	if result[1].Answer != "Weather: Berlin, 11.2 °C, partly cloudy" {
 		t.Fatalf("weather fallback = %q", result[1].Answer)
 	}
@@ -972,6 +1069,7 @@ func TestTypedAnswerFixturesSurviveDeduplication(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ReadFile() error = %v", err)
 			}
+
 			var resp searxng.SearchResponse
 			if err := json.Unmarshal(body, &resp); err != nil {
 				t.Fatalf("Unmarshal() error = %v", err)
@@ -981,6 +1079,7 @@ func TestTypedAnswerFixturesSurviveDeduplication(t *testing.T) {
 			if len(got) != 1 {
 				t.Fatalf("DeduplicateAnswers() length = %d, want 1", len(got))
 			}
+
 			if got[0].Answer == "" {
 				t.Fatal("DeduplicateAnswers() kept an empty typed answer")
 			}
@@ -1011,15 +1110,19 @@ func TestSearchResponse_MarshalJSON_NilSlices(t *testing.T) {
 	if strings.Contains(raw, `"results":null`) {
 		t.Errorf("results should be [], not null: %s", raw)
 	}
+
 	if strings.Contains(raw, `"suggestions":null`) {
 		t.Errorf("suggestions should be [], not null: %s", raw)
 	}
+
 	if !strings.Contains(raw, `"results":[]`) {
 		t.Errorf("expected results to be [], got: %s", raw)
 	}
+
 	if !strings.Contains(raw, `"suggestions":[]`) {
 		t.Errorf("expected suggestions to be [], got: %s", raw)
 	}
+
 	if strings.Contains(raw, `"unresponsive_engines"`) {
 		t.Errorf("expected unresponsive_engines to be omitted when debug is off, got: %s", raw)
 	}
@@ -1084,6 +1187,7 @@ func TestSearchResponse_MarshalJSON_OmitEmpty(t *testing.T) {
 	if strings.Contains(raw, `"answers"`) {
 		t.Errorf("expected 'answers' to be omitted when empty, got: %s", raw)
 	}
+
 	if strings.Contains(raw, `"infoboxes"`) {
 		t.Errorf("expected 'infoboxes' to be omitted when empty, got: %s", raw)
 	}
@@ -1122,6 +1226,7 @@ func TestSearchResponse_MarshalJSON_DebugIncludesUnresponsiveEngines(t *testing.
 	if !ok {
 		t.Fatalf("expected unresponsive_engines in debug JSON, got: %s", string(data))
 	}
+
 	entries, ok := value.([]any)
 	if !ok || len(entries) != 2 {
 		t.Fatalf("expected 2 unresponsive engine entries, got: %#v", value)

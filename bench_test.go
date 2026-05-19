@@ -23,6 +23,7 @@ func (rt *staticRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 	if rt.err != nil {
 		return nil, rt.err
 	}
+
 	return &http.Response{
 		StatusCode: rt.statusCode,
 		Status:     fmt.Sprintf("%d %s", rt.statusCode, http.StatusText(rt.statusCode)),
@@ -36,7 +37,7 @@ func (rt *staticRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 // Test Fixtures
 // ============================================================================
 
-// sampleSearXNGJSON is a realistic SearXNG response payload (~2.5KB)
+// sampleSearXNGJSON is a realistic SearXNG response payload (~2.5KB).
 const sampleSearXNGJSON = `{
   "query": "golang programming language",
   "number_of_results": 12400000,
@@ -142,7 +143,8 @@ func makeSearchResults(n int) []searxng.SearchResult {
 		"Random content without any date information",
 		"Last week there was an announcement",
 	}
-	for i := 0; i < n; i++ {
+
+	for i := range n {
 		date := "2024-01-15"
 		results[i] = searxng.SearchResult{
 			Title:         fmt.Sprintf("Search Result Title %d", i),
@@ -152,10 +154,11 @@ func makeSearchResults(n int) []searxng.SearchResult {
 			PublishedDate: &date,
 		}
 	}
+
 	return results
 }
 
-// makeLargeSearchResponse creates a SearchResponse with n results for benchmarking
+// makeLargeSearchResponse creates a SearchResponse with n results for benchmarking.
 func makeLargeSearchResponse(n int) *searxng.SearchResponse {
 	answers := []searxng.Answer{
 		{Answer: "42", Engine: "calculator"},
@@ -175,6 +178,7 @@ func makeLargeSearchResponse(n int) *searxng.SearchResponse {
 		},
 	}
 	suggestions := []string{"golang tutorial", "golang concurrency", "golang vs rust"}
+
 	return &searxng.SearchResponse{
 		Query:           "golang programming",
 		NumberOfResults: n,
@@ -191,10 +195,13 @@ func makeLargeSearchResponse(n int) *searxng.SearchResponse {
 
 func BenchmarkJSONUnmarshal(b *testing.B) {
 	data := []byte(sampleSearXNGJSON)
+
 	b.ReportAllocs()
+
 	for b.Loop() {
 		var resp searxng.SearchResponse
-		if err := json.Unmarshal(data, &resp); err != nil {
+		err := json.Unmarshal(data, &resp)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -203,14 +210,18 @@ func BenchmarkJSONUnmarshal(b *testing.B) {
 func BenchmarkJSONUnmarshalLarge(b *testing.B) {
 	// Create a large JSON payload (100 results)
 	largeResp := makeLargeSearchResponse(100)
+
 	data, err := json.Marshal(largeResp)
 	if err != nil {
 		b.Fatal(err)
 	}
+
 	b.ReportAllocs()
+
 	for b.Loop() {
 		var resp searxng.SearchResponse
-		if err := json.Unmarshal(data, &resp); err != nil {
+		err := json.Unmarshal(data, &resp)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -222,7 +233,9 @@ func BenchmarkJSONUnmarshalLarge(b *testing.B) {
 
 func BenchmarkMarshalJSON(b *testing.B) {
 	resp := makeLargeSearchResponse(10)
+
 	b.ReportAllocs()
+
 	for b.Loop() {
 		if _, err := resp.MarshalJSON(); err != nil {
 			b.Fatal(err)
@@ -232,7 +245,9 @@ func BenchmarkMarshalJSON(b *testing.B) {
 
 func BenchmarkMarshalJSONLarge(b *testing.B) {
 	resp := makeLargeSearchResponse(100)
+
 	b.ReportAllocs()
+
 	for b.Loop() {
 		if _, err := resp.MarshalJSON(); err != nil {
 			b.Fatal(err)
@@ -240,11 +255,14 @@ func BenchmarkMarshalJSONLarge(b *testing.B) {
 	}
 }
 
-// Standard json.Marshal for comparison
+// Standard json.Marshal for comparison.
 func BenchmarkStdMarshalJSON(b *testing.B) {
 	type stdSearchResponse searxng.SearchResponse
+
 	resp := stdSearchResponse(*makeLargeSearchResponse(10))
+
 	b.ReportAllocs()
+
 	for b.Loop() {
 		if _, err := json.Marshal(resp); err != nil {
 			b.Fatal(err)
@@ -258,7 +276,9 @@ func BenchmarkStdMarshalJSON(b *testing.B) {
 
 func BenchmarkFormatResults(b *testing.B) {
 	resp := makeLargeSearchResponse(10)
+
 	b.ReportAllocs()
+
 	for b.Loop() {
 		_ = formatResults(resp)
 	}
@@ -280,6 +300,7 @@ func BenchmarkSearch(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
+
 	for b.Loop() {
 		if _, err := testPerformSearch(b, b.Context(), cfg, args); err != nil {
 			b.Fatal(err)
@@ -289,7 +310,9 @@ func BenchmarkSearch(b *testing.B) {
 
 func BenchmarkFormatResultsLarge(b *testing.B) {
 	resp := makeLargeSearchResponse(100)
+
 	b.ReportAllocs()
+
 	for b.Loop() {
 		_ = formatResults(resp)
 	}
@@ -316,7 +339,9 @@ func BenchmarkFormatResultsInfoboxes(b *testing.B) {
 			{Title: "Result", URL: "https://example.com", Content: "Content", Engine: "google"},
 		},
 	}
+
 	b.ReportAllocs()
+
 	for b.Loop() {
 		_ = formatResults(resp)
 	}
@@ -329,7 +354,9 @@ func BenchmarkUnescapeIfNeeded(b *testing.B) {
 		"&quot;Quoted&quot; &apos;text&apos; here",
 		"a]normal string",
 	}
+
 	b.ReportAllocs()
+
 	for _, input := range inputs {
 		b.Run(fmt.Sprintf("len_%d", len(input)), func(b *testing.B) {
 			for b.Loop() {
@@ -355,7 +382,9 @@ func BenchmarkDeduplicateAnswers(b *testing.B) {
 			Content: strings.Repeat("Go is a statically typed, compiled programming language designed at Google. It provides garbage collection, CSP-style concurrency, and structural typing. ", 10),
 		},
 	}
+
 	b.ReportAllocs()
+
 	for b.Loop() {
 		_ = searxng.DeduplicateAnswers(answers, infoboxes)
 	}
@@ -375,7 +404,9 @@ func BenchmarkDeduplicateAnswersManyInfoboxes(b *testing.B) {
 			Content: strings.Repeat(fmt.Sprintf("Content paragraph %d for testing. ", i), 30),
 		}
 	}
+
 	b.ReportAllocs()
+
 	for b.Loop() {
 		_ = searxng.DeduplicateAnswers(answers, infoboxes)
 	}
@@ -388,6 +419,7 @@ func BenchmarkDeduplicateAnswersNoInfoboxes(b *testing.B) {
 	}
 	// Fast path: empty infoboxes
 	b.ReportAllocs()
+
 	for b.Loop() {
 		_ = searxng.DeduplicateAnswers(answers, nil)
 	}
@@ -408,9 +440,12 @@ func BenchmarkValidateSearchArgs(b *testing.B) {
 		Engines:    "google,bing",
 		Pageno:     &pageno,
 	}
+
 	b.ReportAllocs()
+
 	for b.Loop() {
-		if err := searxng.ValidateSearchArgs(args); err != nil {
+		err := searxng.ValidateSearchArgs(args)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -418,9 +453,12 @@ func BenchmarkValidateSearchArgs(b *testing.B) {
 
 func BenchmarkValidateSearchArgsMinimal(b *testing.B) {
 	args := &searxng.SearchArgs{Query: "test"}
+
 	b.ReportAllocs()
+
 	for b.Loop() {
-		if err := searxng.ValidateSearchArgs(args); err != nil {
+		err := searxng.ValidateSearchArgs(args)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -434,8 +472,9 @@ func BenchmarkValidateSearchArgsMinimal(b *testing.B) {
 // including multi-byte UTF-8 characters.
 func makeLongContentResults(n int) *searxng.SearchResponse {
 	results := make([]searxng.SearchResult, n)
+
 	base := strings.Repeat("這是一段很長的中文測試內容，包含多位元組字元。Go is a programming language. 日本語テスト。🎉🚀📊 ", 200)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		results[i] = searxng.SearchResult{
 			Title:   fmt.Sprintf("長內容測試結果 #%d 🌐", i),
 			URL:     fmt.Sprintf("https://example.com/long/%d", i),
@@ -443,6 +482,7 @@ func makeLongContentResults(n int) *searxng.SearchResponse {
 			Engine:  "google",
 		}
 	}
+
 	return &searxng.SearchResponse{
 		Query:           "long content test",
 		NumberOfResults: n,
@@ -452,7 +492,9 @@ func makeLongContentResults(n int) *searxng.SearchResponse {
 
 func BenchmarkFormatResultsLongContent(b *testing.B) {
 	resp := makeLongContentResults(20)
+
 	b.ReportAllocs()
+
 	for b.Loop() {
 		_ = formatResults(resp)
 	}
@@ -461,8 +503,9 @@ func BenchmarkFormatResultsLongContent(b *testing.B) {
 // makeEntityResults generates n results with heavy HTML entities in titles and content.
 func makeEntityResults(n int) *searxng.SearchResponse {
 	results := make([]searxng.SearchResult, n)
+
 	entities := []string{"&amp;", "&quot;", "&lt;", "&gt;", "&#39;"}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		e := entities[i%len(entities)]
 		results[i] = searxng.SearchResult{
 			Title:   fmt.Sprintf("A %s B %s C %s D", e, entities[(i+1)%len(entities)], entities[(i+2)%len(entities)]),
@@ -471,6 +514,7 @@ func makeEntityResults(n int) *searxng.SearchResponse {
 			Engine:  "google",
 		}
 	}
+
 	return &searxng.SearchResponse{
 		Query:           "entity test",
 		NumberOfResults: n,
@@ -480,7 +524,9 @@ func makeEntityResults(n int) *searxng.SearchResponse {
 
 func BenchmarkFormatResultsWithEntities(b *testing.B) {
 	resp := makeEntityResults(50)
+
 	b.ReportAllocs()
+
 	for b.Loop() {
 		_ = formatResults(resp)
 	}
@@ -505,6 +551,7 @@ func BenchmarkDeduplicateAnswersScale(b *testing.B) {
 					Engine: fmt.Sprintf("engine_%d", i%3),
 				}
 			}
+
 			infoboxes := make([]searxng.Infobox, tc.nInfoboxes)
 			for i := range infoboxes {
 				infoboxes[i] = searxng.Infobox{
@@ -512,7 +559,9 @@ func BenchmarkDeduplicateAnswersScale(b *testing.B) {
 					Content: strings.Repeat(fmt.Sprintf("Content paragraph %d for testing deduplication. ", i), 20),
 				}
 			}
+
 			b.ReportAllocs()
+
 			for b.Loop() {
 				_ = searxng.DeduplicateAnswers(answers, infoboxes)
 			}
