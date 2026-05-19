@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Go 1.26.2 or later (developed with Go 1.26.2)
-- Access to a SearXNG instance (required — no default, e.g. `http://localhost:8080`)
+- Access to a SearXNG instance (required — no default, e.g. `http://localhost:8888`)
 
 ## Installing
 

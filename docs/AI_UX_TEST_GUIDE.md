@@ -21,7 +21,7 @@ Evaluate the user experience of the SearXNG MCP server from an AI agent perspect
 
 - **Project location**: repository root
 - **Binary**: `./searxng-mcp-go`
-- **SearXNG instance**: `http://localhost:8080/`
+- **SearXNG instance**: `http://localhost:8888/`
 - **Available toolsets**: `terminal`, `file`, `web`, `skills`, `session_search`
 
 ### MCP Server Startup

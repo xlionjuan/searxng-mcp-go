@@ -71,7 +71,7 @@ SEARXNG_URL=https://my-instance.example.com searxng-mcp-go
     "searxng": {
       "command": "searxng-mcp-go",
       "env": {
-        "SEARXNG_URL": "http://localhost:8080"
+        "SEARXNG_URL": "http://localhost:8888"
       }
     }
   }

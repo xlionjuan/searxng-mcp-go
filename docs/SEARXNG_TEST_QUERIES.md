@@ -5,7 +5,7 @@ This document defines which queries to use when inspecting raw SearXNG JSON resp
 Use this command pattern:
 
 ```bash
-curl -s "http://localhost:8080/search?q=<query>&format=json" | jq '.<field>'
+curl -s "http://localhost:8888/search?q=<query>&format=json" | jq '.<field>'
 ```
 
 ---
@@ -91,20 +91,20 @@ DuckDuckGo's engine often puts the same Wikipedia summary in both `answers` and 
 
 ```bash
 # Test answers (hash)
-curl -s "http://localhost:8080/search?q=sha512+hello&format=json" | jq '.answers'
+curl -s "http://localhost:8888/search?q=sha512+hello&format=json" | jq '.answers'
 
 # Test answers (IP)
-curl -s "http://localhost:8080/search?q=ip&format=json" | jq '.answers'
+curl -s "http://localhost:8888/search?q=ip&format=json" | jq '.answers'
 
 # Test infoboxes
-curl -s "http://localhost:8080/search?q=apple+inc&format=json" | jq '.infoboxes'
+curl -s "http://localhost:8888/search?q=apple+inc&format=json" | jq '.infoboxes'
 
 # Test suggestions
-curl -s "http://localhost:8080/search?q=golang&format=json" | jq '.suggestions'
+curl -s "http://localhost:8888/search?q=golang&format=json" | jq '.suggestions'
 
 # Test results
-curl -s "http://localhost:8080/search?q=golang+tutorial&format=json" | jq '.results | length'
+curl -s "http://localhost:8888/search?q=golang+tutorial&format=json" | jq '.results | length'
 
 # Full response keys
-curl -s "http://localhost:8080/search?q=apple+inc&format=json" | jq 'keys'
+curl -s "http://localhost:8888/search?q=apple+inc&format=json" | jq 'keys'
 ```
