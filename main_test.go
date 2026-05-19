@@ -40,6 +40,7 @@ func TestPrintCLIHelp(t *testing.T) {
 		"--categories",
 		"--engines",
 		"--pageno",
+		"--limit",
 		"--debug",
 		"--help",
 		"--version",
@@ -99,6 +100,36 @@ func TestValidationExitCode(t *testing.T) {
 
 	if !strings.Contains(string(out), "validation error") {
 		t.Errorf("output should contain 'validation error', got: %s", out)
+	}
+}
+
+func TestParseArgs_DefaultLimit(t *testing.T) {
+	t.Parallel()
+
+	_, flags, _, err := parseArgs([]string{"test query"})
+	if err != nil {
+		t.Fatalf("parseArgs() error = %v, want nil", err)
+	}
+	if flags.Limit == nil {
+		t.Fatal("flags.Limit = nil, want default limit pointer")
+	}
+	if *flags.Limit != defaultResultLimit {
+		t.Fatalf("flags.Limit = %d, want %d", *flags.Limit, defaultResultLimit)
+	}
+}
+
+func TestParseArgs_ExplicitLimit(t *testing.T) {
+	t.Parallel()
+
+	_, flags, _, err := parseArgs([]string{"--limit", "7", "test query"})
+	if err != nil {
+		t.Fatalf("parseArgs() error = %v, want nil", err)
+	}
+	if flags.Limit == nil {
+		t.Fatal("flags.Limit = nil, want explicit limit pointer")
+	}
+	if *flags.Limit != 7 {
+		t.Fatalf("flags.Limit = %d, want 7", *flags.Limit)
 	}
 }
 

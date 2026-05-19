@@ -151,6 +151,50 @@ func TestNewSearchToolHandler(t *testing.T) {
 		}
 	})
 
+	t.Run("applies default limit when omitted", func(t *testing.T) {
+		results := make([]searxng.SearchResult, 12)
+		for i := range results {
+			results[i] = searxng.SearchResult{
+				Title:   "Result",
+				URL:     "https://example.com",
+				Content: "Content",
+				Engine:  "test",
+			}
+		}
+		body, _ := json.Marshal(searxng.SearchResponse{
+			Query:           "golang",
+			NumberOfResults: len(results),
+			Results:         results,
+		})
+		searcher, cleanup := newTestSearcher(t, func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(body)
+		})
+		defer cleanup()
+
+		handler := NewSearchToolHandler(searcher)
+		result, _, err := handler(context.Background(), nil, searxng.SearchArgs{Query: "golang"})
+		if err != nil {
+			t.Fatalf("call tool failed: %v", err)
+		}
+		if result.IsError {
+			t.Fatalf("expected IsError=false, got true with content: %v", result.Content)
+		}
+
+		textContent, ok := result.Content[0].(*mcp.TextContent)
+		if !ok {
+			t.Fatalf("expected *mcp.TextContent, got %T", result.Content[0])
+		}
+		var parsed searxng.SearchResponse
+		if err := json.Unmarshal([]byte(textContent.Text), &parsed); err != nil {
+			t.Fatalf("expected valid JSON, got error: %v\nbody: %s", err, textContent.Text)
+		}
+		if len(parsed.Results) != defaultResultLimit {
+			t.Fatalf("result count = %d, want %d", len(parsed.Results), defaultResultLimit)
+		}
+	})
+
 	t.Run("forwards optional parameters", func(t *testing.T) {
 		var capturedParams map[string]string
 		handler := func(w http.ResponseWriter, r *http.Request) {

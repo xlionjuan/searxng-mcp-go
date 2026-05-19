@@ -223,6 +223,11 @@ type searchTool interface {
 // arguments, executes the search, and returns the formatted results.
 func NewSearchToolHandler(searcher searchTool) func(context.Context, *mcp.CallToolRequest, searxng.SearchArgs) (*mcp.CallToolResult, any, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, args searxng.SearchArgs) (*mcp.CallToolResult, any, error) {
+		if args.Limit == nil {
+			defaultLimit := defaultResultLimit
+			args.Limit = &defaultLimit
+		}
+
 		if err := searxng.ValidateSearchArgs(&args); err != nil {
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{

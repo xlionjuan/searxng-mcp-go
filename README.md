@@ -46,6 +46,7 @@ searxng-mcp-go "recipes" --pageno 2
 | `--categories`    | string |         | Comma-separated categories (general, news, music)     |
 | `--engines`       | string |         | Comma-separated engines (google, bing, duckduckgo)    |
 | `--pageno`        | int    | 1       | Page number (>= 1)                                    |
+| `--limit`         | int    | 10      | Maximum number of results returned (1-20)             |
 | `--help`          | bool   | false   | Show help message                                     |
 | `--version`       | bool   | false   | Show version                                          |
 | `--debug`         | bool   | false   | Enable verbose HTTP request/response logging          |
@@ -89,6 +90,7 @@ SEARXNG_URL=https://my-instance.example.com searxng-mcp-go
 | `categories` | string        | No       |         | Comma-separated categories                               |
 | `engines`    | string        | No       |         | Comma-separated engines                                  |
 | `pageno`     | integer/null  | No       | 1       | Page number (>= 1)                                       |
+| `limit`      | integer       | No       | 10      | Maximum number of results returned (1-20)                |
 
 See [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) for full tool documentation and response format details.
 

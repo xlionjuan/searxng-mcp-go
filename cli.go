@@ -30,6 +30,7 @@ OPTIONS:
   --categories CAT   Comma-separated list of categories to search
   --engines ENG      Comma-separated list of search engines to use
   --pageno N         Page number for pagination [default: 1]
+  --limit N          Maximum number of results to return (1-20) [default: 10]
   --debug            Enable verbose HTTP request/response logging
                      Can also be enabled via DEBUG=1 environment variable
   --help             Show this help message

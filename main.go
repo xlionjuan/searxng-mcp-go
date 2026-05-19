@@ -11,7 +11,10 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
-const version = "1.0.0"
+const (
+	version            = "1.0.0"
+	defaultResultLimit = 10
+)
 
 // debugMode is set to true when --debug flag or DEBUG=1 env var is active.
 //
@@ -101,10 +104,11 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 		return false, CLIFlags{}, nil, fmt.Errorf("failed to parse arguments: %w", err)
 	}
 
-	// Use flag.Visit to determine whether --pageno was explicitly set.
-	// When not set, leave Pageno nil so CLI mode omits pageno from the
+	// Use flag.Visit to determine whether optional pointer flags were explicitly set.
+	// When --pageno is not set, leave Pageno nil so CLI mode omits pageno from the
 	// search request (matching MCP mode behaviour and the documented
-	// "omitted = backend default/page 1" contract).
+	// "omitted = backend default/page 1" contract). Limit always has an effective
+	// default so response truncation is consistent with the documented CLI default.
 	var pagenoPtr *int
 	var limitPtr *int
 	fs.Visit(func(f *flag.Flag) {
@@ -115,6 +119,10 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 			limitPtr = limit
 		}
 	})
+	if limitPtr == nil {
+		defaultLimit := defaultResultLimit
+		limitPtr = &defaultLimit
+	}
 
 	flags = CLIFlags{
 		Query:      *query,
