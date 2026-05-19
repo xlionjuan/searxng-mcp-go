@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"searxng-mcp-go/internal/searxng"
 )
 
 // searchInputSchema defines the JSON schema for the search tool input.
@@ -142,9 +143,6 @@ func attachStdin(stdin io.Reader) (restore func(), err error) {
 	go func() {
 		_, copyErr := io.Copy(pw, stdin)
 		if copyErr != nil {
-			// MCP stdio 場景中，pipe 寫入失敗通常發生在 MCP client 關閉 stdin
-			// 或行程即將結束之時，屬於預期內的正常關閉行為，僅以 Debug 層級記錄即可，
-			// 無需做額外的錯誤處理或重試。
 			slog.Debug("failed to copy MCP stdin", "error", copyErr)
 		}
 		_ = pw.Close()
@@ -168,12 +166,14 @@ func runMCPMode(flags CLIFlags, stdin io.Reader) {
 
 	cfg := getConfig(flags)
 
-	searcher, err := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
+	searcher, err := searxng.NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
 	if err != nil {
 		slog.Error("failed to create searcher", "error", err)
 		os.Exit(1)
 	}
 	defer searcher.Close()
+
+	searcher.Debug = debugMode
 
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "searxng-mcp-go",
@@ -200,9 +200,9 @@ func runMCPMode(flags CLIFlags, stdin io.Reader) {
 // NewSearchToolHandler creates an MCP tool handler function that performs SearXNG searches.
 // It returns a function suitable for use as an mcp.ToolHandler, which validates the search
 // arguments, executes the search, and returns the formatted results.
-func NewSearchToolHandler(searcher *SearXNGSearcher) func(context.Context, *mcp.CallToolRequest, SearchArgs) (*mcp.CallToolResult, any, error) {
-	return func(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
-		if err := ValidateSearchArgs(&args); err != nil {
+func NewSearchToolHandler(searcher searxng.Searcher) func(context.Context, *mcp.CallToolRequest, searxng.SearchArgs) (*mcp.CallToolResult, any, error) {
+	return func(ctx context.Context, req *mcp.CallToolRequest, args searxng.SearchArgs) (*mcp.CallToolResult, any, error) {
+		if err := searxng.ValidateSearchArgs(&args); err != nil {
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: fmt.Sprintf("validation error: %v", err)},

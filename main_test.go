@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"go.uber.org/goleak"
+	"searxng-mcp-go/internal/searxng"
 )
 
 func TestMain(m *testing.M) {
@@ -463,7 +464,7 @@ func TestGetConfig_PrecedenceAndDefaultWarning(t *testing.T) {
 			defer func() {
 				os.Stderr = oldStderr
 			}()
-			var cfg *Config
+			var cfg *searxng.Config
 			func() {
 				defer func() {
 					_ = w.Close()
@@ -475,8 +476,8 @@ func TestGetConfig_PrecedenceAndDefaultWarning(t *testing.T) {
 			if _, err := buf.ReadFrom(r); err != nil {
 				t.Fatalf("failed to read stderr: %v", err)
 		}
-		if cfg.SearXNGURL != DefaultSearXNGURL {
-			t.Fatalf("SearXNGURL = %q, want default %q", cfg.SearXNGURL, DefaultSearXNGURL)
+		if cfg.SearXNGURL != searxng.DefaultSearXNGURL {
+			t.Fatalf("SearXNGURL = %q, want default %q", cfg.SearXNGURL, searxng.DefaultSearXNGURL)
 		}
 		if !strings.Contains(buf.String(), "WARN: No SearXNG server specified") {
 			t.Fatalf("warning output missing, got %q", buf.String())
@@ -485,10 +486,10 @@ func TestGetConfig_PrecedenceAndDefaultWarning(t *testing.T) {
 }
 
 func TestRunCLIMode_SuccessTextOutput(t *testing.T) {
-	server := newTestSearchServer(t, SearchResponse{
+	server := newTestSearchServer(t, searxng.SearchResponse{
 		Query:           "golang",
 		NumberOfResults: 1,
-		Results:         []SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
+		Results:         []searxng.SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
 	})
 	defer server.Close()
 
@@ -506,10 +507,10 @@ func TestRunCLIMode_SuccessTextOutput(t *testing.T) {
 }
 
 func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
-	server := newTestSearchServer(t, SearchResponse{
+	server := newTestSearchServer(t, searxng.SearchResponse{
 		Query:           "golang",
 		NumberOfResults: 1,
-		Results:         []SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
+		Results:         []searxng.SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
 	})
 	defer server.Close()
 
@@ -521,7 +522,7 @@ func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
 		t.Fatalf("runCLIMode() error = %v", err)
 	}
 
-	var resp SearchResponse
+	var resp searxng.SearchResponse
 	if err := json.Unmarshal([]byte(output), &resp); err != nil {
 		t.Fatalf("output is not valid JSON: %v\n%s", err, output)
 	}
@@ -556,10 +557,10 @@ func TestRunCLIMode_DebugJSONIncludesUnresponsiveEngines(t *testing.T) {
 }
 
 func TestRunCLIMode_QueryPrecedence(t *testing.T) {
-	server := newTestSearchServer(t, SearchResponse{
+	server := newTestSearchServer(t, searxng.SearchResponse{
 		Query:           "flag query",
 		NumberOfResults: 1,
-		Results:         []SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
+		Results:         []searxng.SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
 	})
 	defer server.Close()
 
@@ -576,7 +577,7 @@ func TestRunCLIMode_QueryPrecedence(t *testing.T) {
 	}
 }
 
-func newTestSearchServer(t *testing.T, resp SearchResponse) *httptest.Server {
+func newTestSearchServer(t *testing.T, resp searxng.SearchResponse) *httptest.Server {
 	t.Helper()
 	body, err := json.Marshal(resp)
 	if err != nil {

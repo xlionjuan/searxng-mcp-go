@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"searxng-mcp-go/internal/searxng"
 )
 
 // printCLIHelp prints the help message for CLI mode
@@ -80,7 +82,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	}
 
 	cfg := getConfig(flags)
-	args := &SearchArgs{
+	args := &searxng.SearchArgs{
 		Query:      query,
 		Language:   flags.Language,
 		SafeSearch: flags.SafeSearch,
@@ -91,15 +93,17 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 		Limit:      flags.Limit,
 	}
 
-	if err := ValidateSearchArgs(args); err != nil {
+	if err := searxng.ValidateSearchArgs(args); err != nil {
 		return fmt.Errorf("validation error: %w", err)
 	}
 
-	searcher, err := NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
+	searcher, err := searxng.NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
 	if err != nil {
 		return fmt.Errorf("failed to create searcher: %w", err)
 	}
 	defer searcher.Close()
+
+	searcher.Debug = debugMode
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

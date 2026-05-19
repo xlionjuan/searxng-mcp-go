@@ -1,13 +1,9 @@
-package main
+package searxng
 
 import (
 	"regexp"
 	"strings"
 )
-
-// ============================================================================
-// Centralized Validation
-// ============================================================================
 
 // MaxQueryLength is the maximum allowed length for search queries
 const MaxQueryLength = 500
@@ -86,10 +82,6 @@ func ValidateEngines(engines string) error {
 }
 
 // ValidateSearchArgs validates and normalizes search arguments, returning a ValidationError if invalid.
-//
-// Normalization side effects:
-//   - Language set to "auto" (case-insensitive) is silently normalized to ""
-//     (empty string), letting SearXNG decide the language automatically.
 func ValidateSearchArgs(args *SearchArgs) error {
 	if args == nil {
 		return NewValidationError("args", "search arguments cannot be nil")
@@ -137,7 +129,6 @@ func ValidateSearchArgs(args *SearchArgs) error {
 
 	if args.Language != "" {
 		if strings.EqualFold(args.Language, "auto") {
-			// normalize "auto" to empty string (let SearXNG decide)
 			args.Language = ""
 		} else {
 			if len(args.Language) > maxLanguageLength {
@@ -150,4 +141,9 @@ func ValidateSearchArgs(args *SearchArgs) error {
 	}
 
 	return nil
+}
+
+// ContainsControlCharacters is exposed for testing.
+func ContainsControlCharacters(s string) bool {
+	return containsControlCharacters(s)
 }

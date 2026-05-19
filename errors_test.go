@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	searxng "searxng-mcp-go/internal/searxng"
 )
 
 // --- TEST-02: ValidationError tests ---
@@ -14,10 +16,10 @@ func TestValidationError(t *testing.T) {
 
 	t.Run("Is matches same field and message", func(t *testing.T) {
 		t.Parallel()
-		err1 := NewValidationError("query", "is required")
-		err2 := NewValidationError("query", "is required")
-		err3 := NewValidationError("query", "must be longer")
-		err4 := NewValidationError("other_field", "is required")
+		err1 := searxng.NewValidationError("query", "is required")
+		err2 := searxng.NewValidationError("query", "is required")
+		err3 := searxng.NewValidationError("query", "must be longer")
+		err4 := searxng.NewValidationError("other_field", "is required")
 
 		if !err1.Is(err2) {
 			t.Errorf("err1.Is(err2) = false, want true (same field and message)")
@@ -36,15 +38,15 @@ func TestValidationError(t *testing.T) {
 
 	t.Run("IsValidationError detects ValidationError", func(t *testing.T) {
 		t.Parallel()
-		err := NewValidationError("query", "is required")
+		err := searxng.NewValidationError("query", "is required")
 
-		if !IsValidationError(err) {
+		if !searxng.IsValidationError(err) {
 			t.Errorf("IsValidationError(err) = false, want true")
 		}
-		if IsValidationError(errors.New("not a validation error")) {
+		if searxng.IsValidationError(errors.New("not a validation error")) {
 			t.Errorf("IsValidationError(non-ValidationError) = true, want false")
 		}
-		if IsValidationError(nil) {
+		if searxng.IsValidationError(nil) {
 			t.Errorf("IsValidationError(nil) = true, want false")
 		}
 	})
@@ -52,7 +54,7 @@ func TestValidationError(t *testing.T) {
 	t.Run("ValidationError wraps with Unwrap", func(t *testing.T) {
 		t.Parallel()
 		// Create a ValidationError wrapped in another error using fmt.Errorf
-		validationErr := NewValidationError("test", "test message")
+		validationErr := searxng.NewValidationError("test", "test message")
 		// Use errors.Join to create a wrapped error (Go 1.20+)
 		wrappedErr := fmt.Errorf("operation failed: %w", validationErr)
 
@@ -62,7 +64,7 @@ func TestValidationError(t *testing.T) {
 		}
 
 		// IsValidationError should detect it
-		if !IsValidationError(wrappedErr) {
+		if !searxng.IsValidationError(wrappedErr) {
 			t.Errorf("IsValidationError(wrappedErr) = false, want true")
 		}
 	})
@@ -93,7 +95,7 @@ func TestHTTPStatusError(t *testing.T) {
 		tc := tc
 		t.Run(fmt.Sprintf("status_%d", tc.statusCode), func(t *testing.T) {
 			t.Parallel()
-			err := HTTPStatusError(tc.statusCode, tc.contentType, tc.body)
+			err := searxng.HTTPStatusError(tc.statusCode, tc.contentType, tc.body)
 			if err == nil {
 				t.Fatalf("expected error for status %d, got nil", tc.statusCode)
 			}
@@ -101,7 +103,7 @@ func TestHTTPStatusError(t *testing.T) {
 				t.Errorf("expected error containing %q, got: %v", tc.errContains, err)
 			}
 
-			var searxngErr *SearXNGError
+			var searxngErr *searxng.SearXNGError
 			if !errors.As(err, &searxngErr) {
 				t.Fatalf("expected *SearXNGError, got type %T", err)
 			}
@@ -121,7 +123,7 @@ func TestHTTPStatusError_HTMLBodyNotInErrorMessage(t *testing.T) {
 
 	htmlBody := []byte("<!DOCTYPE html><html><body>Internal Server Error</body></html>")
 
-	err := HTTPStatusError(500, "text/html", htmlBody)
+	err := searxng.HTTPStatusError(500, "text/html", htmlBody)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -131,7 +133,7 @@ func TestHTTPStatusError_HTMLBodyNotInErrorMessage(t *testing.T) {
 		t.Errorf("error message should not contain HTML body content, got: %s", errMsg)
 	}
 
-	var searxngErr *SearXNGError
+	var searxngErr *searxng.SearXNGError
 	if !errors.As(err, &searxngErr) {
 		t.Fatalf("expected *SearXNGError, got type %T", err)
 	}
@@ -144,9 +146,9 @@ func TestHTTPStatusError_HTMLBodyNotInErrorMessage(t *testing.T) {
 func TestSearXNGError_ResponseBodyField(t *testing.T) {
 	t.Parallel()
 
-	err := NewSearXNGError(400, "text/html", "error details here", errors.New("bad request"))
+	err := searxng.NewSearXNGError(400, "text/html", "error details here", errors.New("bad request"))
 
-	var searxngErr *SearXNGError
+	var searxngErr *searxng.SearXNGError
 	if !errors.As(err, &searxngErr) {
 		t.Fatalf("expected *SearXNGError, got type %T", err)
 	}
@@ -160,7 +162,7 @@ func TestSearXNGError_Unwrap(t *testing.T) {
 	t.Parallel()
 
 	underlying := errors.New("connection refused")
-	err := NewSearXNGError(0, "", "", underlying)
+	err := searxng.NewSearXNGError(0, "", "", underlying)
 
 	unwrapped := errors.Unwrap(err)
 	if unwrapped != underlying {
@@ -176,7 +178,7 @@ func TestHTMLResponseError_HTMLBodyNotInMessage(t *testing.T) {
 	t.Parallel()
 
 	htmlBody := "<!DOCTYPE html><html><head><title>Error</title></head><body>JSON not enabled</body></html>"
-	err := &HTMLResponseError{Body: htmlBody, UnderlyingErr: nil}
+	err := &searxng.HTMLResponseError{Body: htmlBody, UnderlyingErr: nil}
 
 	errMsg := err.Error()
 	if strings.Contains(errMsg, "<!DOCTYPE") || strings.Contains(errMsg, "<html>") || strings.Contains(errMsg, "JSON not enabled") {
@@ -191,39 +193,39 @@ func TestTruncateBody(t *testing.T) {
 
 	t.Run("nil input", func(t *testing.T) {
 		t.Parallel()
-		if got := truncateBody(nil, 10); got != "" {
-			t.Errorf("truncateBody(nil, 10) = %q, want %q", got, "")
+		if got := searxng.TruncateBody(nil, 10); got != "" {
+			t.Errorf("TruncateBody(nil, 10) = %q, want %q", got, "")
 		}
 	})
 
 	t.Run("empty input", func(t *testing.T) {
 		t.Parallel()
-		if got := truncateBody([]byte{}, 10); got != "" {
-			t.Errorf("truncateBody({}, 10) = %q, want %q", got, "")
+		if got := searxng.TruncateBody([]byte{}, 10); got != "" {
+			t.Errorf("TruncateBody({}, 10) = %q, want %q", got, "")
 		}
 	})
 
 	t.Run("shorter than maxLen", func(t *testing.T) {
 		t.Parallel()
 		body := []byte("hello")
-		if got := truncateBody(body, 10); got != "hello" {
-			t.Errorf("truncateBody(hello, 10) = %q, want %q", got, "hello")
+		if got := searxng.TruncateBody(body, 10); got != "hello" {
+			t.Errorf("TruncateBody(hello, 10) = %q, want %q", got, "hello")
 		}
 	})
 
 	t.Run("exactly maxLen", func(t *testing.T) {
 		t.Parallel()
 		body := []byte("hello")
-		if got := truncateBody(body, 5); got != "hello" {
-			t.Errorf("truncateBody(hello, 5) = %q, want %q", got, "hello")
+		if got := searxng.TruncateBody(body, 5); got != "hello" {
+			t.Errorf("TruncateBody(hello, 5) = %q, want %q", got, "hello")
 		}
 	})
 
 	t.Run("longer than maxLen", func(t *testing.T) {
 		t.Parallel()
 		body := []byte("hello world")
-		if got := truncateBody(body, 5); got != "hello" {
-			t.Errorf("truncateBody(hello world, 5) = %q, want %q", got, "hello")
+		if got := searxng.TruncateBody(body, 5); got != "hello" {
+			t.Errorf("TruncateBody(hello world, 5) = %q, want %q", got, "hello")
 		}
 	})
 
@@ -232,17 +234,17 @@ func TestTruncateBody(t *testing.T) {
 		// "你好世界" is 12 bytes in UTF-8 (3 bytes each)
 		body := []byte("你好世界")
 		// maxLen=5 will cut in the middle of the second character
-		got := truncateBody(body, 5)
+		got := searxng.TruncateBody(body, 5)
 		// Expect only the first complete rune "你" (3 bytes) — the function
 		// applies string() to the byte slice, which may produce replacement
 		// characters for incomplete UTF-8. We just verify it doesn't panic
 		// and returns at most maxLen bytes.
 		if len([]byte(got)) > 5 {
-			t.Errorf("truncateBody(你好世界, 5) returned %d bytes, want <= 5 bytes", len([]byte(got)))
+			t.Errorf("TruncateBody(你好世界, 5) returned %d bytes, want <= 5 bytes", len([]byte(got)))
 		}
 		// The first character "你" should be preserved if at least 3 bytes.
 		if !containsRune(got, '你') && len([]byte(got)) >= 3 {
-			t.Logf("truncateBody(你好世界, 5) = %q (bytes: %d) — incomplete UTF-8 may produce replacement chars", got, len([]byte(got)))
+			t.Logf("TruncateBody(你好世界, 5) = %q (bytes: %d) — incomplete UTF-8 may produce replacement chars", got, len([]byte(got)))
 		}
 	})
 
@@ -250,25 +252,25 @@ func TestTruncateBody(t *testing.T) {
 		t.Parallel()
 		// "abc你" is 6 bytes (3 ASCII + 3 for 你)
 		body := []byte("abc你")
-		got := truncateBody(body, 6)
+		got := searxng.TruncateBody(body, 6)
 		if got != "abc你" {
-			t.Errorf("truncateBody(abc你, 6) = %q, want %q", got, "abc你")
+			t.Errorf("TruncateBody(abc你, 6) = %q, want %q", got, "abc你")
 		}
 	})
 
 	t.Run("zero maxLen", func(t *testing.T) {
 		t.Parallel()
 		body := []byte("hello")
-		if got := truncateBody(body, 0); got != "" {
-			t.Errorf("truncateBody(hello, 0) = %q, want %q", got, "")
+		if got := searxng.TruncateBody(body, 0); got != "" {
+			t.Errorf("TruncateBody(hello, 0) = %q, want %q", got, "")
 		}
 	})
 
 	t.Run("negative maxLen", func(t *testing.T) {
 		t.Parallel()
 		body := []byte("hello")
-		if got := truncateBody(body, -1); got != "" {
-			t.Errorf("truncateBody(hello, -1) = %q, want %q", got, "")
+		if got := searxng.TruncateBody(body, -1); got != "" {
+			t.Errorf("TruncateBody(hello, -1) = %q, want %q", got, "")
 		}
 	})
 
@@ -277,9 +279,9 @@ func TestTruncateBody(t *testing.T) {
 		// "🔥" is 4 bytes in UTF-8
 		body := []byte("🔥🔥🔥")
 		// maxLen=5 cuts in the middle of the second emoji
-		got := truncateBody(body, 5)
+		got := searxng.TruncateBody(body, 5)
 		if len([]byte(got)) > 5 {
-			t.Errorf("truncateBody(🔥🔥🔥, 5) returned %d bytes, want <= 5", len([]byte(got)))
+			t.Errorf("TruncateBody(🔥🔥🔥, 5) returned %d bytes, want <= 5", len([]byte(got)))
 		}
 	})
 }
@@ -297,7 +299,7 @@ func containsRune(s string, r rune) bool {
 func TestSearXNGError_Error_NilUnderlying(t *testing.T) {
 	t.Parallel()
 
-	err := NewSearXNGError(500, "text/html", "", nil)
+	err := searxng.NewSearXNGError(500, "text/html", "", nil)
 
 	errMsg := err.Error()
 	if errMsg != "searxng error: status 500, content-type: text/html" {
@@ -309,7 +311,7 @@ func TestSearXNGError_Error_WithUnderlying(t *testing.T) {
 	t.Parallel()
 
 	underlying := errors.New("connection refused")
-	err := NewSearXNGError(500, "text/html", "", underlying)
+	err := searxng.NewSearXNGError(500, "text/html", "", underlying)
 
 	errMsg := err.Error()
 	if !strings.Contains(errMsg, "searxng error (status 500)") {

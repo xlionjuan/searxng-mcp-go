@@ -1,4 +1,4 @@
-package main
+package searxng
 
 // MaxContentRunes is the maximum number of UTF-8 runes in content truncation
 const MaxContentRunes = 4000
@@ -13,5 +13,4 @@ const MaxResponseBodySize = 2 * 1024 * 1024
 const MaxErrorDisplayChars = 200
 
 // ResultSizeEstimate is an empirical estimate of bytes per result for pre-allocating the response buffer.
-// Derived from typical SearXNG JSON result sizes.
 const ResultSizeEstimate = 200

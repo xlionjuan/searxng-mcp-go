@@ -10,13 +10,14 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"searxng-mcp-go/internal/searxng"
 )
 
 func mockSearXNGHandler() http.HandlerFunc {
-	body, _ := json.Marshal(SearchResponse{
+	body, _ := json.Marshal(searxng.SearchResponse{
 		Query:           "golang",
 		NumberOfResults: 1,
-		Results: []SearchResult{
+		Results: []searxng.SearchResult{
 			{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"},
 		},
 		Suggestions: []string{"golang tutorial"},
@@ -28,12 +29,12 @@ func mockSearXNGHandler() http.HandlerFunc {
 	}
 }
 
-func newTestSearcher(t *testing.T, handler http.HandlerFunc) (*SearXNGSearcher, func()) {
+func newTestSearcher(t *testing.T, handler http.HandlerFunc) (*searxng.SearXNGSearcher, func()) {
 	t.Helper()
 
 	mockServer := httptest.NewServer(handler)
 
-	searcher, err := NewSearXNGSearcher(mockServer.URL, 30*time.Second, nil)
+	searcher, err := searxng.NewSearXNGSearcher(mockServer.URL, 30*time.Second, nil)
 	if err != nil {
 		mockServer.Close()
 		t.Fatalf("failed to create searcher: %v", err)
@@ -81,19 +82,19 @@ func TestSearchInputSchema(t *testing.T) {
 
 func TestNewSearchToolHandler(t *testing.T) {
 	t.Run("creates handler", func(t *testing.T) {
-		if handler := NewSearchToolHandler(&SearXNGSearcher{}); handler == nil {
+		if handler := NewSearchToolHandler(&searxng.SearXNGSearcher{}); handler == nil {
 			t.Fatal("expected handler function")
 		}
 	})
 
 	t.Run("validates input", func(t *testing.T) {
-		handler := NewSearchToolHandler(&SearXNGSearcher{})
+		handler := NewSearchToolHandler(&searxng.SearXNGSearcher{})
 		for _, tt := range []struct {
 			name string
-			args SearchArgs
+			args searxng.SearchArgs
 		}{
-			{name: "empty query", args: SearchArgs{Query: ""}},
-			{name: "whitespace query", args: SearchArgs{Query: "   "}},
+			{name: "empty query", args: searxng.SearchArgs{Query: ""}},
+			{name: "whitespace query", args: searxng.SearchArgs{Query: "   "}},
 		} {
 			t.Run(tt.name, func(t *testing.T) {
 				result, _, err := handler(context.Background(), nil, tt.args)
@@ -119,7 +120,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 		defer cleanup()
 
 		handler := NewSearchToolHandler(searcher)
-		result, _, err := handler(context.Background(), nil, SearchArgs{Query: "golang"})
+		result, _, err := handler(context.Background(), nil, searxng.SearchArgs{Query: "golang"})
 		if err != nil {
 			t.Fatalf("call tool failed: %v", err)
 		}
@@ -135,7 +136,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 			t.Fatalf("expected *mcp.TextContent, got %T", result.Content[0])
 		}
 
-		var parsed SearchResponse
+		var parsed searxng.SearchResponse
 		if err := json.Unmarshal([]byte(textContent.Text), &parsed); err != nil {
 			t.Fatalf("expected valid JSON, got error: %v\nbody: %s", err, textContent.Text)
 		}
@@ -181,7 +182,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 
 		handlerFn := NewSearchToolHandler(searcher)
 		pageno := 3
-		result, _, err := handlerFn(context.Background(), nil, SearchArgs{
+		result, _, err := handlerFn(context.Background(), nil, searxng.SearchArgs{
 			Query:      "golang",
 			Language:   "en",
 			SafeSearch: 2,
@@ -218,7 +219,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 		defer cleanup()
 
 		handler := NewSearchToolHandler(searcher)
-		result, _, err := handler(context.Background(), nil, SearchArgs{Query: "test"})
+		result, _, err := handler(context.Background(), nil, searxng.SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("call tool failed: %v", err)
 		}
@@ -236,10 +237,10 @@ func TestNewSearchToolHandler(t *testing.T) {
 }
 
 func TestMCP_DebugGatesUnresponsiveEngines(t *testing.T) {
-	sr := SearchResponse{
+	sr := searxng.SearchResponse{
 		Query:               "golang",
 		NumberOfResults:     1,
-		Results:             []SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
+		Results:             []searxng.SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
 		Suggestions:         []string{},
 		UnresponsiveEngines: [][]string{{"brave", `Suspended: " too many "requests"`}},
 	}

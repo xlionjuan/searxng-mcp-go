@@ -3,6 +3,8 @@ package main
 import (
 	"strings"
 	"testing"
+
+	searxng "searxng-mcp-go/internal/searxng"
 )
 
 // ============================================================================
@@ -36,17 +38,17 @@ func FuzzContainsControlCharacters(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, s string) {
-		result := containsControlCharacters(s)
+		result := searxng.ContainsControlCharacters(s)
 
 		// Invariant: if string is empty, result must be false
 		if len(s) == 0 && result {
-			t.Errorf("containsControlCharacters(%q)=true, want false for empty string", s)
+			t.Errorf("ContainsControlCharacters(%q)=true, want false for empty string", s)
 		}
 
 		// Invariant: check manually and compare
 		expected := manualContainsControl(s)
 		if result != expected {
-			t.Errorf("containsControlCharacters(%q)=%v, want %v", s, result, expected)
+			t.Errorf("ContainsControlCharacters(%q)=%v, want %v", s, result, expected)
 		}
 	})
 }
@@ -82,7 +84,7 @@ func FuzzValidateBaseURL(f *testing.F) {
 		"https://192.168.1.1",                       // valid HTTPS with IP
 		"https://[::1]",                             // valid IPv6
 		"http://localhost:8080/search",              // localhost with port and path
-		"https://user:pass@example.com",             // with userinfo
+		"https://user:***@example.com",             // with userinfo
 		"https://example.com/path?q=1&lang=en",      // complex valid URL
 		"https://sub.domain.example.co.uk/path",     // valid multi-level domain
 		"HTTPS://EXAMPLE.COM",                       // uppercase scheme
@@ -99,24 +101,24 @@ func FuzzValidateBaseURL(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, urlStr string) {
-		err := validateBaseURL(urlStr)
+		err := searxng.ValidateBaseURL(urlStr)
 
 		// Invariant: empty string must fail
 		if urlStr == "" && err == nil {
-			t.Error("validateBaseURL(\"\") returned nil, expected error")
+			t.Error("ValidateBaseURL(\"\") returned nil, expected error")
 		}
 
-		// Invariant: if validateBaseURL succeeds, url.Parse must also succeed
+		// Invariant: if ValidateBaseURL succeeds, url.Parse must also succeed
 		// with a valid http/https scheme and non-empty host
 		if err == nil {
 			// Must start with http:// or https:// (case-insensitive)
 			lower := strings.ToLower(urlStr)
 			if !strings.HasPrefix(lower, "http://") && !strings.HasPrefix(lower, "https://") {
-				t.Errorf("validateBaseURL(%q) succeeded despite invalid scheme prefix", urlStr)
+				t.Errorf("ValidateBaseURL(%q) succeeded despite invalid scheme prefix", urlStr)
 			}
 		}
 
-		// Invariant: validateBaseURL must NOT panic on any input
+		// Invariant: ValidateBaseURL must NOT panic on any input
 		_ = err
 	})
 }
@@ -142,7 +144,7 @@ func FuzzValidateSearchArgs(f *testing.F) {
 	f.Add("test", "en", int64(0), "", "", "invalid!eng", int64(1))         // invalid engine
 	f.Add("test", "en", int64(0), "", "", "", int64(0))                    // invalid pageno
 	f.Add("test", "en", int64(0), "", "", "", int64(-1))                   // invalid pageno
-	f.Add(strings.Repeat("a", MaxQueryLength+1), "en", int64(0), "", "", "", int64(1)) // too long query
+	f.Add(strings.Repeat("a", searxng.MaxQueryLength+1), "en", int64(0), "", "", "", int64(1)) // too long query
 	f.Add("test", strings.Repeat("a", 36), int64(0), "", "", "", int64(1)) // too long language
 	f.Add("test", "en", int64(0), "", strings.Repeat("a", 51), "", int64(1)) // too long category
 	f.Add("test", "en", int64(0), "", "", strings.Repeat("a", 51), int64(1)) // too long engine
@@ -167,7 +169,7 @@ func FuzzValidateSearchArgs(f *testing.F) {
 			pn = &pnVal
 		}
 
-		args := &SearchArgs{
+		args := &searxng.SearchArgs{
 			Query:      query,
 			Language:   language,
 			SafeSearch: ss,
@@ -178,14 +180,14 @@ func FuzzValidateSearchArgs(f *testing.F) {
 		}
 
 		// ValidateSearchArgs must not panic on any input
-		err := ValidateSearchArgs(args)
+		err := searxng.ValidateSearchArgs(args)
 
 		// Invariant: nil args must return error
 		// (args is always non-nil here, but we verify the nil path separately)
 
 		// Invariant: if err is non-nil, it should be a *ValidationError
 		if err != nil {
-			if _, ok := err.(*ValidationError); !ok {
+			if _, ok := err.(*searxng.ValidationError); !ok {
 				t.Errorf("ValidateSearchArgs returned non-ValidationError: %T: %v", err, err)
 			}
 		}
@@ -291,12 +293,12 @@ func FuzzValidateSearchArgs_NilArgs(f *testing.F) {
 	f.Add(false) // not nil — empty struct (validates that empty struct fails correctly)
 
 	f.Fuzz(func(t *testing.T, nilArgs bool) {
-		var args *SearchArgs
+		var args *searxng.SearchArgs
 		if !nilArgs {
-			args = &SearchArgs{Query: "test"}
+			args = &searxng.SearchArgs{Query: "test"}
 		}
 
-		err := ValidateSearchArgs(args)
+		err := searxng.ValidateSearchArgs(args)
 
 		if nilArgs {
 			if err == nil {
