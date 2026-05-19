@@ -28,7 +28,7 @@ func TestNewSearXNGSearcherErrors(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			searcher, err := searxng.NewSearXNGSearcher(tt.baseURL, time.Second, nil, false)
+			searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: tt.baseURL, Timeout: time.Second}, false)
 			if err == nil {
 				if searcher != nil {
 					_ = searcher.Close()
@@ -58,7 +58,7 @@ func TestNewSearXNGSearcherSuccess(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			searcher, err := searxng.NewSearXNGSearcher(tt.baseURL, time.Second, nil, false)
+			searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: tt.baseURL, Timeout: time.Second}, false)
 			if err != nil {
 				t.Fatalf("NewSearXNGSearcher() error = %v, want nil", err)
 			}

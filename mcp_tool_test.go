@@ -34,7 +34,7 @@ func newTestSearcher(t *testing.T, handler http.HandlerFunc) (*searxng.SearXNGSe
 
 	mockServer := httptest.NewServer(handler)
 
-	searcher, err := searxng.NewSearXNGSearcher(mockServer.URL, 30*time.Second, nil, false)
+	searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: mockServer.URL, Timeout: 30 * time.Second}, false)
 	if err != nil {
 		mockServer.Close()
 		t.Fatalf("failed to create searcher: %v", err)

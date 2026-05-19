@@ -166,7 +166,7 @@ func runMCPMode(flags CLIFlags, stdin io.Reader) {
 
 	cfg := getConfig(flags)
 
-	searcher, err := searxng.NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient, debugMode)
+	searcher, err := searxng.NewSearXNGSearcher(cfg, debugMode)
 	if err != nil {
 		slog.Error("failed to create searcher", "error", err)
 		os.Exit(1)
