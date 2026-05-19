@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Go 1.26.2 or later (developed with Go 1.26.2)
-- Access to a SearXNG instance (default: `https://search-4.xlion.dev`)
+- Access to a SearXNG instance (required — no default, e.g. `http://localhost:8080`)
 
 ## Installing
 
@@ -127,9 +127,9 @@ For manual testing, use the MCP Inspector or the existing test harness rather th
 
 ## Configuration
 
-### Default SearXNG Instance
+### SearXNG Instance
 
-By default, the server uses `https://search-4.xlion.dev`. See the [MCP Server Configuration](#mcp-server-configuration) section above for how to override it via environment variables or CLI flags.
+A SearXNG instance URL is **required** — there is no default. Set it via the `SEARXNG_URL` environment variable or `--searxng-url` CLI flag. See [MCP Server Configuration](#mcp-server-configuration) above for setup instructions.
 
 ### Timeout
 

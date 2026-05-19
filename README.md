@@ -71,7 +71,7 @@ SEARXNG_URL=https://my-instance.example.com searxng-mcp-go
     "searxng": {
       "command": "searxng-mcp-go",
       "env": {
-        "SEARXNG_URL": "https://search-4.xlion.dev"
+        "SEARXNG_URL": "http://localhost:8080"
       }
     }
   }
@@ -96,10 +96,10 @@ See [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) for full tool documentation and respo
 
 | Variable       | Required | Default                        | Description                          |
 |----------------|----------|--------------------------------|--------------------------------------|
-| `SEARXNG_URL`  | No       | `https://search-4.xlion.dev`  | SearXNG instance URL to query        |
+| `SEARXNG_URL`  | **Yes**  | — (required, no default) | SearXNG instance URL to query        |
 | `DEBUG`        | No       |                                | Set to `1` to enable verbose HTTP request/response logging |
 
-Configuration priority: **CLI flag** > **environment variable** > **default value**.
+Configuration priority: **CLI flag** > **environment variable**. A value is required — there is no default.
 
 ```bash
 # Set via environment
@@ -110,7 +110,7 @@ searxng-mcp-go "search query"
 searxng-mcp-go --searxng-url https://other-instance.example.com "search query"
 ```
 
-**Note:** The default server (`search-4.xlion.dev`) is provided for convenience. For production use, deploy your own SearXNG instance and set `SEARXNG_URL`.
+**Note:** There is no default server — you must configure `SEARXNG_URL` with your own SearXNG instance.
 
 ## Error Handling
 

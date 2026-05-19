@@ -164,7 +164,11 @@ func runMCPMode(flags CLIFlags, stdin io.Reader) {
 	}
 	defer restoreStdin()
 
-	cfg := getConfig(flags)
+	cfg, err := getConfig(flags)
+	if err != nil {
+		slog.Error("configuration error", "error", err)
+		os.Exit(1)
+	}
 
 	searcher, err := searxng.NewSearXNGSearcher(cfg, debugMode)
 	if err != nil {

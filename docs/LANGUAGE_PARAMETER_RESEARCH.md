@@ -31,19 +31,19 @@ Earlier versions of this project and this document discussed a `lang` parameter 
 ### Query: python programming
 
 ```bash
-curl -s "https://search-4.xlion.dev/search?q=python+programming&format=json&lang=en" | jq '[.results[] | {engine, title}]'
-curl -s "https://search-4.xlion.dev/search?q=python+programming&format=json&language=en" | jq '[.results[] | {engine, title}]'
-curl -s "https://search-4.xlion.dev/search?q=python+programming&format=json&lang=ja" | jq '[.results[] | {engine, title}]'
-curl -s "https://search-4.xlion.dev/search?q=python+programming&format=json&language=ja" | jq '[.results[] | {engine, title}]'
+curl -s "http://localhost:8080/search?q=python+programming&format=json&lang=en" | jq '[.results[] | {engine, title}]'
+curl -s "http://localhost:8080/search?q=python+programming&format=json&language=en" | jq '[.results[] | {engine, title}]'
+curl -s "http://localhost:8080/search?q=python+programming&format=json&lang=ja" | jq '[.results[] | {engine, title}]'
+curl -s "http://localhost:8080/search?q=python+programming&format=json&language=ja" | jq '[.results[] | {engine, title}]'
 ```
 
 ### Query: artificial intelligence
 
 ```bash
-curl -s "https://search-4.xlion.dev/search?q=artificial+intelligence&format=json&lang=en" | jq '[.results[] | {engine, title}]'
-curl -s "https://search-4.xlion.dev/search?q=artificial+intelligence&format=json&lang=de" | jq '[.results[] | {engine, title}]'
-curl -s "https://search-4.xlion.dev/search?q=artificial+intelligence&format=json&lang=fr" | jq '[.results[] | {engine, title}]'
-curl -s "https://search-4.xlion.dev/search?q=artificial+intelligence&format=json" | jq '[.results[] | {engine, title}]'
+curl -s "http://localhost:8080/search?q=artificial+intelligence&format=json&lang=en" | jq '[.results[] | {engine, title}]'
+curl -s "http://localhost:8080/search?q=artificial+intelligence&format=json&lang=de" | jq '[.results[] | {engine, title}]'
+curl -s "http://localhost:8080/search?q=artificial+intelligence&format=json&lang=fr" | jq '[.results[] | {engine, title}]'
+curl -s "http://localhost:8080/search?q=artificial+intelligence&format=json" | jq '[.results[] | {engine, title}]'
 ```
 
 ---

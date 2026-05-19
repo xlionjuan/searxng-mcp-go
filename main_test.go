@@ -80,7 +80,7 @@ func TestValidationExitCode(t *testing.T) {
 	binPath, cleanup := buildTestBinary(t)
 	defer cleanup()
 
-	cmd := exec.Command(binPath, "--json", "--pageno", "0", "test")
+	cmd := exec.Command(binPath, "--json", "--searxng-url", "http://localhost:9999", "--pageno", "0", "test")
 	cmd.Dir = "."
 	out, err := cmd.CombinedOutput()
 
@@ -439,48 +439,37 @@ func captureStdout(t *testing.T, fn func()) string {
 	return buf.String()
 }
 
-func TestGetConfig_PrecedenceAndDefaultWarning(t *testing.T) {
+func TestGetConfig(t *testing.T) {
 	t.Setenv("SEARXNG_URL", "https://env.example.com")
 
 	t.Run("flag overrides env", func(t *testing.T) {
-		cfg := getConfig(CLIFlags{SearXNGURL: "https://flag.example.com"})
+		cfg, err := getConfig(CLIFlags{SearXNGURL: "https://flag.example.com"})
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
 		if cfg.SearXNGURL != "https://flag.example.com" {
 			t.Fatalf("SearXNGURL = %q, want flag value", cfg.SearXNGURL)
 		}
 	})
 
 	t.Run("env used when flag empty", func(t *testing.T) {
-		cfg := getConfig(CLIFlags{})
+		cfg, err := getConfig(CLIFlags{})
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
 		if cfg.SearXNGURL != "https://env.example.com" {
 			t.Fatalf("SearXNGURL = %q, want env value", cfg.SearXNGURL)
 		}
 	})
 
-	t.Run("default warning when neither set", func(t *testing.T) {
+	t.Run("error when neither set", func(t *testing.T) {
 		t.Setenv("SEARXNG_URL", "")
-		oldStderr := os.Stderr
-		r, w, _ := os.Pipe()
-		os.Stderr = w
-		defer func() {
-			os.Stderr = oldStderr
-		}()
-		var cfg *searxng.Config
-		func() {
-			defer func() {
-				_ = w.Close()
-			}()
-			cfg = getConfig(CLIFlags{})
-		}()
-
-		var buf bytes.Buffer
-		if _, err := buf.ReadFrom(r); err != nil {
-			t.Fatalf("failed to read stderr: %v", err)
+		_, err := getConfig(CLIFlags{})
+		if err == nil {
+			t.Fatal("getConfig() error = nil, want error")
 		}
-		if cfg.SearXNGURL != searxng.DefaultSearXNGURL {
-			t.Fatalf("SearXNGURL = %q, want default %q", cfg.SearXNGURL, searxng.DefaultSearXNGURL)
-		}
-		if !strings.Contains(buf.String(), "WARN: No SearXNG server specified") {
-			t.Fatalf("warning output missing, got %q", buf.String())
+		if !strings.Contains(err.Error(), "SearXNG_URL") || !strings.Contains(err.Error(), "required") {
+			t.Fatalf("getConfig() error = %q, want error mentioning 'SearXNG_URL' and 'required'", err.Error())
 		}
 	})
 }
@@ -609,28 +598,28 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 		},
 		{
 			name:      "safesearch out of range",
-			flags:     CLIFlags{Query: "test", Language: "", SafeSearch: -1, Pageno: nil},
+			flags:     CLIFlags{Query: "test", SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: -1, Pageno: nil},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
 		},
 		{
 			name:      "invalid time_range",
-			flags:     CLIFlags{Query: "test", Language: "", SafeSearch: 0, TimeRange: "invalid", Pageno: nil},
+			flags:     CLIFlags{Query: "test", SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: 0, TimeRange: "invalid", Pageno: nil},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
 		},
 		{
 			name:      "pageno zero",
-			flags:     CLIFlags{Query: "test", Language: "", SafeSearch: 0, Pageno: intPtr(0)},
+			flags:     CLIFlags{Query: "test", SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: 0, Pageno: intPtr(0)},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
 		},
 		{
 			name:      "query too long",
-			flags:     CLIFlags{Query: strings.Repeat("a", 501), Language: "", SafeSearch: 0, Pageno: nil},
+			flags:     CLIFlags{Query: strings.Repeat("a", 501), SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: 0, Pageno: nil},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",

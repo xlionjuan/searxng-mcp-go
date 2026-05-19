@@ -22,7 +22,7 @@ USAGE:
 OPTIONS:
   --query string     Search query string (alternative to positional argument)
   --json             Output results as formatted JSON instead of human-readable text
-  --searxng-url URL  SearXNG instance URL (default: https://search-4.xlion.dev)
+  --searxng-url URL  SearXNG instance URL (required)
                      Can also be set via SEARXNG_URL environment variable
   --language LANG    Language code for results (e.g., en, zh-tw, ja) [default: auto]
   --safesearch 0-2   SafeSearch level: 0=Off, 1=Moderate, 2=Strict [default: 0]
@@ -81,7 +81,10 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 		return fmt.Errorf("search query is required; use --help for usage information")
 	}
 
-	cfg := getConfig(flags)
+	cfg, err := getConfig(flags)
+	if err != nil {
+		return fmt.Errorf("configuration error: %w", err)
+	}
 	args := &searxng.SearchArgs{
 		Query:      query,
 		Language:   flags.Language,

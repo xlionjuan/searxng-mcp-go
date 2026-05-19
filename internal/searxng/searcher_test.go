@@ -79,8 +79,8 @@ func TestConfigAndDefaultConfig(t *testing.T) {
 	if cfg == nil {
 		t.Fatal("DefaultConfig() = nil, want config")
 	}
-	if cfg.SearXNGURL != searxng.DefaultSearXNGURL {
-		t.Fatalf("SearXNGURL = %q, want %q", cfg.SearXNGURL, searxng.DefaultSearXNGURL)
+	if cfg.SearXNGURL != "" {
+		t.Fatalf("SearXNGURL = %q, want empty string", cfg.SearXNGURL)
 	}
 	if cfg.Timeout != 30*time.Second {
 		t.Fatalf("Timeout = %v, want 30s", cfg.Timeout)

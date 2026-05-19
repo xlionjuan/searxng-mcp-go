@@ -175,21 +175,18 @@ func main() {
 	runMCPMode(flags, mcpStdin)
 }
 
-func getConfig(flags CLIFlags) *searxng.Config {
+func getConfig(flags CLIFlags) (*searxng.Config, error) {
 	cfg := searxng.DefaultConfig()
 
-	if flags.SearXNGURL != "" {
-		cfg.SearXNGURL = flags.SearXNGURL
-	} else {
-		envURL := os.Getenv("SEARXNG_URL")
-		if envURL != "" {
-			cfg.SearXNGURL = envURL
-		}
+	searxngURL := flags.SearXNGURL
+	if searxngURL == "" {
+		searxngURL = os.Getenv("SEARXNG_URL")
 	}
 
-	if flags.SearXNGURL == "" && os.Getenv("SEARXNG_URL") == "" {
-		fmt.Fprintf(os.Stderr, "\033[33mWARN: No SearXNG server specified, using default server (https://search-4.xlion.dev). To use a different server, set the SEARXNG_URL environment variable or use the --searxng-url command line flag.\033[0m\n")
+	if searxngURL == "" {
+		return nil, fmt.Errorf("SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
 	}
 
-	return cfg
+	cfg.SearXNGURL = searxngURL
+	return cfg, nil
 }
