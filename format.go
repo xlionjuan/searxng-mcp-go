@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
+
+	"searxng-mcp-go/internal/searxng"
 )
 
 // ============================================================================
@@ -37,7 +39,7 @@ func truncateRunes(s string, limit int) string {
 }
 
 // writeAnswers writes formatted direct answers to b.
-func writeAnswers(b *strings.Builder, answers []Answer) {
+func writeAnswers(b *strings.Builder, answers []searxng.Answer) {
 	if len(answers) == 0 {
 		return
 	}
@@ -58,7 +60,7 @@ func writeAnswers(b *strings.Builder, answers []Answer) {
 }
 
 // writeInfoboxes writes formatted infoboxes to b.
-func writeInfoboxes(b *strings.Builder, infoboxes []Infobox) {
+func writeInfoboxes(b *strings.Builder, infoboxes []searxng.Infobox) {
 	if len(infoboxes) == 0 {
 		return
 	}
@@ -71,7 +73,7 @@ func writeInfoboxes(b *strings.Builder, infoboxes []Infobox) {
 		b.WriteByte('\n')
 		if ib.Content != "" {
 			content := unescapeIfNeeded(ib.Content)
-			content = truncateRunes(content, MaxContentRunes)
+			content = truncateRunes(content, searxng.MaxContentRunes)
 			b.WriteString("    ")
 			b.WriteString(content)
 			b.WriteByte('\n')
@@ -103,7 +105,7 @@ func writeInfoboxes(b *strings.Builder, infoboxes []Infobox) {
 	b.WriteByte('\n')
 }
 
-func logUnresponsiveEngines(resp *SearchResponse) {
+func logUnresponsiveEngines(resp *searxng.SearchResponse) {
 	if resp == nil || !resp.Debug || len(resp.UnresponsiveEngines) == 0 {
 		return
 	}
@@ -117,7 +119,7 @@ func logUnresponsiveEngines(resp *SearchResponse) {
 }
 
 // formatResults formats search results as a readable string
-func formatResults(resp *SearchResponse) string {
+func formatResults(resp *searxng.SearchResponse) string {
 	logUnresponsiveEngines(resp)
 
 	if resp == nil {
@@ -128,7 +130,7 @@ func formatResults(resp *SearchResponse) string {
 	}
 
 	var b strings.Builder
-	estimate := len(resp.Query) + len(resp.Results)*ResultSizeEstimate
+	estimate := len(resp.Query) + len(resp.Results)*searxng.ResultSizeEstimate
 	if estimate > 0 {
 		b.Grow(estimate)
 	}
@@ -162,7 +164,7 @@ func formatResults(resp *SearchResponse) string {
 			b.WriteByte('\n')
 			if r.Content != "" {
 				content := unescapeIfNeeded(r.Content)
-				content = truncateRunes(content, MaxContentRunes)
+				content = truncateRunes(content, searxng.MaxContentRunes)
 				b.WriteString("   Summary: ")
 				b.WriteString(content)
 				b.WriteByte('\n')

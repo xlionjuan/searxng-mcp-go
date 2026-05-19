@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"searxng-mcp-go/internal/searxng"
 )
 
 // setupMCPSession creates an in-memory MCP server+client pair for testing.
@@ -21,7 +22,7 @@ func setupMCPSession(t *testing.T, handler http.HandlerFunc) (*mcp.ClientSession
 
 	mockServer := httptest.NewServer(handler)
 
-	searcher, err := NewSearXNGSearcher(mockServer.URL, 30*time.Second, nil)
+	searcher, err := searxng.NewSearXNGSearcher(mockServer.URL, 30*time.Second, nil)
 	if err != nil {
 		mockServer.Close()
 		t.Fatalf("failed to create searcher: %v", err)

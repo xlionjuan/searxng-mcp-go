@@ -4,22 +4,24 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	searxng "searxng-mcp-go/internal/searxng"
 )
 
-func assertValidSearchArgs(t *testing.T, args *SearchArgs) {
+func assertValidSearchArgs(t *testing.T, args *searxng.SearchArgs) {
 	t.Helper()
-	if err := ValidateSearchArgs(args); err != nil {
+	if err := searxng.ValidateSearchArgs(args); err != nil {
 		t.Fatalf("expected valid args, got %v", err)
 	}
 }
 
-func assertValidationError(t *testing.T, args *SearchArgs, field, contains string) {
+func assertValidationError(t *testing.T, args *searxng.SearchArgs, field, contains string) {
 	t.Helper()
-	err := ValidateSearchArgs(args)
+	err := searxng.ValidateSearchArgs(args)
 	if err == nil {
 		t.Fatalf("expected validation error for %s", field)
 	}
-	ve, ok := err.(*ValidationError)
+	ve, ok := err.(*searxng.ValidationError)
 	if !ok {
 		t.Fatalf("expected ValidationError, got %T", err)
 	}
@@ -41,32 +43,32 @@ func TestValidateSearchArgs_NilAndQuery(t *testing.T) {
 
 	t.Run("empty query", func(t *testing.T) {
 		t.Parallel()
-		assertValidationError(t, &SearchArgs{Query: ""}, "query", "search query cannot be only whitespace")
+		assertValidationError(t, &searxng.SearchArgs{Query: ""}, "query", "search query cannot be only whitespace")
 	})
 
 	t.Run("whitespace query", func(t *testing.T) {
 		t.Parallel()
-		assertValidationError(t, &SearchArgs{Query: " \t\n "}, "query", "search query cannot be only whitespace")
+		assertValidationError(t, &searxng.SearchArgs{Query: " \t\n "}, "query", "search query cannot be only whitespace")
 	})
 
 	t.Run("long query", func(t *testing.T) {
 		t.Parallel()
-		assertValidationError(t, &SearchArgs{Query: strings.Repeat("a", MaxQueryLength+1)}, "query", "must be 500 characters or less")
+		assertValidationError(t, &searxng.SearchArgs{Query: strings.Repeat("a", searxng.MaxQueryLength+1)}, "query", "must be 500 characters or less")
 	})
 
 	t.Run("valid query", func(t *testing.T) {
 		t.Parallel()
-		assertValidSearchArgs(t, &SearchArgs{Query: "golang search"})
+		assertValidSearchArgs(t, &searxng.SearchArgs{Query: "golang search"})
 	})
 
 	t.Run("emoji query", func(t *testing.T) {
 		t.Parallel()
-		assertValidSearchArgs(t, &SearchArgs{Query: "search 🔍 with emoji"})
+		assertValidSearchArgs(t, &searxng.SearchArgs{Query: "search 🔍 with emoji"})
 	})
 
 	t.Run("query with control characters", func(t *testing.T) {
 		t.Parallel()
-		assertValidationError(t, &SearchArgs{Query: "test\nquery"}, "query", "invalid control characters")
+		assertValidationError(t, &searxng.SearchArgs{Query: "test\nquery"}, "query", "invalid control characters")
 	})
 }
 
@@ -75,7 +77,7 @@ func TestValidateSearchArgs_Language(t *testing.T) {
 
 	t.Run("empty language", func(t *testing.T) {
 		t.Parallel()
-		assertValidSearchArgs(t, &SearchArgs{Query: "test", Language: ""})
+		assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Language: ""})
 	})
 
 	t.Run("valid language codes", func(t *testing.T) {
@@ -83,7 +85,7 @@ func TestValidateSearchArgs_Language(t *testing.T) {
 			lang := lang
 			t.Run(lang, func(t *testing.T) {
 				t.Parallel()
-				assertValidSearchArgs(t, &SearchArgs{Query: "test", Language: lang})
+				assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Language: lang})
 			})
 		}
 	})
@@ -93,15 +95,15 @@ func TestValidateSearchArgs_Language(t *testing.T) {
 			lang := lang
 			t.Run(lang, func(t *testing.T) {
 				t.Parallel()
-				assertValidSearchArgs(t, &SearchArgs{Query: "test", Language: lang})
+				assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Language: lang})
 			})
 		}
 	})
 
 	t.Run("auto is normalized to empty", func(t *testing.T) {
 		t.Parallel()
-		args := &SearchArgs{Query: "test", Language: "auto"}
-		if err := ValidateSearchArgs(args); err != nil {
+		args := &searxng.SearchArgs{Query: "test", Language: "auto"}
+		if err := searxng.ValidateSearchArgs(args); err != nil {
 			t.Fatalf("expected auto to be valid, got %v", err)
 		}
 		if args.Language != "" {
@@ -114,7 +116,7 @@ func TestValidateSearchArgs_Language(t *testing.T) {
 			lang := lang
 			t.Run(lang, func(t *testing.T) {
 				t.Parallel()
-				assertValidationError(t, &SearchArgs{Query: "test", Language: lang}, "language", "valid language code")
+				assertValidationError(t, &searxng.SearchArgs{Query: "test", Language: lang}, "language", "valid language code")
 			})
 		}
 	})
@@ -122,7 +124,7 @@ func TestValidateSearchArgs_Language(t *testing.T) {
 	t.Run("too long language tag", func(t *testing.T) {
 		t.Parallel()
 		longLang := strings.Repeat("a-", 40) + "a"
-		assertValidationError(t, &SearchArgs{Query: "test", Language: longLang}, "language", "35 characters or less")
+		assertValidationError(t, &searxng.SearchArgs{Query: "test", Language: longLang}, "language", "35 characters or less")
 	})
 }
 
@@ -131,7 +133,7 @@ func TestValidateSearchArgs_TimeRange(t *testing.T) {
 
 	t.Run("empty time_range", func(t *testing.T) {
 		t.Parallel()
-		assertValidSearchArgs(t, &SearchArgs{Query: "test"})
+		assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test"})
 	})
 
 	t.Run("valid time ranges", func(t *testing.T) {
@@ -139,7 +141,7 @@ func TestValidateSearchArgs_TimeRange(t *testing.T) {
 			tr := tr
 			t.Run(tr, func(t *testing.T) {
 				t.Parallel()
-				assertValidSearchArgs(t, &SearchArgs{Query: "test", TimeRange: tr})
+				assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", TimeRange: tr})
 			})
 		}
 	})
@@ -149,7 +151,7 @@ func TestValidateSearchArgs_TimeRange(t *testing.T) {
 			tr := tr
 			t.Run(tr, func(t *testing.T) {
 				t.Parallel()
-				assertValidationError(t, &SearchArgs{Query: "test", TimeRange: tr}, "time_range", "day, month or year")
+				assertValidationError(t, &searxng.SearchArgs{Query: "test", TimeRange: tr}, "time_range", "day, month or year")
 			})
 		}
 	})
@@ -162,15 +164,15 @@ func TestValidateSearchArgs_CategoriesAndEngines(t *testing.T) {
 		t.Parallel()
 		t.Run("valid", func(t *testing.T) {
 			t.Parallel()
-			assertValidSearchArgs(t, &SearchArgs{Query: "test", Categories: "general,news"})
+			assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Categories: "general,news"})
 		})
 		t.Run("invalid control characters", func(t *testing.T) {
 			t.Parallel()
-			assertValidationError(t, &SearchArgs{Query: "test", Categories: "general\nnews"}, "categories", "invalid category")
+			assertValidationError(t, &searxng.SearchArgs{Query: "test", Categories: "general\nnews"}, "categories", "invalid category")
 		})
 		t.Run("invalid identifier", func(t *testing.T) {
 			t.Parallel()
-			assertValidationError(t, &SearchArgs{Query: "test", Categories: "general!@#"}, "categories", "invalid category")
+			assertValidationError(t, &searxng.SearchArgs{Query: "test", Categories: "general!@#"}, "categories", "invalid category")
 		})
 	})
 
@@ -178,15 +180,15 @@ func TestValidateSearchArgs_CategoriesAndEngines(t *testing.T) {
 		t.Parallel()
 		t.Run("valid", func(t *testing.T) {
 			t.Parallel()
-			assertValidSearchArgs(t, &SearchArgs{Query: "test", Engines: "google,bing"})
+			assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Engines: "google,bing"})
 		})
 		t.Run("invalid control characters", func(t *testing.T) {
 			t.Parallel()
-			assertValidationError(t, &SearchArgs{Query: "test", Engines: "google\tbing"}, "engines", "invalid engine")
+			assertValidationError(t, &searxng.SearchArgs{Query: "test", Engines: "google\tbing"}, "engines", "invalid engine")
 		})
 		t.Run("invalid identifier", func(t *testing.T) {
 			t.Parallel()
-			assertValidationError(t, &SearchArgs{Query: "test", Engines: "google!@#"}, "engines", "invalid engine")
+			assertValidationError(t, &searxng.SearchArgs{Query: "test", Engines: "google!@#"}, "engines", "invalid engine")
 		})
 	})
 }
@@ -199,7 +201,7 @@ func TestValidateSearchArgs_SafeSearch(t *testing.T) {
 			ss := ss
 			t.Run(fmt.Sprintf("value_%d", ss), func(t *testing.T) {
 				t.Parallel()
-				assertValidSearchArgs(t, &SearchArgs{Query: "test", SafeSearch: ss})
+				assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", SafeSearch: ss})
 			})
 		}
 	})
@@ -209,7 +211,7 @@ func TestValidateSearchArgs_SafeSearch(t *testing.T) {
 			ss := ss
 			t.Run(fmt.Sprintf("value_%d", ss), func(t *testing.T) {
 				t.Parallel()
-				assertValidationError(t, &SearchArgs{Query: "test", SafeSearch: ss}, "safesearch", "0 off, 1 moderate, or 2 strict")
+				assertValidationError(t, &searxng.SearchArgs{Query: "test", SafeSearch: ss}, "safesearch", "0 off, 1 moderate, or 2 strict")
 			})
 		}
 	})
@@ -220,7 +222,7 @@ func TestValidateSearchArgs_Pageno(t *testing.T) {
 
 	t.Run("nil is valid", func(t *testing.T) {
 		t.Parallel()
-		assertValidSearchArgs(t, &SearchArgs{Query: "test", Pageno: nil})
+		assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Pageno: nil})
 	})
 
 	t.Run("valid values", func(t *testing.T) {
@@ -228,7 +230,7 @@ func TestValidateSearchArgs_Pageno(t *testing.T) {
 			page := page
 			t.Run(fmt.Sprintf("value_%d", page), func(t *testing.T) {
 				t.Parallel()
-				assertValidSearchArgs(t, &SearchArgs{Query: "test", Pageno: &page})
+				assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Pageno: &page})
 			})
 		}
 	})
@@ -238,7 +240,7 @@ func TestValidateSearchArgs_Pageno(t *testing.T) {
 			page := page
 			t.Run(fmt.Sprintf("value_%d", page), func(t *testing.T) {
 				t.Parallel()
-				assertValidationError(t, &SearchArgs{Query: "test", Pageno: &page}, "pageno", "must be >= 1")
+				assertValidationError(t, &searxng.SearchArgs{Query: "test", Pageno: &page}, "pageno", "must be >= 1")
 			})
 		}
 	})
@@ -251,106 +253,106 @@ func TestContainsControlCharacters(t *testing.T) {
 
 	t.Run("empty string", func(t *testing.T) {
 		t.Parallel()
-		if containsControlCharacters("") {
-			t.Error("containsControlCharacters(\"\") = true, want false")
+		if searxng.ContainsControlCharacters("") {
+			t.Error("ContainsControlCharacters(\"\") = true, want false")
 		}
 	})
 
 	t.Run("normal printable ASCII", func(t *testing.T) {
 		t.Parallel()
-		if containsControlCharacters("hello world") {
-			t.Error("containsControlCharacters(hello world) = true, want false")
+		if searxng.ContainsControlCharacters("hello world") {
+			t.Error("ContainsControlCharacters(hello world) = true, want false")
 		}
 	})
 
 	t.Run("tab character", func(t *testing.T) {
 		t.Parallel()
-		if !containsControlCharacters("hello\tworld") {
-			t.Error("containsControlCharacters(hello\\tworld) = false, want true")
+		if !searxng.ContainsControlCharacters("hello\tworld") {
+			t.Error("ContainsControlCharacters(hello\\tworld) = false, want true")
 		}
 	})
 
 	t.Run("newline character", func(t *testing.T) {
 		t.Parallel()
-		if !containsControlCharacters("hello\nworld") {
-			t.Error("containsControlCharacters(hello\\nworld) = false, want true")
+		if !searxng.ContainsControlCharacters("hello\nworld") {
+			t.Error("ContainsControlCharacters(hello\\nworld) = false, want true")
 		}
 	})
 
 	t.Run("carriage return", func(t *testing.T) {
 		t.Parallel()
-		if !containsControlCharacters("hello\rworld") {
-			t.Error("containsControlCharacters(hello\\rworld) = false, want true")
+		if !searxng.ContainsControlCharacters("hello\rworld") {
+			t.Error("ContainsControlCharacters(hello\\rworld) = false, want true")
 		}
 	})
 
 	t.Run("null character \\x00", func(t *testing.T) {
 		t.Parallel()
-		if !containsControlCharacters("test\x00null") {
-			t.Error("containsControlCharacters(test\\x00null) = false, want true")
+		if !searxng.ContainsControlCharacters("test\x00null") {
+			t.Error("ContainsControlCharacters(test\\x00null) = false, want true")
 		}
 	})
 
 	t.Run("boundary \\x1f (last control char)", func(t *testing.T) {
 		t.Parallel()
-		if !containsControlCharacters("test\x1fctrl") {
-			t.Error("containsControlCharacters(test\\x1fctrl) = false, want true")
+		if !searxng.ContainsControlCharacters("test\x1fctrl") {
+			t.Error("ContainsControlCharacters(test\\x1fctrl) = false, want true")
 		}
 	})
 
 	t.Run("space \\x20 (first printable)", func(t *testing.T) {
 		t.Parallel()
-		if containsControlCharacters("hello world") {
-			t.Error("containsControlCharacters(hello world) = true, want false (space is printable)")
+		if searxng.ContainsControlCharacters("hello world") {
+			t.Error("ContainsControlCharacters(hello world) = true, want false (space is printable)")
 		}
 	})
 
 	t.Run("DEL character \\x7f", func(t *testing.T) {
 		t.Parallel()
-		if !containsControlCharacters("test\x7fdel") {
-			t.Error("containsControlCharacters(test\\x7fdel) = false, want true")
+		if !searxng.ContainsControlCharacters("test\x7fdel") {
+			t.Error("ContainsControlCharacters(test\\x7fdel) = false, want true")
 		}
 	})
 
 	t.Run("boundary \\x80 (above DEL)", func(t *testing.T) {
 		t.Parallel()
-		if containsControlCharacters("test\x80above") {
-			t.Error("containsControlCharacters(test\\x80above) = true, want false (\\x80 is not a control char)")
+		if searxng.ContainsControlCharacters("test\x80above") {
+			t.Error("ContainsControlCharacters(test\\x80above) = true, want false (\\x80 is not a control char)")
 		}
 	})
 
 	t.Run("unicode CJK characters", func(t *testing.T) {
 		t.Parallel()
-		if containsControlCharacters("你好世界") {
-			t.Error("containsControlCharacters(你好世界) = true, want false")
+		if searxng.ContainsControlCharacters("你好世界") {
+			t.Error("ContainsControlCharacters(你好世界) = true, want false")
 		}
 	})
 
 	t.Run("unicode emoji", func(t *testing.T) {
 		t.Parallel()
-		if containsControlCharacters("🔥🎉😀") {
-			t.Error("containsControlCharacters(🔥🎉😀) = true, want false")
+		if searxng.ContainsControlCharacters("🔥🎉😀") {
+			t.Error("ContainsControlCharacters(🔥🎉😀) = true, want false")
 		}
 	})
 
 	t.Run("mixed printable and unicode", func(t *testing.T) {
 		t.Parallel()
-		if containsControlCharacters("hello 你好 🔥") {
-			t.Error("containsControlCharacters(hello 你好 🔥) = true, want false")
+		if searxng.ContainsControlCharacters("hello 你好 🔥") {
+			t.Error("ContainsControlCharacters(hello 你好 🔥) = true, want false")
 		}
 	})
 
 	t.Run("only control characters", func(t *testing.T) {
 		t.Parallel()
-		if !containsControlCharacters("\x00\x01\x02\x1f\x7f") {
-			t.Error("containsControlCharacters(only controls) = false, want true")
+		if !searxng.ContainsControlCharacters("\x00\x01\x02\x1f\x7f") {
+			t.Error("ContainsControlCharacters(only controls) = false, want true")
 		}
 	})
 
 	t.Run("digits and punctuation", func(t *testing.T) {
 		t.Parallel()
-		if containsControlCharacters("123!@#$%^&*()") {
-			t.Error("containsControlCharacters(digits+punctuation) = true, want false")
+		if searxng.ContainsControlCharacters("123!@#$%^&*()") {
+			t.Error("ContainsControlCharacters(digits+punctuation) = true, want false")
 		}
 	})
 
@@ -358,8 +360,8 @@ func TestContainsControlCharacters(t *testing.T) {
 		t.Parallel()
 		// Non-breaking space is not a control character (0xA0 > 0x7f, but not 127)
 		// U+00A0 is 0xC2 0xA0 in UTF-8. As a rune it's 160 which is > 127.
-		if containsControlCharacters("hello\u00a0world") {
-			t.Error("containsControlCharacters(hello\\u00a0world) = true, want false")
+		if searxng.ContainsControlCharacters("hello\u00a0world") {
+			t.Error("ContainsControlCharacters(hello\\u00a0world) = true, want false")
 		}
 	})
 }
@@ -370,30 +372,30 @@ func TestValidateSearchArgs_CategoriesAndEngines_EdgeCases(t *testing.T) {
 	t.Run("max identifier length", func(t *testing.T) {
 		t.Parallel()
 		longIdentifier := strings.Repeat("a", 51)
-		assertValidationError(t, &SearchArgs{Query: "test", Categories: longIdentifier}, "categories", "invalid category")
-		assertValidationError(t, &SearchArgs{Query: "test", Engines: longIdentifier}, "engines", "invalid engine")
+		assertValidationError(t, &searxng.SearchArgs{Query: "test", Categories: longIdentifier}, "categories", "invalid category")
+		assertValidationError(t, &searxng.SearchArgs{Query: "test", Engines: longIdentifier}, "engines", "invalid engine")
 	})
 
 	t.Run("exactly max identifier length", func(t *testing.T) {
 		t.Parallel()
 		validIdentifier := strings.Repeat("a", 50)
-		assertValidSearchArgs(t, &SearchArgs{Query: "test", Categories: validIdentifier})
-		assertValidSearchArgs(t, &SearchArgs{Query: "test", Engines: validIdentifier})
+		assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Categories: validIdentifier})
+		assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Engines: validIdentifier})
 	})
 
 	t.Run("empty comma segments", func(t *testing.T) {
 		t.Parallel()
-		assertValidationError(t, &SearchArgs{Query: "test", Engines: "google,,bing"}, "engines", "invalid engine")
-		assertValidationError(t, &SearchArgs{Query: "test", Engines: "google,"}, "engines", "invalid engine")
-		assertValidationError(t, &SearchArgs{Query: "test", Engines: ",google"}, "engines", "invalid engine")
-		assertValidationError(t, &SearchArgs{Query: "test", Categories: "general,,news"}, "categories", "invalid category")
-		assertValidationError(t, &SearchArgs{Query: "test", Categories: "general,"}, "categories", "invalid category")
-		assertValidationError(t, &SearchArgs{Query: "test", Categories: ",news"}, "categories", "invalid category")
+		assertValidationError(t, &searxng.SearchArgs{Query: "test", Engines: "google,,bing"}, "engines", "invalid engine")
+		assertValidationError(t, &searxng.SearchArgs{Query: "test", Engines: "google,"}, "engines", "invalid engine")
+		assertValidationError(t, &searxng.SearchArgs{Query: "test", Engines: ",google"}, "engines", "invalid engine")
+		assertValidationError(t, &searxng.SearchArgs{Query: "test", Categories: "general,,news"}, "categories", "invalid category")
+		assertValidationError(t, &searxng.SearchArgs{Query: "test", Categories: "general,"}, "categories", "invalid category")
+		assertValidationError(t, &searxng.SearchArgs{Query: "test", Categories: ",news"}, "categories", "invalid category")
 	})
 
 	t.Run("whitespace-only segments", func(t *testing.T) {
 		t.Parallel()
-		assertValidationError(t, &SearchArgs{Query: "test", Engines: "  "}, "engines", "invalid engine")
-		assertValidationError(t, &SearchArgs{Query: "test", Engines: "google,  ,bing"}, "engines", "invalid engine")
+		assertValidationError(t, &searxng.SearchArgs{Query: "test", Engines: "  "}, "engines", "invalid engine")
+		assertValidationError(t, &searxng.SearchArgs{Query: "test", Engines: "google,  ,bing"}, "engines", "invalid engine")
 	})
 }

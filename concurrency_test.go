@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"searxng-mcp-go/internal/searxng"
 )
 
 type cancelRoundTripperFunc func(*http.Request) (*http.Response, error)
@@ -30,8 +32,8 @@ func TestConcurrentSearches(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt64(&requestCount, 1)
-		searchResp := SearchResponse{
-			Results: []SearchResult{
+		searchResp := searxng.SearchResponse{
+			Results: []searxng.SearchResult{
 				{Title: "Result", URL: "https://example.com/1", Content: "Content", Engine: "google"},
 			},
 			NumberOfResults: 1,
@@ -44,7 +46,7 @@ func TestConcurrentSearches(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: server.URL,
 		Timeout:    30 * time.Second,
 	}
@@ -60,7 +62,7 @@ func TestConcurrentSearches(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < queriesPerGoroutine; j++ {
 				query := "query"
-				args := &SearchArgs{Query: query}
+				args := &searxng.SearchArgs{Query: query}
 
 				ctx := context.Background()
 				_, err := testPerformSearch(t, ctx, cfg, args)
@@ -95,7 +97,7 @@ func TestConcurrentContextCancellation(t *testing.T) {
 		}),
 	}
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: "https://example.com",
 		Timeout:    30 * time.Second,
 		HTTPClient: client,
@@ -118,7 +120,7 @@ func TestConcurrentContextCancellation(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
 
-			_, err := testPerformSearch(t, ctx, cfg, &SearchArgs{Query: "test"})
+			_, err := testPerformSearch(t, ctx, cfg, &searxng.SearchArgs{Query: "test"})
 			if err != nil {
 				atomic.AddInt64(&errorCount, 1)
 				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
@@ -163,8 +165,8 @@ func TestChannelDeadlockDetection(t *testing.T) {
 		t.Skip("Skipping deadlock stress test in short mode")
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		searchResp := SearchResponse{
-			Results:         []SearchResult{},
+		searchResp := searxng.SearchResponse{
+			Results:         []searxng.SearchResult{},
 			NumberOfResults: 0,
 			Query:           "test",
 		}
@@ -175,7 +177,7 @@ func TestChannelDeadlockDetection(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: server.URL,
 		Timeout:    30 * time.Second,
 	}
@@ -189,7 +191,7 @@ func TestChannelDeadlockDetection(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			ctx := context.Background()
-			_, _ = testPerformSearch(t, ctx, cfg, &SearchArgs{Query: "test"})
+			_, _ = testPerformSearch(t, ctx, cfg, &searxng.SearchArgs{Query: "test"})
 		}(i)
 	}
 
@@ -216,8 +218,8 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 	requestCount := int64(0)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt64(&requestCount, 1)
-		searchResp := SearchResponse{
-			Results: []SearchResult{
+		searchResp := searxng.SearchResponse{
+			Results: []searxng.SearchResult{
 				{Title: "Result", URL: "https://example.com/1", Content: "Content", Engine: "google"},
 			},
 			NumberOfResults: 1,
@@ -234,9 +236,9 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 	sharedClient := &http.Client{Timeout: 30 * time.Second}
 
 	// Create multiple searchers sharing the same HTTP client
-	var searchers [5]*SearXNGSearcher
+	var searchers [5]*searxng.SearXNGSearcher
 	for i := 0; i < 5; i++ {
-		searcher, err := NewSearXNGSearcher(server.URL, 30*time.Second, sharedClient)
+		searcher, err := searxng.NewSearXNGSearcher(server.URL, 30*time.Second, sharedClient)
 		if err != nil {
 			t.Fatalf("Failed to create searcher: %v", err)
 		}
@@ -253,7 +255,7 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 			defer wg.Done()
 			searcher := searchers[id%len(searchers)]
 			ctx := context.Background()
-			_, err := searcher.Search(ctx, &SearchArgs{Query: "race_test"})
+			_, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "race_test"})
 			if err != nil {
 				atomic.AddInt64(&errorCount, 1)
 				t.Errorf("Search error: %v", err)
@@ -307,7 +309,7 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 		}),
 	}
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: "https://example.com",
 		Timeout:    30 * time.Second,
 		HTTPClient: client,
@@ -320,7 +322,7 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			atomic.AddInt64(&sentCount, 1)
-			_, err := testPerformSearch(t, ctx, cfg, &SearchArgs{Query: "test"})
+			_, err := testPerformSearch(t, ctx, cfg, &searxng.SearchArgs{Query: "test"})
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 					atomic.AddInt64(&cancelledCount, 1)
@@ -386,7 +388,7 @@ func TestContextDeadlineExceededDuringSearch(t *testing.T) {
 		}),
 	}
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: "https://example.com",
 		Timeout:    30 * time.Second,
 		HTTPClient: client,
@@ -395,7 +397,7 @@ func TestContextDeadlineExceededDuringSearch(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	_, err := testPerformSearch(t, ctx, cfg, &SearchArgs{Query: "test"})
+	_, err := testPerformSearch(t, ctx, cfg, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
 		t.Error("Expected error due to context deadline, got nil")
 	}
@@ -414,8 +416,8 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 		t.Skip("Skipping validation/search concurrency stress test in short mode")
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		searchResp := SearchResponse{
-			Results:         []SearchResult{},
+		searchResp := searxng.SearchResponse{
+			Results:         []searxng.SearchResult{},
 			NumberOfResults: 0,
 			Query:           "test",
 		}
@@ -426,7 +428,7 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 	}))
 	defer server.Close()
 
-	searcher, _ := NewSearXNGSearcher(server.URL, 30*time.Second, nil)
+	searcher, _ := searxng.NewSearXNGSearcher(server.URL, 30*time.Second, nil)
 
 	var wg sync.WaitGroup
 	const numGoroutines = 50
@@ -439,12 +441,12 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 	for i := 0; i < numGoroutines; i++ {
 		go func(id int) {
 			defer wg.Done()
-			args := &SearchArgs{
+			args := &searxng.SearchArgs{
 				Query:      "test",
 				Language:   "en",
 				SafeSearch: 0,
 			}
-			if err := ValidateSearchArgs(args); err != nil {
+			if err := searxng.ValidateSearchArgs(args); err != nil {
 				atomic.AddInt64(&validationErrors, 1)
 				t.Errorf("unexpected validation error: %v", err)
 			}
@@ -456,7 +458,7 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			ctx := context.Background()
-			if _, err := searcher.Search(ctx, &SearchArgs{Query: "test"}); err != nil {
+			if _, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "test"}); err != nil {
 				atomic.AddInt64(&searchErrors, 1)
 				t.Errorf("search error: %v", err)
 			}
@@ -484,8 +486,8 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 			close(started)
 		}
 		<-release
-		searchResp := SearchResponse{
-			Results:         []SearchResult{},
+		searchResp := searxng.SearchResponse{
+			Results:         []searxng.SearchResult{},
 			NumberOfResults: 0,
 			Query:           "test",
 			Suggestions:     []string{},
@@ -497,14 +499,14 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 	}))
 	defer server.Close()
 
-	searcher, err := NewSearXNGSearcher(server.URL, 30*time.Second, nil)
+	searcher, err := searxng.NewSearXNGSearcher(server.URL, 30*time.Second, nil)
 	if err != nil {
 		t.Fatalf("failed to create searcher: %v", err)
 	}
 
 	done := make(chan error, 1)
 	go func() {
-		_, err := searcher.Search(context.Background(), &SearchArgs{Query: "test"})
+		_, err := searcher.Search(context.Background(), &searxng.SearchArgs{Query: "test"})
 		done <- err
 	}()
 

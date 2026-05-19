@@ -1,4 +1,4 @@
-package main
+package searxng
 
 import (
 	"context"
@@ -15,13 +15,7 @@ import (
 	"time"
 )
 
-// DefaultSearXNGURL is the default SearXNG instance URL.
-// WARNING: This is a default value for convenience only. For production use,
-// you should set your own instance via the SEARXNG_URL environment variable.
-const DefaultSearXNGURL = "https://search-4.xlion.dev"
-
 // defaultHTTPClient is the shared client used when callers do not request a custom timeout.
-// Searchers that need a different timeout get a fresh client instead.
 var defaultHTTPClient *http.Client
 var defaultHTTPClientOnce sync.Once
 
@@ -37,17 +31,12 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 			MaxIdleConnsPerHost:   10,
 		},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			// Same-hostname-only redirect policy (ADR-008).
-			// Only follow redirects that stay within the same hostname.
-			// This eliminates SSRF attack surface entirely — no private IP detection,
-			// no DNS resolution, no normalization edge cases needed.
 			if req.URL != nil && len(via) > 0 {
 				prevHost := via[len(via)-1].URL.Host
 				if req.URL.Host != prevHost {
 					return fmt.Errorf("redirect to different host blocked: %s → %s", prevHost, req.URL.Host)
 				}
 			}
-			// Allow at most 10 redirects (Go default).
 			if len(via) >= 10 {
 				return errors.New("stopped after 10 redirects")
 			}
@@ -56,8 +45,8 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 	}
 }
 
-// getDefaultHTTPClient returns the shared default HTTP client.
-func getDefaultHTTPClient() *http.Client {
+// GetDefaultHTTPClient returns the shared default HTTP client.
+func GetDefaultHTTPClient() *http.Client {
 	defaultHTTPClientOnce.Do(func() {
 		defaultHTTPClient = newHTTPClient(30 * time.Second)
 	})
@@ -68,31 +57,24 @@ func getDefaultHTTPClient() *http.Client {
 // SearXNG Searcher
 // ============================================================================
 
+// Searcher is the interface for performing SearXNG searches.
+type Searcher interface {
+	Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error)
+	Close() error
+}
+
 // SearXNGSearcher performs web searches via a SearXNG instance
 type SearXNGSearcher struct {
 	client  *http.Client // Configurable HTTP client
 	baseURL string
+	Debug   bool // When true, enables verbose HTTP request/response logging
 }
 
+// ensure *SearXNGSearcher implements Searcher
+var _ Searcher = (*SearXNGSearcher)(nil)
+
 // Close releases resources held by the searcher.
-//
-// OWNERSHIP SEMANTICS:
-//
-//   - The HTTP client may be shared (cached globally). Close() only closes idle
-//     connections on the cached client, it does NOT evict the client from the cache.
-//     Subsequent calls to NewSearXNGSearcher with the same URL/timeout may return
-//     the same cached client.
-//
-//   - Calling Close() multiple times is SAFE (idempotent). It only closes idle
-//     connections, and calling it on an already-drained transport is a no-op.
-//
-//   - The cache itself lives for the lifetime of the process and is not affected
-//     by Close(). If you need to fully release resources, close the underlying
-//     transport and let it be garbage collected; the cache entry will be replaced
-//     on the next call with a fresh client.
 func (s *SearXNGSearcher) Close() error {
-	// Close only drains idle connections on the shared transport; it does not
-	// evict or replace cached clients.
 	if s.client != nil && s.client.Transport != nil {
 		if transport, ok := s.client.Transport.(*http.Transport); ok {
 			transport.CloseIdleConnections()
@@ -101,8 +83,8 @@ func (s *SearXNGSearcher) Close() error {
 	return nil
 }
 
-// validateBaseURL checks that the baseURL is valid and returns an error if not
-func validateBaseURL(baseURL string) error {
+// ValidateBaseURL checks that the baseURL is valid and returns an error if not
+func ValidateBaseURL(baseURL string) error {
 	if baseURL == "" {
 		return errors.New("baseurl cannot be empty")
 	}
@@ -140,19 +122,16 @@ func closeResponseBody(resp *http.Response) {
 	}
 }
 
-// isPrivateHost checks if the host is a private/internal address
-func isPrivateHost(host string) bool {
-	// Remove port if present
+// IsPrivateHost checks if the host is a private/internal address
+func IsPrivateHost(host string) bool {
 	if h, _, err := net.SplitHostPort(host); err == nil {
 		host = h
 	}
 
-	// Check localhost explicitly
 	if host == "localhost" || strings.HasSuffix(strings.ToLower(host), ".localhost") {
 		return true
 	}
 
-	// Check TLD-based private domains (case-insensitive)
 	lowerHost := strings.ToLower(host)
 	if strings.HasSuffix(lowerHost, ".lan") ||
 		strings.HasSuffix(lowerHost, ".internal") ||
@@ -161,46 +140,33 @@ func isPrivateHost(host string) bool {
 		return true
 	}
 
-	// Check if it's an IP address
 	ip := net.ParseIP(host)
 	if ip == nil {
-		// Not an IP address, not private
 		return false
 	}
 
-	// Check IPv4 private ranges
-	// 10.0.0.0/8
 	if ip4 := ip.To4(); ip4 != nil {
-		// 10.0.0.0/8
 		if ip4[0] == 10 {
 			return true
 		}
-		// 172.16.0.0/12
 		if ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31 {
 			return true
 		}
-		// 192.168.0.0/16
 		if ip4[0] == 192 && ip4[1] == 168 {
 			return true
 		}
-		// 127.0.0.0/8 (loopback)
 		if ip4[0] == 127 {
 			return true
 		}
-		// 169.254.0.0/16 (link-local)
 		if ip4[0] == 169 && ip4[1] == 254 {
 			return true
 		}
-		// 0.0.0.0/8 (this network)
 		if ip4[0] == 0 {
 			return true
 		}
-		// 100.64.0.0/10 (CGNAT)
 		if ip4[0] == 100 && ip4[1]&0xc0 == 0x40 {
 			return true
 		}
-		// 192.0.0.0/24, 192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24,
-		// 198.18.0.0/15, 224.0.0.0/4, 240.0.0.0/4
 		if ip4[0] == 192 && ip4[1] == 0 && ip4[2] == 0 {
 			return true
 		}
@@ -222,16 +188,12 @@ func isPrivateHost(host string) bool {
 		return false
 	}
 
-	// Check IPv6
-	// ::1 (loopback)
 	if ip.Equal(net.IPv6loopback) {
 		return true
 	}
-	// fc00::/7 (unique local)
 	if ip[0]&0xfe == 0xfc {
 		return true
 	}
-	// fe80::/10 (link-local)
 	if ip[0] == 0xfe && ip[1]&0xc0 == 0x80 {
 		return true
 	}
@@ -241,18 +203,16 @@ func isPrivateHost(host string) bool {
 
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration
 func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Client) (*SearXNGSearcher, error) {
-	if err := validateBaseURL(baseURL); err != nil {
+	if err := ValidateBaseURL(baseURL); err != nil {
 		return nil, fmt.Errorf("newSearXNGSearcher: %w", err)
 	}
 
-	// Parse URL to check scheme and host
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("newSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error): %w", err)
 	}
 
-	// Warn if using HTTP with non-private host
-	if parsed.Scheme == "http" && !isPrivateHost(parsed.Host) {
+	if parsed.Scheme == "http" && !IsPrivateHost(parsed.Host) {
 		slog.Warn("Using HTTP for non-private host. Search queries may be transmitted in clear text. Search results could be intercepted and modified by a MITM attacker")
 	}
 
@@ -260,7 +220,7 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 		if timeout > 0 {
 			client = newHTTPClient(timeout)
 		} else {
-			client = getDefaultHTTPClient()
+			client = GetDefaultHTTPClient()
 		}
 	}
 
@@ -273,130 +233,6 @@ func NewSearXNGSearcher(baseURL string, timeout time.Duration, client *http.Clie
 // Search is the external API entry point that delegates to the internal performSearch method.
 func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	return s.performSearch(ctx, args)
-}
-
-// ============================================================================
-// Config
-// ============================================================================
-
-// Config holds the SearXNG configuration
-type Config struct {
-	SearXNGURL string
-	Timeout    time.Duration
-	HTTPClient *http.Client // Optional custom HTTP client
-}
-
-// DefaultConfig returns the default configuration
-func DefaultConfig() *Config {
-	return &Config{
-		SearXNGURL: DefaultSearXNGURL,
-		Timeout:    30 * time.Second,
-	}
-}
-
-// SearchArgs defines the arguments for the search tool
-type SearchArgs struct {
-	Query      string `json:"query" jsonschema:"Search query string"`
-	Language   string `json:"language" jsonschema:"Language code for results (e.g., en, zh-tw, ja). Defaults to auto (SearXNG decides)"`
-	SafeSearch int    `json:"safesearch" jsonschema:"SafeSearch level: 0=Off, 1=Moderate, 2=Strict. Defaults to 0"`
-	TimeRange  string `json:"time_range" jsonschema:"Time range filter: day, month, year, or empty for all time"`
-	Categories string `json:"categories" jsonschema:"Comma-separated list of categories to search (e.g., general, news, music)"`
-	Engines    string `json:"engines" jsonschema:"Comma-separated list of search engines to use (e.g., google, bing, duckduckgo)"`
-	Pageno     *int   `json:"pageno" jsonschema:"Page number for pagination. Defaults to 1"`
-	Limit      *int   `json:"limit" jsonschema:"Maximum number of results to return (1-20). Defaults to 10 in MCP mode"`
-}
-
-// SearchResult represents a single search result
-type SearchResult struct {
-	Title         string  `json:"title"`
-	URL           string  `json:"url"`
-	Content       string  `json:"content"`
-	Engine        string  `json:"engine"`
-	PublishedDate *string `json:"publishedDate,omitempty"`
-}
-
-// InfoboxURL represents a URL entry in an infobox.
-type InfoboxURL struct {
-	Title string `json:"title"`
-	URL   string `json:"url"`
-}
-
-// InfoboxAttribute represents a key-value attribute in an infobox.
-type InfoboxAttribute struct {
-	Label string `json:"label"`
-	Value string `json:"value"`
-}
-
-// Infobox represents a knowledge panel / infobox from SearXNG.
-type Infobox struct {
-	Infobox    string             `json:"infobox"`
-	Content    string             `json:"content"`
-	Attributes []InfoboxAttribute `json:"attributes,omitempty"`
-	URLs       []InfoboxURL       `json:"urls,omitempty"`
-}
-
-// Answer represents a direct answer from SearXNG (e.g., IP, hash, timezone, calculator).
-type Answer struct {
-	Answer   string `json:"answer"`
-	Engine   string `json:"engine"`
-	Template string `json:"template,omitempty"`
-}
-
-// SearchResponse represents the full search response from SearXNG
-type SearchResponse struct {
-	Query               string         `json:"query"`
-	Answers             []Answer       `json:"answers,omitempty"`
-	NumberOfResults     int            `json:"number_of_results"`
-	Infoboxes           []Infobox      `json:"infoboxes,omitempty"`
-	Results             []SearchResult `json:"results"`
-	Suggestions         []string       `json:"suggestions"`
-	UnresponsiveEngines [][]string     `json:"unresponsive_engines,omitempty"`
-	Debug               bool           `json:"-"`
-}
-
-// searchResponseJSON is an intermediate type used by MarshalJSON to avoid
-// anonymous struct definitions. It mirrors SearchResponse's JSON fields
-// without the Debug field, and uses omitempty for UnresponsiveEngines so
-// that the field is naturally omitted when debug mode is disabled.
-type searchResponseJSON struct {
-	Query               string         `json:"query"`
-	Answers             []Answer       `json:"answers,omitempty"`
-	NumberOfResults     int            `json:"number_of_results"`
-	Infoboxes           []Infobox      `json:"infoboxes,omitempty"`
-	Results             []SearchResult `json:"results"`
-	Suggestions         []string       `json:"suggestions"`
-	UnresponsiveEngines [][]string     `json:"unresponsive_engines,omitempty"`
-}
-
-// MarshalJSON uses a value receiver (not pointer) to avoid concurrent
-// modification of the SearchResponse during serialization. Since r is a copy,
-// mutations to normalize slices (e.g., setting nil to empty) are isolated to
-// the local copy and do not affect the original struct. This is a deliberate
-// safety design to prevent data races in concurrent search scenarios.
-// MarshalJSON ensures JSON field ordering and only exposes debug-only fields when requested.
-func (r SearchResponse) MarshalJSON() ([]byte, error) {
-	// Ensure slices are empty (not nil) so JSON serializes as [] instead of null
-	if r.Results == nil {
-		r.Results = []SearchResult{}
-	}
-	if r.Suggestions == nil {
-		r.Suggestions = []string{}
-	}
-	base := searchResponseJSON{
-		Query:           r.Query,
-		Answers:         r.Answers,
-		NumberOfResults: r.NumberOfResults,
-		Infoboxes:       r.Infoboxes,
-		Results:         r.Results,
-		Suggestions:     r.Suggestions,
-	}
-	if r.Debug {
-		if r.UnresponsiveEngines == nil {
-			r.UnresponsiveEngines = [][]string{}
-		}
-		base.UnresponsiveEngines = r.UnresponsiveEngines
-	}
-	return json.Marshal(base)
 }
 
 // ============================================================================
@@ -418,19 +254,13 @@ func setBrowserHeaders(req *http.Request) {
 	req.Header.Set("Priority", "u=0, i")
 }
 
-// deduplicateAnswers filters out answers whose text is a prefix (substring)
-// of any infobox content. DuckDuckGo's engine often puts the same Wikipedia
-// summary in both answers and infoboxes, causing duplicate display.
-//
-// The DDG answer may have "More at Wikipedia" appended, so we use prefix
-// matching: take the first 200 characters of the answer and check if that
-// prefix appears within the infobox content.
-func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
+// DeduplicateAnswers filters out answers whose text is a prefix (substring)
+// of any infobox content.
+func DeduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 	if len(answers) == 0 || len(infoboxes) == 0 {
 		return answers
 	}
 
-	// Check that at least one infobox has content (avoids empty-slice edge case).
 	hasContent := false
 	for _, ib := range infoboxes {
 		if ib.Content != "" {
@@ -444,7 +274,6 @@ func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 
 	const prefixLen = 200
 
-	// infoboxTexts is built lazily — only if an answer needs the lowercase fallback.
 	var infoboxTexts []string
 
 	filtered := make([]Answer, 0, len(answers))
@@ -453,7 +282,6 @@ func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 			continue
 		}
 
-		// Fast path: exact-case prefix matching (no lowercase allocation).
 		prefix := a.Answer
 		prefix = strings.TrimSuffix(prefix, " More at Wikipedia")
 		if len(prefix) > prefixLen {
@@ -471,7 +299,6 @@ func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 			continue
 		}
 
-		// Slow path: lowercase fallback — build infoboxTexts on first use.
 		if infoboxTexts == nil {
 			infoboxTexts = make([]string, 0, len(infoboxes))
 			for _, ib := range infoboxes {
@@ -502,10 +329,6 @@ func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 }
 
 // buildSearchRequest constructs an HTTP request for searching SearXNG.
-// It parses the base URL, builds query parameters from the search args,
-// determines the search URL path (appending /search while avoiding duplication),
-// and sets browser-like headers. Returns the request, the raw POST body string
-// for debug logging, and any error encountered.
 func (s *SearXNGSearcher) buildSearchRequest(ctx context.Context, args *SearchArgs) (*http.Request, string, error) {
 	baseURL, err := url.Parse(s.baseURL)
 	if err != nil {
@@ -539,7 +362,6 @@ func (s *SearXNGSearcher) buildSearchRequest(ctx context.Context, args *SearchAr
 		params.Set("pageno", fmt.Sprintf("%d", *args.Pageno))
 	}
 
-	// Append /search path to avoid SearXNG redirect that drops POST body
 	searchURL := *baseURL
 	searchURL.RawQuery = ""
 	trimmedPath := strings.TrimRight(searchURL.Path, "/")
@@ -569,9 +391,6 @@ func (s *SearXNGSearcher) buildSearchRequest(ctx context.Context, args *SearchAr
 }
 
 // parseSearchResponse reads and parses the response from a SearXNG search request.
-// It reads the body with a size limit, checks the Content-Type for HTML/JSON,
-// unmarshals the JSON response, applies post-processing (NumberOfResults fix,
-// answer deduplication, result truncation by limit), and sets the Debug flag.
 func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchArgs) (*SearchResponse, error) {
 	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBodySize))
 	if err != nil {
@@ -585,7 +404,7 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), fmt.Errorf("response body exceeded maximum size limit of %d bytes", MaxResponseBodySize))
 	}
 
-	if debugMode {
+	if s.Debug {
 		bodyPreview := string(body)
 		if len(bodyPreview) > 500 {
 			bodyPreview = bodyPreview[:500]
@@ -598,7 +417,6 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 		)
 	}
 
-	// Check Content-Type to provide better error messages for non-JSON responses
 	contentType := resp.Header.Get("Content-Type")
 	isHTMLResponse := strings.Contains(contentType, "text/html") || strings.HasPrefix(strings.TrimSpace(string(body)), "<!DOCTYPE") || strings.HasPrefix(strings.TrimSpace(string(body)), "<html")
 
@@ -630,20 +448,17 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 		return nil, NewSearXNGError(resp.StatusCode, contentType, "", fmt.Errorf("failed to parse JSON response: %w", err))
 	}
 
-	// SearXNG may return number_of_results=0 even when results exist
 	if result.NumberOfResults == 0 && len(result.Results) > 0 {
 		result.NumberOfResults = len(result.Results)
 	}
 
-	// Deduplicate answers that overlap with infobox content.
-	result.Answers = deduplicateAnswers(result.Answers, result.Infoboxes)
+	result.Answers = DeduplicateAnswers(result.Answers, result.Infoboxes)
 
-	// Truncate results if limit is specified
 	if args.Limit != nil && *args.Limit >= 0 && len(result.Results) > *args.Limit {
 		result.Results = result.Results[:*args.Limit]
 	}
 
-	result.Debug = debugMode
+	result.Debug = s.Debug
 
 	return &result, nil
 }
@@ -658,7 +473,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		return nil, err
 	}
 
-	if debugMode {
+	if s.Debug {
 		bodyPreview := postBodyStr
 		if len(bodyPreview) > 500 {
 			bodyPreview = bodyPreview[:500]
@@ -674,7 +489,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 
 	resp, err := s.client.Do(postReq)
 
-	if debugMode && err == nil && resp != nil {
+	if s.Debug && err == nil && resp != nil {
 		slog.Debug("HTTP response",
 			"status", resp.StatusCode,
 			"content_type", resp.Header.Get("Content-Type"),
@@ -682,7 +497,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	}
 
 	if err == nil && resp != nil && (resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
-		if debugMode {
+		if s.Debug {
 			slog.Debug("Redirecting to GET fallback", "status", resp.StatusCode, "reason", "POST not supported by server")
 		}
 		closeResponseBody(resp)
@@ -694,7 +509,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		}
 		setBrowserHeaders(getReq)
 
-		if debugMode {
+		if s.Debug {
 			slog.Debug("HTTP request",
 				"method", getReq.Method,
 				"url", getReq.URL.String(),
@@ -704,7 +519,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 
 		resp, err = s.client.Do(getReq)
 
-		if debugMode && err == nil && resp != nil {
+		if s.Debug && err == nil && resp != nil {
 			slog.Debug("HTTP response",
 				"status", resp.StatusCode,
 				"content_type", resp.Header.Get("Content-Type"),
@@ -722,7 +537,7 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		if readErr != nil {
 			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read error response body: %w", readErr))
 		}
-		if debugMode {
+		if s.Debug {
 			errBodyPreview := string(body)
 			if len(errBodyPreview) > 500 {
 				errBodyPreview = errBodyPreview[:500]

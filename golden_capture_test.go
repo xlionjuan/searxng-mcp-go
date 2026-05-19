@@ -3,6 +3,8 @@ package main
 import (
 	"strings"
 	"testing"
+
+	"searxng-mcp-go/internal/searxng"
 )
 
 // TestFormatResultsGoldenOutput is a byte-for-byte regression test that locks
@@ -16,29 +18,29 @@ import (
 //   - results (3 items: HTML entities in title/content, long content truncation, empty content)
 //   - suggestions
 //   - HTML entity unescaping (&amp; &lt; &gt; &quot;) in infobox titles and queries
-//   - content exceeding MaxContentRunes (4000) is truncated
+//   - content exceeding searxng.MaxContentRunes (4000) is truncated
 func TestFormatResultsGoldenOutput(t *testing.T) {
 	longContent := strings.Repeat("x", 4500)
 
-	resp := &SearchResponse{
+	resp := &searxng.SearchResponse{
 		Query: "golang &amp; html &quot;entities&quot;",
-		Answers: []Answer{
+		Answers: []searxng.Answer{
 			{Answer: "42.0", Engine: "calculator"},
 		},
-		Infoboxes: []Infobox{
+		Infoboxes: []searxng.Infobox{
 			{
 				Infobox: "Go &amp; Golang",
 				Content: "Go is a statically typed, compiled programming language.\nIt was designed at Google.\nIt is syntactically similar to C.",
-				Attributes: []InfoboxAttribute{
+				Attributes: []searxng.InfoboxAttribute{
 					{Label: "Type", Value: "Statically typed"},
 					{Label: "Paradigm", Value: "Concurrent"},
 				},
-				URLs: []InfoboxURL{
+				URLs: []searxng.InfoboxURL{
 					{Title: "Official site", URL: "https://go.dev"},
 				},
 			},
 		},
-		Results: []SearchResult{
+		Results: []searxng.SearchResult{
 			{
 				Title:   "First &amp; Result &lt;test&gt;",
 				URL:     "https://example.com/1",
@@ -71,7 +73,7 @@ func TestFormatResultsGoldenOutput(t *testing.T) {
 	// The long run of 'x' is generated via strings.Repeat to keep the source
 	// readable; everything else uses direct string-literal fragments that
 	// match the captured golden output byte-for-byte.
-	x4000 := strings.Repeat("x", MaxContentRunes)
+	x4000 := strings.Repeat("x", searxng.MaxContentRunes)
 	golden := "" +
 		"=== Answers ===\n" +
 		"\n" +

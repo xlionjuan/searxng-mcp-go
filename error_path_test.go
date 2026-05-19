@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"searxng-mcp-go/internal/searxng"
 )
 
 // ============================================================================
@@ -27,12 +29,12 @@ func TestPerformSearch_DNSFailure(t *testing.T) {
 		}),
 	}
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: "http://example.com",
 		Timeout:    5 * time.Second,
 		HTTPClient: client,
 	}
-	args := &SearchArgs{Query: "test"}
+	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx := context.Background()
 	_, err := testPerformSearch(t, ctx, cfg, args)
@@ -42,9 +44,9 @@ func TestPerformSearch_DNSFailure(t *testing.T) {
 	}
 
 	// Verify error is wrapped with context (not just a sentinel error)
-	var searxngErr *SearXNGError
+	var searxngErr *searxng.SearXNGError
 	if !errors.As(err, &searxngErr) {
-		t.Errorf("expected *SearXNGError, got type %T: %v", err, err)
+		t.Errorf("expected *searxng.SearXNGError, got type %T: %v", err, err)
 	}
 
 	// Verify there's underlying error information
@@ -66,11 +68,11 @@ func TestPerformSearch_ConnectionRefused(t *testing.T) {
 	}))
 	server.Close()
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: server.URL,
 		Timeout:    5 * time.Second,
 	}
-	args := &SearchArgs{Query: "test"}
+	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx := context.Background()
 	_, err := testPerformSearch(t, ctx, cfg, args)
@@ -80,9 +82,9 @@ func TestPerformSearch_ConnectionRefused(t *testing.T) {
 	}
 
 	// Verify error is wrapped with context
-	var searxngErr *SearXNGError
+	var searxngErr *searxng.SearXNGError
 	if !errors.As(err, &searxngErr) {
-		t.Errorf("expected *SearXNGError, got type %T: %v", err, err)
+		t.Errorf("expected *searxng.SearXNGError, got type %T: %v", err, err)
 	}
 
 	// Should have underlying error
@@ -104,11 +106,11 @@ func TestPerformSearch_EmptyResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: server.URL,
 		Timeout:    30 * time.Second,
 	}
-	args := &SearchArgs{Query: "test"}
+	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx := context.Background()
 	_, err := testPerformSearch(t, ctx, cfg, args)
@@ -132,11 +134,11 @@ func TestPerformSearch_EmptyJSONObject(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: server.URL,
 		Timeout:    30 * time.Second,
 	}
-	args := &SearchArgs{Query: "test"}
+	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx := context.Background()
 	result, err := testPerformSearch(t, ctx, cfg, args)
@@ -162,11 +164,11 @@ func TestPerformSearch_UnexpectedContentType(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: server.URL,
 		Timeout:    30 * time.Second,
 	}
-	args := &SearchArgs{Query: "test"}
+	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx := context.Background()
 	_, err := testPerformSearch(t, ctx, cfg, args)
@@ -175,9 +177,9 @@ func TestPerformSearch_UnexpectedContentType(t *testing.T) {
 		t.Fatal("expected error for unexpected content type, got nil")
 	}
 
-	var searxngErr *SearXNGError
+	var searxngErr *searxng.SearXNGError
 	if !errors.As(err, &searxngErr) {
-		t.Errorf("expected *SearXNGError, got type %T: %v", err, err)
+		t.Errorf("expected *searxng.SearXNGError, got type %T: %v", err, err)
 		return
 	}
 
@@ -208,11 +210,11 @@ func TestPerformSearch_MalformedJSON_Truncated(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: server.URL,
 		Timeout:    30 * time.Second,
 	}
-	args := &SearchArgs{Query: "test"}
+	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx := context.Background()
 	_, err := testPerformSearch(t, ctx, cfg, args)
@@ -237,11 +239,11 @@ func TestPerformSearch_MalformedJSON_WrongType(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: server.URL,
 		Timeout:    30 * time.Second,
 	}
-	args := &SearchArgs{Query: "test"}
+	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx := context.Background()
 	_, err := testPerformSearch(t, ctx, cfg, args)
@@ -266,11 +268,11 @@ func TestPerformSearch_MalformedJSON_TrailingGarbage(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: server.URL,
 		Timeout:    30 * time.Second,
 	}
-	args := &SearchArgs{Query: "test"}
+	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx := context.Background()
 	_, err := testPerformSearch(t, ctx, cfg, args)
@@ -295,11 +297,11 @@ func TestPerformSearch_500Error(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: server.URL,
 		Timeout:    5 * time.Second,
 	}
-	args := &SearchArgs{Query: "test"}
+	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx := context.Background()
 	_, err := testPerformSearch(t, ctx, cfg, args)
@@ -313,9 +315,9 @@ func TestPerformSearch_500Error(t *testing.T) {
 		t.Errorf("error %q does not contain expected context 'searxng error (status 500)'", errStr)
 	}
 
-	var searxngErr *SearXNGError
+	var searxngErr *searxng.SearXNGError
 	if !errors.As(err, &searxngErr) {
-		t.Fatalf("expected *SearXNGError, got type %T", err)
+		t.Fatalf("expected *searxng.SearXNGError, got type %T", err)
 	}
 
 	if searxngErr.StatusCode != 500 {
@@ -330,11 +332,11 @@ func TestPerformSearch_404Error(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: server.URL,
 		Timeout:    5 * time.Second,
 	}
-	args := &SearchArgs{Query: "test"}
+	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx := context.Background()
 	_, err := testPerformSearch(t, ctx, cfg, args)
@@ -348,9 +350,9 @@ func TestPerformSearch_404Error(t *testing.T) {
 		t.Errorf("error %q does not contain expected context 'searxng error (status 404)'", errStr)
 	}
 
-	var searxngErr *SearXNGError
+	var searxngErr *searxng.SearXNGError
 	if !errors.As(err, &searxngErr) {
-		t.Fatalf("expected *SearXNGError, got type %T", err)
+		t.Fatalf("expected *searxng.SearXNGError, got type %T", err)
 	}
 
 	if searxngErr.StatusCode != 404 {
@@ -365,11 +367,11 @@ func TestPerformSearch_NetworkError_ConnectionClose(t *testing.T) {
 	}))
 	server.Close()
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: server.URL,
 		Timeout:    5 * time.Second,
 	}
-	args := &SearchArgs{Query: "test"}
+	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx := context.Background()
 	_, err := testPerformSearch(t, ctx, cfg, args)
@@ -385,9 +387,9 @@ func TestPerformSearch_NetworkError_ConnectionClose(t *testing.T) {
 	}
 
 	// Verify it's a proper wrapped error type
-	var searxngErr *SearXNGError
+	var searxngErr *searxng.SearXNGError
 	if !errors.As(err, &searxngErr) {
-		t.Errorf("expected *SearXNGError, got type %T", err)
+		t.Errorf("expected *searxng.SearXNGError, got type %T", err)
 	}
 }
 
@@ -405,12 +407,12 @@ func TestPerformSearch_TimeoutExceeded(t *testing.T) {
 		}),
 	}
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: "https://example.com",
 		Timeout:    30 * time.Second,
 		HTTPClient: client,
 	}
-	args := &SearchArgs{Query: "test"}
+	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -440,12 +442,12 @@ func TestPerformSearch_ContextDeadlineExceeded(t *testing.T) {
 		}),
 	}
 
-	cfg := &Config{
+	cfg := &searxng.Config{
 		SearXNGURL: "https://example.com",
 		Timeout:    30 * time.Second,
 		HTTPClient: client,
 	}
-	args := &SearchArgs{Query: "test"}
+	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -457,9 +459,9 @@ func TestPerformSearch_ContextDeadlineExceeded(t *testing.T) {
 	}
 
 	// Verify error is wrapped
-	var searxngErr *SearXNGError
+	var searxngErr *searxng.SearXNGError
 	if !errors.As(err, &searxngErr) {
-		t.Errorf("expected *SearXNGError, got type %T: %v", err, err)
+		t.Errorf("expected *searxng.SearXNGError, got type %T: %v", err, err)
 	}
 }
 
@@ -492,11 +494,11 @@ func TestPerformSearch_HTTPStatusErrors(t *testing.T) {
 			}))
 			defer server.Close()
 
-			cfg := &Config{
+			cfg := &searxng.Config{
 				SearXNGURL: server.URL,
 				Timeout:    5 * time.Second,
 			}
-			args := &SearchArgs{Query: "test"}
+			args := &searxng.SearchArgs{Query: "test"}
 
 			ctx := context.Background()
 			_, err := testPerformSearch(t, ctx, cfg, args)
@@ -509,9 +511,9 @@ func TestPerformSearch_HTTPStatusErrors(t *testing.T) {
 				t.Errorf("error %q does not contain %q", err.Error(), tc.wantContains)
 			}
 
-			var searxngErr *SearXNGError
+			var searxngErr *searxng.SearXNGError
 			if !errors.As(err, &searxngErr) {
-				t.Fatalf("expected *SearXNGError, got type %T", err)
+				t.Fatalf("expected *searxng.SearXNGError, got type %T", err)
 			}
 
 			if searxngErr.StatusCode != tc.statusCode {
@@ -535,15 +537,15 @@ func TestPerformSearch_RedirectStatus(t *testing.T) {
 		},
 	}
 
-	cfg := &Config{SearXNGURL: server.URL, Timeout: 5 * time.Second, HTTPClient: client}
-	_, err := testPerformSearch(t, context.Background(), cfg, &SearchArgs{Query: "test"})
+	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 5 * time.Second, HTTPClient: client}
+	_, err := testPerformSearch(t, context.Background(), cfg, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
 		t.Fatal("expected redirect error, got nil")
 	}
 
-	var searxngErr *SearXNGError
+	var searxngErr *searxng.SearXNGError
 	if !errors.As(err, &searxngErr) {
-		t.Fatalf("expected *SearXNGError, got %T", err)
+		t.Fatalf("expected *searxng.SearXNGError, got %T", err)
 	}
 	if searxngErr.StatusCode != http.StatusFound {
 		t.Fatalf("StatusCode = %d, want %d", searxngErr.StatusCode, http.StatusFound)
@@ -567,15 +569,15 @@ func TestPerformSearch_ConnectionResetMidResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &Config{SearXNGURL: server.URL, Timeout: 5 * time.Second}
-	_, err := testPerformSearch(t, context.Background(), cfg, &SearchArgs{Query: "test"})
+	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 5 * time.Second}
+	_, err := testPerformSearch(t, context.Background(), cfg, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
 		t.Fatal("expected connection reset error, got nil")
 	}
 
-	var searxngErr *SearXNGError
+	var searxngErr *searxng.SearXNGError
 	if !errors.As(err, &searxngErr) {
-		t.Fatalf("expected *SearXNGError, got %T", err)
+		t.Fatalf("expected *searxng.SearXNGError, got %T", err)
 	}
 	if searxngErr.StatusCode != http.StatusOK {
 		t.Fatalf("StatusCode = %d, want %d", searxngErr.StatusCode, http.StatusOK)
@@ -594,21 +596,21 @@ func TestPerformSearch_ConnectionResetMidResponse(t *testing.T) {
 func TestPerformSearch_AllErrorTypesAreWrapped(t *testing.T) {
 	tests := []struct {
 		name string
-		cfg  *Config
+		cfg  *searxng.Config
 	}{
 		{
 			name: "invalid URL scheme",
-			cfg:  &Config{SearXNGURL: "ftp://example.com", Timeout: 30 * time.Second},
+			cfg:  &searxng.Config{SearXNGURL: "ftp://example.com", Timeout: 30 * time.Second},
 		},
 		{
 			name: "missing host",
-			cfg:  &Config{SearXNGURL: "http://", Timeout: 30 * time.Second},
+			cfg:  &searxng.Config{SearXNGURL: "http://", Timeout: 30 * time.Second},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			args := &SearchArgs{Query: "test"}
+			args := &searxng.SearchArgs{Query: "test"}
 			ctx := context.Background()
 			_, err := testPerformSearch(t, ctx, tt.cfg, args)
 
@@ -624,7 +626,7 @@ func TestPerformSearch_AllErrorTypesAreWrapped(t *testing.T) {
 			}
 
 			// For URL errors, should still be wrapped in SearXNGError
-			var searxngErr *SearXNGError
+			var searxngErr *searxng.SearXNGError
 			if errors.As(err, &searxngErr) {
 				// Good - it's a proper wrapped error type
 				return

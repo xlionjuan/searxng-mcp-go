@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+
+	"searxng-mcp-go/internal/searxng"
 )
 
 // --- unescapeIfNeeded tests ---
@@ -48,19 +50,19 @@ func TestFormatResults(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		resp           *SearchResponse
+		resp           *searxng.SearchResponse
 		wantContains   []string
 		wantNotContain string
 		wantResult     string
 	}{
 		{
 			name: "single answer with engine",
-			resp: &SearchResponse{
+			resp: &searxng.SearchResponse{
 				Query: "sha512 hello",
-				Answers: []Answer{
+				Answers: []searxng.Answer{
 					{Answer: "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043", Engine: "plugin:hash_plugin"},
 				},
-				Results: []SearchResult{
+				Results: []searxng.SearchResult{
 					{Title: "Hash Result", URL: "https://example.com", Content: "Some content", Engine: "google"},
 				},
 				NumberOfResults: 1,
@@ -69,36 +71,36 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name: "multiple answers",
-			resp: &SearchResponse{
+			resp: &searxng.SearchResponse{
 				Query: "random",
-				Answers: []Answer{
+				Answers: []searxng.Answer{
 					{Answer: "42", Engine: "random_plugin"},
 					{Answer: "3.14", Engine: "math_plugin"},
 				},
-				Results: []SearchResult{},
+				Results: []searxng.SearchResult{},
 			},
 			wantContains: []string{"=== Answers ===", "[1] 42", "Engine: random_plugin", "[2] 3.14", "Engine: math_plugin"},
 		},
 		{
 			name: "answer without engine",
-			resp: &SearchResponse{
+			resp: &searxng.SearchResponse{
 				Query: "ip",
-				Answers: []Answer{
+				Answers: []searxng.Answer{
 					{Answer: "203.0.113.42"},
 				},
-				Results: []SearchResult{},
+				Results: []searxng.SearchResult{},
 			},
 			wantContains:   []string{"=== Answers ===", "203.0.113.42"},
 			wantNotContain: "Engine:",
 		},
 		{
 			name: "answers only no results",
-			resp: &SearchResponse{
+			resp: &searxng.SearchResponse{
 				Query: "avg 123 548 2.04 24.2",
-				Answers: []Answer{
+				Answers: []searxng.Answer{
 					{Answer: "174.31", Engine: "stats_plugin"},
 				},
-				Results:         []SearchResult{},
+				Results:         []searxng.SearchResult{},
 				NumberOfResults: 0,
 			},
 			wantContains:   []string{"=== Answers ===", "174.31"},
@@ -106,15 +108,15 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name: "answers before infoboxes before results",
-			resp: &SearchResponse{
+			resp: &searxng.SearchResponse{
 				Query: "apple",
-				Answers: []Answer{
+				Answers: []searxng.Answer{
 					{Answer: "192.168.1.1", Engine: "ip_plugin"},
 				},
-				Infoboxes: []Infobox{
+				Infoboxes: []searxng.Infobox{
 					{Infobox: "Apple", Content: "A fruit."},
 				},
-				Results: []SearchResult{
+				Results: []searxng.SearchResult{
 					{Title: "Apple - Fruit", URL: "https://example.com/apple", Content: "An apple is a fruit.", Engine: "google"},
 				},
 				NumberOfResults: 1,
@@ -123,9 +125,9 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name: "no answers when empty",
-			resp: &SearchResponse{
+			resp: &searxng.SearchResponse{
 				Query: "test query",
-				Results: []SearchResult{
+				Results: []searxng.SearchResult{
 					{Title: "Test", URL: "https://example.com", Content: "Test content", Engine: "google"},
 				},
 				NumberOfResults: 1,
@@ -134,8 +136,8 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name: "normal results with content",
-			resp: &SearchResponse{
-				Results: []SearchResult{
+			resp: &searxng.SearchResponse{
+				Results: []searxng.SearchResult{
 					{
 						Title:         "Test Title 1",
 						URL:           "https://example.com/1",
@@ -157,13 +159,13 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name:       "empty results",
-			resp:       &SearchResponse{Results: []SearchResult{}, NumberOfResults: 0, Query: "empty query"},
+			resp:       &searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "empty query"},
 			wantResult: "No results found.",
 		},
 		{
 			name: "content exceeding 4000 runes is truncated",
-			resp: &SearchResponse{
-				Results: []SearchResult{
+			resp: &searxng.SearchResponse{
+				Results: []searxng.SearchResult{
 					{
 						Title:   "Long Content Test",
 						URL:     "https://example.com/long",
@@ -174,13 +176,13 @@ func TestFormatResults(t *testing.T) {
 				NumberOfResults: 1,
 				Query:           "long content",
 			},
-			wantContains:   []string{"=== Results ===", strings.Repeat("x", MaxContentRunes), "Long Content Test"},
-			wantNotContain: strings.Repeat("x", MaxContentRunes+1),
+			wantContains:   []string{"=== Results ===", strings.Repeat("x", searxng.MaxContentRunes), "Long Content Test"},
+			wantNotContain: strings.Repeat("x", searxng.MaxContentRunes+1),
 		},
 		{
 			name: "HTML entities are unescaped in content",
-			resp: &SearchResponse{
-				Results: []SearchResult{
+			resp: &searxng.SearchResponse{
+				Results: []searxng.SearchResult{
 					{
 						Title:   "HTML Test &amp; More &lt;stuff&gt;",
 						URL:     "https://example.com/html",
@@ -195,8 +197,8 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name: "empty content is handled correctly",
-			resp: &SearchResponse{
-				Results: []SearchResult{
+			resp: &searxng.SearchResponse{
+				Results: []searxng.SearchResult{
 					{
 						Title:   "No Content",
 						URL:     "https://example.com/empty",
@@ -211,8 +213,8 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name: "NumberOfResults greater than len(Results) - paginated response",
-			resp: &SearchResponse{
-				Results: []SearchResult{
+			resp: &searxng.SearchResponse{
+				Results: []searxng.SearchResult{
 					{
 						Title:   "Result 1",
 						URL:     "https://example.com/1",
@@ -233,8 +235,8 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name: "suggestions are displayed after results",
-			resp: &SearchResponse{
-				Results: []SearchResult{
+			resp: &searxng.SearchResponse{
+				Results: []searxng.SearchResult{
 					{
 						Title:   "Result 1",
 						URL:     "https://example.com/1",
@@ -250,8 +252,8 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name: "no suggestions block when empty",
-			resp: &SearchResponse{
-				Results: []SearchResult{
+			resp: &searxng.SearchResponse{
+				Results: []searxng.SearchResult{
 					{
 						Title:   "Result 1",
 						URL:     "https://example.com/1",
@@ -267,24 +269,24 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name: "infoboxes displayed before results",
-			resp: &SearchResponse{
+			resp: &searxng.SearchResponse{
 				Query:           "apple inc",
 				NumberOfResults: 2,
-				Infoboxes: []Infobox{
+				Infoboxes: []searxng.Infobox{
 					{
 						Infobox: "Apple Inc.",
 						Content: "Apple Inc. is an American technology company.",
-						Attributes: []InfoboxAttribute{
+						Attributes: []searxng.InfoboxAttribute{
 							{Label: "Type", Value: "Public"},
 							{Label: "Industry", Value: "Technology"},
 						},
-						URLs: []InfoboxURL{
+						URLs: []searxng.InfoboxURL{
 							{Title: "Official site", URL: "https://www.apple.com"},
 							{Title: "Wikipedia", URL: "https://en.wikipedia.org/wiki/Apple_Inc."},
 						},
 					},
 				},
-				Results: []SearchResult{
+				Results: []searxng.SearchResult{
 					{
 						Title:   "Apple - Official Site",
 						URL:     "https://www.apple.com",
@@ -310,16 +312,16 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name: "infoboxes without results still show infoboxes",
-			resp: &SearchResponse{
+			resp: &searxng.SearchResponse{
 				Query:           "test",
 				NumberOfResults: 0,
-				Infoboxes: []Infobox{
+				Infoboxes: []searxng.Infobox{
 					{
 						Infobox: "Test Infobox",
 						Content: "Some info content",
 					},
 				},
-				Results: []SearchResult{},
+				Results: []searxng.SearchResult{},
 			},
 			wantContains: []string{
 				"=== Infoboxes ===",
@@ -330,19 +332,19 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name: "infobox with empty content",
-			resp: &SearchResponse{
+			resp: &searxng.SearchResponse{
 				Query:           "test",
 				NumberOfResults: 1,
-				Infoboxes: []Infobox{
+				Infoboxes: []searxng.Infobox{
 					{
 						Infobox: "Minimal Infobox",
 						Content: "",
-						Attributes: []InfoboxAttribute{
+						Attributes: []searxng.InfoboxAttribute{
 							{Label: "Key", Value: "Value"},
 						},
 					},
 				},
-				Results: []SearchResult{
+				Results: []searxng.SearchResult{
 					{
 						Title:  "Result 1",
 						URL:    "https://example.com/1",
@@ -360,16 +362,16 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name: "infoboxes appear before suggestions",
-			resp: &SearchResponse{
+			resp: &searxng.SearchResponse{
 				Query:           "test",
 				NumberOfResults: 1,
-				Infoboxes: []Infobox{
+				Infoboxes: []searxng.Infobox{
 					{
 						Infobox: "Test IB",
 						Content: "Info content",
 					},
 				},
-				Results: []SearchResult{
+				Results: []searxng.SearchResult{
 					{
 						Title:  "Result 1",
 						URL:    "https://example.com/1",
@@ -387,7 +389,7 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name: "suggestions only should not return no results found",
-			resp: &SearchResponse{
+			resp: &searxng.SearchResponse{
 				Query:       "typoed qurey",
 				Suggestions: []string{"typoed query", "typed query", "torpedoed"},
 			},
@@ -396,15 +398,15 @@ func TestFormatResults(t *testing.T) {
 		},
 		{
 			name: "section order: answers then infoboxes then results then suggestions",
-			resp: &SearchResponse{
+			resp: &searxng.SearchResponse{
 				Query: "full",
-				Answers: []Answer{
+				Answers: []searxng.Answer{
 					{Answer: "42", Engine: "calc"},
 				},
-				Infoboxes: []Infobox{
+				Infoboxes: []searxng.Infobox{
 					{Infobox: "Info", Content: "Some info."},
 				},
-				Results: []SearchResult{
+				Results: []searxng.SearchResult{
 					{Title: "Result", URL: "https://example.com", Content: "Content", Engine: "google"},
 				},
 				NumberOfResults: 1,
@@ -593,9 +595,9 @@ func TestFormatResults_DebugLogsUnresponsiveEngines(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
 	defer slog.SetDefault(old)
 
-	resp := &SearchResponse{
+	resp := &searxng.SearchResponse{
 		Query:               "test",
-		Results:             []SearchResult{},
+		Results:             []searxng.SearchResult{},
 		NumberOfResults:     0,
 		UnresponsiveEngines: [][]string{{"brave", `Suspended:" too many "requests`}},
 		Debug:               true,

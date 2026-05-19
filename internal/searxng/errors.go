@@ -1,16 +1,11 @@
-package main
+package searxng
 
 import (
 	"errors"
 	"fmt"
 )
 
-// ============================================================================
-// Error Types
-// ============================================================================
-
 // ValidationError represents a user-provided parameter validation failure.
-// These errors are returned when input parameters are invalid or missing.
 type ValidationError struct {
 	Field   string // Field is the name of the invalid field
 	Message string // Message describes the validation failure
@@ -34,8 +29,8 @@ func NewValidationError(field, message string) *ValidationError {
 	return &ValidationError{Field: field, Message: message}
 }
 
-// truncateBody returns a truncated preview of body for error messages
-func truncateBody(body []byte, maxLen int) string {
+// TruncateBody returns a truncated preview of body for error messages
+func TruncateBody(body []byte, maxLen int) string {
 	if len(body) == 0 || maxLen <= 0 {
 		return ""
 	}
@@ -53,7 +48,7 @@ func IsValidationError(err error) bool {
 }
 
 // SearXNGError represents an error that occurred during communication with
-// the SearXNG service. This includes network errors, HTTP errors, and API errors.
+// the SearXNG service.
 type SearXNGError struct {
 	StatusCode      int    // HTTP status code if available
 	RespContentType string // Content-Type header from response
@@ -81,14 +76,14 @@ func NewSearXNGError(statusCode int, contentType, body string, err error) *SearX
 	return &SearXNGError{
 		StatusCode:      statusCode,
 		RespContentType: contentType,
-		ResponseBody:    truncateBody([]byte(body), MaxErrorDisplayChars),
+		ResponseBody:    TruncateBody([]byte(body), MaxErrorDisplayChars),
 		UnderlyingErr:   err,
 	}
 }
 
 // HTTPStatusError creates a SearXNGError from an HTTP status code
 func HTTPStatusError(statusCode int, contentType string, body []byte) error {
-	bodyStr := truncateBody(body, MaxErrorDisplayChars)
+	bodyStr := TruncateBody(body, MaxErrorDisplayChars)
 
 	var msg string
 	switch statusCode {

@@ -13,13 +13,12 @@ searxng-mcp-go/
 ├── main.go              # Entry point: main(), parseArgs(), CLIFlags, getConfig()
 ├── cli.go               # CLI mode: printCLIHelp(), runCLIMode()
 ├── mcp.go                # MCP mode: runMCPMode(), prepareMCPStdin(), NewSearchToolHandler(), etc.
-├── search.go            # Search functionality, HTTP client, SearXNGSearcher
 ├── errors.go            # Error types and handling
 ├── format.go            # Output formatting
 ├── validation.go        # Input validation
 ├── constants.go         # Size limits and configuration constants
 ├── main_test.go         # Main tests (CLI/MCP mode, runCLIMode)
-├── search_test.go       # Search tests (isPrivateHost, validateBaseURL, getDefaultHTTPClient)
+├── search_test.go       # Search tests (SearXNGSearcher, DeduplicateAnswers)
 ├── errors_test.go       # Error type tests
 ├── format_test.go       # Formatting tests (including pagination)
 ├── validation_test.go   # Validation edge case tests
@@ -27,8 +26,10 @@ searxng-mcp-go/
 ├── error_path_test.go   # Error path coverage tests
 ├── fuzz_test.go         # Fuzz tests
 ├── bench_test.go        # Benchmark tests
-├── mcp_tool_test.go     # MCP tool integration tests
+├── mcp_tool_integration_test.go # MCP tool integration tests
+├── mcp_tool_test.go     # MCP tool tests
 ├── golden_capture_test.go # Golden file/capture tests
+├── testhelpers.go       # Test helper functions
 ├── README.md            # Project README
 ├── go.mod               # Go module definition
 ├── go.sum               # Go dependency checksums
@@ -36,6 +37,13 @@ searxng-mcp-go/
 ├── codecov.yml          # Code coverage configuration
 ├── .env.example         # Environment variable template
 ├── .github/workflows/   # CI: lint, security, test
+├── internal/
+│   └── searxng/         # SearXNG client library
+│       ├── searcher.go  # SearXNGSearcher, NewSearXNGSearcher, Search, performSearch, DeduplicateAnswers
+│       ├── types.go     # SearchArgs, SearchResponse, SearchResult, Answer, Infobox, InfoboxAttribute, InfoboxURL
+│       ├── errors.go    # Error types and handling
+│       ├── validation.go # Input validation (ValidateBaseURL, IsPrivateHost)
+│       └── constants.go # Size limits and configuration constants
 └── docs/
     ├── INSTALL.md           # Installation, build, configuration
     ├── MCP_TOOLS.md         # MCP tool documentation

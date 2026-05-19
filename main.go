@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+
+	"searxng-mcp-go/internal/searxng"
 )
 
 const version = "1.0.0"
@@ -173,8 +175,8 @@ func main() {
 	runMCPMode(flags, mcpStdin)
 }
 
-func getConfig(flags CLIFlags) *Config {
-	cfg := DefaultConfig()
+func getConfig(flags CLIFlags) *searxng.Config {
+	cfg := searxng.DefaultConfig()
 
 	if flags.SearXNGURL != "" {
 		cfg.SearXNGURL = flags.SearXNGURL
