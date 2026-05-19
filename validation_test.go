@@ -204,6 +204,8 @@ func TestValidateSearchArgs_SafeSearch(t *testing.T) {
 	t.Parallel()
 
 	t.Run("valid values", func(t *testing.T) {
+		t.Parallel()
+
 		for _, ss := range []int{0, 1, 2} {
 			t.Run(fmt.Sprintf("value_%d", ss), func(t *testing.T) {
 				t.Parallel()
@@ -213,6 +215,8 @@ func TestValidateSearchArgs_SafeSearch(t *testing.T) {
 	})
 
 	t.Run("invalid values", func(t *testing.T) {
+		t.Parallel()
+
 		for _, ss := range []int{-1, 3, -999, 999} {
 			t.Run(fmt.Sprintf("value_%d", ss), func(t *testing.T) {
 				t.Parallel()

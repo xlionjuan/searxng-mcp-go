@@ -69,11 +69,13 @@ func buildTestBinary(t *testing.T) (string, func()) {
 	cmd := exec.Command("go", "build", "-o", binPath, ".")
 
 	cmd.Dir = "."
-	if out, err := cmd.CombinedOutput(); err != nil {
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
 		t.Fatalf("failed to build binary: %v\n%s", err, out)
 	}
 
-	return binPath, func() { os.Remove(binPath) }
+	return binPath, func() { _ = os.Remove(binPath) }
 }
 
 // TestValidationExitCode verifies that all validation errors in CLI mode
@@ -154,6 +156,8 @@ func TestParseArgs_InvalidFlags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, _, _, err := parseArgs(tt.args)
 			if err == nil {
 				t.Fatal("expected error, got nil")
@@ -294,6 +298,8 @@ func TestParseArgs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			isCLIMode, flags, positionalArgs, err := parseArgs(tt.args)
 
 			if tt.wantErr {
@@ -398,6 +404,8 @@ func TestIsValidMCPInitializeMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := isValidMCPInitializeMessage([]byte(tt.line)); got != tt.want {
 				t.Fatalf("isValidMCPInitializeMessage() = %v, want %v", got, tt.want)
 			}
@@ -476,6 +484,7 @@ func TestPrepareMCPStdinRejectsOversizedInitializeLine(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Modifies process-wide os.Stdin.
 func TestAttachStdin(t *testing.T) {
 	originalStdin := os.Stdin
 
@@ -519,13 +528,16 @@ func captureStdout(t *testing.T, fn func()) string {
 	}()
 
 	var buf bytes.Buffer
-	if _, err := buf.ReadFrom(r); err != nil {
+
+	_, err := buf.ReadFrom(r)
+	if err != nil {
 		t.Fatalf("failed to read stdout: %v", err)
 	}
 
 	return buf.String()
 }
 
+//nolint:paralleltest // Uses process environment through t.Setenv.
 func TestGetConfig(t *testing.T) {
 	t.Setenv("SEARXNG_URL", "https://env.example.com")
 
@@ -565,6 +577,7 @@ func TestGetConfig(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // Captures process-wide stdout.
 func TestRunCLIMode_SuccessTextOutput(t *testing.T) {
 	server := newTestSearchServer(t, searxng.SearchResponse{
 		Query:           "golang",
@@ -587,6 +600,7 @@ func TestRunCLIMode_SuccessTextOutput(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Captures process-wide stdout.
 func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
 	server := newTestSearchServer(t, searxng.SearchResponse{
 		Query:           "golang",
@@ -605,7 +619,9 @@ func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
 	}
 
 	var resp searxng.SearchResponse
-	if err := json.Unmarshal([]byte(output), &resp); err != nil {
+
+	err = json.Unmarshal([]byte(output), &resp)
+	if err != nil {
 		t.Fatalf("output is not valid JSON: %v\n%s", err, output)
 	}
 
@@ -614,6 +630,7 @@ func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Captures stdout and mutates debugMode.
 func TestRunCLIMode_DebugJSONIncludesUnresponsiveEngines(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -641,6 +658,7 @@ func TestRunCLIMode_DebugJSONIncludesUnresponsiveEngines(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Captures process-wide stdout.
 func TestRunCLIMode_QueryPrecedence(t *testing.T) {
 	server := newTestSearchServer(t, searxng.SearchResponse{
 		Query:           "flag query",
@@ -744,6 +762,8 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := runCLIMode(tt.flags, tt.query)
 			if tt.wantErr {
 				if err == nil {
@@ -762,6 +782,7 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Captures process-wide stdout.
 func TestRunCLIMode_HelpFlag(t *testing.T) {
 	flags := CLIFlags{Help: true, Language: "", SafeSearch: 0, Pageno: nil}
 
@@ -781,6 +802,7 @@ func TestRunCLIMode_HelpFlag(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // Captures process-wide stdout.
 func TestRunCLIMode_VersionFlag(t *testing.T) {
 	flags := CLIFlags{Version: true, Language: "", SafeSearch: 0, Pageno: nil}
 
@@ -852,6 +874,8 @@ func TestRunCLIMode_FlagOnlyInvocations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := runCLIMode(tt.flags, []string{})
 			if tt.wantErr {
 				if err == nil {

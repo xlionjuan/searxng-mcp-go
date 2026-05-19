@@ -19,6 +19,8 @@ import (
 // --- Search tests ---
 
 func TestSearch_CfgNil(t *testing.T) {
+	t.Parallel()
+
 	ctx := t.Context()
 
 	_, err := testPerformSearch(t, ctx, nil, &searxng.SearchArgs{Query: "test"})
@@ -32,6 +34,8 @@ func TestSearch_CfgNil(t *testing.T) {
 }
 
 func TestSearch_Success(t *testing.T) {
+	t.Parallel()
+
 	searchResp := searxng.SearchResponse{
 		Results: []searxng.SearchResult{
 			{Title: "Result 1", URL: "https://example.com/1", Content: "Content 1", Engine: "google"},
@@ -46,7 +50,7 @@ func TestSearch_Success(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			r.ParseForm()
+			_ = r.ParseForm()
 			capturedQuery = r.PostForm
 		} else {
 			capturedQuery = r.URL.Query()
@@ -54,7 +58,7 @@ func TestSearch_Success(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer server.Close()
 
@@ -102,6 +106,8 @@ func TestSearch_Success(t *testing.T) {
 }
 
 func TestSearch_PreservesUnresponsiveEngines(t *testing.T) {
+	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -127,32 +133,7 @@ func TestSearch_PreservesUnresponsiveEngines(t *testing.T) {
 }
 
 func TestSearch_TimeRangeParam(t *testing.T) {
-	var capturedTimeRange string
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			capturedTimeRange = r.PostFormValue("time_range")
-		} else {
-			capturedTimeRange = r.URL.Query().Get("time_range")
-		}
-
-		searchResp := searxng.SearchResponse{
-			Results:         []searxng.SearchResult{},
-			NumberOfResults: 0,
-			Query:           "test",
-		}
-		body := mustMarshalJSON(t, searchResp)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-	}))
-	defer server.Close()
-
-	cfg := &searxng.Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-	}
+	t.Parallel()
 
 	tests := []struct {
 		name      string
@@ -167,7 +148,34 @@ func TestSearch_TimeRangeParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			capturedTimeRange = ""
+			t.Parallel()
+
+			var capturedTimeRange string
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost {
+					capturedTimeRange = r.PostFormValue("time_range")
+				} else {
+					capturedTimeRange = r.URL.Query().Get("time_range")
+				}
+
+				searchResp := searxng.SearchResponse{
+					Results:         []searxng.SearchResult{},
+					NumberOfResults: 0,
+					Query:           "test",
+				}
+				body := mustMarshalJSON(t, searchResp)
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(body)
+			}))
+			defer server.Close()
+
+			cfg := &searxng.Config{
+				SearXNGURL: server.URL,
+				Timeout:    30 * time.Second,
+			}
 			args := &searxng.SearchArgs{Query: "test", TimeRange: tt.timeRange}
 			ctx := t.Context()
 
@@ -186,6 +194,8 @@ func TestSearch_TimeRangeParam(t *testing.T) {
 }
 
 func TestSearch_DefaultLanguage(t *testing.T) {
+	t.Parallel()
+
 	var capturedLanguage string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -204,7 +214,7 @@ func TestSearch_DefaultLanguage(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer server.Close()
 
@@ -227,26 +237,7 @@ func TestSearch_DefaultLanguage(t *testing.T) {
 }
 
 func TestSearch_OptionalParams(t *testing.T) {
-	var capturedParams url.Values
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			r.ParseForm()
-			capturedParams = r.PostForm
-		} else {
-			capturedParams = r.URL.Query()
-		}
-
-		searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
-		body := mustMarshalJSON(t, searchResp)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-	}))
-	defer server.Close()
-
-	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+	t.Parallel()
 
 	tests := []struct {
 		name    string
@@ -261,7 +252,28 @@ func TestSearch_OptionalParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			capturedParams = nil
+			t.Parallel()
+
+			var capturedParams url.Values
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost {
+					_ = r.ParseForm()
+					capturedParams = r.PostForm
+				} else {
+					capturedParams = r.URL.Query()
+				}
+
+				searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
+				body := mustMarshalJSON(t, searchResp)
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(body)
+			}))
+			defer server.Close()
+
+			cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
 			ctx := t.Context()
 
 			_, err := testPerformSearch(t, ctx, cfg, tt.args)
@@ -277,6 +289,8 @@ func TestSearch_OptionalParams(t *testing.T) {
 }
 
 func TestSearch_SearchPathNormalization(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		baseURL  string
@@ -289,6 +303,8 @@ func TestSearch_SearchPathNormalization(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			var gotPath string
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -298,7 +314,7 @@ func TestSearch_SearchPathNormalization(t *testing.T) {
 
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				w.Write(body)
+				_, _ = w.Write(body)
 			}))
 			defer server.Close()
 
@@ -317,7 +333,11 @@ func TestSearch_SearchPathNormalization(t *testing.T) {
 }
 
 func TestSearch_UnsupportedBodySizes(t *testing.T) {
+	t.Parallel()
+
 	t.Run("oversized error body", func(t *testing.T) {
+		t.Parallel()
+
 		body := strings.Repeat("e", searxng.MaxErrorBodySize+1)
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -334,7 +354,8 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 
 				return
 			}
-			defer conn.Close()
+
+			defer func() { _ = conn.Close() }()
 
 			header := fmt.Sprintf("HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n", len(body))
 			_, _ = conn.Write([]byte(header))
@@ -371,6 +392,8 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 	})
 
 	t.Run("oversized success body", func(t *testing.T) {
+		t.Parallel()
+
 		body := `{"query":"test","number_of_results":1,"results":[{"title":"Result","url":"https://example.com","content":"` + strings.Repeat("s", searxng.MaxResponseBodySize+1) + `","engine":"google"}],"suggestions":[]}`
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -387,7 +410,8 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 
 				return
 			}
-			defer conn.Close()
+
+			defer func() { _ = conn.Close() }()
 
 			header := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n", len(body))
 			_, _ = conn.Write([]byte(header))
@@ -421,6 +445,8 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 }
 
 func TestSearch_EmptyHTMLBody(t *testing.T) {
+	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
@@ -449,6 +475,8 @@ func TestSearch_EmptyHTMLBody(t *testing.T) {
 }
 
 func TestSearch_HTMLResponseError(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		contentType string
@@ -477,10 +505,12 @@ func TestSearch_HTMLResponseError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", tt.contentType)
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(tt.body))
+				_, _ = w.Write([]byte(tt.body))
 			}))
 			defer server.Close()
 
@@ -518,6 +548,8 @@ func intPtr(i int) *int {
 
 // Test that Search properly encodes query parameters.
 func TestSearch_QueryEncoding(t *testing.T) {
+	t.Parallel()
+
 	var capturedQuery string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -536,7 +568,7 @@ func TestSearch_QueryEncoding(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer server.Close()
 
@@ -576,6 +608,8 @@ func TestNewSearXNGSearcher_URLValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: tt.baseURL, Timeout: 30 * time.Second}, false)
 			if tt.wantErr {
 				if err == nil {
@@ -596,6 +630,8 @@ func TestNewSearXNGSearcher_URLValidation(t *testing.T) {
 
 // Test NumberOfResults=0 with actual results (SearXNG quirk).
 func TestSearch_NumberOfResultsZeroWithResults(t *testing.T) {
+	t.Parallel()
+
 	// SearXNG may return number_of_results=0 even when results exist
 	searchResp := searxng.SearchResponse{
 		Results: []searxng.SearchResult{
@@ -610,7 +646,7 @@ func TestSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer server.Close()
 
@@ -637,27 +673,35 @@ func TestSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 }
 
 func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
+	t.Parallel()
+
 	t.Run("nil client", func(t *testing.T) {
+		t.Parallel()
+
 		searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: "https://example.com"}, false)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		searcher.Close()
-		searcher.Close()
+		_ = searcher.Close()
+		_ = searcher.Close()
 	})
 
 	t.Run("shared default client", func(t *testing.T) {
+		t.Parallel()
+
 		searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: "https://example.com"}, false)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		searcher.Close()
-		searcher.Close()
+		_ = searcher.Close()
+		_ = searcher.Close()
 	})
 
 	t.Run("custom client", func(t *testing.T) {
+		t.Parallel()
+
 		customClient := &http.Client{Timeout: 30 * time.Second}
 
 		searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: "https://example.com", HTTPClient: customClient}, false)
@@ -665,12 +709,14 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		searcher.Close()
-		searcher.Close()
+		_ = searcher.Close()
+		_ = searcher.Close()
 	})
 }
 
 func TestSearch_POSTtoGETFallback(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		statusCode int
@@ -681,6 +727,8 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			var (
 				postReq *http.Request
 				getReq  *http.Request
@@ -703,7 +751,7 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusOK)
-					w.Write(body)
+					_, _ = w.Write(body)
 
 					return
 				}
@@ -745,7 +793,11 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 }
 
 func TestSearch_BrowserHeaders(t *testing.T) {
+	t.Parallel()
+
 	t.Run("POST request headers", func(t *testing.T) {
+		t.Parallel()
+
 		var capturedHeaders http.Header
 
 		searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
@@ -755,7 +807,7 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 			capturedHeaders = r.Header
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write(body)
+			_, _ = w.Write(body)
 		}))
 		defer server.Close()
 
@@ -792,6 +844,8 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 	})
 
 	t.Run("GET fallback headers", func(t *testing.T) {
+		t.Parallel()
+
 		var capturedHeaders http.Header
 
 		searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
@@ -807,7 +861,7 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 			capturedHeaders = r.Header
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write(body)
+			_, _ = w.Write(body)
 		}))
 		defer server.Close()
 
@@ -1071,7 +1125,9 @@ func TestTypedAnswerFixturesSurviveDeduplication(t *testing.T) {
 			}
 
 			var resp searxng.SearchResponse
-			if err := json.Unmarshal(body, &resp); err != nil {
+
+			err = json.Unmarshal(body, &resp)
+			if err != nil {
 				t.Fatalf("Unmarshal() error = %v", err)
 			}
 
@@ -1218,7 +1274,9 @@ func TestSearchResponse_MarshalJSON_DebugIncludesUnresponsiveEngines(t *testing.
 	}
 
 	var decoded map[string]any
-	if err := json.Unmarshal(data, &decoded); err != nil {
+
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
 		t.Fatalf("output is not valid JSON: %v", err)
 	}
 

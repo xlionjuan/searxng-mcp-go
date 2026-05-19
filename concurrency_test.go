@@ -24,6 +24,8 @@ func (f cancelRoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, er
 
 // TestConcurrentSearches runs multiple searches simultaneously with different parameters.
 func TestConcurrentSearches(t *testing.T) {
+	t.Parallel()
+
 	if testing.Short() {
 		t.Skip("Skipping concurrent search stress test in short mode")
 	}
@@ -44,7 +46,7 @@ func TestConcurrentSearches(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer server.Close()
 
@@ -88,6 +90,8 @@ func TestConcurrentSearches(t *testing.T) {
 
 // TestConcurrentContextCancellation tests concurrent context cancellation.
 func TestConcurrentContextCancellation(t *testing.T) {
+	t.Parallel()
+
 	if testing.Short() {
 		t.Skip("Skipping concurrent cancellation stress test in short mode")
 	}
@@ -183,6 +187,8 @@ func TestConcurrentContextCancellation(t *testing.T) {
 
 // TestChannelDeadlockDetection tests that channels don't deadlock.
 func TestChannelDeadlockDetection(t *testing.T) {
+	t.Parallel()
+
 	if testing.Short() {
 		t.Skip("Skipping deadlock stress test in short mode")
 	}
@@ -197,7 +203,7 @@ func TestChannelDeadlockDetection(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer server.Close()
 
@@ -240,6 +246,8 @@ func TestChannelDeadlockDetection(t *testing.T) {
 
 // TestRaceConditionOnSharedState tests for race conditions on shared HTTP client.
 func TestRaceConditionOnSharedState(t *testing.T) {
+	t.Parallel()
+
 	if testing.Short() {
 		t.Skip("Skipping shared state race test in short mode")
 	}
@@ -260,7 +268,7 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer server.Close()
 
@@ -320,6 +328,8 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 // instance that gets interrupted by a graceful shutdown. When the shared context is canceled,
 // all in-flight performSearch calls must return context.Canceled.
 func TestGracefulShutdownWithContextCancel(t *testing.T) {
+	t.Parallel()
+
 	if testing.Short() {
 		t.Skip("Skipping graceful shutdown stress test in short mode")
 	}
@@ -433,6 +443,8 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 
 // TestContextDeadlineExceededDuringSearch tests behavior when context deadline expires during search.
 func TestContextDeadlineExceededDuringSearch(t *testing.T) {
+	t.Parallel()
+
 	if testing.Short() {
 		t.Skip("Skipping deadline stress test in short mode")
 	}
@@ -470,6 +482,8 @@ func TestContextDeadlineExceededDuringSearch(t *testing.T) {
 
 // TestConcurrentValidationAndSearch tests concurrent validation and search operations.
 func TestConcurrentValidationAndSearch(t *testing.T) {
+	t.Parallel()
+
 	if testing.Short() {
 		t.Skip("Skipping validation/search concurrency stress test in short mode")
 	}
@@ -484,7 +498,7 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer server.Close()
 
@@ -525,7 +539,9 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 			defer wg.Done()
 
 			ctx := context.Background()
-			if _, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "test"}); err != nil {
+
+			_, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "test"})
+			if err != nil {
 				atomic.AddInt64(&searchErrors, 1)
 				t.Errorf("search error: %v", err)
 			}
@@ -544,6 +560,8 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 }
 
 func TestSearchCloseDuringInFlightSearch(t *testing.T) {
+	t.Parallel()
+
 	started := make(chan struct{})
 	release := make(chan struct{})
 
@@ -584,13 +602,15 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 
 	<-started
 
-	if err := searcher.Close(); err != nil {
+	err = searcher.Close()
+	if err != nil {
 		t.Fatalf("Close() returned error: %v", err)
 	}
 
 	close(release)
 
-	if err := <-done; err != nil {
+	err = <-done
+	if err != nil {
 		t.Fatalf("Search() returned error: %v", err)
 	}
 }

@@ -48,7 +48,7 @@ func newTestSearcher(t *testing.T, handler http.HandlerFunc) (*searxng.SearXNGSe
 	}
 
 	cleanup := func() {
-		searcher.Close()
+		_ = searcher.Close()
 		mockServer.Close()
 	}
 
@@ -56,6 +56,8 @@ func newTestSearcher(t *testing.T, handler http.HandlerFunc) (*searxng.SearXNGSe
 }
 
 func TestSearchInputSchema(t *testing.T) {
+	t.Parallel()
+
 	var schema map[string]any
 	err := json.Unmarshal([]byte(searchInputSchema), &schema)
 	if err != nil {
@@ -91,13 +93,19 @@ func TestSearchInputSchema(t *testing.T) {
 }
 
 func TestNewSearchToolHandler(t *testing.T) {
+	t.Parallel()
+
 	t.Run("creates handler", func(t *testing.T) {
+		t.Parallel()
+
 		if handler := NewSearchToolHandler(&searxng.SearXNGSearcher{}); handler == nil {
 			t.Fatal("expected handler function")
 		}
 	})
 
 	t.Run("validates input", func(t *testing.T) {
+		t.Parallel()
+
 		handler := NewSearchToolHandler(&searxng.SearXNGSearcher{})
 
 		for _, tt := range []struct {
@@ -108,6 +116,8 @@ func TestNewSearchToolHandler(t *testing.T) {
 			{name: "whitespace query", args: searxng.SearchArgs{Query: "   "}},
 		} {
 			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+
 				result, _, err := handler(context.Background(), nil, tt.args)
 				if err != nil {
 					t.Fatalf("call tool failed: %v", err)
@@ -130,6 +140,8 @@ func TestNewSearchToolHandler(t *testing.T) {
 	})
 
 	t.Run("returns JSON result", func(t *testing.T) {
+		t.Parallel()
+
 		searcher, cleanup := newTestSearcher(t, mockSearXNGHandler(t))
 		defer cleanup()
 
@@ -154,7 +166,9 @@ func TestNewSearchToolHandler(t *testing.T) {
 		}
 
 		var parsed searxng.SearchResponse
-		if err := json.Unmarshal([]byte(textContent.Text), &parsed); err != nil {
+
+		err = json.Unmarshal([]byte(textContent.Text), &parsed)
+		if err != nil {
 			t.Fatalf("expected valid JSON, got error: %v\nbody: %s", err, textContent.Text)
 		}
 
@@ -172,6 +186,8 @@ func TestNewSearchToolHandler(t *testing.T) {
 	})
 
 	t.Run("applies default limit when omitted", func(t *testing.T) {
+		t.Parallel()
+
 		results := make([]searxng.SearchResult, 12)
 		for i := range results {
 			results[i] = searxng.SearchResult{
@@ -217,7 +233,9 @@ func TestNewSearchToolHandler(t *testing.T) {
 		}
 
 		var parsed searxng.SearchResponse
-		if err := json.Unmarshal([]byte(textContent.Text), &parsed); err != nil {
+
+		err = json.Unmarshal([]byte(textContent.Text), &parsed)
+		if err != nil {
 			t.Fatalf("expected valid JSON, got error: %v\nbody: %s", err, textContent.Text)
 		}
 
@@ -227,6 +245,8 @@ func TestNewSearchToolHandler(t *testing.T) {
 	})
 
 	t.Run("forwards optional parameters", func(t *testing.T) {
+		t.Parallel()
+
 		var capturedParams map[string]string
 
 		handler := func(w http.ResponseWriter, r *http.Request) {
@@ -293,6 +313,8 @@ func TestNewSearchToolHandler(t *testing.T) {
 	})
 
 	t.Run("returns search errors", func(t *testing.T) {
+		t.Parallel()
+
 		searcher, cleanup := newTestSearcher(t, func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		})
@@ -321,6 +343,8 @@ func TestNewSearchToolHandler(t *testing.T) {
 }
 
 func TestMCP_DebugGatesUnresponsiveEngines(t *testing.T) {
+	t.Parallel()
+
 	sr := searxng.SearchResponse{
 		Query:               "golang",
 		NumberOfResults:     1,
@@ -330,6 +354,9 @@ func TestMCP_DebugGatesUnresponsiveEngines(t *testing.T) {
 	}
 
 	t.Run("debug_off", func(t *testing.T) {
+		t.Parallel()
+
+		sr := sr
 		sr.Debug = false
 
 		data, err := sr.MarshalJSON()
@@ -343,6 +370,9 @@ func TestMCP_DebugGatesUnresponsiveEngines(t *testing.T) {
 	})
 
 	t.Run("debug_on", func(t *testing.T) {
+		t.Parallel()
+
+		sr := sr
 		sr.Debug = true
 
 		data, err := sr.MarshalJSON()
@@ -351,7 +381,9 @@ func TestMCP_DebugGatesUnresponsiveEngines(t *testing.T) {
 		}
 
 		var decoded map[string]any
-		if err := json.Unmarshal(data, &decoded); err != nil {
+
+		err = json.Unmarshal(data, &decoded)
+		if err != nil {
 			t.Fatalf("expected valid JSON: %v\nbody: %s", err, string(data))
 		}
 

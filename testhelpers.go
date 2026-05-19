@@ -20,7 +20,8 @@ func testPerformSearch(t testing.TB, ctx context.Context, cfg *searxng.Config, a
 	if err != nil {
 		return nil, err
 	}
-	defer s.Close()
+
+	defer func() { _ = s.Close() }()
 
 	return s.Search(ctx, args)
 }
