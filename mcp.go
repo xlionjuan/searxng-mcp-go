@@ -196,7 +196,6 @@ func runMCPMode(flags CLIFlags, stdin io.Reader) {
 }
 
 // searchTool is the minimal interface that a search backend must implement.
-// It is narrower than searxng.Searcher (which also requires Close).
 type searchTool interface {
 	Search(ctx context.Context, args *searxng.SearchArgs) (*searxng.SearchResponse, error)
 }

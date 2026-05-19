@@ -17,8 +17,8 @@ import (
 // Error Path Tests - Network Failures
 // ============================================================================
 
-// TestPerformSearch_DNSFailure tests that DNS failures are properly wrapped with context
-func TestPerformSearch_DNSFailure(t *testing.T) {
+// TestSearch_DNSFailure tests that DNS failures are properly wrapped with context
+func TestSearch_DNSFailure(t *testing.T) {
 	client := &http.Client{
 		Transport: cancelRoundTripperFunc(func(*http.Request) (*http.Response, error) {
 			return nil, &net.DNSError{
@@ -60,8 +60,8 @@ func TestPerformSearch_DNSFailure(t *testing.T) {
 	}
 }
 
-// TestPerformSearch_ConnectionRefused tests connection refused errors
-func TestPerformSearch_ConnectionRefused(t *testing.T) {
+// TestSearch_ConnectionRefused tests connection refused errors
+func TestSearch_ConnectionRefused(t *testing.T) {
 	// Create a server and immediately close it to simulate connection refused
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -97,8 +97,8 @@ func TestPerformSearch_ConnectionRefused(t *testing.T) {
 // Error Path Tests - HTTP Status Codes
 // ============================================================================
 
-// TestPerformSearch_EmptyResponse tests handling of empty response body
-func TestPerformSearch_EmptyResponse(t *testing.T) {
+// TestSearch_EmptyResponse tests handling of empty response body
+func TestSearch_EmptyResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -125,8 +125,8 @@ func TestPerformSearch_EmptyResponse(t *testing.T) {
 	}
 }
 
-// TestPerformSearch_EmptyBodyWith200 tests empty JSON object response
-func TestPerformSearch_EmptyJSONObject(t *testing.T) {
+// TestSearch_EmptyBodyWith200 tests empty JSON object response
+func TestSearch_EmptyJSONObject(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -155,8 +155,8 @@ func TestPerformSearch_EmptyJSONObject(t *testing.T) {
 	}
 }
 
-// TestPerformSearch_UnexpectedContentType tests response with unexpected content type
-func TestPerformSearch_UnexpectedContentType(t *testing.T) {
+// TestSearch_UnexpectedContentType tests response with unexpected content type
+func TestSearch_UnexpectedContentType(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
@@ -201,7 +201,7 @@ func TestPerformSearch_UnexpectedContentType(t *testing.T) {
 // Error Path Tests - Malformed JSON
 // ============================================================================
 
-func TestPerformSearch_MalformedJSON_Truncated(t *testing.T) {
+func TestSearch_MalformedJSON_Truncated(t *testing.T) {
 	truncatedJSON := []byte(`{"results": [{"title": "test",`)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -228,7 +228,7 @@ func TestPerformSearch_MalformedJSON_Truncated(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_MalformedJSON_WrongType(t *testing.T) {
+func TestSearch_MalformedJSON_WrongType(t *testing.T) {
 	// JSON that decodes but has wrong types - this should produce a JSON unmarshal error
 	// because "results" is expected to be an array, not a string
 	wrongTypeJSON := []byte(`{"results": "not an array", "number_of_results": "not a number"}`)
@@ -258,7 +258,7 @@ func TestPerformSearch_MalformedJSON_WrongType(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_MalformedJSON_TrailingGarbage(t *testing.T) {
+func TestSearch_MalformedJSON_TrailingGarbage(t *testing.T) {
 	// Valid JSON followed by garbage
 	garbageJSON := []byte(`{"results":[],"number_of_results":0,"query":"test"}TRAILING GARBAGE`)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -290,7 +290,7 @@ func TestPerformSearch_MalformedJSON_TrailingGarbage(t *testing.T) {
 // Error Path Tests - Error Wrapping Context
 // ============================================================================
 
-func TestPerformSearch_500Error(t *testing.T) {
+func TestSearch_500Error(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Internal Server Error"))
@@ -325,7 +325,7 @@ func TestPerformSearch_500Error(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_404Error(t *testing.T) {
+func TestSearch_404Error(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not Found"))
@@ -360,7 +360,7 @@ func TestPerformSearch_404Error(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_NetworkError_ConnectionClose(t *testing.T) {
+func TestSearch_NetworkError_ConnectionClose(t *testing.T) {
 	// Create a server and immediately close it to simulate network error
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Close immediately without responding
@@ -397,7 +397,7 @@ func TestPerformSearch_NetworkError_ConnectionClose(t *testing.T) {
 // Error Path Tests - Timeout Behavior
 // ============================================================================
 
-func TestPerformSearch_TimeoutExceeded(t *testing.T) {
+func TestSearch_TimeoutExceeded(t *testing.T) {
 	// Use a custom RoundTripper that blocks until context cancellation,
 	// avoiding httptest.Server.Close() blocking on active connections.
 	client := &http.Client{
@@ -432,7 +432,7 @@ func TestPerformSearch_TimeoutExceeded(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_ContextDeadlineExceeded(t *testing.T) {
+func TestSearch_ContextDeadlineExceeded(t *testing.T) {
 	// Use a custom RoundTripper that blocks until context cancellation,
 	// avoiding httptest.Server.Close() blocking on active connections.
 	client := &http.Client{
@@ -469,7 +469,7 @@ func TestPerformSearch_ContextDeadlineExceeded(t *testing.T) {
 // Error Path Tests - HTTP Status Error Messages
 // ============================================================================
 
-func TestPerformSearch_HTTPStatusErrors(t *testing.T) {
+func TestSearch_HTTPStatusErrors(t *testing.T) {
 	tests := []struct {
 		statusCode   int
 		wantContains string
@@ -523,7 +523,7 @@ func TestPerformSearch_HTTPStatusErrors(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_RedirectStatus(t *testing.T) {
+func TestSearch_RedirectStatus(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Location", "/search/redirected")
 		w.WriteHeader(http.StatusFound)
@@ -552,7 +552,7 @@ func TestPerformSearch_RedirectStatus(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_ConnectionResetMidResponse(t *testing.T) {
+func TestSearch_ConnectionResetMidResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hj, ok := w.(http.Hijacker)
 		if !ok {
@@ -591,9 +591,9 @@ func TestPerformSearch_ConnectionResetMidResponse(t *testing.T) {
 // Error Path Tests - Verify All Errors Are Wrapped
 // ============================================================================
 
-// TestPerformSearch_AllErrorTypesAreWrapped verifies that all error types
-// returned by performSearch are properly wrapped with context
-func TestPerformSearch_AllErrorTypesAreWrapped(t *testing.T) {
+// TestSearch_AllErrorTypesAreWrapped verifies that all error types
+// returned by Search are properly wrapped with context
+func TestSearch_AllErrorTypesAreWrapped(t *testing.T) {
 	tests := []struct {
 		name string
 		cfg  *searxng.Config

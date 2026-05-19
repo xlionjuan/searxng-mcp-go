@@ -244,7 +244,7 @@ func BenchmarkFormatResults(b *testing.B) {
 	}
 }
 
-func BenchmarkPerformSearch(b *testing.B) {
+func BenchmarkSearch(b *testing.B) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(sampleSearXNGJSON))

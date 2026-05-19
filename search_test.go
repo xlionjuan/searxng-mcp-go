@@ -14,9 +14,9 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
-// --- performSearch tests ---
+// --- Search tests ---
 
-func TestPerformSearch_CfgNil(t *testing.T) {
+func TestSearch_CfgNil(t *testing.T) {
 	ctx := t.Context()
 	_, err := testPerformSearch(t, ctx, nil, &searxng.SearchArgs{Query: "test"})
 
@@ -28,7 +28,7 @@ func TestPerformSearch_CfgNil(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_Success(t *testing.T) {
+func TestSearch_Success(t *testing.T) {
 	searchResp := searxng.SearchResponse{
 		Results: []searxng.SearchResult{
 			{Title: "Result 1", URL: "https://example.com/1", Content: "Content 1", Engine: "google"},
@@ -94,7 +94,7 @@ func TestPerformSearch_Success(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_PreservesUnresponsiveEngines(t *testing.T) {
+func TestSearch_PreservesUnresponsiveEngines(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -116,7 +116,7 @@ func TestPerformSearch_PreservesUnresponsiveEngines(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_TimeRangeParam(t *testing.T) {
+func TestSearch_TimeRangeParam(t *testing.T) {
 	var capturedTimeRange string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
@@ -169,7 +169,7 @@ func TestPerformSearch_TimeRangeParam(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_DefaultLanguage(t *testing.T) {
+func TestSearch_DefaultLanguage(t *testing.T) {
 	var capturedLanguage string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
@@ -205,7 +205,7 @@ func TestPerformSearch_DefaultLanguage(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_OptionalParams(t *testing.T) {
+func TestSearch_OptionalParams(t *testing.T) {
 	var capturedParams url.Values
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
@@ -250,7 +250,7 @@ func TestPerformSearch_OptionalParams(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_SearchPathNormalization(t *testing.T) {
+func TestSearch_SearchPathNormalization(t *testing.T) {
 	tests := []struct {
 		name     string
 		baseURL  string
@@ -286,7 +286,7 @@ func TestPerformSearch_SearchPathNormalization(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_UnsupportedBodySizes(t *testing.T) {
+func TestSearch_UnsupportedBodySizes(t *testing.T) {
 	t.Run("oversized error body", func(t *testing.T) {
 		body := strings.Repeat("e", searxng.MaxErrorBodySize+1)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -371,7 +371,7 @@ func TestPerformSearch_UnsupportedBodySizes(t *testing.T) {
 	})
 }
 
-func TestPerformSearch_EmptyHTMLBody(t *testing.T) {
+func TestSearch_EmptyHTMLBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
@@ -395,7 +395,7 @@ func TestPerformSearch_EmptyHTMLBody(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_HTMLResponseError(t *testing.T) {
+func TestSearch_HTMLResponseError(t *testing.T) {
 	tests := []struct {
 		name        string
 		contentType string
@@ -462,8 +462,8 @@ func intPtr(i int) *int {
 	return &i
 }
 
-// Test that performSearch properly encodes query parameters
-func TestPerformSearch_QueryEncoding(t *testing.T) {
+// Test that Search properly encodes query parameters
+func TestSearch_QueryEncoding(t *testing.T) {
 	var capturedQuery string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
@@ -536,7 +536,7 @@ func TestNewSearXNGSearcher_URLValidation(t *testing.T) {
 }
 
 // Test NumberOfResults=0 with actual results (SearXNG quirk)
-func TestPerformSearch_NumberOfResultsZeroWithResults(t *testing.T) {
+func TestSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 	// SearXNG may return number_of_results=0 even when results exist
 	searchResp := searxng.SearchResponse{
 		Results: []searxng.SearchResult{
@@ -606,7 +606,7 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 	})
 }
 
-func TestPerformSearch_POSTtoGETFallback(t *testing.T) {
+func TestSearch_POSTtoGETFallback(t *testing.T) {
 	tests := []struct {
 		name       string
 		statusCode int
@@ -666,7 +666,7 @@ func TestPerformSearch_POSTtoGETFallback(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_BrowserHeaders(t *testing.T) {
+func TestSearch_BrowserHeaders(t *testing.T) {
 	t.Run("POST request headers", func(t *testing.T) {
 		var capturedHeaders http.Header
 		searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
