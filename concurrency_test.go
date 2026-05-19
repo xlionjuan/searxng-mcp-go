@@ -63,7 +63,7 @@ func TestConcurrentSearches(t *testing.T) {
 				args := &SearchArgs{Query: query}
 
 				ctx := context.Background()
-				_, err := performSearch(ctx, cfg, args)
+				_, err := testPerformSearch(t, ctx, cfg, args)
 				if err != nil {
 					t.Errorf("Search error for %s: %v", query, err)
 				}
@@ -118,7 +118,7 @@ func TestConcurrentContextCancellation(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
 
-			_, err := performSearch(ctx, cfg, &SearchArgs{Query: "test"})
+			_, err := testPerformSearch(t, ctx, cfg, &SearchArgs{Query: "test"})
 			if err != nil {
 				atomic.AddInt64(&errorCount, 1)
 				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
@@ -189,7 +189,7 @@ func TestChannelDeadlockDetection(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			ctx := context.Background()
-			_, _ = performSearch(ctx, cfg, &SearchArgs{Query: "test"})
+			_, _ = testPerformSearch(t, ctx, cfg, &SearchArgs{Query: "test"})
 		}(i)
 	}
 
@@ -320,7 +320,7 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			atomic.AddInt64(&sentCount, 1)
-			_, err := performSearch(ctx, cfg, &SearchArgs{Query: "test"})
+			_, err := testPerformSearch(t, ctx, cfg, &SearchArgs{Query: "test"})
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 					atomic.AddInt64(&cancelledCount, 1)
@@ -395,7 +395,7 @@ func TestContextDeadlineExceededDuringSearch(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	_, err := performSearch(ctx, cfg, &SearchArgs{Query: "test"})
+	_, err := testPerformSearch(t, ctx, cfg, &SearchArgs{Query: "test"})
 	if err == nil {
 		t.Error("Expected error due to context deadline, got nil")
 	}
