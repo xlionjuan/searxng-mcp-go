@@ -29,19 +29,40 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 			MaxIdleConns:          100,
 			MaxIdleConnsPerHost:   10,
 		},
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if req.URL != nil && len(via) > 0 {
-				prevHost := via[len(via)-1].URL.Host
-				if req.URL.Host != prevHost {
-					return fmt.Errorf("redirect to different host blocked: %s → %s", prevHost, req.URL.Host)
-				}
-			}
-			if len(via) >= 10 {
-				return errors.New("stopped after 10 redirects")
-			}
-			return nil
-		},
+		CheckRedirect: enforceSearchRedirectPolicy,
 	}
+}
+
+func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
+	if req.URL != nil && len(via) > 0 {
+		prevHost := via[len(via)-1].URL.Host
+		if req.URL.Host != prevHost {
+			return fmt.Errorf("redirect to different host blocked: %s → %s", prevHost, req.URL.Host)
+		}
+	}
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	return nil
+}
+
+func withSearchRedirectPolicy(client *http.Client) *http.Client {
+	if client == nil {
+		return nil
+	}
+
+	originalCheckRedirect := client.CheckRedirect
+	wrapped := *client
+	wrapped.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if err := enforceSearchRedirectPolicy(req, via); err != nil {
+			return err
+		}
+		if originalCheckRedirect != nil {
+			return originalCheckRedirect(req, via)
+		}
+		return nil
+	}
+	return &wrapped
 }
 
 // getDefaultHTTPClient returns the shared default HTTP client.
@@ -208,7 +229,9 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	}
 
 	client := cfg.HTTPClient
-	if client == nil {
+	if client != nil {
+		client = withSearchRedirectPolicy(client)
+	} else {
 		if cfg.Timeout > 0 {
 			client = newHTTPClient(cfg.Timeout)
 		} else {

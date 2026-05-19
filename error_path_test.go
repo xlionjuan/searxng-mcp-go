@@ -552,6 +552,82 @@ func TestSearch_RedirectStatus(t *testing.T) {
 	}
 }
 
+func TestSearch_CustomHTTPClientWithoutRedirectPolicyBlocksCrossHost(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", "http://example.com/search")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer server.Close()
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 5 * time.Second, HTTPClient: client}
+	_, err := testPerformSearch(t, context.Background(), cfg, &searxng.SearchArgs{Query: "test"})
+	if err == nil {
+		t.Fatal("expected cross-host redirect error, got nil")
+	}
+
+	if client.CheckRedirect != nil {
+		t.Fatal("NewSearXNGSearcher mutated caller's custom HTTP client")
+	}
+	if !strings.Contains(err.Error(), "redirect to different host blocked") {
+		t.Fatalf("error %q does not contain redirect block message", err.Error())
+	}
+}
+
+func TestSearch_CustomHTTPClientSameHostRedirectAllowed(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/search/redirected" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"query":"test","number_of_results":0,"results":[],"suggestions":[]}`))
+			return
+		}
+		w.Header().Set("Location", "/search/redirected")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer server.Close()
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 5 * time.Second, HTTPClient: client}
+	result, err := testPerformSearch(t, context.Background(), cfg, &searxng.SearchArgs{Query: "test"})
+	if err != nil {
+		t.Fatalf("unexpected error for same-host redirect: %v", err)
+	}
+	if result.Query != "test" {
+		t.Fatalf("Query = %q, want test", result.Query)
+	}
+	if client.CheckRedirect != nil {
+		t.Fatal("NewSearXNGSearcher mutated caller's custom HTTP client")
+	}
+}
+
+func TestSearch_CustomHTTPClientCrossHostRedirectBlockedBeforeCustomPolicy(t *testing.T) {
+	customPolicyCalled := false
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			customPolicyCalled = true
+			return nil
+		},
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", "http://example.com/search")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer server.Close()
+
+	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 5 * time.Second, HTTPClient: client}
+	_, err := testPerformSearch(t, context.Background(), cfg, &searxng.SearchArgs{Query: "test"})
+	if err == nil {
+		t.Fatal("expected cross-host redirect error, got nil")
+	}
+	if customPolicyCalled {
+		t.Fatal("custom redirect policy ran before cross-host redirect was blocked")
+	}
+	if !strings.Contains(err.Error(), "redirect to different host blocked") {
+		t.Fatalf("error %q does not contain redirect block message", err.Error())
+	}
+}
+
 func TestSearch_ConnectionResetMidResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hj, ok := w.(http.Hijacker)
