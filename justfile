@@ -75,6 +75,14 @@ mod-verify:
 vulncheck:
     go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
+# Setup SearXNG test server (venv, deps, config)
+test-server-setup:
+    cd searxng-server-test && bash 00-setup.sh
+
+# Start SearXNG test server (port 8888)
+test-server-start:
+    cd searxng-server-test && bash 01-start.sh
+
 # Remove build artifacts and coverage files
 clean:
     rm -f {{binary}} {{coverfile}}
