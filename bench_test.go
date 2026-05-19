@@ -255,7 +255,7 @@ func BenchmarkPerformSearch(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		if _, err := performSearch(b.Context(), cfg, args); err != nil {
+		if _, err := testPerformSearch(b, b.Context(), cfg, args); err != nil {
 			b.Fatal(err)
 		}
 	}
