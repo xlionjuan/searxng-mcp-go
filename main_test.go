@@ -456,25 +456,25 @@ func TestGetConfig_PrecedenceAndDefaultWarning(t *testing.T) {
 		}
 	})
 
-		t.Run("default warning when neither set", func(t *testing.T) {
-			t.Setenv("SEARXNG_URL", "")
-			oldStderr := os.Stderr
-			r, w, _ := os.Pipe()
-			os.Stderr = w
+	t.Run("default warning when neither set", func(t *testing.T) {
+		t.Setenv("SEARXNG_URL", "")
+		oldStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+		defer func() {
+			os.Stderr = oldStderr
+		}()
+		var cfg *searxng.Config
+		func() {
 			defer func() {
-				os.Stderr = oldStderr
+				_ = w.Close()
 			}()
-			var cfg *searxng.Config
-			func() {
-				defer func() {
-					_ = w.Close()
-				}()
-				cfg = getConfig(CLIFlags{})
-			}()
+			cfg = getConfig(CLIFlags{})
+		}()
 
-			var buf bytes.Buffer
-			if _, err := buf.ReadFrom(r); err != nil {
-				t.Fatalf("failed to read stderr: %v", err)
+		var buf bytes.Buffer
+		if _, err := buf.ReadFrom(r); err != nil {
+			t.Fatalf("failed to read stderr: %v", err)
 		}
 		if cfg.SearXNGURL != searxng.DefaultSearXNGURL {
 			t.Fatalf("SearXNGURL = %q, want default %q", cfg.SearXNGURL, searxng.DefaultSearXNGURL)
