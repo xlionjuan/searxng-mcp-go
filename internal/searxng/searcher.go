@@ -259,6 +259,7 @@ func DeduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 
 	filtered := make([]Answer, 0, len(answers))
 	for _, a := range answers {
+		a.EnsureFallback()
 		if a.Answer == "" {
 			continue
 		}

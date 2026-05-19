@@ -2,7 +2,10 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -464,6 +467,53 @@ func TestFormatResults(t *testing.T) {
 			}
 			if tt.wantNotContain != "" && strings.Contains(result, tt.wantNotContain) {
 				t.Errorf("did not expect %q in output, got: %s", tt.wantNotContain, result)
+			}
+		})
+	}
+}
+
+func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		fixture    string
+		wantAnswer string
+		wantEngine string
+	}{
+		{
+			name:       "translation",
+			fixture:    "typed_translation_answer.json",
+			wantAnswer: "[1] Translation: bonjour",
+			wantEngine: "Engine: libretranslate",
+		},
+		{
+			name:       "weather",
+			fixture:    "typed_weather_answer.json",
+			wantAnswer: "[1] Weather: Berlin, 11.2 °C, partly cloudy",
+			wantEngine: "Engine: open_meteo",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			body, err := os.ReadFile(filepath.Join("testdata", tt.fixture))
+			if err != nil {
+				t.Fatalf("ReadFile() error = %v", err)
+			}
+			var resp searxng.SearchResponse
+			if err := json.Unmarshal(body, &resp); err != nil {
+				t.Fatalf("Unmarshal() error = %v", err)
+			}
+
+			got := formatResults(&resp)
+			for _, want := range []string{"=== Answers ===", tt.wantAnswer, tt.wantEngine} {
+				if !strings.Contains(got, want) {
+					t.Fatalf("formatResults() missing %q in:\n%s", want, got)
+				}
 			}
 		})
 	}

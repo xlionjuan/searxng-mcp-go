@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -919,6 +921,71 @@ func TestDeduplicateAnswers_EmptyAnswerSkipped(t *testing.T) {
 	}
 	if result[0].Answer != "valid answer" {
 		t.Errorf("expected 'valid answer', got %q", result[0].Answer)
+	}
+}
+
+func TestDeduplicateAnswers_TypedAnswersGetFallbackText(t *testing.T) {
+	t.Parallel()
+
+	answers := []searxng.Answer{
+		{
+			Engine:   "libretranslate",
+			Template: "answer/translations.html",
+			Translations: []searxng.TranslationItem{
+				{Text: "bonjour"},
+			},
+		},
+		{
+			Engine:   "open_meteo",
+			Template: "answer/weather.html",
+			Current: &searxng.WeatherItem{
+				Location:    searxng.WeatherLocation{Name: "Berlin"},
+				Temperature: searxng.WeatherMeasure{Val: 11.2, Unit: "°C"},
+				Condition:   "partly cloudy",
+			},
+		},
+	}
+	infoboxes := []searxng.Infobox{
+		{Infobox: "Other", Content: "unrelated infobox content"},
+	}
+
+	result := searxng.DeduplicateAnswers(answers, infoboxes)
+	if len(result) != 2 {
+		t.Fatalf("expected 2 typed answers, got %d: %+v", len(result), result)
+	}
+	if result[0].Answer != "Translation: bonjour" {
+		t.Fatalf("translation fallback = %q", result[0].Answer)
+	}
+	if result[1].Answer != "Weather: Berlin, 11.2 °C, partly cloudy" {
+		t.Fatalf("weather fallback = %q", result[1].Answer)
+	}
+}
+
+func TestTypedAnswerFixturesSurviveDeduplication(t *testing.T) {
+	t.Parallel()
+
+	for _, fixture := range []string{"typed_translation_answer.json", "typed_weather_answer.json"} {
+		fixture := fixture
+		t.Run(fixture, func(t *testing.T) {
+			t.Parallel()
+
+			body, err := os.ReadFile(filepath.Join("testdata", fixture))
+			if err != nil {
+				t.Fatalf("ReadFile() error = %v", err)
+			}
+			var resp searxng.SearchResponse
+			if err := json.Unmarshal(body, &resp); err != nil {
+				t.Fatalf("Unmarshal() error = %v", err)
+			}
+
+			got := searxng.DeduplicateAnswers(resp.Answers, []searxng.Infobox{{Infobox: "Other", Content: "unrelated"}})
+			if len(got) != 1 {
+				t.Fatalf("DeduplicateAnswers() length = %d, want 1", len(got))
+			}
+			if got[0].Answer == "" {
+				t.Fatal("DeduplicateAnswers() kept an empty typed answer")
+			}
+		})
 	}
 }
 

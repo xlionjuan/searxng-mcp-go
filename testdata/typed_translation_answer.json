@@ -1,0 +1,20 @@
+{
+  "query": "translate hello to french",
+  "number_of_results": 0,
+  "results": [],
+  "answers": [
+    {
+      "engine": "libretranslate",
+      "template": "answer/translations.html",
+      "translations": [
+        {
+          "text": "bonjour",
+          "examples": ["salut"]
+        }
+      ]
+    }
+  ],
+  "infoboxes": [],
+  "suggestions": [],
+  "unresponsive_engines": []
+}

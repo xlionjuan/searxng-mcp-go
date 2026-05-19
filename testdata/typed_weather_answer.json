@@ -1,0 +1,43 @@
+{
+  "query": "weather Berlin",
+  "number_of_results": 0,
+  "results": [],
+  "answers": [
+    {
+      "engine": "open_meteo",
+      "template": "answer/weather.html",
+      "current": {
+        "location": {
+          "name": "Berlin",
+          "latitude": 52.52437,
+          "longitude": 13.41053,
+          "elevation": 74,
+          "country_code": "DE",
+          "timezone": "Europe/Berlin"
+        },
+        "temperature": {
+          "val": 11.2,
+          "unit": "°C"
+        },
+        "condition": "partly cloudy",
+        "feels_like": {
+          "val": 10.1,
+          "unit": "°C"
+        },
+        "humidity": {
+          "val": 67
+        },
+        "wind_speed": {
+          "val": 12.6,
+          "unit": "km/h"
+        },
+        "cloud_cover": 50
+      },
+      "forecasts": [],
+      "service": "Open-meteo"
+    }
+  ],
+  "infoboxes": [],
+  "suggestions": [],
+  "unresponsive_engines": []
+}
