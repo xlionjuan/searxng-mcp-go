@@ -40,7 +40,7 @@ func TestSearch_Success(t *testing.T) {
 		NumberOfResults: 2,
 		Query:           "test",
 	}
-	body, _ := json.Marshal(searchResp)
+	body := mustMarshalJSON(t, searchResp)
 
 	var capturedQuery url.Values
 
@@ -141,7 +141,7 @@ func TestSearch_TimeRangeParam(t *testing.T) {
 			NumberOfResults: 0,
 			Query:           "test",
 		}
-		body, _ := json.Marshal(searchResp)
+		body := mustMarshalJSON(t, searchResp)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -200,7 +200,7 @@ func TestSearch_DefaultLanguage(t *testing.T) {
 			NumberOfResults: 0,
 			Query:           "test",
 		}
-		body, _ := json.Marshal(searchResp)
+		body := mustMarshalJSON(t, searchResp)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -238,7 +238,7 @@ func TestSearch_OptionalParams(t *testing.T) {
 		}
 
 		searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
-		body, _ := json.Marshal(searchResp)
+		body := mustMarshalJSON(t, searchResp)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -294,7 +294,7 @@ func TestSearch_SearchPathNormalization(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotPath = r.URL.Path
 				searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
-				body, _ := json.Marshal(searchResp)
+				body := mustMarshalJSON(t, searchResp)
 
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
@@ -532,7 +532,7 @@ func TestSearch_QueryEncoding(t *testing.T) {
 			NumberOfResults: 0,
 			Query:           capturedQuery,
 		}
-		body, _ := json.Marshal(searchResp)
+		body := mustMarshalJSON(t, searchResp)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -605,7 +605,7 @@ func TestSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 		NumberOfResults: 0, // API returns 0 but has results
 		Query:           "test",
 	}
-	body, _ := json.Marshal(searchResp)
+	body := mustMarshalJSON(t, searchResp)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -687,7 +687,7 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 			)
 
 			searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
-			body, _ := json.Marshal(searchResp)
+			body := mustMarshalJSON(t, searchResp)
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodPost {
@@ -749,7 +749,7 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 		var capturedHeaders http.Header
 
 		searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
-		body, _ := json.Marshal(searchResp)
+		body := mustMarshalJSON(t, searchResp)
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			capturedHeaders = r.Header
@@ -795,7 +795,7 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 		var capturedHeaders http.Header
 
 		searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
-		body, _ := json.Marshal(searchResp)
+		body := mustMarshalJSON(t, searchResp)
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost {

@@ -72,7 +72,7 @@ func setupMCPSession(t *testing.T, handler http.HandlerFunc) (*mcp.ClientSession
 }
 
 func TestMCP_Initialize(t *testing.T) {
-	session, cleanup, _ := setupMCPSession(t, mockSearXNGHandler())
+	session, cleanup, _ := setupMCPSession(t, mockSearXNGHandler(t))
 	defer cleanup()
 
 	// After Connect, the client session should already be initialized.
@@ -87,7 +87,7 @@ func TestMCP_Initialize(t *testing.T) {
 }
 
 func TestMCP_ToolsList(t *testing.T) {
-	session, cleanup, _ := setupMCPSession(t, mockSearXNGHandler())
+	session, cleanup, _ := setupMCPSession(t, mockSearXNGHandler(t))
 	defer cleanup()
 
 	tools, err := session.ListTools(context.Background(), nil)

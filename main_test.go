@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -91,8 +92,8 @@ func TestValidationExitCode(t *testing.T) {
 		t.Fatal("expected non-zero exit code for validation error, but process exited with 0")
 	}
 
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok {
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
 		t.Fatalf("expected ExitError, got %T: %v", err, err)
 	}
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"searxng-mcp-go/internal/searxng"
@@ -22,4 +23,15 @@ func testPerformSearch(t testing.TB, ctx context.Context, cfg *searxng.Config, a
 	defer s.Close()
 
 	return s.Search(ctx, args)
+}
+
+func mustMarshalJSON(tb testing.TB, v any) []byte {
+	tb.Helper()
+
+	body, err := json.Marshal(v)
+	if err != nil {
+		tb.Fatalf("json.Marshal() error = %v", err)
+	}
+
+	return body
 }

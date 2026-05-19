@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -41,7 +40,7 @@ func TestConcurrentSearches(t *testing.T) {
 			NumberOfResults: 1,
 			Query:           "test",
 		}
-		body, _ := json.Marshal(searchResp)
+		body := mustMarshalJSON(t, searchResp)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -194,7 +193,7 @@ func TestChannelDeadlockDetection(t *testing.T) {
 			NumberOfResults: 0,
 			Query:           "test",
 		}
-		body, _ := json.Marshal(searchResp)
+		body := mustMarshalJSON(t, searchResp)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -257,7 +256,7 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 			NumberOfResults: 1,
 			Query:           "test",
 		}
-		body, _ := json.Marshal(searchResp)
+		body := mustMarshalJSON(t, searchResp)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -481,7 +480,7 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 			NumberOfResults: 0,
 			Query:           "test",
 		}
-		body, _ := json.Marshal(searchResp)
+		body := mustMarshalJSON(t, searchResp)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -563,7 +562,7 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 			Query:           "test",
 			Suggestions:     []string{},
 		}
-		body, _ := json.Marshal(searchResp)
+		body := mustMarshalJSON(t, searchResp)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

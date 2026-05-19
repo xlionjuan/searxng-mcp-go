@@ -13,14 +13,20 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
-func mockSearXNGHandler() http.HandlerFunc {
-	body, _ := json.Marshal(searxng.SearchResponse{
-		Query:           "golang",
-		NumberOfResults: 1,
+func mockSearXNGHandler(tb testing.TB) http.HandlerFunc {
+	tb.Helper()
+
+	body := mustMarshalJSON(tb, searxng.SearchResponse{
+		Query:   "golang",
+		Answers: nil,
 		Results: []searxng.SearchResult{
 			{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"},
 		},
-		Suggestions: []string{"golang tutorial"},
+		Infoboxes:           nil,
+		Suggestions:         []string{"golang tutorial"},
+		NumberOfResults:     1,
+		UnresponsiveEngines: nil,
+		Debug:               false,
 	})
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +130,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 	})
 
 	t.Run("returns JSON result", func(t *testing.T) {
-		searcher, cleanup := newTestSearcher(t, mockSearXNGHandler())
+		searcher, cleanup := newTestSearcher(t, mockSearXNGHandler(t))
 		defer cleanup()
 
 		handler := NewSearchToolHandler(searcher)
@@ -176,10 +182,15 @@ func TestNewSearchToolHandler(t *testing.T) {
 			}
 		}
 
-		body, _ := json.Marshal(searxng.SearchResponse{
-			Query:           "golang",
-			NumberOfResults: len(results),
-			Results:         results,
+		body := mustMarshalJSON(t, searxng.SearchResponse{
+			Query:               "golang",
+			Answers:             nil,
+			Results:             results,
+			Infoboxes:           nil,
+			Suggestions:         nil,
+			NumberOfResults:     len(results),
+			UnresponsiveEngines: nil,
+			Debug:               false,
 		})
 
 		searcher, cleanup := newTestSearcher(t, func(w http.ResponseWriter, r *http.Request) {

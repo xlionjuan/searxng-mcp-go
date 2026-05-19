@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -25,13 +26,13 @@ func assertValidationError(t *testing.T, args *searxng.SearchArgs, field, contai
 		t.Fatalf("expected validation error for %s", field)
 	}
 
-	ve, ok := err.(*searxng.ValidationError)
-	if !ok {
+	var validationErr *searxng.ValidationError
+	if !errors.As(err, &validationErr) {
 		t.Fatalf("expected ValidationError, got %T", err)
 	}
 
-	if ve.Field != field {
-		t.Fatalf("field = %q, want %q", ve.Field, field)
+	if validationErr.Field != field {
+		t.Fatalf("field = %q, want %q", validationErr.Field, field)
 	}
 
 	if contains != "" && !strings.Contains(err.Error(), contains) {
