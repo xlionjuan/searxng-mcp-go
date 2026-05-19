@@ -89,11 +89,25 @@ func prepareMCPStdin(stdin io.Reader) (io.Reader, error) {
 
 	resultCh := make(chan result, 1)
 	go func() {
-		reader := bufio.NewReader(io.LimitReader(stdin, mcpInitializeMaxBytes+1))
-		firstLine, err := reader.ReadBytes('\n')
-		if err != nil && err != io.EOF {
-			resultCh <- result{err: fmt.Errorf("stdin does not contain a valid MCP initialize message")}
-			return
+		reader := bufio.NewReader(stdin)
+		firstLine := make([]byte, 0)
+		for {
+			fragment, err := reader.ReadSlice('\n')
+			firstLine = append(firstLine, fragment...)
+			if len(firstLine) > mcpInitializeMaxBytes {
+				resultCh <- result{err: fmt.Errorf("stdin does not contain a valid MCP initialize message")}
+				return
+			}
+			if err == nil {
+				break
+			}
+			if err == io.EOF {
+				break
+			}
+			if err != bufio.ErrBufferFull {
+				resultCh <- result{err: fmt.Errorf("stdin does not contain a valid MCP initialize message")}
+				return
+			}
 		}
 		if len(firstLine) > mcpInitializeMaxBytes || !isValidMCPInitializeMessage(firstLine) {
 			resultCh <- result{err: fmt.Errorf("stdin does not contain a valid MCP initialize message")}

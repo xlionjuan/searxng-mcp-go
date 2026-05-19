@@ -370,6 +370,29 @@ func TestPrepareMCPStdin(t *testing.T) {
 	}
 }
 
+func TestPrepareMCPStdinAllowsLargePostInitializeTraffic(t *testing.T) {
+	t.Parallel()
+
+	initialize := `{"jsonrpc":"2.0","method":"initialize","id":1}` + "\n"
+	laterTraffic := `{"jsonrpc":"2.0","method":"tools/call","id":2,"params":{"payload":"` +
+		strings.Repeat("a", mcpInitializeMaxBytes+1024) + `"}}` + "\n"
+	input := initialize + laterTraffic
+
+	stdin, err := prepareMCPStdin(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("prepareMCPStdin() returned error: %v", err)
+	}
+
+	got, err := io.ReadAll(stdin)
+	if err != nil {
+		t.Fatalf("failed to read prepared stdin: %v", err)
+	}
+
+	if string(got) != input {
+		t.Fatalf("prepared stdin mismatch\nwant length: %d\ngot length:  %d", len(input), len(got))
+	}
+}
+
 func TestPrepareMCPStdinRejectsInvalidInput(t *testing.T) {
 	t.Parallel()
 
@@ -382,7 +405,7 @@ func TestPrepareMCPStdinRejectsInvalidInput(t *testing.T) {
 	}
 }
 
-func TestPrepareMCPStdinRejectsOversizedInput(t *testing.T) {
+func TestPrepareMCPStdinRejectsOversizedInitializeLine(t *testing.T) {
 	t.Parallel()
 
 	input := `{"jsonrpc":"2.0","method":"initialize","padding":"` + strings.Repeat("a", mcpInitializeMaxBytes) + `"}` + "\n"
