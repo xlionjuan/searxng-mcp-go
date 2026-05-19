@@ -92,7 +92,6 @@ func TestHTTPStatusError(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(fmt.Sprintf("status_%d", tc.statusCode), func(t *testing.T) {
 			t.Parallel()
 			err := searxng.HTTPStatusError(tc.statusCode, tc.contentType, tc.body)

@@ -44,7 +44,6 @@ func TestValidateSearchArgs(t *testing.T) {
 	t.Run("query with control characters", func(t *testing.T) {
 		t.Parallel()
 		for _, query := range []string{"test\x00query", "test\x1fquery", "test\x7fquery", "test\nquery"} {
-			query := query
 			t.Run(fmt.Sprintf("%q", query), func(t *testing.T) {
 				t.Parallel()
 				requireValidationError(t, searxng.ValidateSearchArgs(&searxng.SearchArgs{Query: query}), "query")
@@ -141,7 +140,6 @@ func TestValidateCategories(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := searxng.ValidateCategories(tt.categories)
@@ -172,7 +170,6 @@ func TestValidateEngines(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := searxng.ValidateEngines(tt.engines)

@@ -965,7 +965,6 @@ func TestTypedAnswerFixturesSurviveDeduplication(t *testing.T) {
 	t.Parallel()
 
 	for _, fixture := range []string{"typed_translation_answer.json", "typed_weather_answer.json"} {
-		fixture := fixture
 		t.Run(fixture, func(t *testing.T) {
 			t.Parallel()
 

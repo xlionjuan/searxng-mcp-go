@@ -82,7 +82,6 @@ func TestValidateSearchArgs_Language(t *testing.T) {
 
 	t.Run("valid language codes", func(t *testing.T) {
 		for _, lang := range []string{"en", "EN", "zh-tw", "ja", "en-US", "pt-BR", "sr-Latn", "sr-Latn-RS", "es-419", "ZH-hant", "auto", "AUTO", "Auto"} {
-			lang := lang
 			t.Run(lang, func(t *testing.T) {
 				t.Parallel()
 				assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Language: lang})
@@ -92,7 +91,6 @@ func TestValidateSearchArgs_Language(t *testing.T) {
 
 	t.Run("unicode language codes", func(t *testing.T) {
 		for _, lang := range []string{"日本語", "中文", "Русский"} {
-			lang := lang
 			t.Run(lang, func(t *testing.T) {
 				t.Parallel()
 				assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Language: lang})
@@ -113,7 +111,6 @@ func TestValidateSearchArgs_Language(t *testing.T) {
 
 	t.Run("invalid language codes", func(t *testing.T) {
 		for _, lang := range []string{"INVALID_LANG", "123", "e", "en123", "en!@#", "en_US", "en-"} {
-			lang := lang
 			t.Run(lang, func(t *testing.T) {
 				t.Parallel()
 				assertValidationError(t, &searxng.SearchArgs{Query: "test", Language: lang}, "language", "valid language code")
@@ -138,7 +135,6 @@ func TestValidateSearchArgs_TimeRange(t *testing.T) {
 
 	t.Run("valid time ranges", func(t *testing.T) {
 		for _, tr := range []string{"day", "month", "year"} {
-			tr := tr
 			t.Run(tr, func(t *testing.T) {
 				t.Parallel()
 				assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", TimeRange: tr})
@@ -148,7 +144,6 @@ func TestValidateSearchArgs_TimeRange(t *testing.T) {
 
 	t.Run("invalid time ranges", func(t *testing.T) {
 		for _, tr := range []string{"hour", "week", "all", "123"} {
-			tr := tr
 			t.Run(tr, func(t *testing.T) {
 				t.Parallel()
 				assertValidationError(t, &searxng.SearchArgs{Query: "test", TimeRange: tr}, "time_range", "day, month or year")
@@ -199,7 +194,6 @@ func TestValidateSearchArgs_SafeSearch(t *testing.T) {
 
 	t.Run("valid values", func(t *testing.T) {
 		for _, ss := range []int{0, 1, 2} {
-			ss := ss
 			t.Run(fmt.Sprintf("value_%d", ss), func(t *testing.T) {
 				t.Parallel()
 				assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", SafeSearch: ss})
@@ -209,7 +203,6 @@ func TestValidateSearchArgs_SafeSearch(t *testing.T) {
 
 	t.Run("invalid values", func(t *testing.T) {
 		for _, ss := range []int{-1, 3, -999, 999} {
-			ss := ss
 			t.Run(fmt.Sprintf("value_%d", ss), func(t *testing.T) {
 				t.Parallel()
 				assertValidationError(t, &searxng.SearchArgs{Query: "test", SafeSearch: ss}, "safesearch", "0 off, 1 moderate, or 2 strict")
@@ -228,7 +221,6 @@ func TestValidateSearchArgs_Pageno(t *testing.T) {
 
 	t.Run("valid values", func(t *testing.T) {
 		for _, page := range []int{1, 5, 1000000} {
-			page := page
 			t.Run(fmt.Sprintf("value_%d", page), func(t *testing.T) {
 				t.Parallel()
 				assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Pageno: &page})
@@ -238,7 +230,6 @@ func TestValidateSearchArgs_Pageno(t *testing.T) {
 
 	t.Run("invalid values", func(t *testing.T) {
 		for _, page := range []int{0, -1, -999} {
-			page := page
 			t.Run(fmt.Sprintf("value_%d", page), func(t *testing.T) {
 				t.Parallel()
 				assertValidationError(t, &searxng.SearchArgs{Query: "test", Pageno: &page}, "pageno", "must be >= 1")

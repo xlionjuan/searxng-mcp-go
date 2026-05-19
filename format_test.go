@@ -35,7 +35,6 @@ func TestUnescapeIfNeeded(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got := unescapeIfNeeded(tt.input)
@@ -420,7 +419,6 @@ func TestFormatResults(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := formatResults(tt.resp)
@@ -496,7 +494,6 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
