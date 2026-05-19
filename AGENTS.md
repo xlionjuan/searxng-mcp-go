@@ -111,3 +111,17 @@ All detailed documentation lives in `docs/`. Here's where to find what:
 - Edit files with `patch` (find-and-replace), not `sed`; new files with `write_file`
 - Subagent code changes must be verified by compiling and running tests before committing
 - **Critical: Never trust your own knowledge of version numbers, release dates, or specification statuses.** Any information that is time-sensitive (language versions, dependency versions, API stability, RFC status, etc.) MUST be verified via web search before being stated as fact. Training data is frozen at a cutoff date; asserting version facts without verification has repeatedly caused serious errors.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked on GitHub. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — one `CONTEXT.md` + `docs/adr/` at repo root. See `docs/agents/domain.md`.
