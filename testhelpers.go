@@ -15,7 +15,7 @@ func testPerformSearch(t testing.TB, ctx context.Context, cfg *searxng.Config, a
 	if cfg == nil {
 		return nil, searxng.NewSearXNGError(0, "", "", fmt.Errorf("testPerformSearch: cfg cannot be nil"))
 	}
-	s, err := searxng.NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient)
+	s, err := searxng.NewSearXNGSearcher(cfg.SearXNGURL, cfg.Timeout, cfg.HTTPClient, false)
 	if err != nil {
 		return nil, err
 	}

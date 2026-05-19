@@ -238,7 +238,7 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 	// Create multiple searchers sharing the same HTTP client
 	var searchers [5]*searxng.SearXNGSearcher
 	for i := 0; i < 5; i++ {
-		searcher, err := searxng.NewSearXNGSearcher(server.URL, 30*time.Second, sharedClient)
+		searcher, err := searxng.NewSearXNGSearcher(server.URL, 30*time.Second, sharedClient, false)
 		if err != nil {
 			t.Fatalf("Failed to create searcher: %v", err)
 		}
@@ -428,7 +428,7 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 	}))
 	defer server.Close()
 
-	searcher, _ := searxng.NewSearXNGSearcher(server.URL, 30*time.Second, nil)
+	searcher, _ := searxng.NewSearXNGSearcher(server.URL, 30*time.Second, nil, false)
 
 	var wg sync.WaitGroup
 	const numGoroutines = 50
@@ -499,7 +499,7 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 	}))
 	defer server.Close()
 
-	searcher, err := searxng.NewSearXNGSearcher(server.URL, 30*time.Second, nil)
+	searcher, err := searxng.NewSearXNGSearcher(server.URL, 30*time.Second, nil, false)
 	if err != nil {
 		t.Fatalf("failed to create searcher: %v", err)
 	}

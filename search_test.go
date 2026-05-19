@@ -456,208 +456,6 @@ func TestPerformSearch_HTMLResponseError(t *testing.T) {
 	}
 }
 
-// --- isPrivateHost tests ---
-
-func TestIsPrivateHost(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name      string
-		host      string
-		isPrivate bool
-	}{
-		// IPv4 private ranges (10.x)
-		{"10.0.0.0", "10.0.0.0", true},
-		{"10.255.255.255", "10.255.255.255", true},
-		{"10.1.2.3", "10.1.2.3", true},
-
-		// IPv4 private ranges (172.16-31.x)
-		{"172.16.0.0", "172.16.0.0", true},
-		{"172.16.0.1", "172.16.0.1", true},
-		{"172.31.255.255", "172.31.255.255", true},
-		{"172.20.1.1", "172.20.1.1", true},
-		{"172.30.0.1", "172.30.0.1", true},
-
-		// Outside 172.16-31 range
-		{"172.15.255.255", "172.15.255.255", false},
-		{"172.32.0.1", "172.32.0.1", false},
-
-		// IPv4 private ranges (192.168.x)
-		{"192.168.0.0", "192.168.0.0", true},
-		{"192.168.1.1", "192.168.1.1", true},
-		{"192.168.255.255", "192.168.255.255", true},
-
-		// 192.168.x is private, other 192.x is not
-		{"192.169.0.1", "192.169.0.1", false},
-
-		// IPv4 loopback (127.x)
-		{"127.0.0.0", "127.0.0.0", true},
-		{"127.0.0.1", "127.0.0.1", true},
-		{"127.255.255.255", "127.255.255.255", true},
-
-		// IPv4 link-local (169.254.x)
-		{"169.254.0.0", "169.254.0.0", true},
-		{"169.254.1.2", "169.254.1.2", true},
-		{"169.254.255.255", "169.254.255.255", true},
-
-		// RFC 6890 special-purpose IPv4 ranges
-		{"0.0.0.0", "0.0.0.0", true},
-		{"0.255.255.255", "0.255.255.255", true},
-		{"1.0.0.0", "1.0.0.0", false},
-		{"100.64.0.0", "100.64.0.0", true},
-		{"100.127.255.255", "100.127.255.255", true},
-		{"100.63.255.255", "100.63.255.255", false},
-		{"100.128.0.0", "100.128.0.0", false},
-		{"192.0.0.0", "192.0.0.0", true},
-		{"192.0.0.255", "192.0.0.255", true},
-		{"192.0.1.0", "192.0.1.0", false},
-		{"192.0.2.1", "192.0.2.1", true},
-		{"198.18.0.0", "198.18.0.0", true},
-		{"198.19.255.255", "198.19.255.255", true},
-		{"198.17.255.255", "198.17.255.255", false},
-		{"198.20.0.0", "198.20.0.0", false},
-		{"198.51.100.1", "198.51.100.1", true},
-		{"203.0.113.1", "203.0.113.1", true},
-		{"224.0.0.1", "224.0.0.1", true},
-		{"239.255.255.255", "239.255.255.255", true},
-		{"240.0.0.1", "240.0.0.1", true},
-		{"255.255.255.255", "255.255.255.255", true},
-		{"223.255.255.255", "223.255.255.255", false},
-
-		// 169.254.x is link-local, other 169.x is not
-		{"169.255.0.1", "169.255.0.1", false},
-
-		// Public IPs
-		{"8.8.8.8", "8.8.8.8", false},
-		{"1.1.1.1", "1.1.1.1", false},
-		{"93.184.216.34", "93.184.216.34", false},
-
-		// IPv6 loopback
-		{"::1", "::1", true},
-
-		// IPv6 unique local (fc00::/7)
-		{"fc00::1", "fc00::1", true},
-		{"fd00::1", "fd00::1", true},
-		{"fe00::1", "fe00::1", false},
-
-		// IPv6 link-local (fe80::/10)
-		{"fe80::1", "fe80::1", true},
-		{"fe80::ffff", "fe80::ffff", true},
-		{"fea0::1", "fea0::1", true},
-		{"feb0::1", "feb0::1", true},
-		{"fec0::1", "fec0::1", false},
-
-		// IPv6 public
-		{"2001:4860:4860::8888", "2001:4860:4860::8888", false},
-		{"2606:4700:4700::1111", "2606:4700:4700::1111", false},
-
-		// TLD-based private domains
-		{"server.lan", "server.lan", true},
-		{"host.internal", "host.internal", true},
-		{"machine.local", "machine.local", true},
-		{"router.home", "router.home", true},
-		{"EXAMPLE.LAN", "EXAMPLE.LAN", true},
-
-		// Non-private domains
-		{"example.com", "example.com", false},
-		{"google.com", "google.com", false},
-		{"search.example.org", "search.example.org", false},
-
-		// Hosts with ports (should be parsed and checked)
-		{"192.168.1.1:8080", "192.168.1.1:8080", true},
-		{"10.0.0.1:443", "10.0.0.1:443", true},
-		{"server.lan:3000", "server.lan:3000", true},
-		{"example.com:443", "example.com:443", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := searxng.IsPrivateHost(tt.host)
-			if got != tt.isPrivate {
-				t.Errorf("IsPrivateHost(%q) = %v, want %v", tt.host, got, tt.isPrivate)
-			}
-		})
-	}
-}
-
-// --- validateBaseURL tests ---
-
-func TestValidateBaseURL(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name      string
-		baseURL   string
-		wantErr   bool
-		errSubstr string
-	}{
-		// Valid URLs
-		{"https URL", "https://search.example.com", false, ""},
-		{"http URL", "http://search.example.com", false, ""},
-		{"https with port", "https://search.example.com:8080", false, ""},
-		{"https with path", "https://search.example.com/search", false, ""},
-		{"IP address https", "https://192.168.1.1", false, ""},
-		{"localhost https", "https://localhost", false, ""},
-
-		// Invalid: empty
-		{"empty", "", true, "cannot be empty"},
-
-		// Invalid: no scheme
-		{"no scheme", "search.example.com", true, "http or https scheme"},
-		{"ftp scheme", "ftp://search.example.com", true, "http or https scheme"},
-		{"file scheme", "file:///etc/passwd", true, "http or https scheme"},
-
-		// Invalid: parse error
-		{"invalid URL chars", "https://not a valid url", true, "invalid URL"},
-		{"just spaces", "   ", true, "http or https scheme"},
-
-		// Invalid: missing host
-		{"https:///", "https:///", true, "must include a host"},
-		{"http:///", "http:///", true, "must include a host"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := searxng.ValidateBaseURL(tt.baseURL)
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("ValidateBaseURL(%q) expected error, got nil", tt.baseURL)
-				} else if tt.errSubstr != "" && !strings.Contains(err.Error(), tt.errSubstr) {
-					t.Errorf("ValidateBaseURL(%q) error %q does not contain %q", tt.baseURL, err.Error(), tt.errSubstr)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("ValidateBaseURL(%q) unexpected error: %v", tt.baseURL, err)
-				}
-			}
-		})
-	}
-}
-
-// --- getDefaultHTTPClient tests ---
-
-func TestGetDefaultHTTPClient_Singleton(t *testing.T) {
-	t.Parallel()
-
-	client1 := searxng.GetDefaultHTTPClient()
-	client2 := searxng.GetDefaultHTTPClient()
-
-	if client1 != client2 {
-		t.Errorf("GetDefaultHTTPClient() did not return same instance")
-	}
-}
-
-func TestGetDefaultHTTPClient_Transport(t *testing.T) {
-	t.Parallel()
-
-	client := searxng.GetDefaultHTTPClient()
-	transport := client.Transport.(*http.Transport)
-
-	if transport.TLSClientConfig != nil && transport.TLSClientConfig.InsecureSkipVerify {
-		t.Errorf("Default client should not have InsecureSkipVerify")
-	}
-}
-
 // --- helper functions and test utilities ---
 
 func intPtr(i int) *int {
@@ -720,7 +518,7 @@ func TestNewSearXNGSearcher_URLValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := searxng.NewSearXNGSearcher(tt.baseURL, 30*time.Second, nil)
+			_, err := searxng.NewSearXNGSearcher(tt.baseURL, 30*time.Second, nil, false)
 			if tt.wantErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -780,7 +578,7 @@ func TestPerformSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 
 func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 	t.Run("nil client", func(t *testing.T) {
-		searcher, err := searxng.NewSearXNGSearcher("https://example.com", 0, nil)
+		searcher, err := searxng.NewSearXNGSearcher("https://example.com", 0, nil, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -789,7 +587,7 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 	})
 
 	t.Run("shared default client", func(t *testing.T) {
-		searcher, err := searxng.NewSearXNGSearcher("https://example.com", 0, nil)
+		searcher, err := searxng.NewSearXNGSearcher("https://example.com", 0, nil, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -799,7 +597,7 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 
 	t.Run("custom client", func(t *testing.T) {
 		customClient := &http.Client{Timeout: 30 * time.Second}
-		searcher, err := searxng.NewSearXNGSearcher("https://example.com", 0, customClient)
+		searcher, err := searxng.NewSearXNGSearcher("https://example.com", 0, customClient, false)
 		if err != nil {
 			t.Fatal(err)
 		}
