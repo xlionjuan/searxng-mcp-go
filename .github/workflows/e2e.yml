@@ -50,7 +50,7 @@ jobs:
         run: |
           output=$(./searxng-mcp-go --json "golang" 2>&1)
           echo "$output"
-          python3 -c "import sys,json; d=json.loads(sys.stdin.read()); assert 'query' in d" <<< "$output"
+          python3 -c "import sys,json; d=json.loads(sys.stdin.read()); assert len(d['results']) > 0" <<< "$output"
 
       - name: E2E test — empty query fails
         run: |
@@ -105,26 +105,26 @@ jobs:
         run: |
           output=$(./searxng-mcp-go --language zh-tw "測試" 2>&1)
           echo "$output"
-          echo "$output" | grep -Eq "Results|No results found"
+          python3 -c "import sys; s = sys.stdin.read(); assert any('\u4e00' <= c <= '\u9fff' for c in s)" <<< "$output"
 
       - name: E2E test — time range parameter
         run: |
           output=$(./searxng-mcp-go --time_range year "golang" 2>&1)
           echo "$output"
-          echo "$output" | grep -Eq "Results|No results found"
+          echo "$output" | grep -q "Results"
 
       - name: E2E test — categories parameter
         run: |
           output=$(./searxng-mcp-go --categories news "news" 2>&1)
           echo "$output"
-          echo "$output" | grep -Eq "Results|No results found"
+          echo "$output" | grep -q "Results"
 
       - name: E2E test — long query
         run: |
           query="golang $(printf 'search %.0s' {1..35})"
           output=$(./searxng-mcp-go "$query" 2>&1)
           echo "$output"
-          echo "$output" | grep -Eq "Results|No results found"
+          echo "$output" | grep -q "Results"
 
       - name: E2E test — strict safesearch parameter
         run: |
