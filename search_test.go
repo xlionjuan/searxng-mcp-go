@@ -541,7 +541,6 @@ func TestSearch_HTMLResponseError(t *testing.T) {
 
 // --- helper functions and test utilities ---
 
-
 // Test that Search properly encodes query parameters.
 func TestSearch_QueryEncoding(t *testing.T) {
 	t.Parallel()
