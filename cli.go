@@ -79,7 +79,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	}
 
 	if flags.Version {
-		fmt.Println("searxng-mcp-go version " + version)
+		fmt.Printf("searxng-mcp-go version %s (commit: %s, built: %s)\n", version, commit, date)
 		fmt.Println("SearXNG MCP Server - CLI + MCP stdio dual-mode")
 
 		return nil

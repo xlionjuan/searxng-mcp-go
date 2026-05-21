@@ -12,10 +12,13 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
-const (
+var (
 	version            = "1.0.0"
-	defaultResultLimit = 10
+	commit             = "none"
+	date               = "unknown"
 )
+
+const defaultResultLimit = 10
 
 // debugMode is set to true when --debug flag or DEBUG=1 env var is active.
 //
