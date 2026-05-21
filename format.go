@@ -9,6 +9,8 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
+const noResultsFound = "No results found."
+
 // ============================================================================
 // Formatting
 // ============================================================================
@@ -144,11 +146,11 @@ func formatResults(resp *searxng.SearchResponse) string {
 	logUnresponsiveEngines(resp)
 
 	if resp == nil {
-		return "No results found."
+		return noResultsFound
 	}
 
 	if len(resp.Results) == 0 && len(resp.Infoboxes) == 0 && len(resp.Answers) == 0 && len(resp.Suggestions) == 0 {
-		return "No results found."
+		return noResultsFound
 	}
 
 	var b strings.Builder

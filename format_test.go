@@ -437,13 +437,14 @@ func TestFormatResults(t *testing.T) {
 						prev := strings.Index(result, headers[i-1])
 
 						curr := strings.Index(result, headers[i])
-						if prev == -1 {
-							t.Errorf("expected %q in output", headers[i-1])
-						} else if curr == -1 {
-							t.Errorf("expected %q in output", headers[i])
-						} else if curr < prev {
-							t.Errorf("section order wrong: %q (pos %d) should come after %q (pos %d)", headers[i], curr, headers[i-1], prev)
-						}
+			switch {
+			case prev == -1:
+				t.Errorf("expected %q in output", headers[i-1])
+			case curr == -1:
+				t.Errorf("expected %q in output", headers[i])
+			case curr < prev:
+				t.Errorf("section order wrong: %q (pos %d) should come after %q (pos %d)", headers[i], curr, headers[i-1], prev)
+			}
 					}
 
 					return
@@ -534,7 +535,7 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 func TestFormatResults_NilInput(t *testing.T) {
 	t.Parallel()
 
-	if got := formatResults(nil); got != "No results found." {
+	if got := formatResults(nil); got != noResultsFound {
 		t.Fatalf("formatResults(nil) = %q, want %q", got, "No results found.")
 	}
 }
@@ -555,7 +556,7 @@ func TestTruncateRunes(t *testing.T) {
 	t.Run("limit zero", func(t *testing.T) {
 		t.Parallel()
 
-		if got := truncateRunes("hello", 0); got != "" {
+		if got := truncateRunes(testHelloBody, 0); got != "" {
 			t.Errorf("truncateRunes(hello, 0) = %q, want %q", got, "")
 		}
 	})
@@ -563,7 +564,7 @@ func TestTruncateRunes(t *testing.T) {
 	t.Run("limit negative", func(t *testing.T) {
 		t.Parallel()
 
-		if got := truncateRunes("hello", -1); got != "" {
+		if got := truncateRunes(testHelloBody, -1); got != "" {
 			t.Errorf("truncateRunes(hello, -1) = %q, want %q", got, "")
 		}
 	})
@@ -579,7 +580,7 @@ func TestTruncateRunes(t *testing.T) {
 	t.Run("exactly limit", func(t *testing.T) {
 		t.Parallel()
 
-		if got := truncateRunes("hello", 5); got != "hello" {
+		if got := truncateRunes("hello", 5); got != testHelloBody {
 			t.Errorf("truncateRunes(hello, 5) = %q, want %q", got, "hello")
 		}
 	})

@@ -11,6 +11,8 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
+const testAnswerBody = "answer"
+
 func TestNewSearXNGSearcherErrors(t *testing.T) {
 	t.Parallel()
 
@@ -202,10 +204,10 @@ func TestDeduplicateAnswers(t *testing.T) {
 	t.Run("nil infoboxes returns as-is", func(t *testing.T) {
 		t.Parallel()
 
-		answers := []searxng.Answer{{Answer: "answer"}}
+		answers := []searxng.Answer{{Answer: testAnswerBody}}
 
 		got := searxng.DeduplicateAnswers(answers, nil)
-		if len(got) != 1 || got[0].Answer != "answer" {
+		if len(got) != 1 || got[0].Answer != testAnswerBody {
 			t.Fatalf("DeduplicateAnswers() = %#v, want original answers", got)
 		}
 	})
@@ -213,10 +215,10 @@ func TestDeduplicateAnswers(t *testing.T) {
 	t.Run("empty infoboxes returns as-is", func(t *testing.T) {
 		t.Parallel()
 
-		answers := []searxng.Answer{{Answer: "answer"}}
+		answers := []searxng.Answer{{Answer: testAnswerBody}}
 
 		got := searxng.DeduplicateAnswers(answers, []searxng.Infobox{})
-		if len(got) != 1 || got[0].Answer != "answer" {
+		if len(got) != 1 || got[0].Answer != testAnswerBody {
 			t.Fatalf("DeduplicateAnswers() = %#v, want original answers", got)
 		}
 	})
@@ -224,10 +226,10 @@ func TestDeduplicateAnswers(t *testing.T) {
 	t.Run("infoboxes without content returns as-is", func(t *testing.T) {
 		t.Parallel()
 
-		answers := []searxng.Answer{{Answer: "answer"}}
+		answers := []searxng.Answer{{Answer: testAnswerBody}}
 
 		got := searxng.DeduplicateAnswers(answers, []searxng.Infobox{{Infobox: "empty"}})
-		if len(got) != 1 || got[0].Answer != "answer" {
+		if len(got) != 1 || got[0].Answer != testAnswerBody {
 			t.Fatalf("DeduplicateAnswers() = %#v, want original answers", got)
 		}
 	})

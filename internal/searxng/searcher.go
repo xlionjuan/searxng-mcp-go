@@ -103,17 +103,6 @@ type SearXNGSearcher struct {
 	debug   bool // When true, enables verbose HTTP request/response logging
 }
 
-// Close releases resources held by the searcher.
-func (s *SearXNGSearcher) Close() error {
-	if s.client != nil && s.client.Transport != nil {
-		if transport, ok := s.client.Transport.(*http.Transport); ok {
-			transport.CloseIdleConnections()
-		}
-	}
-
-	return nil
-}
-
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
 func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	if cfg == nil {
@@ -150,6 +139,17 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		baseURL: baseURL,
 		debug:   debug,
 	}, nil
+}
+
+// Close releases resources held by the searcher.
+func (s *SearXNGSearcher) Close() error {
+	if s.client != nil && s.client.Transport != nil {
+		if transport, ok := s.client.Transport.(*http.Transport); ok {
+			transport.CloseIdleConnections()
+		}
+	}
+
+	return nil
 }
 
 // validateBaseURL checks that the baseURL is valid and returns an error if not.
