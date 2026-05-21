@@ -161,7 +161,7 @@ func isValidMCPInitializeMessage(line []byte) bool {
 // attachStdin replaces os.Stdin with a pipe that reads from the given reader,
 // allowing the MCP server to consume pre-processed stdin data. It returns a
 // restore function to revert os.Stdin to its original value.
-func attachStdin(stdin io.Reader) (restore func(), err error) {
+func attachStdin(stdin io.Reader) (func(), error) {
 	originalStdin := os.Stdin
 
 	pr, pw, err := os.Pipe()
@@ -199,6 +199,7 @@ func runMCPMode(flags CLIFlags, stdin io.Reader) {
 	cfg, err := getConfig(flags)
 	if err != nil {
 		slog.Error("configuration error", "error", err)
+		//nolint:gocritic // defer restoreStdin handles normal shutdown path
 		os.Exit(1)
 	}
 

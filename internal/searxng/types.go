@@ -159,7 +159,7 @@ func (a *Answer) EnsureFallback() {
 	}
 }
 
-func (a Answer) translationFallback() string {
+func (a *Answer) translationFallback() string {
 	if len(a.Translations) == 0 {
 		return ""
 	}
@@ -179,7 +179,7 @@ func (a Answer) translationFallback() string {
 	return "Translation: " + strings.Join(parts, "; ")
 }
 
-func (a Answer) weatherFallback() string {
+func (a *Answer) weatherFallback() string {
 	if a.Current == nil {
 		return ""
 	}
