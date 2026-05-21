@@ -53,6 +53,11 @@ linters:
       locale: US
     nakedret:
       max-func-lines: 5
+    funlen:
+      lines: 100
+      statements: 60
+    varnamelen:
+      min-name-length: 2
   exclusions:
     generated: lax
     paths:
@@ -65,6 +70,22 @@ linters:
         paths:
           - ".*_test\\.go$"
         text: ".*"
+      - linters: [forbidigo]
+        paths:
+          - "cli\\.go$"
+        text: ".*"
+      - linters: [funlen]
+        paths:
+          - ".*_test\\.go$"
+        text: ".*"
+      - linters: [gosmopolitan]
+        paths:
+          - ".*_test\\.go$"
+        text: ".*"
+      - linters: [tagliatelle]
+        paths:
+          - "internal/searxng/types\\.go$"
+        text: "json\\(camel\\): got '(time_range|feels_like|wind_from|wind_speed|cloud_cover|country_code|number_of_results|unresponsive_engines)'"
 issues:
   max-issues-per-linter: 50
   max-same-issues: 10
