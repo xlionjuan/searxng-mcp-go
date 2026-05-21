@@ -98,60 +98,114 @@ func ValidateSearchArgs(args *SearchArgs) error {
 		return NewValidationError("args", "search arguments cannot be nil")
 	}
 
-	if strings.TrimSpace(args.Query) == "" {
+	if err := validateQuery(args.Query); err != nil {
+		return err
+	}
+
+	if err := validateTimeRange(args.TimeRange); err != nil {
+		return err
+	}
+
+	if err := validateSafesearch(args.SafeSearch); err != nil {
+		return err
+	}
+
+	if err := validatePagination(args.Pageno, args.Limit); err != nil {
+		return err
+	}
+
+	if err := validateCategories(args.Categories); err != nil {
+		return err
+	}
+
+	if err := validateEngines(args.Engines); err != nil {
+		return err
+	}
+
+	if err := validateLanguage(args); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateQuery(query string) error {
+	if strings.TrimSpace(query) == "" {
 		return NewValidationError("query", "search query cannot be only whitespace")
 	}
 
-	if len(args.Query) > MaxQueryLength {
+	if len(query) > MaxQueryLength {
 		return NewValidationError("query", "must be 500 characters or less")
 	}
 
-	if containsControlCharacters(args.Query) {
+	if containsControlCharacters(query) {
 		return NewValidationError("query", "contains invalid control characters")
 	}
 
-	if args.TimeRange != "" && !validTimeRanges[args.TimeRange] {
-		return NewValidationError("time_range", "must be one of day, month or year")
+	return nil
+}
+
+func validateCategories(categories string) error {
+	if categories == "" {
+		return nil
 	}
 
-	if args.SafeSearch < 0 || args.SafeSearch > 2 {
-		return NewValidationError("safesearch", "must be 0 off, 1 moderate, or 2 strict")
+	return ValidateCategories(categories)
+}
+
+func validateEngines(engines string) error {
+	if engines == "" {
+		return nil
 	}
 
-	if args.Pageno != nil && *args.Pageno < 1 {
+	return ValidateEngines(engines)
+}
+
+func validateLanguage(args *SearchArgs) error {
+	if args.Language == "" {
+		return nil
+	}
+
+	if strings.EqualFold(args.Language, "auto") {
+		args.Language = ""
+
+		return nil
+	}
+
+	if len(args.Language) > maxLanguageLength {
+		return NewValidationError("language", "must be 35 characters or less")
+	}
+
+	if !languagePattern.MatchString(args.Language) {
+		return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja, en-US)")
+	}
+
+	return nil
+}
+
+func validatePagination(pageno *int, limit *int) error {
+	if pageno != nil && *pageno < 1 {
 		return NewValidationError("pageno", "must be >= 1")
 	}
 
-	if args.Limit != nil && (*args.Limit < 1 || *args.Limit > 20) {
+	if limit != nil && (*limit < 1 || *limit > 20) {
 		return NewValidationError("limit", "must be between 1 and 20")
 	}
 
-	if args.Categories != "" {
-		err := ValidateCategories(args.Categories)
-		if err != nil {
-			return err
-		}
+	return nil
+}
+
+func validateTimeRange(timeRange string) error {
+	if timeRange != "" && !validTimeRanges[timeRange] {
+		return NewValidationError("time_range", "must be one of day, month or year")
 	}
 
-	if args.Engines != "" {
-		err := ValidateEngines(args.Engines)
-		if err != nil {
-			return err
-		}
-	}
+	return nil
+}
 
-	if args.Language != "" {
-		if strings.EqualFold(args.Language, "auto") {
-			args.Language = ""
-		} else {
-			if len(args.Language) > maxLanguageLength {
-				return NewValidationError("language", "must be 35 characters or less")
-			}
-
-			if !languagePattern.MatchString(args.Language) {
-				return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja, en-US)")
-			}
-		}
+func validateSafesearch(safeSearch int) error {
+	if safeSearch < 0 || safeSearch > 2 {
+		return NewValidationError("safesearch", "must be 0 off, 1 moderate, or 2 strict")
 	}
 
 	return nil

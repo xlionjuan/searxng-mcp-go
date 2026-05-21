@@ -377,23 +377,10 @@ func DeduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 		return answers
 	}
 
-	hasContent := false
-
-	for _, ib := range infoboxes {
-		if ib.Content != "" {
-			hasContent = true
-
-			break
-		}
-	}
-
-	if !hasContent {
+	infoboxTexts, lowerInfoboxTexts := collectInfoboxText(infoboxes)
+	if len(infoboxTexts) == 0 {
 		return answers
 	}
-
-	const prefixLen = 200
-
-	var infoboxTexts []string
 
 	filtered := make([]Answer, 0, len(answers))
 	for _, ans := range answers {
@@ -403,58 +390,59 @@ func DeduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 			continue
 		}
 
-		prefix := ans.Answer
-
-		prefix = strings.TrimSuffix(prefix, " More at Wikipedia")
-		if len(prefix) > prefixLen {
-			prefix = prefix[:prefixLen]
-		}
-
-		duplicated := false
-
-		for _, ib := range infoboxes {
-			if ib.Content != "" && strings.Contains(ib.Content, prefix) {
-				duplicated = true
-
-				break
-			}
-		}
-
-		if duplicated {
+		if answerPrefixMatch(ans.Answer, infoboxTexts, lowerInfoboxTexts) {
 			continue
 		}
 
-		if infoboxTexts == nil {
-			infoboxTexts = make([]string, 0, len(infoboxes))
-			for _, ib := range infoboxes {
-				if ib.Content != "" {
-					infoboxTexts = append(infoboxTexts, strings.ToLower(ib.Content))
-				}
-			}
-		}
-
-		lowerAnswer := strings.ToLower(ans.Answer)
-		lowerAnswer = strings.TrimSuffix(lowerAnswer, " more at wikipedia")
-
-		lowerPrefix := lowerAnswer
-		if len(lowerAnswer) > prefixLen {
-			lowerPrefix = lowerAnswer[:prefixLen]
-		}
-
-		for _, ic := range infoboxTexts {
-			if strings.Contains(ic, lowerPrefix) {
-				duplicated = true
-
-				break
-			}
-		}
-
-		if !duplicated {
-			filtered = append(filtered, ans)
-		}
+		filtered = append(filtered, ans)
 	}
 
 	return filtered
+}
+
+func collectInfoboxText(infoboxes []Infobox) ([]string, []string) {
+	infoboxTexts := make([]string, 0, len(infoboxes))
+	lowerInfoboxTexts := make([]string, 0, len(infoboxes))
+
+	for _, ib := range infoboxes {
+		if ib.Content != "" {
+			infoboxTexts = append(infoboxTexts, ib.Content)
+			lowerInfoboxTexts = append(lowerInfoboxTexts, strings.ToLower(ib.Content))
+		}
+	}
+
+	return infoboxTexts, lowerInfoboxTexts
+}
+
+func answerPrefixMatch(answer string, infoboxTexts []string, lowerInfoboxTexts []string) bool {
+	const prefixLen = 200
+
+	prefix := strings.TrimSuffix(answer, " More at Wikipedia")
+	if len(prefix) > prefixLen {
+		prefix = prefix[:prefixLen]
+	}
+
+	for _, text := range infoboxTexts {
+		if strings.Contains(text, prefix) {
+			return true
+		}
+	}
+
+	lowerAnswer := strings.ToLower(answer)
+	lowerAnswer = strings.TrimSuffix(lowerAnswer, " more at wikipedia")
+
+	lowerPrefix := lowerAnswer
+	if len(lowerAnswer) > prefixLen {
+		lowerPrefix = lowerAnswer[:prefixLen]
+	}
+
+	for _, text := range lowerInfoboxTexts {
+		if strings.Contains(text, lowerPrefix) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // performSearch executes the search query against SearXNG.

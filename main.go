@@ -49,6 +49,22 @@ type CLIFlags struct {
 	Debug      bool
 }
 
+type registeredFlags struct {
+	query      *string
+	jsonOut    *bool
+	help       *bool
+	version    *bool
+	searxngURL *string
+	language   *string
+	safeSearch *int
+	timeRange  *string
+	categories *string
+	engines    *string
+	pageno     *int
+	limit      *int
+	debug      *bool
+}
+
 // parseArgs parses command-line arguments and returns the mode, flags, and positional arguments.
 // Any supplied arguments route the process into CLI mode; otherwise the server runs in MCP mode.
 // Flags are accepted anywhere before or after positional args, matching the current CLI behavior.
@@ -56,29 +72,90 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 	// Build the FlagSet first so we can use Lookup to determine whether a
 	// flag takes a value (via the IsBoolFlag interface) during the
 	// interleaved scan, avoiding the need to hard-code a parallel map.
+	fs, registered := registerFlags()
+	flagArgs, positionalArgs := extractPositionalArgs(args, fs)
+
+	err = fs.Parse(flagArgs)
+	if err != nil {
+		return false, CLIFlags{}, nil, fmt.Errorf("%w: %w", errArgumentParseFailed, err)
+	}
+
+	// Use flag.Visit to determine whether optional pointer flags were explicitly set.
+	// When --pageno is not set, leave Pageno nil so CLI mode omits pageno from the
+	// search request (matching MCP mode behavior and the documented
+	// "omitted = backend default/page 1" contract). Limit always has an effective
+	// default so response truncation is consistent with the documented CLI default.
+	var (
+		pagenoPtr *int
+		limitPtr  *int
+	)
+
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "pageno" {
+			pagenoPtr = registered.pageno
+		}
+
+		if f.Name == "limit" {
+			limitPtr = registered.limit
+		}
+	})
+
+	if limitPtr == nil {
+		defaultLimit := defaultResultLimit
+		limitPtr = &defaultLimit
+	}
+
+	flags = CLIFlags{
+		Query:      *registered.query,
+		JSON:       *registered.jsonOut,
+		Help:       *registered.help,
+		Version:    *registered.version,
+		SearXNGURL: *registered.searxngURL,
+		Language:   *registered.language,
+		SafeSearch: *registered.safeSearch,
+		TimeRange:  *registered.timeRange,
+		Categories: *registered.categories,
+		Engines:    *registered.engines,
+		Pageno:     pagenoPtr,
+		Limit:      limitPtr,
+		Debug:      *registered.debug,
+	}
+
+	isCLIMode = len(args) > 0 || flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
+
+	return isCLIMode, flags, positionalArgs, nil
+}
+
+func registerFlags() (*flag.FlagSet, registeredFlags) {
 	fs := flag.NewFlagSet("searxng-mcp-go", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	fs.Usage = func() {}
 
-	query := fs.String("query", "", "Search query string (CLI mode)")
-	jsonOut := fs.Bool("json", false, "Output results as JSON (CLI mode)")
-	help := fs.Bool("help", false, "Show this help message")
-	versionFlag := fs.Bool("version", false, "Show version information")
-	searxngURL := fs.String("searxng-url", "", "SearXNG URL (can also be set via SEARXNG_URL env var)")
-	language := fs.String("language", "", "Language code for results (e.g., en, zh-tw, ja). Leave empty for auto")
-	safeSearch := fs.Int("safesearch", 0, "SafeSearch level: 0=Off, 1=Moderate, 2=Strict")
-	timeRange := fs.String("time_range", "", "Time range filter: day, month, year")
-	categories := fs.String("categories", "", "Comma-separated list of categories to search")
-	engines := fs.String("engines", "", "Comma-separated list of search engines to use")
-	pageno := fs.Int("pageno", 1, "Page number for pagination")
-	limit := fs.Int("limit", defaultResultLimit, "Maximum number of results to return (1-20)")
-	debug := fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)")
+	registered := registeredFlags{
+		query:      fs.String("query", "", "Search query string (CLI mode)"),
+		jsonOut:    fs.Bool("json", false, "Output results as JSON (CLI mode)"),
+		help:       fs.Bool("help", false, "Show this help message"),
+		version:    fs.Bool("version", false, "Show version information"),
+		searxngURL: fs.String("searxng-url", "", "SearXNG URL (can also be set via SEARXNG_URL env var)"),
+		language:   fs.String("language", "", "Language code for results (e.g., en, zh-tw, ja). Leave empty for auto"),
+		safeSearch: fs.Int("safesearch", 0, "SafeSearch level: 0=Off, 1=Moderate, 2=Strict"),
+		timeRange:  fs.String("time_range", "", "Time range filter: day, month, year"),
+		categories: fs.String("categories", "", "Comma-separated list of categories to search"),
+		engines:    fs.String("engines", "", "Comma-separated list of search engines to use"),
+		pageno:     fs.Int("pageno", 1, "Page number for pagination"),
+		limit:      fs.Int("limit", defaultResultLimit, "Maximum number of results to return (1-20)"),
+		debug:      fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)"),
+	}
 
+	return fs, registered
+}
+
+func extractPositionalArgs(args []string, fs *flag.FlagSet) ([]string, []string) {
 	// Interleaved scan: extract flag tokens (with their values) while
-	// collecting positional args.  Flags are accepted before or after
+	// collecting positional args. Flags are accepted before or after
 	// positional arguments and are passed to fs.Parse() afterwards.
 	flagArgs := make([]string, 0, len(args))
-	positionalArgs = make([]string, 0, len(args))
+	positionalArgs := make([]string, 0, len(args))
 
 	for idx := 0; idx < len(args); idx++ {
 		arg := args[idx]
@@ -111,55 +188,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 		}
 	}
 
-	err = fs.Parse(flagArgs)
-	if err != nil {
-		return false, CLIFlags{}, nil, fmt.Errorf("%w: %w", errArgumentParseFailed, err)
-	}
-
-	// Use flag.Visit to determine whether optional pointer flags were explicitly set.
-	// When --pageno is not set, leave Pageno nil so CLI mode omits pageno from the
-	// search request (matching MCP mode behavior and the documented
-	// "omitted = backend default/page 1" contract). Limit always has an effective
-	// default so response truncation is consistent with the documented CLI default.
-	var (
-		pagenoPtr *int
-		limitPtr  *int
-	)
-
-	fs.Visit(func(f *flag.Flag) {
-		if f.Name == "pageno" {
-			pagenoPtr = pageno
-		}
-
-		if f.Name == "limit" {
-			limitPtr = limit
-		}
-	})
-
-	if limitPtr == nil {
-		defaultLimit := defaultResultLimit
-		limitPtr = &defaultLimit
-	}
-
-	flags = CLIFlags{
-		Query:      *query,
-		JSON:       *jsonOut,
-		Help:       *help,
-		Version:    *versionFlag,
-		SearXNGURL: *searxngURL,
-		Language:   *language,
-		SafeSearch: *safeSearch,
-		TimeRange:  *timeRange,
-		Categories: *categories,
-		Engines:    *engines,
-		Pageno:     pagenoPtr,
-		Limit:      limitPtr,
-		Debug:      *debug,
-	}
-
-	isCLIMode = len(args) > 0 || flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
-
-	return isCLIMode, flags, positionalArgs, nil
+	return flagArgs, positionalArgs
 }
 
 // ============================================================================
