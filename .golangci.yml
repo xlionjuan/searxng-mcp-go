@@ -86,6 +86,14 @@ linters:
         paths:
           - "internal/searxng/types\\.go$"
         text: "json\\(camel\\): got '(time_range|feels_like|wind_from|wind_speed|cloud_cover|country_code|number_of_results|unresponsive_engines)'"
+      - linters: [paralleltest]
+        paths:
+          - "error_path_test\\.go$"
+        text: ".*"
+      - linters: [paralleltest]
+        paths:
+          - "golden_capture_test\\.go$"
+        text: ".*"
 issues:
   max-issues-per-linter: 50
   max-same-issues: 10
