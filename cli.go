@@ -22,7 +22,7 @@ var (
 
 // printCLIHelp prints the help message for CLI mode.
 func printCLIHelp() {
-	fmt.Println(`SearXNG MCP Server - CLI Mode (v` + version + `)
+	fmt.Println(`SearXNG MCP Server - CLI Mode (` + version + `)
 
 A Model Context Protocol server that provides web search via SearXNG.
 
