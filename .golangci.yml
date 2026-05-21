@@ -111,6 +111,14 @@ linters:
         paths:
           - ".*_test\\.go$"
         text: ".*"
+      - linters: [gocyclo]
+        paths:
+          - ".*_test\\.go$"
+        text: ".*"
+      - linters: [cyclop]
+        paths:
+          - ".*_test\\.go$"
+        text: ".*"
 issues:
   max-issues-per-linter: 50
   max-same-issues: 10
