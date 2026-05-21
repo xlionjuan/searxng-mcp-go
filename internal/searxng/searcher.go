@@ -276,73 +276,81 @@ func isPrivateHost(host string) bool {
 	}
 
 	if ip4 := ip.To4(); ip4 != nil {
-		if ip4[0] == ipv4ClassAPrivateOctet {
-			return true
-		}
-
-		if ip4[0] == ipv4Private172FirstOctet &&
-			ip4[1] >= ipv4Private172SecondMin &&
-			ip4[1] <= ipv4Private172SecondMax {
-			return true
-		}
-
-		if ip4[0] == ipv4Private192FirstOctet && ip4[1] == ipv4Private192SecondOctet {
-			return true
-		}
-
-		if ip4[0] == ipv4LoopbackFirstOctet {
-			return true
-		}
-
-		if ip4[0] == ipv4LinkLocalFirstOctet && ip4[1] == ipv4LinkLocalSecondOctet {
-			return true
-		}
-
-		if ip4[0] == ipv4CurrentNetworkFirstOctet {
-			return true
-		}
-
-		if ip4[0] == ipv4SharedAddressFirstOctet &&
-			ip4[1]&ipv4SharedAddressMask == ipv4SharedAddressValue {
-			return true
-		}
-
-		if ip4[0] == ipv4Private192FirstOctet &&
-			ip4[1] == ipv4IETFProtocolSecondOctet &&
-			ip4[2] == ipv4IETFProtocolThirdOctet {
-			return true
-		}
-
-		if ip4[0] == ipv4Private192FirstOctet &&
-			ip4[1] == ipv4IETFProtocolSecondOctet &&
-			ip4[2] == ipv4DocumentationThirdOctet {
-			return true
-		}
-
-		if ip4[0] == ipv4BenchmarkFirstOctet &&
-			(ip4[1] == ipv4BenchmarkSecondMin || ip4[1] == ipv4BenchmarkSecondMax) {
-			return true
-		}
-
-		if ip4[0] == ipv4BenchmarkFirstOctet &&
-			ip4[1] == ipv4ExampleSecondOctet &&
-			ip4[2] == ipv4ExampleThirdOctet {
-			return true
-		}
-
-		if ip4[0] == ipv4Documentation203First &&
-			ip4[1] == ipv4Documentation203Second &&
-			ip4[2] == ipv4Documentation203Third {
-			return true
-		}
-
-		if ip4[0] >= ipv4MulticastFirstMin {
-			return true
-		}
-
-		return false
+		return isPrivateIPv4(ip4)
 	}
 
+	return isPrivateIPv6(ip)
+}
+
+func isPrivateIPv4(ip4 net.IP) bool {
+	if ip4[0] == ipv4ClassAPrivateOctet {
+		return true
+	}
+
+	if ip4[0] == ipv4Private172FirstOctet &&
+		ip4[1] >= ipv4Private172SecondMin &&
+		ip4[1] <= ipv4Private172SecondMax {
+		return true
+	}
+
+	if ip4[0] == ipv4Private192FirstOctet && ip4[1] == ipv4Private192SecondOctet {
+		return true
+	}
+
+	if ip4[0] == ipv4LoopbackFirstOctet {
+		return true
+	}
+
+	if ip4[0] == ipv4LinkLocalFirstOctet && ip4[1] == ipv4LinkLocalSecondOctet {
+		return true
+	}
+
+	if ip4[0] == ipv4CurrentNetworkFirstOctet {
+		return true
+	}
+
+	if ip4[0] == ipv4SharedAddressFirstOctet &&
+		ip4[1]&ipv4SharedAddressMask == ipv4SharedAddressValue {
+		return true
+	}
+
+	if ip4[0] == ipv4Private192FirstOctet &&
+		ip4[1] == ipv4IETFProtocolSecondOctet &&
+		ip4[2] == ipv4IETFProtocolThirdOctet {
+		return true
+	}
+
+	if ip4[0] == ipv4Private192FirstOctet &&
+		ip4[1] == ipv4IETFProtocolSecondOctet &&
+		ip4[2] == ipv4DocumentationThirdOctet {
+		return true
+	}
+
+	if ip4[0] == ipv4BenchmarkFirstOctet &&
+		(ip4[1] == ipv4BenchmarkSecondMin || ip4[1] == ipv4BenchmarkSecondMax) {
+		return true
+	}
+
+	if ip4[0] == ipv4BenchmarkFirstOctet &&
+		ip4[1] == ipv4ExampleSecondOctet &&
+		ip4[2] == ipv4ExampleThirdOctet {
+		return true
+	}
+
+	if ip4[0] == ipv4Documentation203First &&
+		ip4[1] == ipv4Documentation203Second &&
+		ip4[2] == ipv4Documentation203Third {
+		return true
+	}
+
+	if ip4[0] >= ipv4MulticastFirstMin {
+		return true
+	}
+
+	return false
+}
+
+func isPrivateIPv6(ip net.IP) bool {
 	if ip.Equal(net.IPv6loopback) {
 		return true
 	}
@@ -457,66 +465,16 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		return nil, err
 	}
 
-	if s.debug {
-		bodyPreview := postBodyStr
-		if len(bodyPreview) > DebugBodyPreviewChars {
-			bodyPreview = bodyPreview[:DebugBodyPreviewChars]
-		}
-
-		slog.Debug(
-			"HTTP request",
-			"method", postReq.Method,
-			"url", postReq.URL.String(),
-			"Content-Type", postReq.Header.Get("Content-Type"),
-			"Accept", postReq.Header.Get("Accept"),
-			"body", bodyPreview,
-		)
-	}
+	s.logDebugRequest(postReq, postBodyStr)
 
 	resp, err := s.client.Do(postReq)
 
-	if s.debug && err == nil && resp != nil {
-		slog.Debug(
-			"HTTP response",
-			"status", resp.StatusCode,
-			"content_type", resp.Header.Get("Content-Type"),
-		)
-	}
+	s.logDebugResponse(resp, err)
 
 	if err == nil && resp != nil && (resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
-		if s.debug {
-			slog.Debug("Redirecting to GET fallback", "status", resp.StatusCode, "reason", "POST not supported by server")
-		}
-
-		closeResponseBody(resp)
-
-		getURL := *postReq.URL
-		getURL.RawQuery = postBodyStr
-
-		getReq, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, getURL.String(), nil)
-		if reqErr != nil {
-			return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errRequestCreateFailed, reqErr))
-		}
-
-		setBrowserHeaders(getReq)
-
-		if s.debug {
-			slog.Debug(
-				"HTTP request",
-				"method", getReq.Method,
-				"url", getReq.URL.String(),
-				"Accept", getReq.Header.Get("Accept"),
-			)
-		}
-
-		resp, err = s.client.Do(getReq)
-
-		if s.debug && err == nil && resp != nil {
-			slog.Debug(
-				"HTTP response",
-				"status", resp.StatusCode,
-				"content_type", resp.Header.Get("Content-Type"),
-			)
+		resp, err = s.executeGETfallback(ctx, resp, postReq, postBodyStr)
+		if searchErr, ok := err.(*SearXNGError); ok {
+			return nil, searchErr
 		}
 	}
 
@@ -527,42 +485,118 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	defer func() { closeResponseBody(resp) }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, readErr := io.ReadAll(io.LimitReader(resp.Body, MaxErrorBodySize))
-		if readErr != nil {
-			return nil, NewSearXNGError(
-				resp.StatusCode, resp.Header.Get("Content-Type"), "",
-				fmt.Errorf("failed to read error response body: %w", readErr),
-			)
-		}
-
-		if s.debug {
-			errBodyPreview := string(body)
-			if len(errBodyPreview) > DebugBodyPreviewChars {
-				errBodyPreview = errBodyPreview[:DebugBodyPreviewChars]
-			}
-
-			slog.Debug(
-				"HTTP error response body",
-				"status", resp.StatusCode,
-				"content_type", resp.Header.Get("Content-Type"),
-				"body_size", len(body),
-				"body_preview", errBodyPreview,
-			)
-		}
-
-		truncated, truncErr := isBodyTruncated(resp.Body)
-		if truncErr != nil {
-			slog.Debug("isBodyTruncated read error", "error", truncErr)
-		}
-
-		if truncated {
-			err := fmt.Errorf("%w of %d bytes", errErrorBodyTooLarge, MaxErrorBodySize)
-
-			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), err)
-		}
-
-		return nil, HTTPStatusError(resp.StatusCode, resp.Header.Get("Content-Type"), body)
+		return nil, s.handleNonOKResponse(resp)
 	}
 
 	return s.parseSearchResponse(resp, args)
+}
+
+func (s *SearXNGSearcher) logDebugRequest(req *http.Request, body string) {
+	if !s.debug {
+		return
+	}
+
+	if req.Method == http.MethodGet {
+		slog.Debug(
+			"HTTP request",
+			"method", req.Method,
+			"url", req.URL.String(),
+			"Accept", req.Header.Get("Accept"),
+		)
+
+		return
+	}
+
+	bodyPreview := body
+	if len(bodyPreview) > DebugBodyPreviewChars {
+		bodyPreview = bodyPreview[:DebugBodyPreviewChars]
+	}
+
+	slog.Debug(
+		"HTTP request",
+		"method", req.Method,
+		"url", req.URL.String(),
+		"Content-Type", req.Header.Get("Content-Type"),
+		"Accept", req.Header.Get("Accept"),
+		"body", bodyPreview,
+	)
+}
+
+func (s *SearXNGSearcher) logDebugResponse(resp *http.Response, err error) {
+	if !s.debug || err != nil || resp == nil {
+		return
+	}
+
+	slog.Debug(
+		"HTTP response",
+		"status", resp.StatusCode,
+		"content_type", resp.Header.Get("Content-Type"),
+	)
+}
+
+func (s *SearXNGSearcher) executeGETfallback(
+	ctx context.Context,
+	resp *http.Response,
+	postReq *http.Request,
+	postBodyStr string,
+) (*http.Response, error) {
+	if s.debug {
+		slog.Debug("Redirecting to GET fallback", "status", resp.StatusCode, "reason", "POST not supported by server")
+	}
+
+	closeResponseBody(resp)
+
+	getURL := *postReq.URL
+	getURL.RawQuery = postBodyStr
+
+	getReq, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, getURL.String(), nil)
+	if reqErr != nil {
+		return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errRequestCreateFailed, reqErr))
+	}
+
+	setBrowserHeaders(getReq)
+	s.logDebugRequest(getReq, "")
+
+	getResp, err := s.client.Do(getReq)
+	s.logDebugResponse(getResp, err)
+
+	return getResp, err
+}
+
+func (s *SearXNGSearcher) handleNonOKResponse(resp *http.Response) error {
+	body, readErr := io.ReadAll(io.LimitReader(resp.Body, MaxErrorBodySize))
+	if readErr != nil {
+		return NewSearXNGError(
+			resp.StatusCode, resp.Header.Get("Content-Type"), "",
+			fmt.Errorf("failed to read error response body: %w", readErr),
+		)
+	}
+
+	if s.debug {
+		errBodyPreview := string(body)
+		if len(errBodyPreview) > DebugBodyPreviewChars {
+			errBodyPreview = errBodyPreview[:DebugBodyPreviewChars]
+		}
+
+		slog.Debug(
+			"HTTP error response body",
+			"status", resp.StatusCode,
+			"content_type", resp.Header.Get("Content-Type"),
+			"body_size", len(body),
+			"body_preview", errBodyPreview,
+		)
+	}
+
+	truncated, truncErr := isBodyTruncated(resp.Body)
+	if truncErr != nil {
+		slog.Debug("isBodyTruncated read error", "error", truncErr)
+	}
+
+	if truncated {
+		err := fmt.Errorf("%w of %d bytes", errErrorBodyTooLarge, MaxErrorBodySize)
+
+		return NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), err)
+	}
+
+	return HTTPStatusError(resp.StatusCode, resp.Header.Get("Content-Type"), body)
 }

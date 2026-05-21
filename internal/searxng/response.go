@@ -19,6 +19,38 @@ var (
 
 // parseSearchResponse reads and parses the response from a SearXNG search request.
 func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchArgs) (*SearchResponse, error) {
+	body, err := readLimitedBody(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	s.logDebugBody(resp, body)
+
+	contentType := resp.Header.Get("Content-Type")
+	if isHTMLResponse(contentType, body) {
+		bodyLen := len(body)
+		if bodyLen == 0 {
+			return nil, &HTMLResponseError{Body: "", UnderlyingErr: nil}
+		}
+
+		previewLen := min(bodyLen, MaxErrorDisplayChars)
+
+		slog.Debug("HTMLResponseError: received HTML instead of JSON", "preview", string(body[:previewLen]))
+
+		return nil, &HTMLResponseError{Body: string(body[:previewLen]), UnderlyingErr: nil}
+	}
+
+	result, err := decodeSearchResponse(resp, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+
+	s.normalizeResponse(result, args)
+
+	return result, nil
+}
+
+func readLimitedBody(resp *http.Response) ([]byte, error) {
 	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBodySize))
 	if err != nil {
 		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("%w: %w", errResponseReadFailed, err))
@@ -35,39 +67,37 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), bodySizeErr)
 	}
 
-	if s.debug {
-		bodyPreview := string(body)
-		if len(bodyPreview) > DebugBodyPreviewChars {
-			bodyPreview = bodyPreview[:DebugBodyPreviewChars]
-		}
+	return body, nil
+}
 
-		slog.Debug(
-			"HTTP response body",
-			"status", resp.StatusCode,
-			"content_type", resp.Header.Get("Content-Type"),
-			"body_size", len(body),
-			"body_preview", bodyPreview,
-		)
+func (s *SearXNGSearcher) logDebugBody(resp *http.Response, body []byte) {
+	if !s.debug {
+		return
 	}
 
-	contentType := resp.Header.Get("Content-Type")
-	isHTMLResponse := strings.Contains(contentType, "text/html") ||
-		strings.HasPrefix(strings.TrimSpace(string(body)), "<!DOCTYPE") ||
-		strings.HasPrefix(strings.TrimSpace(string(body)), "<html")
-
-	if isHTMLResponse {
-		bodyLen := len(body)
-		if bodyLen == 0 {
-			return nil, &HTMLResponseError{Body: "", UnderlyingErr: nil}
-		}
-
-		previewLen := min(bodyLen, MaxErrorDisplayChars)
-
-		slog.Debug("HTMLResponseError: received HTML instead of JSON", "preview", string(body[:previewLen]))
-
-		return nil, &HTMLResponseError{Body: string(body[:previewLen]), UnderlyingErr: nil}
+	bodyPreview := string(body)
+	if len(bodyPreview) > DebugBodyPreviewChars {
+		bodyPreview = bodyPreview[:DebugBodyPreviewChars]
 	}
 
+	slog.Debug(
+		"HTTP response body",
+		"status", resp.StatusCode,
+		"content_type", resp.Header.Get("Content-Type"),
+		"body_size", len(body),
+		"body_preview", bodyPreview,
+	)
+}
+
+func isHTMLResponse(contentType string, body []byte) bool {
+	trimmedBody := strings.TrimSpace(string(body))
+
+	return strings.Contains(contentType, "text/html") ||
+		strings.HasPrefix(trimmedBody, "<!DOCTYPE") ||
+		strings.HasPrefix(trimmedBody, "<html")
+}
+
+func decodeSearchResponse(resp *http.Response, contentType string, body []byte) (*SearchResponse, error) {
 	if !strings.Contains(contentType, "application/json") && !strings.Contains(contentType, "text/json") {
 		bodyPreview := string(body)
 		if len(bodyPreview) > MaxErrorDisplayChars {
@@ -81,13 +111,17 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 
 	var result SearchResponse
 
-	err = json.Unmarshal(body, &result)
+	err := json.Unmarshal(body, &result)
 	if err != nil {
 		slog.Debug("JSONParseError: failed to parse JSON response", "error", err)
 
 		return nil, NewSearXNGError(resp.StatusCode, contentType, "", fmt.Errorf("%w: %w", errJSONResponseParseFailed, err))
 	}
 
+	return &result, nil
+}
+
+func (s *SearXNGSearcher) normalizeResponse(result *SearchResponse, args *SearchArgs) {
 	if result.NumberOfResults == 0 && len(result.Results) > 0 {
 		result.NumberOfResults = len(result.Results)
 	}
@@ -99,6 +133,4 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 	}
 
 	result.Debug = s.debug
-
-	return &result, nil
 }
