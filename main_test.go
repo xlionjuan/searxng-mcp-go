@@ -633,7 +633,7 @@ func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
 }
 
 func TestRunCLIMode_DebugJSONIncludesUnresponsiveEngines(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"query":"golang","number_of_results":1,"results":[{"title":"Go","url":"https://go.dev","content":"Go language","engine":"google"}],"suggestions":[],"unresponsive_engines":[["brave","Suspended:\" too many \"requests"]]}`))
@@ -706,7 +706,7 @@ func newTestSearchServer(t *testing.T, resp searxng.SearchResponse) *httptest.Se
 		t.Fatalf("failed to marshal response: %v", err)
 	}
 
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)

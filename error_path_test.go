@@ -540,7 +540,7 @@ func TestSearch_RedirectStatus(t *testing.T) {
 	defer server.Close()
 
 	client := &http.Client{
-		CheckRedirect: func(_ *http.Request, via []*http.Request) error {
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
@@ -621,7 +621,7 @@ func TestSearch_CustomHTTPClientCrossHostRedirectBlockedBeforeCustomPolicy(t *te
 	customPolicyCalled := false
 	client := &http.Client{
 		Timeout: 5 * time.Second,
-		CheckRedirect: func(_ *http.Request, via []*http.Request) error {
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			customPolicyCalled = true
 
 			return nil

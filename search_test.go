@@ -108,7 +108,7 @@ func TestSearch_Success(t *testing.T) {
 func TestSearch_PreservesUnresponsiveEngines(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"query":"test","number_of_results":1,"results":[{"title":"Result 1","url":"https://example.com/1","content":"Content 1","engine":"google"}],"suggestions":[],"unresponsive_engines":[["brave","Suspended:\" too many \"requests"],["startpage","Suspended:\" \"CAPTCHA"]]}`))
@@ -340,7 +340,7 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 
 		body := strings.Repeat("e", searxng.MaxErrorBodySize+1)
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			hj, ok := w.(http.Hijacker)
 			if !ok {
 				t.Errorf("response writer does not support hijacking")
@@ -396,7 +396,7 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 
 		body := `{"query":"test","number_of_results":1,"results":[{"title":"Result","url":"https://example.com","content":"` + strings.Repeat("s", searxng.MaxResponseBodySize+1) + `","engine":"google"}],"suggestions":[]}`
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			hj, ok := w.(http.Hijacker)
 			if !ok {
 				t.Errorf("response writer does not support hijacking")
@@ -447,7 +447,7 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 func TestSearch_EmptyHTMLBody(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -507,7 +507,7 @@ func TestSearch_HTMLResponseError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", tt.contentType)
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte(tt.body))
@@ -636,7 +636,7 @@ func TestSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 	}
 	body := mustMarshalJSON(t, searchResp)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)

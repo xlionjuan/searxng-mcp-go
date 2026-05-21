@@ -29,7 +29,7 @@ func mockSearXNGHandler(tb testing.TB) http.HandlerFunc {
 		Debug:               false,
 	})
 
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
@@ -210,7 +210,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 			Debug:               false,
 		})
 
-		searcher, cleanup := newTestSearcher(t, func(w http.ResponseWriter, r *http.Request) {
+		searcher, cleanup := newTestSearcher(t, func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write(body)
@@ -316,7 +316,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 	t.Run("returns search errors", func(t *testing.T) {
 		t.Parallel()
 
-		searcher, cleanup := newTestSearcher(t, func(w http.ResponseWriter, r *http.Request) {
+		searcher, cleanup := newTestSearcher(t, func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		})
 		defer cleanup()

@@ -517,7 +517,7 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 
 	// Concurrent validation calls
 	for i := range numGoroutines {
-		go func(id int) {
+		go func(_ int) {
 			defer wg.Done()
 
 			args := &searxng.SearchArgs{

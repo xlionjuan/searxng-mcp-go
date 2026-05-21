@@ -1,3 +1,4 @@
+// Package searxng provides a client library for interacting with SearXNG search instances.
 package searxng
 
 // MaxContentRunes is the maximum number of UTF-8 runes in content truncation.
