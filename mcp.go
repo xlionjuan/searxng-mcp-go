@@ -228,7 +228,7 @@ func runMCPMode(flags CLIFlags, stdin io.Reader) {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	err := server.Run(ctx, &mcp.StdioTransport{})
+	err = server.Run(ctx, &mcp.StdioTransport{})
 	if err != nil {
 		slog.Error("server failed", "error", err)
 		os.Exit(1)

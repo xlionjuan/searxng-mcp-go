@@ -111,7 +111,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 		}
 	}
 
-	err := fs.Parse(flagArgs)
+	err = fs.Parse(flagArgs)
 	if err != nil {
 		return false, CLIFlags{}, nil, fmt.Errorf("%w: %w", errArgumentParseFailed, err)
 	}

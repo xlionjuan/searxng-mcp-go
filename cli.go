@@ -117,7 +117,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 		Limit:      flags.Limit,
 	}
 
-	err := searxng.ValidateSearchArgs(args)
+	err = searxng.ValidateSearchArgs(args)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errSearchValidation, err)
 	}
