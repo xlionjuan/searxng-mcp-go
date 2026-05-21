@@ -490,7 +490,6 @@ func TestPrepareMCPStdinRejectsOversizedInitializeLine(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Modifies process-wide os.Stdin.
 func TestAttachStdin(t *testing.T) {
 	originalStdin := os.Stdin
 
@@ -543,7 +542,6 @@ func captureStdout(t *testing.T, fn func()) string {
 	return buf.String()
 }
 
-//nolint:paralleltest // Uses process environment through t.Setenv.
 func TestGetConfig(t *testing.T) {
 	t.Setenv("SEARXNG_URL", "https://env.example.com")
 
@@ -583,7 +581,6 @@ func TestGetConfig(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // Captures process-wide stdout.
 func TestRunCLIMode_SuccessTextOutput(t *testing.T) {
 	server := newTestSearchServer(t, searxng.SearchResponse{
 		Query:           "golang",
@@ -606,7 +603,6 @@ func TestRunCLIMode_SuccessTextOutput(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Captures process-wide stdout.
 func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
 	server := newTestSearchServer(t, searxng.SearchResponse{
 		Query:           "golang",
@@ -636,7 +632,6 @@ func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Captures stdout and mutates debugMode.
 func TestRunCLIMode_DebugJSONIncludesUnresponsiveEngines(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -664,7 +659,6 @@ func TestRunCLIMode_DebugJSONIncludesUnresponsiveEngines(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Captures process-wide stdout.
 func TestRunCLIMode_QueryPrecedence(t *testing.T) {
 	server := newTestSearchServer(t, searxng.SearchResponse{
 		Query:           "flag query",
@@ -786,7 +780,6 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Captures process-wide stdout.
 func TestRunCLIMode_HelpFlag(t *testing.T) {
 	flags := CLIFlags{Help: true, Language: "", SafeSearch: 0, Pageno: nil}
 
@@ -806,7 +799,6 @@ func TestRunCLIMode_HelpFlag(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Captures process-wide stdout.
 func TestRunCLIMode_VersionFlag(t *testing.T) {
 	flags := CLIFlags{Version: true, Language: "", SafeSearch: 0, Pageno: nil}
 

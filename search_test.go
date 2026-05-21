@@ -50,7 +50,7 @@ func TestSearch_Success(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			_ = r.ParseForm() //nolint:gosec // test handler parses form
+			_ = r.ParseForm()
 			capturedQuery = r.PostForm
 		} else {
 			capturedQuery = r.URL.Query()
@@ -154,7 +154,7 @@ func TestSearch_TimeRangeParam(t *testing.T) {
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodPost {
-					capturedTimeRange = r.PostFormValue("time_range") //nolint:gosec // test reads form value
+					capturedTimeRange = r.PostFormValue("time_range")
 				} else {
 					capturedTimeRange = r.URL.Query().Get("time_range")
 				}
@@ -200,7 +200,7 @@ func TestSearch_DefaultLanguage(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			capturedLanguage = r.PostFormValue("language") //nolint:gosec // test reads form value
+			capturedLanguage = r.PostFormValue("language")
 		} else {
 			capturedLanguage = r.URL.Query().Get("language")
 		}
@@ -258,7 +258,7 @@ func TestSearch_OptionalParams(t *testing.T) {
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodPost {
-					_ = r.ParseForm() //nolint:gosec // test handler parses form
+					_ = r.ParseForm()
 					capturedParams = r.PostForm
 				} else {
 					capturedParams = r.URL.Query()
@@ -549,7 +549,7 @@ func TestSearch_QueryEncoding(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			capturedQuery = r.PostFormValue("q") //nolint:gosec // test reads form value
+			capturedQuery = r.PostFormValue("q")
 		} else {
 			capturedQuery = r.URL.Query().Get("q")
 		}

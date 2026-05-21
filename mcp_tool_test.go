@@ -252,7 +252,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost {
-				_ = r.ParseForm() //nolint:gosec // test handler parses form
+				_ = r.ParseForm()
 
 				capturedParams = make(map[string]string, len(r.PostForm))
 				for key, values := range r.PostForm {
