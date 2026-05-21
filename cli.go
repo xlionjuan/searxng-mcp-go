@@ -125,6 +125,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	if err != nil {
 		return fmt.Errorf("%w: %w", errSearcherCreation, err)
 	}
+
 	defer func() { _ = searcher.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

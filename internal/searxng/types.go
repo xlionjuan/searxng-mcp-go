@@ -131,6 +131,7 @@ func (a *Answer) UnmarshalJSON(data []byte) error {
 	type answerAlias Answer
 
 	var parsed answerAlias
+
 	err := json.Unmarshal(data, &parsed)
 	if err != nil {
 		return err

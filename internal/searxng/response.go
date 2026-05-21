@@ -41,7 +41,8 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 			bodyPreview = bodyPreview[:500]
 		}
 
-		slog.Debug("HTTP response body",
+		slog.Debug(
+			"HTTP response body",
 			"status", resp.StatusCode,
 			"content_type", resp.Header.Get("Content-Type"),
 			"body_size", len(body),

@@ -109,6 +109,7 @@ func TestValidateSearchArgs_Language(t *testing.T) {
 		t.Parallel()
 
 		args := &searxng.SearchArgs{Query: "test", Language: "auto"}
+
 		err := searxng.ValidateSearchArgs(args)
 		if err != nil {
 			t.Fatalf("expected auto to be valid, got %v", err)

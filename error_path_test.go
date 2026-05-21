@@ -661,6 +661,7 @@ func TestSearch_ConnectionResetMidResponse(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Hijack() failed: %v", err)
 		}
+
 		defer func() { _ = conn.Close() }()
 
 		_, _ = conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 128\r\n\r\n{\"query\":\"test\",\"results\":["))

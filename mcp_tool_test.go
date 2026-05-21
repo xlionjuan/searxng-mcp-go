@@ -59,6 +59,7 @@ func TestSearchInputSchema(t *testing.T) {
 	t.Parallel()
 
 	var schema map[string]any
+
 	err := json.Unmarshal([]byte(searchInputSchema), &schema)
 	if err != nil {
 		t.Fatalf("failed to parse search input schema: %v", err)

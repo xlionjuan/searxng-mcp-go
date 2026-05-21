@@ -200,6 +200,7 @@ func BenchmarkJSONUnmarshal(b *testing.B) {
 
 	for b.Loop() {
 		var resp searxng.SearchResponse
+
 		err := json.Unmarshal(data, &resp)
 		if err != nil {
 			b.Fatal(err)
@@ -220,6 +221,7 @@ func BenchmarkJSONUnmarshalLarge(b *testing.B) {
 
 	for b.Loop() {
 		var resp searxng.SearchResponse
+
 		err := json.Unmarshal(data, &resp)
 		if err != nil {
 			b.Fatal(err)

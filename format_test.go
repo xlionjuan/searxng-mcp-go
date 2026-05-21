@@ -148,6 +148,7 @@ func TestFormatResults(t *testing.T) {
 						Engine:  "google",
 						PublishedDate: func() *string {
 							s := "2026-04-20"
+
 							return &s
 						}(),
 					},

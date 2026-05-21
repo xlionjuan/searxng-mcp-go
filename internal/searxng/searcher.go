@@ -410,7 +410,8 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 			bodyPreview = bodyPreview[:500]
 		}
 
-		slog.Debug("HTTP request",
+		slog.Debug(
+			"HTTP request",
 			"method", postReq.Method,
 			"url", postReq.URL.String(),
 			"Content-Type", postReq.Header.Get("Content-Type"),
@@ -422,7 +423,8 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	resp, err := s.client.Do(postReq)
 
 	if s.debug && err == nil && resp != nil {
-		slog.Debug("HTTP response",
+		slog.Debug(
+			"HTTP response",
 			"status", resp.StatusCode,
 			"content_type", resp.Header.Get("Content-Type"),
 		)
@@ -446,7 +448,8 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		setBrowserHeaders(getReq)
 
 		if s.debug {
-			slog.Debug("HTTP request",
+			slog.Debug(
+				"HTTP request",
 				"method", getReq.Method,
 				"url", getReq.URL.String(),
 				"Accept", getReq.Header.Get("Accept"),
@@ -456,7 +459,8 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		resp, err = s.client.Do(getReq)
 
 		if s.debug && err == nil && resp != nil {
-			slog.Debug("HTTP response",
+			slog.Debug(
+				"HTTP response",
 				"status", resp.StatusCode,
 				"content_type", resp.Header.Get("Content-Type"),
 			)
@@ -481,7 +485,8 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 				errBodyPreview = errBodyPreview[:500]
 			}
 
-			slog.Debug("HTTP error response body",
+			slog.Debug(
+				"HTTP error response body",
 				"status", resp.StatusCode,
 				"content_type", resp.Header.Get("Content-Type"),
 				"body_size", len(body),

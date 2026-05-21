@@ -150,6 +150,7 @@ func isValidMCPInitializeMessage(line []byte) bool {
 	}
 
 	var msg mcpInitializeMessage
+
 	err := json.Unmarshal(line, &msg)
 	if err != nil {
 		return false
@@ -208,6 +209,7 @@ func runMCPMode(flags CLIFlags, stdin io.Reader) {
 		slog.Error("failed to create searcher", "error", err)
 		os.Exit(1)
 	}
+
 	defer func() { _ = searcher.Close() }()
 
 	server := mcp.NewServer(&mcp.Implementation{

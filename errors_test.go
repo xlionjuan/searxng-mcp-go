@@ -16,6 +16,8 @@ var (
 	errConnectionRefusedTest  = errors.New("connection refused")
 )
 
+const testHelloBody = "hello"
+
 // --- TEST-02: ValidationError tests ---
 
 func TestValidationError(t *testing.T) {

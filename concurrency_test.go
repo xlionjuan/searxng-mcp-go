@@ -525,6 +525,7 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 				Language:   "en",
 				SafeSearch: 0,
 			}
+
 			err := searxng.ValidateSearchArgs(args)
 			if err != nil {
 				atomic.AddInt64(&validationErrors, 1)
