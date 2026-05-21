@@ -80,11 +80,11 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 	flagArgs := make([]string, 0, len(args))
 	positionalArgs = make([]string, 0, len(args))
 
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
+	for idx := 0; idx < len(args); idx++ {
+		arg := args[idx]
 		if arg == "--" {
 			// Everything after -- is positional (standard convention).
-			positionalArgs = append(positionalArgs, args[i+1:]...)
+			positionalArgs = append(positionalArgs, args[idx+1:]...)
 
 			break
 		}
@@ -103,9 +103,9 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 		name := strings.TrimLeft(arg, "-")
 		if fl := fs.Lookup(name); fl != nil {
 			if _, isBool := fl.Value.(interface{ IsBoolFlag() bool }); !isBool {
-				if i+1 < len(args) {
-					i++
-					flagArgs = append(flagArgs, args[i])
+				if idx+1 < len(args) {
+					idx++
+					flagArgs = append(flagArgs, args[idx])
 				}
 			}
 		}

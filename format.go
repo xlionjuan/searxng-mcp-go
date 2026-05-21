@@ -27,102 +27,102 @@ func unescapeIfNeeded(s string) string {
 
 // truncateRunes truncates s to at most limit runes in a single pass.
 // It returns the original string unchanged if already within the limit.
-func truncateRunes(s string, limit int) string {
-	if limit <= 0 || s == "" {
+func truncateRunes(str string, limit int) string {
+	if limit <= 0 || str == "" {
 		return ""
 	}
 
 	runeCount := 0
-	for i := range s {
+	for i := range str {
 		if runeCount == limit {
-			return s[:i]
+			return str[:i]
 		}
 
 		runeCount++
 	}
 
-	return s
+	return str
 }
 
 // writeAnswers writes formatted direct answers to b.
-func writeAnswers(b *strings.Builder, answers []searxng.Answer) {
+func writeAnswers(buf *strings.Builder, answers []searxng.Answer) {
 	if len(answers) == 0 {
 		return
 	}
 
-	b.WriteString("=== Answers ===\n\n")
+	buf.WriteString("=== Answers ===\n\n")
 
-	for i, a := range answers {
-		b.WriteByte('[')
-		b.WriteString(strconv.Itoa(i + 1))
-		b.WriteString("] ")
-		b.WriteString(a.Answer)
-		b.WriteByte('\n')
+	for i, ans := range answers {
+		buf.WriteByte('[')
+		buf.WriteString(strconv.Itoa(i + 1))
+		buf.WriteString("] ")
+		buf.WriteString(ans.Answer)
+		buf.WriteByte('\n')
 
-		if a.Engine != "" {
-			b.WriteString("    Engine: ")
-			b.WriteString(a.Engine)
-			b.WriteByte('\n')
+		if ans.Engine != "" {
+			buf.WriteString("    Engine: ")
+			buf.WriteString(ans.Engine)
+			buf.WriteByte('\n')
 		}
 	}
 
-	b.WriteByte('\n')
+	buf.WriteByte('\n')
 }
 
 // writeInfoboxes writes formatted infoboxes to b.
-func writeInfoboxes(b *strings.Builder, infoboxes []searxng.Infobox) {
+func writeInfoboxes(buf *strings.Builder, infoboxes []searxng.Infobox) {
 	if len(infoboxes) == 0 {
 		return
 	}
 
-	b.WriteString("=== Infoboxes ===\n\n")
+	buf.WriteString("=== Infoboxes ===\n\n")
 
-	for i, ib := range infoboxes {
-		b.WriteByte('[')
-		b.WriteString(strconv.Itoa(i + 1))
-		b.WriteString("] ")
-		b.WriteString(unescapeIfNeeded(ib.Infobox))
-		b.WriteByte('\n')
+	for idx, ib := range infoboxes {
+		buf.WriteByte('[')
+		buf.WriteString(strconv.Itoa(idx + 1))
+		buf.WriteString("] ")
+		buf.WriteString(unescapeIfNeeded(ib.Infobox))
+		buf.WriteByte('\n')
 
 		if ib.Content != "" {
 			content := unescapeIfNeeded(ib.Content)
 			content = truncateRunes(content, searxng.MaxContentRunes)
 
-			b.WriteString("    ")
-			b.WriteString(content)
-			b.WriteByte('\n')
+			buf.WriteString("    ")
+			buf.WriteString(content)
+			buf.WriteByte('\n')
 		}
 
 		if len(ib.Attributes) > 0 {
-			b.WriteString("    Attributes:\n")
+			buf.WriteString("    Attributes:\n")
 
 			for _, attr := range ib.Attributes {
-				b.WriteString("      - ")
-				b.WriteString(attr.Label)
-				b.WriteString(": ")
-				b.WriteString(attr.Value)
-				b.WriteByte('\n')
+				buf.WriteString("      - ")
+				buf.WriteString(attr.Label)
+				buf.WriteString(": ")
+				buf.WriteString(attr.Value)
+				buf.WriteByte('\n')
 			}
 		}
 
 		if len(ib.URLs) > 0 {
-			b.WriteString("    URLs:\n")
+			buf.WriteString("    URLs:\n")
 
 			for _, u := range ib.URLs {
-				b.WriteString("      - ")
-				b.WriteString(u.Title)
-				b.WriteString(": ")
-				b.WriteString(u.URL)
-				b.WriteByte('\n')
+				buf.WriteString("      - ")
+				buf.WriteString(u.Title)
+				buf.WriteString(": ")
+				buf.WriteString(u.URL)
+				buf.WriteByte('\n')
 			}
 		}
 
-		if i < len(infoboxes)-1 {
-			b.WriteByte('\n')
+		if idx < len(infoboxes)-1 {
+			buf.WriteByte('\n')
 		}
 	}
 
-	b.WriteByte('\n')
+	buf.WriteByte('\n')
 }
 
 func logUnresponsiveEngines(resp *searxng.SearchResponse) {
@@ -153,76 +153,76 @@ func formatResults(resp *searxng.SearchResponse) string {
 		return noResultsFound
 	}
 
-	var b strings.Builder
+	var buf strings.Builder
 
 	estimate := len(resp.Query) + len(resp.Results)*searxng.ResultSizeEstimate
 	if estimate > 0 {
-		b.Grow(estimate)
+		buf.Grow(estimate)
 	}
 
 	// Answers first (direct answers like IP, hash, timezone)
-	writeAnswers(&b, resp.Answers)
+	writeAnswers(&buf, resp.Answers)
 
 	// Infoboxes
-	writeInfoboxes(&b, resp.Infoboxes)
+	writeInfoboxes(&buf, resp.Infoboxes)
 
 	// Results
 	if len(resp.Results) > 0 {
-		b.WriteString("=== Results ===\n\n")
+		buf.WriteString("=== Results ===\n\n")
 
 		total := resp.NumberOfResults
 		if total == 0 {
 			total = len(resp.Results)
 		}
 
-		b.WriteString("Found ")
-		b.WriteString(strconv.Itoa(total))
-		b.WriteString(" results for '")
-		b.WriteString(unescapeIfNeeded(resp.Query))
-		b.WriteString("':\n\n")
+		buf.WriteString("Found ")
+		buf.WriteString(strconv.Itoa(total))
+		buf.WriteString(" results for '")
+		buf.WriteString(unescapeIfNeeded(resp.Query))
+		buf.WriteString("':\n\n")
 
-		for i, r := range resp.Results {
-			title := unescapeIfNeeded(r.Title)
+		for idx, res := range resp.Results {
+			title := unescapeIfNeeded(res.Title)
 
-			b.WriteString(strconv.Itoa(i + 1))
-			b.WriteString(". ")
-			b.WriteString(title)
-			b.WriteByte('\n')
-			b.WriteString("   URL: ")
-			b.WriteString(r.URL)
-			b.WriteByte('\n')
+			buf.WriteString(strconv.Itoa(idx + 1))
+			buf.WriteString(". ")
+			buf.WriteString(title)
+			buf.WriteByte('\n')
+			buf.WriteString("   URL: ")
+			buf.WriteString(res.URL)
+			buf.WriteByte('\n')
 
-			if r.Content != "" {
-				content := unescapeIfNeeded(r.Content)
+			if res.Content != "" {
+				content := unescapeIfNeeded(res.Content)
 				content = truncateRunes(content, searxng.MaxContentRunes)
 
-				b.WriteString("   Summary: ")
-				b.WriteString(content)
-				b.WriteByte('\n')
+				buf.WriteString("   Summary: ")
+				buf.WriteString(content)
+				buf.WriteByte('\n')
 			}
 
-			if r.PublishedDate != nil && *r.PublishedDate != "" {
-				b.WriteString("   Published date: ")
-				b.WriteString(*r.PublishedDate)
-				b.WriteByte('\n')
+			if res.PublishedDate != nil && *res.PublishedDate != "" {
+				buf.WriteString("   Published date: ")
+				buf.WriteString(*res.PublishedDate)
+				buf.WriteByte('\n')
 			}
 
-			b.WriteString("   Engine: ")
-			b.WriteString(r.Engine)
-			b.WriteString("\n\n")
+			buf.WriteString("   Engine: ")
+			buf.WriteString(res.Engine)
+			buf.WriteString("\n\n")
 		}
 	}
 
 	// Suggestions last
 	if len(resp.Suggestions) > 0 {
-		b.WriteString("=== Search Suggestions ===\n\n")
+		buf.WriteString("=== Search Suggestions ===\n\n")
 
-		for _, s := range resp.Suggestions {
-			b.WriteString("  - ")
-			b.WriteString(s)
-			b.WriteByte('\n')
+		for _, sug := range resp.Suggestions {
+			buf.WriteString("  - ")
+			buf.WriteString(sug)
+			buf.WriteByte('\n')
 		}
 	}
 
-	return b.String()
+	return buf.String()
 }

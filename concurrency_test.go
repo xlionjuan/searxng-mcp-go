@@ -32,7 +32,7 @@ func TestConcurrentSearches(t *testing.T) {
 
 	requestCount := int64(0)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt64(&requestCount, 1)
 
 		searchResp := searxng.SearchResponse{
@@ -64,7 +64,7 @@ func TestConcurrentSearches(t *testing.T) {
 	wg.Add(numGoroutines)
 
 	for i := range numGoroutines {
-		go func(goroutineID int) {
+		go func(_ int) {
 			defer wg.Done()
 
 			for range queriesPerGoroutine {
@@ -129,7 +129,7 @@ func TestConcurrentContextCancellation(t *testing.T) {
 	)
 
 	for i := range numGoroutines {
-		go func(id int) {
+		go func(_ int) {
 			defer wg.Done()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -193,7 +193,7 @@ func TestChannelDeadlockDetection(t *testing.T) {
 		t.Skip("Skipping deadlock stress test in short mode")
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		searchResp := searxng.SearchResponse{
 			Results:         []searxng.SearchResult{},
 			NumberOfResults: 0,
@@ -220,7 +220,7 @@ func TestChannelDeadlockDetection(t *testing.T) {
 	wg.Add(numGoroutines)
 
 	for i := range numGoroutines {
-		go func(id int) {
+		go func(_ int) {
 			defer wg.Done()
 
 			ctx := context.Background()
@@ -254,7 +254,7 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 
 	requestCount := int64(0)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt64(&requestCount, 1)
 
 		searchResp := searxng.SearchResponse{
@@ -374,7 +374,7 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 	wg.Add(numGoroutines)
 
 	for i := range numGoroutines {
-		go func(id int) {
+		go func(_ int) {
 			defer wg.Done()
 
 			atomic.AddInt64(&sentCount, 1)
@@ -488,7 +488,7 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 		t.Skip("Skipping validation/search concurrency stress test in short mode")
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		searchResp := searxng.SearchResponse{
 			Results:         []searxng.SearchResult{},
 			NumberOfResults: 0,
@@ -536,7 +536,7 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 
 	// Concurrent search calls
 	for i := range numGoroutines {
-		go func(id int) {
+		go func(_ int) {
 			defer wg.Done()
 
 			ctx := context.Background()
@@ -566,7 +566,7 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 	started := make(chan struct{})
 	release := make(chan struct{})
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		select {
 		case <-started:
 		default:

@@ -63,7 +63,7 @@ func TestSearch_DNSFailure(t *testing.T) {
 // TestSearch_ConnectionRefused tests connection refused errors.
 func TestSearch_ConnectionRefused(t *testing.T) {
 	// Create a server and immediately close it to simulate connection refused
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	server.Close()
@@ -99,7 +99,7 @@ func TestSearch_ConnectionRefused(t *testing.T) {
 
 // TestSearch_EmptyResponse tests handling of empty response body.
 func TestSearch_EmptyResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		// Write empty body
@@ -127,7 +127,7 @@ func TestSearch_EmptyResponse(t *testing.T) {
 
 // TestSearch_EmptyBodyWith200 tests empty JSON object response.
 func TestSearch_EmptyJSONObject(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
@@ -158,7 +158,7 @@ func TestSearch_EmptyJSONObject(t *testing.T) {
 
 // TestSearch_UnexpectedContentType tests response with unexpected content type.
 func TestSearch_UnexpectedContentType(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("plain text response"))
@@ -209,7 +209,7 @@ func TestSearch_UnexpectedContentType(t *testing.T) {
 func TestSearch_MalformedJSON_Truncated(t *testing.T) {
 	truncatedJSON := []byte(`{"results": [{"title": "test",`)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(truncatedJSON)
@@ -234,12 +234,12 @@ func TestSearch_MalformedJSON_Truncated(t *testing.T) {
 	}
 }
 
-func TestSearch_MalformedJSON_WrongType(t *testing.T) {
-	// JSON that decodes but has wrong types - this should produce a JSON unmarshal error
+func TestSearch_WrongJSONType(t *testing.T) {
+	// Valid JSON with wrong types: results should be an array, but we provide a string
 	// because "results" is expected to be an array, not a string
 	wrongTypeJSON := []byte(`{"results": "not an array", "number_of_results": "not a number"}`)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(wrongTypeJSON)
@@ -265,11 +265,11 @@ func TestSearch_MalformedJSON_WrongType(t *testing.T) {
 	}
 }
 
-func TestSearch_MalformedJSON_TrailingGarbage(t *testing.T) {
+func TestSearch_TrailingGarbage(t *testing.T) {
 	// Valid JSON followed by garbage
 	garbageJSON := []byte(`{"results":[],"number_of_results":0,"query":"test"}TRAILING GARBAGE`)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(garbageJSON)
@@ -299,7 +299,7 @@ func TestSearch_MalformedJSON_TrailingGarbage(t *testing.T) {
 // ============================================================================
 
 func TestSearch_500Error(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("Internal Server Error"))
 	}))
@@ -334,7 +334,7 @@ func TestSearch_500Error(t *testing.T) {
 }
 
 func TestSearch_404Error(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte("Not Found"))
 	}))
@@ -370,7 +370,7 @@ func TestSearch_404Error(t *testing.T) {
 
 func TestSearch_NetworkError_ConnectionClose(t *testing.T) {
 	// Create a server and immediately close it to simulate network error
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		// Close immediately without responding
 	}))
 	server.Close()
@@ -494,9 +494,9 @@ func TestSearch_HTTPStatusErrors(t *testing.T) {
 		{504, "searxng error (status 504)"},
 	}
 
-	for _, tc := range tests {
+		for _, tc := range tests {
 		t.Run(http.StatusText(tc.statusCode), func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(tc.statusCode)
 				_, _ = w.Write([]byte(http.StatusText(tc.statusCode)))
 			}))
@@ -532,7 +532,7 @@ func TestSearch_HTTPStatusErrors(t *testing.T) {
 }
 
 func TestSearch_RedirectStatus(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Location", "/search/redirected")
 		w.WriteHeader(http.StatusFound)
 		_, _ = w.Write([]byte("redirect"))
@@ -540,7 +540,7 @@ func TestSearch_RedirectStatus(t *testing.T) {
 	defer server.Close()
 
 	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(_ *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
@@ -563,7 +563,7 @@ func TestSearch_RedirectStatus(t *testing.T) {
 }
 
 func TestSearch_CustomHTTPClientWithoutRedirectPolicyBlocksCrossHost(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Location", "http://example.com/search")
 		w.WriteHeader(http.StatusFound)
 	}))
@@ -621,14 +621,14 @@ func TestSearch_CustomHTTPClientCrossHostRedirectBlockedBeforeCustomPolicy(t *te
 	customPolicyCalled := false
 	client := &http.Client{
 		Timeout: 5 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(_ *http.Request, via []*http.Request) error {
 			customPolicyCalled = true
 
 			return nil
 		},
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Location", "http://example.com/search")
 		w.WriteHeader(http.StatusFound)
 	}))
@@ -651,7 +651,7 @@ func TestSearch_CustomHTTPClientCrossHostRedirectBlockedBeforeCustomPolicy(t *te
 }
 
 func TestSearch_ConnectionResetMidResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		hj, ok := w.(http.Hijacker)
 		if !ok {
 			t.Fatal("response writer does not support hijacking")

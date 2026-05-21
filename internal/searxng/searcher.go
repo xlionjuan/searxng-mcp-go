@@ -334,14 +334,14 @@ func DeduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 	var infoboxTexts []string
 
 	filtered := make([]Answer, 0, len(answers))
-	for _, a := range answers {
-		a.EnsureFallback()
+	for _, ans := range answers {
+		ans.EnsureFallback()
 
-		if a.Answer == "" {
+		if ans.Answer == "" {
 			continue
 		}
 
-		prefix := a.Answer
+		prefix := ans.Answer
 
 		prefix = strings.TrimSuffix(prefix, " More at Wikipedia")
 		if len(prefix) > prefixLen {
@@ -371,7 +371,7 @@ func DeduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 			}
 		}
 
-		lowerAnswer := strings.ToLower(a.Answer)
+		lowerAnswer := strings.ToLower(ans.Answer)
 		lowerAnswer = strings.TrimSuffix(lowerAnswer, " more at wikipedia")
 
 		lowerPrefix := lowerAnswer
@@ -388,7 +388,7 @@ func DeduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 		}
 
 		if !duplicated {
-			filtered = append(filtered, a)
+			filtered = append(filtered, ans)
 		}
 	}
 
