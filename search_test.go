@@ -541,10 +541,6 @@ func TestSearch_HTMLResponseError(t *testing.T) {
 
 // --- helper functions and test utilities ---
 
-//go:fix inline
-func intPtr(i int) *int {
-	return new(i)
-}
 
 // Test that Search properly encodes query parameters.
 func TestSearch_QueryEncoding(t *testing.T) {

@@ -130,7 +130,7 @@ func TestSearch_EmptyJSONObject(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("{}"))
+		_, _ = w.Write([]byte("{}"))
 	}))
 	defer server.Close()
 
@@ -161,7 +161,7 @@ func TestSearch_UnexpectedContentType(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("plain text response"))
+		_, _ = w.Write([]byte("plain text response"))
 	}))
 	defer server.Close()
 
@@ -212,7 +212,7 @@ func TestSearch_MalformedJSON_Truncated(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(truncatedJSON)
+		_, _ = w.Write(truncatedJSON)
 	}))
 	defer server.Close()
 
@@ -242,7 +242,7 @@ func TestSearch_MalformedJSON_WrongType(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(wrongTypeJSON)
+		_, _ = w.Write(wrongTypeJSON)
 	}))
 	defer server.Close()
 
@@ -272,7 +272,7 @@ func TestSearch_MalformedJSON_TrailingGarbage(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(garbageJSON)
+		_, _ = w.Write(garbageJSON)
 	}))
 	defer server.Close()
 
@@ -301,7 +301,7 @@ func TestSearch_MalformedJSON_TrailingGarbage(t *testing.T) {
 func TestSearch_500Error(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal Server Error"))
+		_, _ = w.Write([]byte("Internal Server Error"))
 	}))
 	defer server.Close()
 
@@ -336,7 +336,7 @@ func TestSearch_500Error(t *testing.T) {
 func TestSearch_404Error(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Not Found"))
+		_, _ = w.Write([]byte("Not Found"))
 	}))
 	defer server.Close()
 
@@ -498,7 +498,7 @@ func TestSearch_HTTPStatusErrors(t *testing.T) {
 		t.Run(http.StatusText(tc.statusCode), func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tc.statusCode)
-				w.Write([]byte(http.StatusText(tc.statusCode)))
+				_, _ = w.Write([]byte(http.StatusText(tc.statusCode)))
 			}))
 			defer server.Close()
 
@@ -661,7 +661,7 @@ func TestSearch_ConnectionResetMidResponse(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Hijack() failed: %v", err)
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		_, _ = conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 128\r\n\r\n{\"query\":\"test\",\"results\":["))
 	}))
