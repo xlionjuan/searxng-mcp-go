@@ -110,7 +110,8 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	}
 
 	baseURL := cfg.SearXNGURL
-	if err := validateBaseURL(baseURL); err != nil {
+	err := validateBaseURL(baseURL)
+	if err != nil {
 		return nil, fmt.Errorf("newSearXNGSearcher: %w", err)
 	}
 
@@ -202,7 +203,8 @@ func closeResponseBody(resp *http.Response) {
 
 // isPrivateHost checks if the host is a private/internal address.
 func isPrivateHost(host string) bool {
-	if h, _, err := net.SplitHostPort(host); err == nil {
+	h, _, err := net.SplitHostPort(host)
+	if err == nil {
 		host = h
 	}
 
@@ -395,7 +397,8 @@ func DeduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 
 // performSearch executes the search query against SearXNG.
 func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
-	if err := ValidateSearchArgs(args); err != nil {
+	err := ValidateSearchArgs(args)
+	if err != nil {
 		return nil, err
 	}
 

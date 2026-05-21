@@ -239,7 +239,8 @@ func BenchmarkMarshalJSON(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		if _, err := resp.MarshalJSON(); err != nil {
+		_, err := resp.MarshalJSON()
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -251,7 +252,8 @@ func BenchmarkMarshalJSONLarge(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		if _, err := resp.MarshalJSON(); err != nil {
+		_, err := resp.MarshalJSON()
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -266,7 +268,8 @@ func BenchmarkStdMarshalJSON(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		if _, err := json.Marshal(resp); err != nil {
+		_, err := json.Marshal(resp)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -304,7 +307,8 @@ func BenchmarkSearch(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := testPerformSearch(b, b.Context(), cfg, args); err != nil {
+		_, err := testPerformSearch(b, b.Context(), cfg, args)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}

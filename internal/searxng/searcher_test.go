@@ -71,7 +71,8 @@ func TestNewSearXNGSearcherSuccess(t *testing.T) {
 				t.Fatal("NewSearXNGSearcher() searcher = nil, want non-nil")
 			}
 
-			if err := searcher.Close(); err != nil {
+			err := searcher.Close()
+			if err != nil {
 				t.Fatalf("Close() error = %v, want nil", err)
 			}
 		})
@@ -120,7 +121,8 @@ func TestSearchResponseMarshalJSON(t *testing.T) {
 		}
 
 		var got map[string]json.RawMessage
-		if err := json.Unmarshal(body, &got); err != nil {
+		err := json.Unmarshal(body, &got)
+		if err != nil {
 			t.Fatalf("json.Unmarshal() error = %v", err)
 		}
 

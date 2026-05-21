@@ -228,7 +228,8 @@ func runMCPMode(flags CLIFlags, stdin io.Reader) {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
+	err := server.Run(ctx, &mcp.StdioTransport{})
+	if err != nil {
 		slog.Error("server failed", "error", err)
 		os.Exit(1)
 	}
@@ -249,7 +250,8 @@ func NewSearchToolHandler(searcher searchTool) func(context.Context, *mcp.CallTo
 			args.Limit = &defaultLimit
 		}
 
-		if err := searxng.ValidateSearchArgs(&args); err != nil {
+		err := searxng.ValidateSearchArgs(&args)
+		if err != nil {
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: fmt.Sprintf("validation error: %v", err)},

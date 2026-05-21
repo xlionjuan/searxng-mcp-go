@@ -78,7 +78,8 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 	}
 
 	var result SearchResponse
-	if err := json.Unmarshal(body, &result); err != nil {
+	err := json.Unmarshal(body, &result)
+	if err != nil {
 		slog.Debug("JSONParseError: failed to parse JSON response", "error", err)
 
 		return nil, NewSearXNGError(resp.StatusCode, contentType, "", fmt.Errorf("%w: %w", errJSONResponseParseFailed, err))

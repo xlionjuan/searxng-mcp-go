@@ -518,7 +518,8 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 			}
 
 			var resp searxng.SearchResponse
-			if err := json.Unmarshal(body, &resp); err != nil {
+			err := json.Unmarshal(body, &resp)
+			if err != nil {
 				t.Fatalf("Unmarshal() error = %v", err)
 			}
 
