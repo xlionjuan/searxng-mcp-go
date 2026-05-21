@@ -308,7 +308,7 @@ func BenchmarkSearch(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		_, err := testPerformSearch(b, b.Context(), cfg, args)
+		_, err := testPerformSearch(b.Context(), b, cfg, args)
 		if err != nil {
 			b.Fatal(err)
 		}

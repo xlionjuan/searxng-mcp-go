@@ -23,7 +23,7 @@ func TestSearch_CfgNil(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := testPerformSearch(t, ctx, nil, &searxng.SearchArgs{Query: "test"})
+	_, err := testPerformSearch(ctx, t, nil, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
 		t.Fatal("expected error for cfg == nil, got nil")
 	}
@@ -74,7 +74,7 @@ func TestSearch_Success(t *testing.T) {
 
 	ctx := t.Context()
 
-	result, err := testPerformSearch(t, ctx, cfg, args)
+	result, err := testPerformSearch(ctx, t, cfg, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestSearch_PreservesUnresponsiveEngines(t *testing.T) {
 	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
 	ctx := t.Context()
 
-	result, err := testPerformSearch(t, ctx, cfg, &searxng.SearchArgs{Query: "test"})
+	result, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestSearch_TimeRangeParam(t *testing.T) {
 			args := &searxng.SearchArgs{Query: "test", TimeRange: tt.timeRange}
 			ctx := t.Context()
 
-			_, err := testPerformSearch(t, ctx, cfg, args)
+			_, err := testPerformSearch(ctx, t, cfg, args)
 			if err != nil {
 				t.Errorf("testPerformSearch() error = %v", err)
 
@@ -226,7 +226,7 @@ func TestSearch_DefaultLanguage(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := testPerformSearch(t, ctx, cfg, args)
+	_, err := testPerformSearch(ctx, t, cfg, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -276,7 +276,7 @@ func TestSearch_OptionalParams(t *testing.T) {
 			cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
 			ctx := t.Context()
 
-			_, err := testPerformSearch(t, ctx, cfg, tt.args)
+			_, err := testPerformSearch(ctx, t, cfg, tt.args)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -320,7 +320,7 @@ func TestSearch_SearchPathNormalization(t *testing.T) {
 
 			cfg := &searxng.Config{SearXNGURL: server.URL + tt.baseURL, Timeout: 30 * time.Second}
 
-			_, err := testPerformSearch(t, t.Context(), cfg, &searxng.SearchArgs{Query: "test"})
+			_, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -368,7 +368,7 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 			Timeout:    30 * time.Second,
 		}
 
-		_, err := testPerformSearch(t, t.Context(), cfg, &searxng.SearchArgs{Query: "test"})
+		_, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -424,7 +424,7 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 			Timeout:    30 * time.Second,
 		}
 
-		_, err := testPerformSearch(t, t.Context(), cfg, &searxng.SearchArgs{Query: "test"})
+		_, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -455,7 +455,7 @@ func TestSearch_EmptyHTMLBody(t *testing.T) {
 
 	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
 
-	_, err := testPerformSearch(t, t.Context(), cfg, &searxng.SearchArgs{Query: "test"})
+	_, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -522,7 +522,7 @@ func TestSearch_HTMLResponseError(t *testing.T) {
 
 			ctx := t.Context()
 
-			_, err := testPerformSearch(t, ctx, cfg, args)
+			_, err := testPerformSearch(ctx, t, cfg, args)
 			if err == nil {
 				t.Fatal("expected HTMLResponseError, got nil")
 			}
@@ -577,7 +577,7 @@ func TestSearch_QueryEncoding(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := testPerformSearch(t, ctx, cfg, args)
+	_, err := testPerformSearch(ctx, t, cfg, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -651,7 +651,7 @@ func TestSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 
 	ctx := t.Context()
 
-	result, err := testPerformSearch(t, ctx, cfg, args)
+	result, err := testPerformSearch(ctx, t, cfg, args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -756,7 +756,7 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 			cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
 			args := &searxng.SearchArgs{Query: "test search", Language: "en", SafeSearch: 1}
 
-			result, err := testPerformSearch(t, t.Context(), cfg, args)
+			result, err := testPerformSearch(t.Context(), t, cfg, args)
 			if err != nil {
 				t.Fatalf("unexpected error after fallback: %v", err)
 			}
@@ -809,7 +809,7 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 
 		cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
 
-		_, err := testPerformSearch(t, t.Context(), cfg, &searxng.SearchArgs{Query: "test"})
+		_, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -863,7 +863,7 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 
 		cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
 
-		_, err := testPerformSearch(t, t.Context(), cfg, &searxng.SearchArgs{Query: "test"})
+		_, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

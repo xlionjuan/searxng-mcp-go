@@ -12,9 +12,11 @@ import (
 // from the provided Config and delegates to its Search method.
 // It is only available in tests.
 func testPerformSearch(
-	t testing.TB, ctx context.Context, cfg *searxng.Config,
+	ctx context.Context, tb testing.TB, cfg *searxng.Config,
 	args *searxng.SearchArgs,
-) (*searxng.SearchResponse, error) { //nolint:revive // context as second arg is intentional for test helper pattern
+) (*searxng.SearchResponse, error) {
+	tb.Helper()
+
 	if cfg == nil {
 		return nil, searxng.NewSearXNGError(0, "", "", errTestConfigRequired)
 	}
