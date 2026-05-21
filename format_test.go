@@ -161,7 +161,13 @@ func TestFormatResults(t *testing.T) {
 				NumberOfResults: 2,
 				Query:           "test query",
 			},
-			wantContains: []string{"=== Results ===", "Found 2 results", "test query", "Test Title 1", "https://example.com/1", "1. Test Title 1\n   URL: https://example.com/1\n   Summary: Test content 1\n   Published date: 2026-04-20", "Test Title 2"},
+			wantContains: []string{
+				"=== Results ===", "Found 2 results", "test query", "Test Title 1",
+				"https://example.com/1",
+				"1. Test Title 1\n   URL: https://example.com/1\n   Summary: Test content 1" +
+					"\n   Published date: 2026-04-20",
+				"Test Title 2",
+			},
 		},
 		{
 			name:       "empty results",

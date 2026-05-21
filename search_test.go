@@ -778,7 +778,10 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 			}
 
 			getQuery := getReq.URL.Query()
-			if getQuery.Get("q") != "test search" || getQuery.Get("format") != "json" || getQuery.Get("language") != "en" || getQuery.Get("safesearch") != "1" {
+			if getQuery.Get("q") != "test search" ||
+				getQuery.Get("format") != "json" ||
+				getQuery.Get("language") != "en" ||
+				getQuery.Get("safesearch") != "1" {
 				t.Fatalf("unexpected GET query params: %v", getQuery)
 			}
 		})

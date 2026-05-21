@@ -196,7 +196,9 @@ func TestSearch_UnexpectedContentType(t *testing.T) {
 		t.Fatalf("UnderlyingErr = %v, want unexpected content type error", searxngErr.UnderlyingErr)
 	}
 
-	if got, want := err.Error(), "searxng error (status 200) - content-type text/plain: unexpected content type: expected application/json"; got != want {
+	if got, want := err.Error(),
+		"searxng error (status 200) - content-type text/plain: unexpected content type: expected application/json";
+		got != want {
 		t.Fatalf("error = %q, want %q", got, want)
 	}
 }
@@ -663,7 +665,9 @@ func TestSearch_ConnectionResetMidResponse(t *testing.T) {
 
 		defer func() { _ = conn.Close() }()
 
-		_, _ = conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 128\r\n\r\n{\"query\":\"test\",\"results\":["))
+		_, _ = conn.Write([]byte(
+			"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 128\r\n\r\n{\"query\":\"test\",\"results\":[\"",
+		))
 	}))
 	defer server.Close()
 

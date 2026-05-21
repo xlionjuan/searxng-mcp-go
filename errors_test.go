@@ -155,7 +155,9 @@ func TestHTTPStatusError_HTMLBodyNotInErrorMessage(t *testing.T) {
 		t.Fatalf("expected *SearXNGError, got type %T", err)
 	}
 
-	if searxngErr.ResponseBody != "" && (strings.Contains(searxngErr.ResponseBody, "<!DOCTYPE") || strings.Contains(searxngErr.ResponseBody, "<html>")) {
+	if searxngErr.ResponseBody != "" &&
+		(strings.Contains(searxngErr.ResponseBody, "<!DOCTYPE") ||
+			strings.Contains(searxngErr.ResponseBody, "<html>")) {
 		t.Logf("ResponseBody contains HTML for debugging (this is allowed in structured field): %s", searxngErr.ResponseBody)
 	}
 }

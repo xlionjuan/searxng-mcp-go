@@ -20,7 +20,7 @@ import (
 
 // searchInputSchema defines the JSON schema for the search tool input.
 // Only "query" is required; all other parameters are optional.
-const searchInputSchema = `{
+var searchInputSchema = `{
 	"type": "object",
 	"properties": {
 		"query": {
@@ -29,11 +29,13 @@ const searchInputSchema = `{
 		},
 		"language": {
 			"type": "string",
-			"description": "Language code for results. Common codes: en, zh-tw, zh, ja, fr, de, es, pt, ru, ar. Leave empty for auto-detect (SearXNG decides based on query)"
+			"description": "` + "Language code for results. Common codes: en, zh-tw, zh, ja, " +
+		"fr, de, es, pt, ru, ar. Leave empty for auto-detect (SearXNG decides based on query)" + `"
 		},
 		"safesearch": {
 			"type": "integer",
-			"description": "SafeSearch level. 0=Off (no filtering), 1=Moderate (filter moderate explicit content), 2=Strict (filter all explicit content). Defaults to 0",
+			"description": "` + "SafeSearch level. 0=Off (no filtering), 1=Moderate " +
+		"(filter moderate explicit content), 2=Strict (filter all explicit content). Defaults to 0" + `",
 			"minimum": 0,
 			"maximum": 2
 		},
@@ -44,11 +46,13 @@ const searchInputSchema = `{
 		},
 		"categories": {
 			"type": "string",
-			"description": "Comma-separated list of categories to search. Common categories: general, news, images, videos, music, science, files, it, social_media, map. Leave empty for all categories"
+			"description": "` + "Comma-separated list of categories to search. Common categories: " +
+		"general, news, images, videos, music, science, files, it, social_media, map. Leave empty for all categories" + `"
 		},
 		"engines": {
 			"type": "string",
-			"description": "Comma-separated list of search engines to use (e.g., google, bing, duckduckgo). Leave empty to use SearXNG default engines"
+			"description": "` + "Comma-separated list of search engines to use " +
+		"(e.g., google, bing, duckduckgo). Leave empty to use SearXNG default engines" + `"
 		},
 		"pageno": {
 			"type": ["null", "integer"],
@@ -218,8 +222,16 @@ func runMCPMode(flags CLIFlags, stdin io.Reader) {
 	}, nil)
 
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "search",
-		Description: "Search the web using SearXNG meta-search engine. Returns web results with titles, URLs, summaries, published dates, and engine source information. Parameters: query (required) - search query string; language - language code (e.g., en, zh-tw, ja, fr, de, es), auto-detect if empty; safesearch - 0=Off, 1=Moderate, 2=Strict (default 0); time_range - empty (all time), day, month, year; categories - comma-separated (e.g., general, news, images, videos, music, science, files, it, social_media, map); engines - comma-separated (e.g., google, bing, duckduckgo), SearXNG defaults if empty; pageno - page number (default 1); limit - max results 1-20 (default 10).",
+		Name: "search",
+		Description: "Search the web using SearXNG meta-search engine. " +
+			"Returns web results with titles, URLs, summaries, published dates, and engine source information. " +
+			"Parameters: query (required) - search query string; language - language code " +
+			"(e.g., en, zh-tw, ja, fr, de, es), auto-detect if empty; safesearch - 0=Off, " +
+			"1=Moderate, 2=Strict (default 0); time_range - empty (all time), day, month, year; " +
+			"categories - comma-separated (e.g., general, news, images, videos, music, science, " +
+			"files, it, social_media, map); engines - comma-separated (e.g., google, bing, " +
+			"duckduckgo), SearXNG defaults if empty; pageno - page number (default 1); " +
+			"limit - max results 1-20 (default 10).",
 		InputSchema: json.RawMessage(searchInputSchema),
 	}, NewSearchToolHandler(searcher))
 
@@ -243,7 +255,9 @@ type searchTool interface {
 // NewSearchToolHandler creates an MCP tool handler function that performs SearXNG searches.
 // It returns a function suitable for use as an mcp.ToolHandler, which validates the search
 // arguments, executes the search, and returns the formatted results.
-func NewSearchToolHandler(searcher searchTool) func(context.Context, *mcp.CallToolRequest, searxng.SearchArgs) (*mcp.CallToolResult, any, error) {
+func NewSearchToolHandler(searcher searchTool) func(
+	context.Context, *mcp.CallToolRequest, searxng.SearchArgs,
+) (*mcp.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcp.CallToolRequest, args searxng.SearchArgs) (*mcp.CallToolResult, any, error) {
 		if args.Limit == nil {
 			defaultLimit := defaultResultLimit

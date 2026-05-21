@@ -60,7 +60,10 @@ func TestValidateSearchArgs_NilAndQuery(t *testing.T) {
 
 	t.Run("long query", func(t *testing.T) {
 		t.Parallel()
-		assertValidationError(t, &searxng.SearchArgs{Query: strings.Repeat("a", searxng.MaxQueryLength+1)}, "query", "must be 500 characters or less")
+		assertValidationError(
+			t, &searxng.SearchArgs{Query: strings.Repeat("a", searxng.MaxQueryLength+1)},
+			"query", "must be 500 characters or less",
+		)
 	})
 
 	t.Run("valid query", func(t *testing.T) {

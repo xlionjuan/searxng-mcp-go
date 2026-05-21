@@ -51,7 +51,9 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 	}
 
 	contentType := resp.Header.Get("Content-Type")
-	isHTMLResponse := strings.Contains(contentType, "text/html") || strings.HasPrefix(strings.TrimSpace(string(body)), "<!DOCTYPE") || strings.HasPrefix(strings.TrimSpace(string(body)), "<html")
+	isHTMLResponse := strings.Contains(contentType, "text/html") ||
+		strings.HasPrefix(strings.TrimSpace(string(body)), "<!DOCTYPE") ||
+		strings.HasPrefix(strings.TrimSpace(string(body)), "<html")
 
 	if isHTMLResponse {
 		bodyLen := len(body)

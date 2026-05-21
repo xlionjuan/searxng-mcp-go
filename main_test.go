@@ -92,7 +92,10 @@ func TestValidationExitCode(t *testing.T) {
 	binPath, cleanup := buildTestBinary(t)
 	defer cleanup()
 
-	cmd := exec.CommandContext(context.Background(), binPath, "--json", "--searxng-url", "http://localhost:9999", "--pageno", "0", "test") //nolint:gosec // test runs built binary
+	cmd := exec.CommandContext(
+		context.Background(), binPath, "--json", "--searxng-url",
+		"http://localhost:9999", "--pageno", "0", "test",
+	) //nolint:gosec // test runs built binary
 	cmd.Dir = "."
 
 	out, err := cmd.CombinedOutput()

@@ -122,7 +122,9 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	}
 
 	if parsed.Scheme == "http" && !isPrivateHost(parsed.Host) {
-		slog.Warn("Using HTTP for non-private host. Search queries may be transmitted in clear text. Search results could be intercepted and modified by a MITM attacker")
+		slog.Warn("Using HTTP for non-private host. " +
+			"Search queries may be transmitted in clear text. " +
+			"Search results could be intercepted and modified by a MITM attacker")
 	}
 
 	client := cfg.HTTPClient
@@ -480,7 +482,10 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 	if resp.StatusCode != http.StatusOK {
 		body, readErr := io.ReadAll(io.LimitReader(resp.Body, MaxErrorBodySize))
 		if readErr != nil {
-			return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("failed to read error response body: %w", readErr))
+			return nil, NewSearXNGError(
+			resp.StatusCode, resp.Header.Get("Content-Type"), "",
+			fmt.Errorf("failed to read error response body: %w", readErr),
+		)
 		}
 
 		if s.debug {

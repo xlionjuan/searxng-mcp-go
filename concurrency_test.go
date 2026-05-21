@@ -278,7 +278,10 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 	var searchers [5]*searxng.SearXNGSearcher
 
 	for i := range 5 {
-		searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second, HTTPClient: sharedClient}, false)
+		searcher, err := searxng.NewSearXNGSearcher(
+			&searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second, HTTPClient: sharedClient},
+			false,
+		)
 		if err != nil {
 			t.Fatalf("Failed to create searcher: %v", err)
 		}
@@ -472,7 +475,9 @@ func TestContextDeadlineExceededDuringSearch(t *testing.T) {
 	}
 
 	errStr := err.Error()
-	if !strings.Contains(errStr, "context deadline exceeded") && !strings.Contains(errStr, "timeout") && !strings.Contains(errStr, "request canceled") {
+	if !strings.Contains(errStr, "context deadline exceeded") &&
+		!strings.Contains(errStr, "timeout") &&
+		!strings.Contains(errStr, "request canceled") {
 		t.Errorf("Expected context-related error, got: %v", err)
 	}
 }
