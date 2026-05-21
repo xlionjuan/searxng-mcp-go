@@ -3,9 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"testing"
-
 	"searxng-mcp-go/internal/searxng"
+	"testing"
 )
 
 // testPerformSearch is a test helper that creates a temporary SearXNGSearcher

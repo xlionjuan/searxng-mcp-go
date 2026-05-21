@@ -6,11 +6,10 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"searxng-mcp-go/internal/searxng"
 	"strings"
 	"testing"
 	"time"
-
-	"searxng-mcp-go/internal/searxng"
 )
 
 // ============================================================================

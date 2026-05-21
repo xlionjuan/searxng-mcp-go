@@ -6,9 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"time"
-
 	"searxng-mcp-go/internal/searxng"
+	"time"
 )
 
 var (

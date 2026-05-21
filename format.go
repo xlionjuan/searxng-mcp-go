@@ -3,10 +3,9 @@ package main
 import (
 	"html"
 	"log/slog"
+	"searxng-mcp-go/internal/searxng"
 	"strconv"
 	"strings"
-
-	"searxng-mcp-go/internal/searxng"
 )
 
 const noResultsFound = "No results found."

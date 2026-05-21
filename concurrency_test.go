@@ -5,13 +5,12 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"searxng-mcp-go/internal/searxng"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"searxng-mcp-go/internal/searxng"
 )
 
 type cancelRoundTripperFunc func(*http.Request) (*http.Response, error)

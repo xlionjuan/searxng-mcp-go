@@ -7,9 +7,8 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"strings"
-
 	"searxng-mcp-go/internal/searxng"
+	"strings"
 )
 
 const (

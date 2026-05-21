@@ -4,10 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"searxng-mcp-go/internal/searxng"
 	"strings"
 	"testing"
-
-	"searxng-mcp-go/internal/searxng"
 )
 
 var (

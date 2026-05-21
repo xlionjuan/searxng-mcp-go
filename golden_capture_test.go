@@ -1,10 +1,9 @@
 package main
 
 import (
+	"searxng-mcp-go/internal/searxng"
 	"strings"
 	"testing"
-
-	"searxng-mcp-go/internal/searxng"
 )
 
 // TestFormatResultsGoldenOutput is a byte-for-byte regression test that locks

@@ -6,10 +6,9 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"searxng-mcp-go/internal/searxng"
 	"strings"
 	"testing"
-
-	"searxng-mcp-go/internal/searxng"
 )
 
 // --- unescapeIfNeeded tests ---

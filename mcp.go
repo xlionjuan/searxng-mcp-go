@@ -11,11 +11,11 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"searxng-mcp-go/internal/searxng"
 	"syscall"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"searxng-mcp-go/internal/searxng"
 )
 
 // searchInputSchema defines the JSON schema for the search tool input.
