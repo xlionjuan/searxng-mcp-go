@@ -473,7 +473,9 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 
 	if err == nil && resp != nil && (resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
 		resp, err = s.executeGETfallback(ctx, resp, postReq, postBodyStr)
-		if searchErr, ok := err.(*SearXNGError); ok {
+
+		var searchErr *SearXNGError
+		if errors.As(err, &searchErr) {
 			return nil, searchErr
 		}
 	}
@@ -549,6 +551,7 @@ func (s *SearXNGSearcher) executeGETfallback(
 	getURL := *postReq.URL
 	getURL.RawQuery = postBodyStr
 
+	//nolint:gosec // GET fallback reuses the validated SearXNG base URL and only changes query parameters.
 	getReq, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, getURL.String(), nil)
 	if reqErr != nil {
 		return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errRequestCreateFailed, reqErr))
@@ -557,6 +560,7 @@ func (s *SearXNGSearcher) executeGETfallback(
 	setBrowserHeaders(getReq)
 	s.logDebugRequest(getReq, "")
 
+	//nolint:gosec // The client redirect policy blocks fallback redirects to a different host.
 	getResp, err := s.client.Do(getReq)
 	s.logDebugResponse(getResp, err)
 

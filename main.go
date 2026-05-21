@@ -68,14 +68,14 @@ type registeredFlags struct {
 // parseArgs parses command-line arguments and returns the mode, flags, and positional arguments.
 // Any supplied arguments route the process into CLI mode; otherwise the server runs in MCP mode.
 // Flags are accepted anywhere before or after positional args, matching the current CLI behavior.
-func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []string, err error) {
+func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 	// Build the FlagSet first so we can use Lookup to determine whether a
 	// flag takes a value (via the IsBoolFlag interface) during the
 	// interleaved scan, avoiding the need to hard-code a parallel map.
 	fs, registered := registerFlags()
 	flagArgs, positionalArgs := extractPositionalArgs(args, fs)
 
-	err = fs.Parse(flagArgs)
+	err := fs.Parse(flagArgs)
 	if err != nil {
 		return false, CLIFlags{}, nil, fmt.Errorf("%w: %w", errArgumentParseFailed, err)
 	}
@@ -105,7 +105,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 		limitPtr = &defaultLimit
 	}
 
-	flags = CLIFlags{
+	flags := CLIFlags{
 		Query:      *registered.query,
 		JSON:       *registered.jsonOut,
 		Help:       *registered.help,
@@ -121,7 +121,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 		Debug:      *registered.debug,
 	}
 
-	isCLIMode = len(args) > 0 || flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
+	isCLIMode := len(args) > 0 || flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
 
 	return isCLIMode, flags, positionalArgs, nil
 }

@@ -98,31 +98,38 @@ func ValidateSearchArgs(args *SearchArgs) error {
 		return NewValidationError("args", "search arguments cannot be nil")
 	}
 
-	if err := validateQuery(args.Query); err != nil {
+	err := validateQuery(args.Query)
+	if err != nil {
 		return err
 	}
 
-	if err := validateTimeRange(args.TimeRange); err != nil {
+	err = validateTimeRange(args.TimeRange)
+	if err != nil {
 		return err
 	}
 
-	if err := validateSafesearch(args.SafeSearch); err != nil {
+	err = validateSafesearch(args.SafeSearch)
+	if err != nil {
 		return err
 	}
 
-	if err := validatePagination(args.Pageno, args.Limit); err != nil {
+	err = validatePagination(args.Pageno, args.Limit)
+	if err != nil {
 		return err
 	}
 
-	if err := validateCategories(args.Categories); err != nil {
+	err = validateCategories(args.Categories)
+	if err != nil {
 		return err
 	}
 
-	if err := validateEngines(args.Engines); err != nil {
+	err = validateEngines(args.Engines)
+	if err != nil {
 		return err
 	}
 
-	if err := validateLanguage(args); err != nil {
+	err = validateLanguage(args)
+	if err != nil {
 		return err
 	}
 
