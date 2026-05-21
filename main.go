@@ -22,9 +22,10 @@ const defaultResultLimit = 10
 
 // debugMode is set to true when --debug flag or DEBUG=1 env var is active.
 //
-// 目前無 race condition：賦值發生在 goroutine 啟動之前（parseArgs → main → runMCPMode
-// / runCLIMode 皆在單一 goroutine 中完成）。若未來需要在執行期間動態修改此變數，
-// 應改用 atomic.Bool 以確保 concurrent-safe。
+// No race condition: assignment happens before any goroutine starts
+// (parseArgs → main → runMCPMode/runCLIMode all complete in a single
+// goroutine). If runtime modification is needed in the future, use
+// atomic.Bool to guarantee concurrent safety.
 var debugMode bool
 
 var (
