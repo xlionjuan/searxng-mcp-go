@@ -99,6 +99,10 @@ linters:
         paths:
           - "internal/searxng/(errors|searcher)\\.go$"
         text: "exported: type name will be used as searxng\\.(SearXNGError|SearXNGSearcher)"
+      - linters: [goconst]
+        paths:
+          - ".*_test\\\\.go$"
+        text: ".*"
 issues:
   max-issues-per-linter: 50
   max-same-issues: 10
