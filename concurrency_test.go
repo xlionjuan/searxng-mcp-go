@@ -596,7 +596,7 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 	done := make(chan error, 1)
 
 	go func() {
-		_, err := searcher.Search(context.Background(), &searxng.SearchArgs{Query: "test"})
+		_, err = searcher.Search(context.Background(), &searxng.SearchArgs{Query: "test"})
 		done <- err
 	}()
 

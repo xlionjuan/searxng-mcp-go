@@ -207,7 +207,7 @@ func runMCPMode(flags CLIFlags, stdin io.Reader) {
 		slog.Error("failed to create searcher", "error", err)
 		os.Exit(1)
 	}
-	defer searcher.Close()
+	defer func() { _ = searcher.Close() }()
 
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "searxng-mcp-go",

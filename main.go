@@ -31,6 +31,7 @@ var (
 )
 
 // ============================================================================
+
 // CLIFlags holds parsed CLI flag values.
 type CLIFlags struct {
 	Query      string
@@ -182,7 +183,7 @@ func main() {
 	}
 
 	if isCLIMode {
-		err := runCLIMode(flags, positionalArgs)
+		err = runCLIMode(flags, positionalArgs)
 		if err != nil {
 			slog.Error("CLI error", "error", err)
 			os.Exit(1)

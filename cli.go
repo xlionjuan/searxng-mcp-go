@@ -117,7 +117,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 		Limit:      flags.Limit,
 	}
 
-	if err := searxng.ValidateSearchArgs(args); err != nil {
+	if err = searxng.ValidateSearchArgs(args); err != nil {
 		return fmt.Errorf("%w: %w", errSearchValidation, err)
 	}
 
@@ -125,7 +125,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	if err != nil {
 		return fmt.Errorf("%w: %w", errSearcherCreation, err)
 	}
-	defer searcher.Close()
+	defer func() { _ = searcher.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
