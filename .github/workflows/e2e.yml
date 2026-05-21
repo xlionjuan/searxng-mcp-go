@@ -40,6 +40,11 @@ jobs:
       - name: Build binary
         run: go build -o searxng-mcp-go .
 
+      - name: E2E test - MCP stdio
+        env:
+          E2E_MCP_BINARY: ./searxng-mcp-go
+        run: go test -tags=e2e -run TestMCPStdioE2E -count=1 .
+
       - name: E2E test — basic query
         run: |
           output=$(./searxng-mcp-go "golang tutorial" 2>&1)
