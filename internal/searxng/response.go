@@ -30,9 +30,9 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 	}
 
 	if truncated {
-		err := fmt.Errorf("%w of %d bytes", errResponseBodyTooLarge, MaxResponseBodySize)
+		bodySizeErr := fmt.Errorf("%w of %d bytes", errResponseBodyTooLarge, MaxResponseBodySize)
 
-		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), err)
+		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), bodySizeErr)
 	}
 
 	if s.debug {
