@@ -41,7 +41,7 @@ archives:
       - LICENSE
 
 checksum:
-  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  name_template: "{{ .ProjectName }}_v{{ .Version }}_checksums.txt"
 
 snapshot:
   version_template: "{{ .Version }}-next"
