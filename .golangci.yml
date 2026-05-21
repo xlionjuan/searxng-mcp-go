@@ -119,6 +119,10 @@ linters:
         paths:
           - ".*_test\\.go$"
         text: ".*"
+      - linters: [maintidx]
+        paths:
+          - ".*_test\\.go$"
+        text: ".*"
 issues:
   max-issues-per-linter: 50
   max-same-issues: 10
