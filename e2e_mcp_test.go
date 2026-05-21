@@ -38,6 +38,7 @@ func TestMCPStdioE2E(t *testing.T) {
 	cmd.Stderr = &stderr
 
 	var session *mcp.ClientSession
+	var err error
 	t.Cleanup(func() {
 		if session != nil {
 			if closeErr := session.Close(); closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
