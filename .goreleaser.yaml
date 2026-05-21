@@ -25,7 +25,7 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
+      - -X main.version=v{{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.date={{.Date}}
       - -X main.builtBy=goreleaser
@@ -44,7 +44,7 @@ checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
 
 snapshot:
-  version_template: "{{ incpatch .Version }}-devel"
+  version_template: "{{ .Version }}-next"
 
 changelog:
   sort: asc
