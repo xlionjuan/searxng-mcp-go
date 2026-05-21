@@ -24,6 +24,11 @@ type ValidationError struct {
 	Message string // Message describes the validation failure
 }
 
+// NewValidationError creates a new ValidationError.
+func NewValidationError(field, message string) *ValidationError {
+	return &ValidationError{Field: field, Message: message}
+}
+
 func (e *ValidationError) Error() string {
 	return fmt.Sprintf("validation error on %q: %s", e.Field, e.Message)
 }
@@ -36,11 +41,6 @@ func (e *ValidationError) Is(target error) bool {
 	}
 
 	return e.Field == ve.Field && e.Message == ve.Message
-}
-
-// NewValidationError creates a new ValidationError.
-func NewValidationError(field, message string) *ValidationError {
-	return &ValidationError{Field: field, Message: message}
 }
 
 // TruncateBody returns a truncated preview of body for error messages.
@@ -70,6 +70,16 @@ type SearXNGError struct {
 	UnderlyingErr   error  // The original error that caused this
 }
 
+// NewSearXNGError creates a new SearXNGError.
+func NewSearXNGError(statusCode int, contentType, body string, err error) *SearXNGError {
+	return &SearXNGError{
+		StatusCode:      statusCode,
+		RespContentType: contentType,
+		ResponseBody:    TruncateBody([]byte(body), MaxErrorDisplayChars),
+		UnderlyingErr:   err,
+	}
+}
+
 func (e *SearXNGError) Error() string {
 	if e.UnderlyingErr != nil {
 		if e.RespContentType != "" {
@@ -85,16 +95,6 @@ func (e *SearXNGError) Error() string {
 // Unwrap returns the underlying error for errors.Is/ errors.As support.
 func (e *SearXNGError) Unwrap() error {
 	return e.UnderlyingErr
-}
-
-// NewSearXNGError creates a new SearXNGError.
-func NewSearXNGError(statusCode int, contentType, body string, err error) *SearXNGError {
-	return &SearXNGError{
-		StatusCode:      statusCode,
-		RespContentType: contentType,
-		ResponseBody:    TruncateBody([]byte(body), MaxErrorDisplayChars),
-		UnderlyingErr:   err,
-	}
 }
 
 // HTTPStatusError creates a SearXNGError from an HTTP status code.

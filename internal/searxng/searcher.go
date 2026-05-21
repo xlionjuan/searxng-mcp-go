@@ -114,6 +114,44 @@ func (s *SearXNGSearcher) Close() error {
 	return nil
 }
 
+// NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
+func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
+	if cfg == nil {
+		return nil, errSearcherConfigRequired
+	}
+
+	baseURL := cfg.SearXNGURL
+	if err := validateBaseURL(baseURL); err != nil {
+		return nil, fmt.Errorf("newSearXNGSearcher: %w", err)
+	}
+
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", errSearcherURLParseInternal, err)
+	}
+
+	if parsed.Scheme == "http" && !isPrivateHost(parsed.Host) {
+		slog.Warn("Using HTTP for non-private host. Search queries may be transmitted in clear text. Search results could be intercepted and modified by a MITM attacker")
+	}
+
+	client := cfg.HTTPClient
+	if client != nil {
+		client = withSearchRedirectPolicy(client)
+	} else {
+		if cfg.Timeout > 0 {
+			client = newHTTPClient(cfg.Timeout)
+		} else {
+			client = getDefaultHTTPClient()
+		}
+	}
+
+	return &SearXNGSearcher{
+		client:  client,
+		baseURL: baseURL,
+		debug:   debug,
+	}, nil
+}
+
 // validateBaseURL checks that the baseURL is valid and returns an error if not.
 func validateBaseURL(baseURL string) error {
 	if baseURL == "" {
@@ -254,44 +292,6 @@ func isPrivateHost(host string) bool {
 	}
 
 	return false
-}
-
-// NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
-func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
-	if cfg == nil {
-		return nil, errSearcherConfigRequired
-	}
-
-	baseURL := cfg.SearXNGURL
-	if err := validateBaseURL(baseURL); err != nil {
-		return nil, fmt.Errorf("newSearXNGSearcher: %w", err)
-	}
-
-	parsed, err := url.Parse(baseURL)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errSearcherURLParseInternal, err)
-	}
-
-	if parsed.Scheme == "http" && !isPrivateHost(parsed.Host) {
-		slog.Warn("Using HTTP for non-private host. Search queries may be transmitted in clear text. Search results could be intercepted and modified by a MITM attacker")
-	}
-
-	client := cfg.HTTPClient
-	if client != nil {
-		client = withSearchRedirectPolicy(client)
-	} else {
-		if cfg.Timeout > 0 {
-			client = newHTTPClient(cfg.Timeout)
-		} else {
-			client = getDefaultHTTPClient()
-		}
-	}
-
-	return &SearXNGSearcher{
-		client:  client,
-		baseURL: baseURL,
-		debug:   debug,
-	}, nil
 }
 
 // Search is the external API entry point that delegates to the internal performSearch method.

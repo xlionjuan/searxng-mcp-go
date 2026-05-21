@@ -11,7 +11,7 @@ import (
 // testPerformSearch is a test helper that creates a temporary SearXNGSearcher
 // from the provided Config and delegates to its Search method.
 // It is only available in tests.
-func testPerformSearch(t testing.TB, ctx context.Context, cfg *searxng.Config, args *searxng.SearchArgs) (*searxng.SearchResponse, error) {
+func testPerformSearch(t testing.TB, ctx context.Context, cfg *searxng.Config, args *searxng.SearchArgs) (*searxng.SearchResponse, error) { //nolint:revive // context as second arg is intentional for test helper pattern
 	if cfg == nil {
 		return nil, searxng.NewSearXNGError(0, "", "", errTestConfigRequired)
 	}

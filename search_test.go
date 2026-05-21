@@ -50,7 +50,7 @@ func TestSearch_Success(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			_ = r.ParseForm()
+			_ = r.ParseForm() //nolint:gosec // test handler parses form
 			capturedQuery = r.PostForm
 		} else {
 			capturedQuery = r.URL.Query()
@@ -154,7 +154,7 @@ func TestSearch_TimeRangeParam(t *testing.T) {
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodPost {
-					capturedTimeRange = r.PostFormValue("time_range")
+					capturedTimeRange = r.PostFormValue("time_range") //nolint:gosec // test reads form value
 				} else {
 					capturedTimeRange = r.URL.Query().Get("time_range")
 				}
@@ -200,7 +200,7 @@ func TestSearch_DefaultLanguage(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			capturedLanguage = r.PostFormValue("language")
+			capturedLanguage = r.PostFormValue("language") //nolint:gosec // test reads form value
 		} else {
 			capturedLanguage = r.URL.Query().Get("language")
 		}
@@ -258,7 +258,7 @@ func TestSearch_OptionalParams(t *testing.T) {
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodPost {
-					_ = r.ParseForm()
+					_ = r.ParseForm() //nolint:gosec // test handler parses form
 					capturedParams = r.PostForm
 				} else {
 					capturedParams = r.URL.Query()
@@ -549,7 +549,7 @@ func TestSearch_QueryEncoding(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			capturedQuery = r.PostFormValue("q")
+			capturedQuery = r.PostFormValue("q") //nolint:gosec // test reads form value
 		} else {
 			capturedQuery = r.URL.Query().Get("q")
 		}
@@ -1112,7 +1112,7 @@ func TestTypedAnswerFixturesSurviveDeduplication(t *testing.T) {
 		t.Run(fixture, func(t *testing.T) {
 			t.Parallel()
 
-			body, err := os.ReadFile(filepath.Join("testdata", fixture))
+			body, err := os.ReadFile(filepath.Join("testdata", fixture)) //nolint:gosec // test reads fixture files
 			if err != nil {
 				t.Fatalf("ReadFile() error = %v", err)
 			}

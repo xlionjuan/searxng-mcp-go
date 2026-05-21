@@ -258,6 +258,7 @@ func NewSearchToolHandler(searcher searchTool) func(context.Context, *mcp.CallTo
 
 		resp, err := searcher.Search(ctx, &args)
 		if err != nil {
+			//nolint:nilerr // MCP handler packs error into tool result
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Search error: " + err.Error()},
@@ -268,6 +269,7 @@ func NewSearchToolHandler(searcher searchTool) func(context.Context, *mcp.CallTo
 
 		jsonBytes, err := json.Marshal(resp)
 		if err != nil {
+			//nolint:nilerr // MCP handler packs error into tool result
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "json marshal error: " + err.Error()},

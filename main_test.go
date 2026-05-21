@@ -66,7 +66,7 @@ func TestPrintCLIHelp(t *testing.T) {
 func buildTestBinary(t *testing.T) (string, func()) {
 	t.Helper()
 	binPath := filepath.Join(t.TempDir(), "searxng-mcp-go")
-	cmd := exec.Command("go", "build", "-o", binPath, ".")
+	cmd := exec.Command("go", "build", "-o", binPath, ".") //nolint:gosec // test helper builds binary
 
 	cmd.Dir = "."
 
@@ -86,7 +86,7 @@ func TestValidationExitCode(t *testing.T) {
 	binPath, cleanup := buildTestBinary(t)
 	defer cleanup()
 
-	cmd := exec.Command(binPath, "--json", "--searxng-url", "http://localhost:9999", "--pageno", "0", "test")
+	cmd := exec.Command(binPath, "--json", "--searxng-url", "http://localhost:9999", "--pageno", "0", "test") //nolint:gosec // test runs built binary
 	cmd.Dir = "."
 
 	out, err := cmd.CombinedOutput()
