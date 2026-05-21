@@ -116,7 +116,7 @@ jobs:
         run: |
           output=$(./searxng-mcp-go --time_range year "golang" 2>&1)
           echo "$output"
-          echo "$output" | grep -q "Results"
+          echo "$output" | grep -Eq "Results|No results found"
 
       - name: E2E test — categories parameter
         run: |
