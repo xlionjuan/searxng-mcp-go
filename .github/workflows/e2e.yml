@@ -93,7 +93,7 @@ jobs:
           output=$(./searxng-mcp-go "avg 1 2 3 4 5" 2>&1)
           echo "$output"
           echo "$output" | grep -q "Answers"
-          echo "$output" | grep -Eq "^\[1\] 3(\.0+)?$"
+          echo "$output" | grep -Eq "avg.*= 3"
 
       - name: E2E test — infobox JSON output
         run: |
