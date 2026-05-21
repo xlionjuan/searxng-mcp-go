@@ -110,6 +110,7 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	}
 
 	baseURL := cfg.SearXNGURL
+
 	err := validateBaseURL(baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("newSearXNGSearcher: %w", err)

@@ -68,8 +68,10 @@ func TestPrintCLIHelp(t *testing.T) {
 func buildTestBinary(t *testing.T) (string, func()) {
 	t.Helper()
 	binPath := filepath.Join(t.TempDir(), "searxng-mcp-go")
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
 	cmd := exec.CommandContext(ctx, "go", "build", "-o", binPath, ".") //nolint:gosec // test helper builds binary
 
 	cmd.Dir = "."
