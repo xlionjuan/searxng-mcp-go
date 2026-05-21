@@ -46,70 +46,82 @@ const sampleSearXNGJSON = `{
     {
       "title": "The Go Programming Language",
       "url": "https://go.dev/",
-      "content": "Go is an open source programming language supported by Google with built-in concurrency and a robust standard library.",
+      "content": "` + `Go is an open source programming language supported by Google with built-in concurrency ` +
+	`and a robust standard library.` + `",
       "engine": "google",
       "publishedDate": "2024-01-15"
     },
     {
       "title": "Go Tutorial - W3Schools",
       "url": "https://www.w3schools.com/go/",
-      "content": "Learn Go programming with examples. Go is a statically typed, compiled language designed at Google. Posted 3 hours ago by community.",
+      "content": "` + `Learn Go programming with examples. Go is a statically typed, compiled language designed ` +
+	`at Google. Posted 3 hours ago by community.` + `",
       "engine": "google"
     },
     {
       "title": "Getting Started with Go - Go by Example",
       "url": "https://gobyexample.com/",
-      "content": "Go by Example is a hands-on introduction to Go using annotated example programs. Published yesterday by maintainers.",
+      "content": "` + `Go by Example is a hands-on introduction to Go using annotated example programs. ` +
+	`Published yesterday by maintainers.` + `",
       "engine": "bing"
     },
     {
       "title": "Go Downloads - golang.org",
       "url": "https://go.dev/dl/",
-      "content": "Download Go binaries for your platform. The latest release includes security updates and performance improvements.",
+      "content": "` + `Download Go binaries for your platform. The latest release includes security updates ` +
+	`and performance improvements.` + `",
       "engine": "google",
       "publishedDate": "2024-03-01"
     },
     {
       "title": "Effective Go - golang.org",
       "url": "https://go.dev/doc/effective_go",
-      "content": "Effective Go gives tips for writing clear, idiomatic Go code. If you're new to Go, read the tutorial and then come back here.",
+      "content": "` + `Effective Go gives tips for writing clear, idiomatic Go code. If you're new to Go, ` +
+	`read the tutorial and then come back here.` + `",
       "engine": "google"
     },
     {
       "title": "A Tour of Go",
       "url": "https://go.dev/tour/",
-      "content": "An interactive introduction to Go. Learn the basics of Go through examples. 2 days ago we added new concurrency examples.",
+      "content": "` + `An interactive introduction to Go. Learn the basics of Go through examples. ` +
+	`2 days ago we added new concurrency examples.` + `",
       "engine": "duckduckgo"
     },
     {
       "title": "Go Modules Reference - golang.org",
       "url": "https://go.dev/ref/mod",
-      "content": "A module is a collection of related Go packages that are versioned together as a single unit. Modules record precise dependency requirements.",
+      "content": "` + `A module is a collection of related Go packages that are versioned together as a single ` +
+	`unit. Modules record precise dependency requirements.` + `",
       "engine": "google"
     },
     {
       "title": "GitHub - golang/go",
       "url": "https://github.com/golang/go",
-      "content": "The Go programming language source repository. Contribute to golang/go development by creating an account on GitHub.",
+      "content": "` + `The Go programming language source repository. Contribute to golang/go development ` +
+	`by creating an account on GitHub.` + `",
       "engine": "google",
       "publishedDate": "2024-02-20"
     },
     {
       "title": "Go (programming language) - Wikipedia",
       "url": "https://en.wikipedia.org/wiki/Go_(programming_language)",
-      "content": "Go is a statically typed, compiled high-level programming language designed at Google by Robert Griesemer, Rob Pike, and Ken Thompson.",
+      "content": "` + `Go is a statically typed, compiled high-level programming language designed at Google ` +
+	`by Robert Griesemer, Rob Pike, and Ken Thompson.` + `",
       "engine": "wikipedia"
     },
     {
       "title": "Learn Go in Y Minutes",
       "url": "https://learnxinyminutes.com/docs/go/",
-      "content": "Go was created out of the need to get work done. It's a pragmatic language that lets you write code quickly and efficiently.",
+      "content": "` + `Go was created out of the need to get work done. It's a pragmatic language that lets ` +
+	`you write code quickly and efficiently.` + `",
       "engine": "duckduckgo"
     }
   ],
   "answers": [
     {
-      "answer": "Go is a statically typed, compiled programming language designed at Google by Robert Griesemer, Rob Pike, and Ken Thompson. It provides garbage collection, CSP-style concurrency, and structural typing. More at Wikipedia",
+      "answer": "` + `Go is a statically typed, compiled programming language designed at Google by Robert ` +
+	`Griesemer, Rob Pike, and Ken Thompson. It provides garbage collection, CSP-style concurrency, ` +
+	`and structural typing. More at Wikipedia` + `",
       "engine": "duckduckgo",
       "template": "wikipedia"
     }
@@ -117,7 +129,9 @@ const sampleSearXNGJSON = `{
   "infoboxes": [
     {
       "infobox": "Go (programming language)",
-      "content": "Go is a statically typed, compiled programming language designed at Google by Robert Griesemer, Rob Pike, and Ken Thompson. It provides garbage collection, CSP-style concurrency, and structural typing.",
+      "content": "` + `Go is a statically typed, compiled programming language designed at Google by Robert ` +
+	`Griesemer, Rob Pike, and Ken Thompson. It provides garbage collection, CSP-style concurrency, ` +
+	`and structural typing.` + `",
       "attributes": [
         {"label": "Paradigm", "value": "Multi-paradigm: concurrent, functional, imperative, object-oriented"},
         {"label": "Designed by", "value": "Robert Griesemer, Rob Pike, Ken Thompson"},
@@ -379,14 +393,22 @@ func BenchmarkUnescapeIfNeeded(b *testing.B) {
 
 func BenchmarkDeduplicateAnswers(b *testing.B) {
 	answers := []searxng.Answer{
-		{Answer: "Go is a statically typed, compiled programming language designed at Google. It provides garbage collection, CSP-style concurrency, and structural typing. More at Wikipedia", Engine: "duckduckgo"},
+		{
+			Answer: "Go is a statically typed, compiled programming language designed at Google. " +
+				"It provides garbage collection, CSP-style concurrency, and structural typing. More at Wikipedia",
+			Engine: "duckduckgo",
+		},
 		{Answer: "42", Engine: "calculator"},
 		{Answer: "192.168.1.1", Engine: "ip_plugin"},
 	}
 	infoboxes := []searxng.Infobox{
 		{
 			Infobox: "Go",
-			Content: strings.Repeat("Go is a statically typed, compiled programming language designed at Google. It provides garbage collection, CSP-style concurrency, and structural typing. ", 10),
+			Content: strings.Repeat(
+				"Go is a statically typed, compiled programming language designed at Google. "+
+					"It provides garbage collection, CSP-style concurrency, and structural typing. ",
+				10,
+			),
 		},
 	}
 
@@ -515,10 +537,22 @@ func makeEntityResults(n int) *searxng.SearchResponse {
 	for i := range n {
 		e := entities[i%len(entities)]
 		results[i] = searxng.SearchResult{
-			Title:   fmt.Sprintf("A %s B %s C %s D", e, entities[(i+1)%len(entities)], entities[(i+2)%len(entities)]),
-			URL:     fmt.Sprintf("https://example.com/entity/%d", i),
-			Content: fmt.Sprintf("Content with %s symbols & %s more %s entities %s here %s end.", e, entities[(i+1)%len(entities)], entities[(i+2)%len(entities)], entities[(i+3)%len(entities)], entities[(i+4)%len(entities)]),
-			Engine:  "google",
+			Title: fmt.Sprintf(
+				"A %s B %s C %s D",
+				e,
+				entities[(i+1)%len(entities)],
+				entities[(i+2)%len(entities)],
+			),
+			URL: fmt.Sprintf("https://example.com/entity/%d", i),
+			Content: fmt.Sprintf(
+				"Content with %s symbols & %s more %s entities %s here %s end.",
+				e,
+				entities[(i+1)%len(entities)],
+				entities[(i+2)%len(entities)],
+				entities[(i+3)%len(entities)],
+				entities[(i+4)%len(entities)],
+			),
+			Engine: "google",
 		}
 	}
 

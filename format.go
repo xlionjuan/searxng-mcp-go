@@ -130,8 +130,10 @@ func logUnresponsiveEngines(resp *searxng.SearchResponse) {
 		return
 	}
 
+	const unresponsiveEngineEntryFields = 2
+
 	for _, entry := range resp.UnresponsiveEngines {
-		if len(entry) < 2 {
+		if len(entry) < unresponsiveEngineEntryFields {
 			slog.Debug("unresponsive engine", "entry", entry)
 
 			continue

@@ -34,16 +34,63 @@ var (
 	errErrorBodyTooLarge        = errors.New("error response body exceeded maximum size limit")
 )
 
+const (
+	transportDialTimeout           = 10 * time.Second
+	transportKeepAlive             = 30 * time.Second
+	transportTLSHandshakeTimeout   = 10 * time.Second
+	transportResponseHeaderTimeout = 30 * time.Second
+	transportIdleConnTimeout       = 90 * time.Second
+	transportMaxIdleConns          = 100
+	transportMaxIdleConnsPerHost   = 10
+	maxSearchRedirects             = 10
+)
+
+const (
+	ipv4ClassAPrivateOctet       = 10
+	ipv4Private172FirstOctet     = 172
+	ipv4Private172SecondMin      = 16
+	ipv4Private172SecondMax      = 31
+	ipv4Private192FirstOctet     = 192
+	ipv4Private192SecondOctet    = 168
+	ipv4LoopbackFirstOctet       = 127
+	ipv4LinkLocalFirstOctet      = 169
+	ipv4LinkLocalSecondOctet     = 254
+	ipv4CurrentNetworkFirstOctet = 0
+	ipv4SharedAddressFirstOctet  = 100
+	ipv4SharedAddressMask        = 0xc0
+	ipv4SharedAddressValue       = 0x40
+	ipv4IETFProtocolSecondOctet  = 0
+	ipv4IETFProtocolThirdOctet   = 0
+	ipv4DocumentationThirdOctet  = 2
+	ipv4BenchmarkFirstOctet      = 198
+	ipv4BenchmarkSecondMin       = 18
+	ipv4BenchmarkSecondMax       = 19
+	ipv4ExampleSecondOctet       = 51
+	ipv4ExampleThirdOctet        = 100
+	ipv4Documentation203First    = 203
+	ipv4Documentation203Second   = 0
+	ipv4Documentation203Third    = 113
+	ipv4MulticastFirstMin        = 224
+	ipv6UniqueLocalMask          = 0xfe
+	ipv6UniqueLocalValue         = 0xfc
+	ipv6LinkLocalFirstOctet      = 0xfe
+	ipv6LinkLocalMask            = 0xc0
+	ipv6LinkLocalValue           = 0x80
+)
+
 func newHTTPClient(timeout time.Duration) *http.Client {
 	return &http.Client{
 		Timeout: timeout,
 		Transport: &http.Transport{
-			DialContext:           (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ResponseHeaderTimeout: 30 * time.Second,
-			IdleConnTimeout:       90 * time.Second,
-			MaxIdleConns:          100,
-			MaxIdleConnsPerHost:   10,
+			DialContext: (&net.Dialer{
+				Timeout:   transportDialTimeout,
+				KeepAlive: transportKeepAlive,
+			}).DialContext,
+			TLSHandshakeTimeout:   transportTLSHandshakeTimeout,
+			ResponseHeaderTimeout: transportResponseHeaderTimeout,
+			IdleConnTimeout:       transportIdleConnTimeout,
+			MaxIdleConns:          transportMaxIdleConns,
+			MaxIdleConnsPerHost:   transportMaxIdleConnsPerHost,
 		},
 		CheckRedirect: enforceSearchRedirectPolicy,
 	}
@@ -57,7 +104,7 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 		}
 	}
 
-	if len(via) >= 10 {
+	if len(via) >= maxSearchRedirects {
 		return errTooManyRedirects
 	}
 
@@ -90,7 +137,7 @@ func withSearchRedirectPolicy(client *http.Client) *http.Client {
 // getDefaultHTTPClient returns the shared default HTTP client.
 func getDefaultHTTPClient() *http.Client {
 	defaultHTTPClientOnce.Do(func() {
-		defaultHTTPClient = newHTTPClient(30 * time.Second)
+		defaultHTTPClient = newHTTPClient(DefaultTimeout)
 	})
 
 	return defaultHTTPClient
@@ -229,55 +276,67 @@ func isPrivateHost(host string) bool {
 	}
 
 	if ip4 := ip.To4(); ip4 != nil {
-		if ip4[0] == 10 {
+		if ip4[0] == ipv4ClassAPrivateOctet {
 			return true
 		}
 
-		if ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31 {
+		if ip4[0] == ipv4Private172FirstOctet &&
+			ip4[1] >= ipv4Private172SecondMin &&
+			ip4[1] <= ipv4Private172SecondMax {
 			return true
 		}
 
-		if ip4[0] == 192 && ip4[1] == 168 {
+		if ip4[0] == ipv4Private192FirstOctet && ip4[1] == ipv4Private192SecondOctet {
 			return true
 		}
 
-		if ip4[0] == 127 {
+		if ip4[0] == ipv4LoopbackFirstOctet {
 			return true
 		}
 
-		if ip4[0] == 169 && ip4[1] == 254 {
+		if ip4[0] == ipv4LinkLocalFirstOctet && ip4[1] == ipv4LinkLocalSecondOctet {
 			return true
 		}
 
-		if ip4[0] == 0 {
+		if ip4[0] == ipv4CurrentNetworkFirstOctet {
 			return true
 		}
 
-		if ip4[0] == 100 && ip4[1]&0xc0 == 0x40 {
+		if ip4[0] == ipv4SharedAddressFirstOctet &&
+			ip4[1]&ipv4SharedAddressMask == ipv4SharedAddressValue {
 			return true
 		}
 
-		if ip4[0] == 192 && ip4[1] == 0 && ip4[2] == 0 {
+		if ip4[0] == ipv4Private192FirstOctet &&
+			ip4[1] == ipv4IETFProtocolSecondOctet &&
+			ip4[2] == ipv4IETFProtocolThirdOctet {
 			return true
 		}
 
-		if ip4[0] == 192 && ip4[1] == 0 && ip4[2] == 2 {
+		if ip4[0] == ipv4Private192FirstOctet &&
+			ip4[1] == ipv4IETFProtocolSecondOctet &&
+			ip4[2] == ipv4DocumentationThirdOctet {
 			return true
 		}
 
-		if ip4[0] == 198 && (ip4[1] == 18 || ip4[1] == 19) {
+		if ip4[0] == ipv4BenchmarkFirstOctet &&
+			(ip4[1] == ipv4BenchmarkSecondMin || ip4[1] == ipv4BenchmarkSecondMax) {
 			return true
 		}
 
-		if ip4[0] == 198 && ip4[1] == 51 && ip4[2] == 100 {
+		if ip4[0] == ipv4BenchmarkFirstOctet &&
+			ip4[1] == ipv4ExampleSecondOctet &&
+			ip4[2] == ipv4ExampleThirdOctet {
 			return true
 		}
 
-		if ip4[0] == 203 && ip4[1] == 0 && ip4[2] == 113 {
+		if ip4[0] == ipv4Documentation203First &&
+			ip4[1] == ipv4Documentation203Second &&
+			ip4[2] == ipv4Documentation203Third {
 			return true
 		}
 
-		if ip4[0] >= 224 {
+		if ip4[0] >= ipv4MulticastFirstMin {
 			return true
 		}
 
@@ -288,11 +347,11 @@ func isPrivateHost(host string) bool {
 		return true
 	}
 
-	if ip[0]&0xfe == 0xfc {
+	if ip[0]&ipv6UniqueLocalMask == ipv6UniqueLocalValue {
 		return true
 	}
 
-	if ip[0] == 0xfe && ip[1]&0xc0 == 0x80 {
+	if ip[0] == ipv6LinkLocalFirstOctet && ip[1]&ipv6LinkLocalMask == ipv6LinkLocalValue {
 		return true
 	}
 
@@ -412,8 +471,8 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 
 	if s.debug {
 		bodyPreview := postBodyStr
-		if len(bodyPreview) > 500 {
-			bodyPreview = bodyPreview[:500]
+		if len(bodyPreview) > DebugBodyPreviewChars {
+			bodyPreview = bodyPreview[:DebugBodyPreviewChars]
 		}
 
 		slog.Debug(
@@ -490,8 +549,8 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 
 		if s.debug {
 			errBodyPreview := string(body)
-			if len(errBodyPreview) > 500 {
-				errBodyPreview = errBodyPreview[:500]
+			if len(errBodyPreview) > DebugBodyPreviewChars {
+				errBodyPreview = errBodyPreview[:DebugBodyPreviewChars]
 			}
 
 			slog.Debug(

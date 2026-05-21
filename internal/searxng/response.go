@@ -37,8 +37,8 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 
 	if s.debug {
 		bodyPreview := string(body)
-		if len(bodyPreview) > 500 {
-			bodyPreview = bodyPreview[:500]
+		if len(bodyPreview) > DebugBodyPreviewChars {
+			bodyPreview = bodyPreview[:DebugBodyPreviewChars]
 		}
 
 		slog.Debug(

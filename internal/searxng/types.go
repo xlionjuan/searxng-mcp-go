@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const maxWeatherSummaryParts = 3
+
 // Config holds the SearXNG configuration.
 type Config struct {
 	SearXNGURL string
@@ -19,7 +21,7 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		SearXNGURL: "",
-		Timeout:    30 * time.Second,
+		Timeout:    DefaultTimeout,
 	}
 }
 
@@ -190,7 +192,7 @@ func (a *Answer) weatherFallback() string {
 		return summary
 	}
 
-	parts := make([]string, 0, 3)
+	parts := make([]string, 0, maxWeatherSummaryParts)
 	if location := strings.TrimSpace(current.Location.Name); location != "" {
 		parts = append(parts, location)
 	}

@@ -91,7 +91,12 @@ func TestValidateSearchArgs_Language(t *testing.T) {
 	})
 
 	t.Run("valid language codes", func(t *testing.T) {
-		for _, lang := range []string{"en", "EN", "zh-tw", "ja", "en-US", "pt-BR", "sr-Latn", "sr-Latn-RS", "es-419", "ZH-hant", "auto", "AUTO", "Auto"} {
+		languages := []string{
+			"en", "EN", "zh-tw", "ja", "en-US", "pt-BR", "sr-Latn",
+			"sr-Latn-RS", "es-419", "ZH-hant", "auto", "AUTO", "Auto",
+		}
+
+		for _, lang := range languages {
 			t.Run(lang, func(t *testing.T) {
 				t.Parallel()
 				assertValidSearchArgs(t, &searxng.SearchArgs{Query: "test", Language: lang})

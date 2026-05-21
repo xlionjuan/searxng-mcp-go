@@ -71,7 +71,7 @@ func parseArgs(args []string) (isCLIMode bool, flags CLIFlags, positionalArgs []
 	categories := fs.String("categories", "", "Comma-separated list of categories to search")
 	engines := fs.String("engines", "", "Comma-separated list of search engines to use")
 	pageno := fs.Int("pageno", 1, "Page number for pagination")
-	limit := fs.Int("limit", 10, "Maximum number of results to return (1-20)")
+	limit := fs.Int("limit", defaultResultLimit, "Maximum number of results to return (1-20)")
 	debug := fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)")
 
 	// Interleaved scan: extract flag tokens (with their values) while

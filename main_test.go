@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"go.uber.org/goleak"
+
 	"searxng-mcp-go/internal/searxng"
 )
 

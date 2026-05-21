@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"searxng-mcp-go/internal/searxng"
 )
 

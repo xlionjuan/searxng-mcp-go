@@ -121,6 +121,14 @@ formatters:
     - gofmt
     - gofumpt
     - goimports
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(searxng-mcp-go)
+    gofumpt:
+      module-path: searxng-mcp-go
   exclusions:
     generated: lax
     paths:

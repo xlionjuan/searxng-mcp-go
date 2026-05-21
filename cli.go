@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"time"
 
 	"searxng-mcp-go/internal/searxng"
 )
@@ -129,7 +128,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 
 	defer func() { _ = searcher.Close() }()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), searxng.DefaultTimeout)
 	defer cancel()
 
 	resp, err := searcher.Search(ctx, args)

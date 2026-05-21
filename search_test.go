@@ -111,7 +111,24 @@ func TestSearch_PreservesUnresponsiveEngines(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"query":"test","number_of_results":1,"results":[{"title":"Result 1","url":"https://example.com/1","content":"Content 1","engine":"google"}],"suggestions":[],"unresponsive_engines":[["brave","Suspended:\" too many \"requests"],["startpage","Suspended:\" \"CAPTCHA"]]}`))
+		_, _ = w.Write(mustMarshalJSON(t, searxng.SearchResponse{
+			Query:           "test",
+			NumberOfResults: 1,
+			Results: []searxng.SearchResult{
+				{
+					Title:   "Result 1",
+					URL:     "https://example.com/1",
+					Content: "Content 1",
+					Engine:  "google",
+				},
+			},
+			Suggestions: []string{},
+			UnresponsiveEngines: [][]string{
+				{"brave", `Suspended:" too many "requests`},
+				{"startpage", `Suspended:" "CAPTCHA`},
+			},
+			Debug: true,
+		}))
 	}))
 	defer server.Close()
 
@@ -394,7 +411,10 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 	t.Run("oversized success body", func(t *testing.T) {
 		t.Parallel()
 
-		body := `{"query":"test","number_of_results":1,"results":[{"title":"Result","url":"https://example.com","content":"` + strings.Repeat("s", searxng.MaxResponseBodySize+1) + `","engine":"google"}],"suggestions":[]}`
+		body := `{"query":"test","number_of_results":1,"results":[{"title":"Result",` +
+			`"url":"https://example.com","content":"` +
+			strings.Repeat("s", searxng.MaxResponseBodySize+1) +
+			`","engine":"google"}],"suggestions":[]}`
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			hj, ok := w.(http.Hijacker)
@@ -1033,7 +1053,8 @@ func TestDeduplicateAnswers_DDGSuffixMoreAtWikipedia(t *testing.T) {
 
 	// DuckDuckGo appends "More at Wikipedia" to the answer, which breaks
 	// the old Contains(answer, infobox) check. Prefix matching fixes this.
-	infoboxContent := "Apple Inc. is an American multinational technology company headquartered in Cupertino, California. Apple is one of the Big Tech companies, alongside Amazon, Google, Meta, and Microsoft."
+	infoboxContent := "Apple Inc. is an American multinational technology company headquartered in Cupertino, " +
+		"California. Apple is one of the Big Tech companies, alongside Amazon, Google, Meta, and Microsoft."
 	answer := infoboxContent + " More at Wikipedia"
 	answers := []searxng.Answer{
 		{Answer: answer, Engine: "duckduckgo"},

@@ -1,6 +1,11 @@
 // Package searxng provides a client library for interacting with SearXNG search instances.
 package searxng
 
+import "time"
+
+// DefaultTimeout is the default timeout for SearXNG HTTP requests.
+const DefaultTimeout = 30 * time.Second
+
 // MaxContentRunes is the maximum number of UTF-8 runes in content truncation.
 const MaxContentRunes = 4000
 
@@ -15,3 +20,6 @@ const MaxErrorDisplayChars = 200
 
 // ResultSizeEstimate is an empirical estimate of bytes per result for pre-allocating the response buffer.
 const ResultSizeEstimate = 200
+
+// DebugBodyPreviewChars is the maximum number of characters logged for debug body previews.
+const DebugBodyPreviewChars = 500

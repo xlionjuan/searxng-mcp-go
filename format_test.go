@@ -63,14 +63,25 @@ func TestFormatResults(t *testing.T) {
 			resp: &searxng.SearchResponse{
 				Query: "sha512 hello",
 				Answers: []searxng.Answer{
-					{Answer: "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043", Engine: "plugin:hash_plugin"},
+					{
+						Answer: "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca" +
+							"72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043",
+						Engine: "plugin:hash_plugin",
+					},
 				},
 				Results: []searxng.SearchResult{
 					{Title: "Hash Result", URL: "https://example.com", Content: "Some content", Engine: "google"},
 				},
 				NumberOfResults: 1,
 			},
-			wantContains: []string{"=== Answers ===", "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043", "Engine: plugin:hash_plugin", "=== Results ===", "Hash Result"},
+			wantContains: []string{
+				"=== Answers ===",
+				"9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca" +
+					"72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043",
+				"Engine: plugin:hash_plugin",
+				"=== Results ===",
+				"Hash Result",
+			},
 		},
 		{
 			name: "multiple answers",
@@ -124,7 +135,15 @@ func TestFormatResults(t *testing.T) {
 				},
 				NumberOfResults: 1,
 			},
-			wantContains: []string{"=== Answers ===", "192.168.1.1", "=== Infoboxes ===", "Apple", "=== Results ===", "Found 1 results", "Apple - Fruit"},
+			wantContains: []string{
+				"=== Answers ===",
+				"192.168.1.1",
+				"=== Infoboxes ===",
+				"Apple",
+				"=== Results ===",
+				"Found 1 results",
+				"Apple - Fruit",
+			},
 		},
 		{
 			name: "no answers when empty",

@@ -3,6 +3,7 @@ package searxng
 import (
 	"errors"
 	"fmt"
+	"net/http"
 )
 
 var (
@@ -104,23 +105,23 @@ func HTTPStatusError(statusCode int, contentType string, body []byte) error {
 	var err error
 
 	switch statusCode {
-	case 400:
+	case http.StatusBadRequest:
 		err = errBadRequest
-	case 401:
+	case http.StatusUnauthorized:
 		err = errUnauthorized
-	case 403:
+	case http.StatusForbidden:
 		err = errForbidden
-	case 404:
+	case http.StatusNotFound:
 		err = errNotFound
-	case 429:
+	case http.StatusTooManyRequests:
 		err = errRateLimited
-	case 500:
+	case http.StatusInternalServerError:
 		err = errInternalServerError
-	case 502:
+	case http.StatusBadGateway:
 		err = errBadGateway
-	case 503:
+	case http.StatusServiceUnavailable:
 		err = errServiceUnavailable
-	case 504:
+	case http.StatusGatewayTimeout:
 		err = errGatewayTimeout
 	default:
 		err = errUnexpectedStatus
