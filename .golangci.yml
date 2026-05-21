@@ -60,6 +60,11 @@ linters:
       - third_party$
       - builtin$
       - examples$
+    rules:
+      - linters: [exhaustruct]
+        paths:
+          - ".*_test\\.go$"
+        text: ".*"
 issues:
   max-issues-per-linter: 50
   max-same-issues: 10
