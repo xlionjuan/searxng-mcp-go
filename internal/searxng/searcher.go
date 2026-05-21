@@ -483,9 +483,9 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		body, readErr := io.ReadAll(io.LimitReader(resp.Body, MaxErrorBodySize))
 		if readErr != nil {
 			return nil, NewSearXNGError(
-			resp.StatusCode, resp.Header.Get("Content-Type"), "",
-			fmt.Errorf("failed to read error response body: %w", readErr),
-		)
+				resp.StatusCode, resp.Header.Get("Content-Type"), "",
+				fmt.Errorf("failed to read error response body: %w", readErr),
+			)
 		}
 
 		if s.debug {

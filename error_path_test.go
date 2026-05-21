@@ -6,10 +6,11 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"searxng-mcp-go/internal/searxng"
 	"strings"
 	"testing"
 	"time"
+
+	"searxng-mcp-go/internal/searxng"
 )
 
 // ============================================================================
@@ -197,8 +198,7 @@ func TestSearch_UnexpectedContentType(t *testing.T) {
 	}
 
 	if got, want := err.Error(),
-		"searxng error (status 200) - content-type text/plain: unexpected content type: expected application/json";
-		got != want {
+		"searxng error (status 200) - content-type text/plain: unexpected content type: expected application/json"; got != want {
 		t.Fatalf("error = %q, want %q", got, want)
 	}
 }

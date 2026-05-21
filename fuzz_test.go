@@ -38,7 +38,8 @@ func FuzzValidateSearchArgs(f *testing.F) {
 	f.Add("   ", "en", int64(0), "", "", "", int64(1))                                            // whitespace-only query
 
 	f.Fuzz(func(t *testing.T, query string, language string, safeSearch int64,
-		timeRange string, categories string, engines string, pageno int64) {
+		timeRange string, categories string, engines string, pageno int64,
+	) {
 		// Clamp safesearch to a reasonable range for the seed — fuzz can still overflow
 		ss := int(safeSearch)
 		if safeSearch < -1000000 {

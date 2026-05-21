@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"searxng-mcp-go/internal/searxng"
 	"strings"
 	"testing"
 	"time"
+
+	"searxng-mcp-go/internal/searxng"
 )
 
 const testAnswerBody = "answer"

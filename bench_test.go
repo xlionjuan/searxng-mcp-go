@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"searxng-mcp-go/internal/searxng"
 	"strings"
 	"testing"
 	"time"
+
+	"searxng-mcp-go/internal/searxng"
 )
 
 type staticRoundTripper struct {
