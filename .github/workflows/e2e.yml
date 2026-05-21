@@ -64,6 +64,7 @@ jobs:
           echo "OK: empty query correctly exited with code 1"
 
       - name: Cleanup
+        if: always()
         working-directory: searxng-server-test
         run: |
           if [ -f .bg-pid ]; then
