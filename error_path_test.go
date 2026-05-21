@@ -494,7 +494,7 @@ func TestSearch_HTTPStatusErrors(t *testing.T) {
 		{504, "searxng error (status 504)"},
 	}
 
-		for _, tc := range tests {
+	for _, tc := range tests {
 		t.Run(http.StatusText(tc.statusCode), func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(tc.statusCode)

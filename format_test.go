@@ -437,14 +437,14 @@ func TestFormatResults(t *testing.T) {
 						prev := strings.Index(result, headers[i-1])
 
 						curr := strings.Index(result, headers[i])
-			switch {
-			case prev == -1:
-				t.Errorf("expected %q in output", headers[i-1])
-			case curr == -1:
-				t.Errorf("expected %q in output", headers[i])
-			case curr < prev:
-				t.Errorf("section order wrong: %q (pos %d) should come after %q (pos %d)", headers[i], curr, headers[i-1], prev)
-			}
+						switch {
+						case prev == -1:
+							t.Errorf("expected %q in output", headers[i-1])
+						case curr == -1:
+							t.Errorf("expected %q in output", headers[i])
+						case curr < prev:
+							t.Errorf("section order wrong: %q (pos %d) should come after %q (pos %d)", headers[i], curr, headers[i-1], prev)
+						}
 					}
 
 					return
