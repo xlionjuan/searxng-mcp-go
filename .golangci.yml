@@ -101,7 +101,11 @@ linters:
         text: "exported: type name will be used as searxng\\.(SearXNGError|SearXNGSearcher)"
       - linters: [goconst]
         paths:
-          - ".*_test\\\\.go$"
+          - ".*_test\\.go$"
+        text: ".*"
+      - linters: [varnamelen]
+        paths:
+          - ".*_test\\.go$"
         text: ".*"
 issues:
   max-issues-per-linter: 50
