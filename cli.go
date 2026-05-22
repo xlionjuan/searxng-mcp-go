@@ -43,7 +43,7 @@ OPTIONS:
   --limit N          Maximum number of results to return (1-20) [default: 10]
   --debug            Enable verbose HTTP request/response logging
                      Can also be enabled via DEBUG=1 environment variable
-  --timeout DURATION HTTP client timeout (e.g., 8s, 30s) [default: 8s]
+  --timeout DURATION HTTP client timeout (e.g., 8s) [default: 8s]
                      Can also be set via SEARXNG_TIMEOUT environment variable
   --max-retries N    Max retries after initial search attempt [default: 5]
                      Can also be set via SEARXNG_MAX_RETRIES environment variable
@@ -63,8 +63,8 @@ EXAMPLES:
   searxng-mcp-go "news" --language en --time_range month --categories news
 
 MCP MODE:
-  When run without CLI arguments, the server starts in MCP stdio mode
-  for communication with MCP clients like Claude Desktop or other AI tools.
+  When launched without CLI arguments by an MCP client, the server runs in
+  MCP stdio mode. The client must send the MCP initialize message on stdin.
 
 EXIT CODES:
   0   Success

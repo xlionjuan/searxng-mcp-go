@@ -1,87 +1,87 @@
-# Installation and Build Guide
+# Installation and Configuration Guide
 
-## Prerequisites
+## User Installation
 
-- Go 1.26.2 or later (developed with Go 1.26.2)
-- Access to a SearXNG instance (required — no default, e.g. `http://localhost:8888`)
-
-## Installing
-
-### Clone and build from source
+### Homebrew (Linux, recommended)
 
 ```bash
-git clone <repository-url>
-cd searxng-mcp-go
-go build -o searxng-mcp-go .
+brew install --cask xlionjuan/tap/searxng-mcp-go
 ```
 
-### Install dependencies
+*Currently supports Linux only (x86_64 and arm64). macOS is not yet supported.*
+
+After installation, find the binary's absolute path — MCP clients often don't inherit your shell PATH:
 
 ```bash
-go mod download
-go mod tidy
+which searxng-mcp-go
 ```
 
-## Building
+### Manual (Download from GitHub Releases)
+
+1. Visit the [Releases page](https://github.com/xlionjuan/searxng-mcp-go/releases)
+2. Download the tarball matching your architecture:
+   - Linux amd64: `searxng-mcp-go_v<VERSION>_linux_amd64.tar.zst`
+   - Linux arm64: `searxng-mcp-go_v<VERSION>_linux_arm64.tar.zst`
+3. Extract and install:
 
 ```bash
-# Build the server binary
-go build -o searxng-mcp-go .
-
-# Build for a different output name
-go build -o my-search-server .
-
-# Build with stripped debug info
-go build -ldflags="-s -w" -o searxng-mcp-go .
+tar --zstd -xvf searxng-mcp-go_v<VERSION>_linux_amd64.tar.zst
+mkdir -p ~/.local/bin && mv searxng-mcp-go ~/.local/bin/
 ```
 
-## Running
-
-### Basic execution
+### Verify Installation
 
 ```bash
-./searxng-mcp-go
+searxng-mcp-go --version
 ```
 
-The server uses stdio transport, meaning it communicates via stdin/stdout. It is designed to be invoked by an MCP client host (such as an AI agent framework).
-When started this way, the first stdin message must be a valid JSON-RPC `initialize` request; if it is not, the server will error and exit.
+---
 
-### MCP Server Configuration
+## Configuration
 
-Configure the MCP server via environment variables before launching it from your MCP client (e.g., Cursor, Claude Desktop, Hermes):
+### SearXNG Instance
+
+A SearXNG instance URL is **required** — there is no default. Set it via the `SEARXNG_URL` environment variable or `--searxng-url` CLI flag.
 
 ```bash
-# Set SearXNG instance URL
 export SEARXNG_URL=https://your-searxng-instance.example.com
-
-# Enable debug logging (verbose HTTP request/response output)
-export DEBUG=1
-
-# Then run the server (or let your MCP client launch it)
-./searxng-mcp-go
 ```
 
-Note: `DEBUG=1` logs search queries and HTTP requests in plain text. Avoid using it with sensitive queries.
+### Timeout
 
-#### Debug Output Details
+The default timeout for search requests is 8 seconds. Set `SEARXNG_TIMEOUT` to a Go duration such as `8s`; in CLI mode, `--timeout` overrides the environment variable.
 
-When debug mode is enabled, the following information is logged for each search request:
+### Max Retries
 
-- HTTP method, URL, Content-Type, and Accept header
-- Request body
-- Response status code and content-type
-- Response body preview (first 500 characters)
-- On error responses: `body_size` and `body_preview`
+The default retry count is 5 retries after the initial search attempt. Set `SEARXNG_MAX_RETRIES` to a non-negative integer; in CLI mode, `--max-retries` overrides the environment variable. Use `--max-retries=0` to disable retries in CLI mode.
 
-Additionally, the `unresponsive_engines` field (listing engines that failed to respond, e.g., rate-limited or CAPTCHA) is **only included in the JSON response when debug mode is enabled**; it is omitted entirely in non-debug mode (see [ADR-006](adr/006-unresponsive-engines-debug-only.md)).
+### POST→GET Fallback
 
-In an MCP client configuration, set `env` in the server definition:
+When a POST request receives `405 Method Not Allowed` or `501 Not Implemented`, the server automatically retries the `/search` request with GET, ensuring compatibility with SearXNG deployments that do not support POST search requests.
+
+---
+
+## MCP Server Configuration
+
+### Basic Execution
+
+In MCP mode, `searxng-mcp-go` is meant to be launched by an MCP client host (such as an AI agent framework), not run directly in a terminal. The client provides the configured environment variables, starts the process, and sends the required MCP JSON-RPC `initialize` message on stdin before tool calls are available.
+
+The server uses stdio transport, meaning it communicates via stdin/stdout after the MCP client starts it.
+
+### MCP Client Configuration
+
+Configure the MCP server by adding it to your client's `mcpServers`. Use the **absolute path** to the binary — MCP clients often don't inherit your shell PATH.
+
+```bash
+which searxng-mcp-go
+```
 
 ```json
 {
   "mcpServers": {
     "searxng": {
-      "command": "/path/to/searxng-mcp-go",
+      "command": "/home/linuxbrew/.linuxbrew/bin/searxng-mcp-go",
       "env": {
         "SEARXNG_URL": "https://your-searxng-instance.example.com",
         "SEARXNG_TIMEOUT": "8s",
@@ -93,9 +93,7 @@ In an MCP client configuration, set `env` in the server definition:
 }
 ```
 
-**Priority:** command-line flag > environment variable > default hardcoded value
-
-Note: in MCP stdin mode, command-line flags are rejected entirely; use environment variables only (see [ADR-004](adr/004-mcp-stdin-env-only.md)).
+When debug mode (`DEBUG=1`) is enabled, the server logs HTTP request/response details, including query text. Avoid using it with sensitive queries.
 
 ### CLI Mode Configuration
 
@@ -103,89 +101,18 @@ When running in CLI mode (with a query argument), command-line flags can be used
 
 ```bash
 # Custom SearXNG server via flag
-./searxng-mcp-go "query" --searxng-url=https://your-searxng-instance.example.com
+searxng-mcp-go "query" --searxng-url=https://your-searxng-instance.example.com
 
 # Debug mode via flag
-./searxng-mcp-go "query" --debug
+searxng-mcp-go "query" --debug
 
 # HTTP timeout and retry tuning via flags
-./searxng-mcp-go "query" --timeout=8s --max-retries=5
+searxng-mcp-go "query" --timeout=8s --max-retries=5
 ```
 
-### Testing with MCP Inspector
+---
 
-The Model Context Protocol Inspector allows you to test the server interactively:
+## Related Documentation
 
-```bash
-# Install inspector (requires Node.js)
-npx @modelcontextprotocol/inspector ./searxng-mcp-go
-```
-
-This opens a web interface where you can:
-- List available tools
-- Call the search tool with different parameters
-- Inspect request/response payloads
-
-For manual testing, use the MCP Inspector or the existing test harness rather than typing stdin messages by hand.
-
-## Configuration
-
-### SearXNG Instance
-
-A SearXNG instance URL is **required** — there is no default. Set it via the `SEARXNG_URL` environment variable or `--searxng-url` CLI flag. See [MCP Server Configuration](#mcp-server-configuration) above for setup instructions.
-
-### Timeout
-
-The default timeout for search requests is 8 seconds. Set `SEARXNG_TIMEOUT` to a Go duration such as `8s` or `1500ms`; in CLI mode, `--timeout` overrides the environment variable.
-
-### Max Retries
-
-The default retry count is 5 retries after the initial search attempt. Set `SEARXNG_MAX_RETRIES` to a non-negative integer; in CLI mode, `--max-retries` overrides the environment variable. Use `--max-retries=0` to disable retries in CLI mode.
-
-### POST→GET Fallback
-
-When a POST request fails (for example, some SearXNG configurations return 405 Method Not Allowed), the server automatically retries the `/search` request with GET, ensuring compatibility with different SearXNG deployments.
-
-## Running Tests
-
-### Race Detector
-
-The `-race` flag for race condition detection requires CGO to be enabled. Some environments (such as Linuxbrew) have CGO disabled by default, which may cause `go test -race` to fail locally.
-
-If you encounter issues running `go test -race` locally, consider:
-- Using Docker where CGO is available
-- Running tests in the CI environment
-- Or simply run `go test ./...` without the `-race` flag for local development
-
-## Verifying the Build
-
-```bash
-# Check the binary exists and is executable
-ls -la searxng-mcp-go
-
-# Verify it starts (press Ctrl+C to exit)
-./searxng-mcp-go
-```
-
-The server starts and then waits for input via stdio.
-
-## Docker (Optional)
-
-To run in a container:
-
-```dockerfile
-FROM golang:1.26-alpine AS builder
-WORKDIR /app
-COPY . .
-RUN go build -o searxng-mcp-go .
-
-FROM alpine:latest
-COPY --from=builder /app/searxng-mcp-go /usr/local/bin/
-ENTRYPOINT ["searxng-mcp-go"]
-```
-
-Build and run:
-```bash
-docker build -t searxng-mcp .
-docker run --rm searxng-mcp
-```
+- [README.md](../README.md) — Quick start and usage overview
+- [MCP Tools Reference](MCP_TOOLS.md) — Full tool parameters and response format

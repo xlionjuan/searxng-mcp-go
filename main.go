@@ -171,7 +171,7 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 		pageno:     fs.Int("pageno", 1, "Page number for pagination"),
 		limit:      fs.Int("limit", defaultResultLimit, "Maximum number of results to return (1-20)"),
 		debug:      fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)"),
-		timeout:    fs.Duration("timeout", 0, "HTTP client timeout (e.g., 8s, 30s); overrides SEARXNG_TIMEOUT env var"),
+		timeout:    fs.Duration("timeout", 0, "HTTP client timeout (e.g., 8s); overrides SEARXNG_TIMEOUT env var"),
 		maxRetries: fs.Int("max-retries", 0, "Max retries after initial search attempt; overrides SEARXNG_MAX_RETRIES env var"),
 	}
 
@@ -273,7 +273,7 @@ func getConfig(flags CLIFlags) (*searxng.Config, error) {
 
 	cfg.SearXNGURL = searxngURL
 
-	// Apply SEARXNG_TIMEOUT env var (parsed as Go duration, e.g. "8s", "30s")
+	// Apply SEARXNG_TIMEOUT env var (parsed as Go duration, e.g. "8s")
 	if timeoutStr := os.Getenv("SEARXNG_TIMEOUT"); timeoutStr != "" {
 		d, err := time.ParseDuration(timeoutStr)
 		if err != nil {
