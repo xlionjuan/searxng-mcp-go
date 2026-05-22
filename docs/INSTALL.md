@@ -84,6 +84,8 @@ In an MCP client configuration, set `env` in the server definition:
       "command": "/path/to/searxng-mcp-go",
       "env": {
         "SEARXNG_URL": "https://your-searxng-instance.example.com",
+        "SEARXNG_TIMEOUT": "8s",
+        "SEARXNG_MAX_RETRIES": "5",
         "DEBUG": "1"
       }
     }
@@ -92,8 +94,6 @@ In an MCP client configuration, set `env` in the server definition:
 ```
 
 **Priority:** command-line flag > environment variable > default hardcoded value
-
-**ENV Naming Convention ⚠️:** Environment variable names should be neutral. **Only the SearXNG server URL variable may contain `searxng`** (e.g. `SEARXNG_URL`). All other functional ENV vars must NOT use the `SEARXNG_` prefix.
 
 Note: in MCP stdin mode, command-line flags are rejected entirely; use environment variables only (see [ADR-004](adr/004-mcp-stdin-env-only.md)).
 
@@ -107,6 +107,9 @@ When running in CLI mode (with a query argument), command-line flags can be used
 
 # Debug mode via flag
 ./searxng-mcp-go "query" --debug
+
+# HTTP timeout and retry tuning via flags
+./searxng-mcp-go "query" --timeout=8s --max-retries=5
 ```
 
 ### Testing with MCP Inspector
@@ -133,7 +136,11 @@ A SearXNG instance URL is **required** — there is no default. Set it via the `
 
 ### Timeout
 
-The default timeout for search requests is 30 seconds. This value is configurable in the source code but cannot be adjusted via MCP client parameters.
+The default timeout for search requests is 8 seconds. Set `SEARXNG_TIMEOUT` to a Go duration such as `8s` or `1500ms`; in CLI mode, `--timeout` overrides the environment variable.
+
+### Max Retries
+
+The default retry count is 5 retries after the initial search attempt. Set `SEARXNG_MAX_RETRIES` to a non-negative integer; in CLI mode, `--max-retries` overrides the environment variable. Use `--max-retries=0` to disable retries in CLI mode.
 
 ### POST→GET Fallback
 

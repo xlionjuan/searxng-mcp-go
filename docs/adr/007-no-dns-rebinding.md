@@ -5,7 +5,7 @@
 
 ## Context
 
-The redirect SSRF defense in `newHTTPClient` (`internal/searxng/searcher.go`) blocks redirects to private/internal hosts using `isPrivateHost()`. One potential attack vector is DNS rebinding: a hostname initially resolves to a public IP, then after the host check passes, rebinds to a private IP during the actual TCP dial.
+The redirect SSRF defense in `newHTTPClient` (`internal/searxng/client.go`) blocks redirects to private/internal hosts using `isPrivateHost()`. One potential attack vector is DNS rebinding: a hostname initially resolves to a public IP, then after the host check passes, rebinds to a private IP during the actual TCP dial.
 
 ## Decision
 

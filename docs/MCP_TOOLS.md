@@ -199,5 +199,6 @@ Actual error message formats from the server:
 - **Transport**: Stdio (stdin/stdout)
 - **Protocol**: MCP (Model Context Protocol)
 - **SearXNG Format**: JSON (`format=json`)
-- **Timeout**: 30 seconds (configurable in source code; not adjustable via MCP client parameters)
+- **Timeout**: 8 seconds by default; set `SEARXNG_TIMEOUT` or, in CLI mode, `--timeout`
+- **MaxRetries**: 5 retries after the initial search attempt by default; set `SEARXNG_MAX_RETRIES` or, in CLI mode, `--max-retries`
 - **POST→GET fallback**: When a POST request fails (for example, some SearXNG configurations return 405), the server automatically retries the `/search` request with GET
