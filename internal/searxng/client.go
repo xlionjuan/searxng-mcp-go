@@ -39,38 +39,6 @@ const (
 	maxSearchRedirects             = 10
 )
 
-const (
-	ipv4ClassAPrivateOctet       = 10
-	ipv4Private172FirstOctet     = 172
-	ipv4Private172SecondMin      = 16
-	ipv4Private172SecondMax      = 31
-	ipv4Private192FirstOctet     = 192
-	ipv4Private192SecondOctet    = 168
-	ipv4LoopbackFirstOctet       = 127
-	ipv4LinkLocalFirstOctet      = 169
-	ipv4LinkLocalSecondOctet     = 254
-	ipv4CurrentNetworkFirstOctet = 0
-	ipv4SharedAddressFirstOctet  = 100
-	ipv4SharedAddressMask        = 0xc0
-	ipv4SharedAddressValue       = 0x40
-	ipv4IETFProtocolSecondOctet  = 0
-	ipv4IETFProtocolThirdOctet   = 0
-	ipv4DocumentationThirdOctet  = 2
-	ipv4BenchmarkFirstOctet      = 198
-	ipv4BenchmarkSecondMin       = 18
-	ipv4BenchmarkSecondMax       = 19
-	ipv4ExampleSecondOctet       = 51
-	ipv4ExampleThirdOctet        = 100
-	ipv4Documentation203First    = 203
-	ipv4Documentation203Second   = 0
-	ipv4Documentation203Third    = 113
-	ipv4MulticastFirstMin        = 224
-	ipv6UniqueLocalMask          = 0xfe
-	ipv6UniqueLocalValue         = 0xfc
-	ipv6LinkLocalFirstOctet      = 0xfe
-	ipv6LinkLocalMask            = 0xc0
-	ipv6LinkLocalValue           = 0x80
-)
 
 func newHTTPClient(timeout time.Duration) *http.Client {
 	return &http.Client{
@@ -105,29 +73,6 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 	return nil
 }
 
-func withSearchRedirectPolicy(client *http.Client) *http.Client {
-	if client == nil {
-		return nil
-	}
-
-	originalCheckRedirect := client.CheckRedirect
-	wrapped := *client
-	wrapped.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		err := enforceSearchRedirectPolicy(req, via)
-		if err != nil {
-			return err
-		}
-
-		if originalCheckRedirect != nil {
-			return originalCheckRedirect(req, via)
-		}
-
-		return nil
-	}
-
-	return &wrapped
-}
-
 // getDefaultHTTPClient returns the shared default HTTP client.
 func getDefaultHTTPClient() *http.Client {
 	defaultHTTPClientOnce.Do(func() {
@@ -135,29 +80,6 @@ func getDefaultHTTPClient() *http.Client {
 	})
 
 	return defaultHTTPClient
-}
-
-func normalizeRetryConfig(cfg *Config) (int, time.Duration, time.Duration) {
-	maxRetries := cfg.MaxRetries
-	if maxRetries < 0 {
-		maxRetries = 0
-	}
-
-	retryDelay := cfg.RetryDelay
-	if retryDelay <= 0 {
-		retryDelay = DefaultRetryDelay
-	}
-
-	maxRetryDelay := cfg.MaxRetryDelay
-	if maxRetryDelay <= 0 {
-		maxRetryDelay = DefaultMaxRetryDelay
-	}
-
-	if maxRetryDelay < retryDelay {
-		maxRetryDelay = retryDelay
-	}
-
-	return maxRetries, retryDelay, maxRetryDelay
 }
 
 // validateBaseURL checks that the baseURL is valid and returns an error if not.
@@ -240,85 +162,37 @@ func isPrivateHost(host string) bool {
 }
 
 func isPrivateIPv4(ip4 net.IP) bool {
-	if ip4[0] == ipv4ClassAPrivateOctet {
+	// 10.0.0.0/8
+	if ip4[0] == 10 {
 		return true
 	}
-
-	if ip4[0] == ipv4Private172FirstOctet &&
-		ip4[1] >= ipv4Private172SecondMin &&
-		ip4[1] <= ipv4Private172SecondMax {
+	// 172.16.0.0/12
+	if ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31 {
 		return true
 	}
-
-	if ip4[0] == ipv4Private192FirstOctet && ip4[1] == ipv4Private192SecondOctet {
+	// 192.168.0.0/16
+	if ip4[0] == 192 && ip4[1] == 168 {
 		return true
 	}
-
-	if ip4[0] == ipv4LoopbackFirstOctet {
+	// 127.0.0.0/8 (loopback)
+	if ip4[0] == 127 {
 		return true
 	}
-
-	if ip4[0] == ipv4LinkLocalFirstOctet && ip4[1] == ipv4LinkLocalSecondOctet {
-		return true
-	}
-
-	if ip4[0] == ipv4CurrentNetworkFirstOctet {
-		return true
-	}
-
-	if ip4[0] == ipv4SharedAddressFirstOctet &&
-		ip4[1]&ipv4SharedAddressMask == ipv4SharedAddressValue {
-		return true
-	}
-
-	if ip4[0] == ipv4Private192FirstOctet &&
-		ip4[1] == ipv4IETFProtocolSecondOctet &&
-		ip4[2] == ipv4IETFProtocolThirdOctet {
-		return true
-	}
-
-	if ip4[0] == ipv4Private192FirstOctet &&
-		ip4[1] == ipv4IETFProtocolSecondOctet &&
-		ip4[2] == ipv4DocumentationThirdOctet {
-		return true
-	}
-
-	if ip4[0] == ipv4BenchmarkFirstOctet &&
-		(ip4[1] == ipv4BenchmarkSecondMin || ip4[1] == ipv4BenchmarkSecondMax) {
-		return true
-	}
-
-	if ip4[0] == ipv4BenchmarkFirstOctet &&
-		ip4[1] == ipv4ExampleSecondOctet &&
-		ip4[2] == ipv4ExampleThirdOctet {
-		return true
-	}
-
-	if ip4[0] == ipv4Documentation203First &&
-		ip4[1] == ipv4Documentation203Second &&
-		ip4[2] == ipv4Documentation203Third {
-		return true
-	}
-
-	if ip4[0] >= ipv4MulticastFirstMin {
-		return true
-	}
-
 	return false
 }
 
 func isPrivateIPv6(ip net.IP) bool {
+	// ::1 (loopback)
 	if ip.Equal(net.IPv6loopback) {
 		return true
 	}
-
-	if ip[0]&ipv6UniqueLocalMask == ipv6UniqueLocalValue {
+	// fc00::/7 (unique-local)
+	if ip[0]&0xfe == 0xfc {
 		return true
 	}
-
-	if ip[0] == ipv6LinkLocalFirstOctet && ip[1]&ipv6LinkLocalMask == ipv6LinkLocalValue {
+	// fe80::/10 (link-local)
+	if ip[0] == 0xfe && ip[1]&0xc0 == 0x80 {
 		return true
 	}
-
 	return false
 }

@@ -55,7 +55,19 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 
 	client := cfg.HTTPClient
 	if client != nil {
-		client = withSearchRedirectPolicy(client)
+		originalCheckRedirect := client.CheckRedirect
+		wrapped := *client
+		wrapped.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			err := enforceSearchRedirectPolicy(req, via)
+			if err != nil {
+				return err
+			}
+			if originalCheckRedirect != nil {
+				return originalCheckRedirect(req, via)
+			}
+			return nil
+		}
+		client = &wrapped
 	} else {
 		if cfg.Timeout > 0 {
 			client = newHTTPClient(cfg.Timeout)
@@ -64,7 +76,21 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		}
 	}
 
-	maxRetries, retryDelay, maxRetryDelay := normalizeRetryConfig(cfg)
+	maxRetries := cfg.MaxRetries
+	if maxRetries < 0 {
+		maxRetries = 0
+	}
+	retryDelay := cfg.RetryDelay
+	if retryDelay <= 0 {
+		retryDelay = DefaultRetryDelay
+	}
+	maxRetryDelay := cfg.MaxRetryDelay
+	if maxRetryDelay <= 0 {
+		maxRetryDelay = DefaultMaxRetryDelay
+	}
+	if maxRetryDelay < retryDelay {
+		maxRetryDelay = retryDelay
+	}
 
 	return &SearXNGSearcher{
 		client:        client,
