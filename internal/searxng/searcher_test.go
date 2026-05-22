@@ -19,7 +19,7 @@ func TestNewSearXNGSearcherErrors(t *testing.T) {
 		baseURL string
 		want    string
 	}{
-		{name: "empty URL", baseURL: "", want: "baseurl cannot be empty"},
+			{name: "empty URL", baseURL: "", want: "SearXNGURL cannot be empty"},
 		{name: "invalid scheme", baseURL: "ftp://example.com", want: "url must use http or https scheme"},
 		{name: "missing host", baseURL: "https:///search", want: "url must include a host"},
 	}

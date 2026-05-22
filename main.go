@@ -302,5 +302,10 @@ func getConfig(flags CLIFlags) (*searxng.Config, error) {
 		cfg.MaxRetries = flags.MaxRetries
 	}
 
+	// Validate the constructed config for early error detection.
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid configuration: %w", err)
+	}
+
 	return cfg, nil
 }

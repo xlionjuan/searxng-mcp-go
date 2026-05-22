@@ -8,6 +8,55 @@ import (
 	"time"
 )
 
+// RetryStrategy determines whether a failed search attempt should be retried
+// and returns the delay before the next attempt.
+type RetryStrategy interface {
+	ShouldRetry(attempt int, resp *http.Response, err error) (bool, time.Duration)
+}
+
+// exponentialBackoffStrategy implements RetryStrategy with exponential backoff.
+// It handles retryable errors, retryable HTTP status codes, and caps the
+// backoff to a maximum delay with jitter.
+type exponentialBackoffStrategy struct {
+	maxRetries    int
+	retryDelay    time.Duration
+	maxRetryDelay time.Duration
+}
+
+// newExponentialBackoffStrategy creates a new exponentialBackoffStrategy.
+func newExponentialBackoffStrategy(maxRetries int, retryDelay, maxRetryDelay time.Duration) *exponentialBackoffStrategy {
+	return &exponentialBackoffStrategy{
+		maxRetries:    maxRetries,
+		retryDelay:    retryDelay,
+		maxRetryDelay: maxRetryDelay,
+	}
+}
+
+// ShouldRetry returns whether the attempt should be retried and the delay to wait.
+// It handles retryable errors, retryable status codes, and the empty-response
+// signal (via errEmptyResponse).
+func (s *exponentialBackoffStrategy) ShouldRetry(attempt int, resp *http.Response, err error) (bool, time.Duration) {
+	if attempt >= s.maxRetries {
+		return false, 0
+	}
+
+	if err != nil {
+		if isRetryableError(context.Background(), err) {
+			return true, retryBackoff(attempt, s.retryDelay, s.maxRetryDelay)
+		}
+		return false, 0
+	}
+
+	if resp != nil && resp.StatusCode != http.StatusOK {
+		if isRetryableStatusCode(resp.StatusCode) {
+			return true, retryBackoff(attempt, s.retryDelay, s.maxRetryDelay)
+		}
+		return false, 0
+	}
+
+	return false, 0
+}
+
 func isRetryableError(ctx context.Context, err error) bool {
 	if err == nil || ctx.Err() != nil {
 		return false

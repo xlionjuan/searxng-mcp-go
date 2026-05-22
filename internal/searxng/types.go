@@ -2,6 +2,7 @@ package searxng
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -29,6 +30,47 @@ func DefaultConfig() *Config {
 		RetryDelay:    DefaultRetryDelay,
 		MaxRetryDelay: DefaultMaxRetryDelay,
 	}
+}
+
+// Validate checks the configuration for valid values.
+// No side effects: no HTTP calls, no logging.
+func (c *Config) Validate() error {
+	if c.SearXNGURL == "" {
+		return errors.New("SearXNGURL cannot be empty")
+	}
+	if c.Timeout < 0 {
+		return errors.New("Timeout cannot be negative")
+	}
+	if c.MaxRetries < 0 {
+		return errors.New("MaxRetries cannot be negative")
+	}
+	if c.RetryDelay < 0 {
+		return errors.New("RetryDelay cannot be negative")
+	}
+	if c.MaxRetryDelay < 0 {
+		return errors.New("MaxRetryDelay cannot be negative")
+	}
+	return nil
+}
+
+// Normalize returns a copy of the Config with safe defaults applied.
+// Zero or negative retry delays are replaced with defaults.
+// MaxRetryDelay is clamped to be at least RetryDelay.
+func (c *Config) Normalize() *Config {
+	cfg := *c // Copy
+	if cfg.MaxRetries < 0 {
+		cfg.MaxRetries = 0
+	}
+	if cfg.RetryDelay <= 0 {
+		cfg.RetryDelay = DefaultRetryDelay
+	}
+	if cfg.MaxRetryDelay <= 0 {
+		cfg.MaxRetryDelay = DefaultMaxRetryDelay
+	}
+	if cfg.MaxRetryDelay < cfg.RetryDelay {
+		cfg.MaxRetryDelay = cfg.RetryDelay
+	}
+	return &cfg
 }
 
 // SearchArgs defines the arguments for the search tool.

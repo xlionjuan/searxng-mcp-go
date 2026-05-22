@@ -17,6 +17,7 @@ var (
 	errRequestCreateFailed      = errors.New("failed to create request")
 	errSearchRequestFailed      = errors.New("failed to execute search request")
 	errErrorBodyTooLarge        = errors.New("error response body exceeded maximum size limit")
+	errEmptyResponse            = errors.New("empty response from SearXNG")
 )
 
 // SearXNGSearcher performs web searches via a SearXNG instance.
@@ -27,12 +28,21 @@ type SearXNGSearcher struct {
 	maxRetries    int
 	retryDelay    time.Duration
 	maxRetryDelay time.Duration
+	retryStrategy RetryStrategy
 }
 
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
 func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	if cfg == nil {
 		return nil, errSearcherConfigRequired
+	}
+
+	// Normalize config: apply safe defaults for zero values
+	cfg = cfg.Normalize()
+
+	// Validate config
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("newSearXNGSearcher: %w", err)
 	}
 
 	baseURL := cfg.SearXNGURL
@@ -76,29 +86,14 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		}
 	}
 
-	maxRetries := cfg.MaxRetries
-	if maxRetries < 0 {
-		maxRetries = 0
-	}
-	retryDelay := cfg.RetryDelay
-	if retryDelay <= 0 {
-		retryDelay = DefaultRetryDelay
-	}
-	maxRetryDelay := cfg.MaxRetryDelay
-	if maxRetryDelay <= 0 {
-		maxRetryDelay = DefaultMaxRetryDelay
-	}
-	if maxRetryDelay < retryDelay {
-		maxRetryDelay = retryDelay
-	}
-
 	return &SearXNGSearcher{
 		client:        client,
 		baseURL:       baseURL,
 		debug:         debug,
-		maxRetries:    maxRetries,
-		retryDelay:    retryDelay,
-		maxRetryDelay: maxRetryDelay,
+		maxRetries:    cfg.MaxRetries,
+		retryDelay:    cfg.RetryDelay,
+		maxRetryDelay: cfg.MaxRetryDelay,
+		retryStrategy: newExponentialBackoffStrategy(cfg.MaxRetries, cfg.RetryDelay, cfg.MaxRetryDelay),
 	}, nil
 }
 
@@ -122,7 +117,7 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 // Search Implementation
 // ============================================================================
 
-// performSearch executes the search query against SearXNG.
+// performSearch executes the search query against SearXNG with retry support.
 func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	err := ValidateSearchArgs(args)
 	if err != nil {
@@ -133,65 +128,52 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 		return s.executeSingleAttempt(ctx, args)
 	}
 
-	attempts := s.maxRetries + 1
-	for attempt := 0; attempt < attempts; attempt++ {
+	for attempt := 0; ; attempt++ {
 		resp, err := s.executeSearchAttempt(ctx, args)
-		if err != nil {
-			wrappedErr := fmt.Errorf("%w: %w", errSearchRequestFailed, err)
-			if isRetryableError(ctx, err) && attempt+1 < attempts {
-				delay := retryBackoff(attempt, s.retryDelay, s.maxRetryDelay)
-				s.logDebugRetry(attempt, attempts, delay, wrappedErr)
-
-				if waitErr := retryWait(ctx, delay); waitErr != nil {
-					return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, waitErr))
-				}
-
-				continue
+		shouldRetry, delay := s.retryStrategy.ShouldRetry(attempt, resp, err)
+		if !shouldRetry {
+			// No more retries — handle final result
+			if err != nil {
+				wrappedErr := fmt.Errorf("%w: %w", errSearchRequestFailed, err)
+				return nil, NewSearXNGError(0, "", "", wrappedErr)
 			}
 
-			return nil, NewSearXNGError(0, "", "", wrappedErr)
-		}
+			if resp.StatusCode != http.StatusOK {
+				statusErr := s.handleNonOKResponse(resp)
+				closeResponseBody(resp)
+				return nil, statusErr
+			}
 
-		if resp.StatusCode != http.StatusOK {
-			statusErr := s.handleNonOKResponse(resp)
-			statusCode := resp.StatusCode
+			result, parseErr := s.parseSearchResponse(resp, args)
 			closeResponseBody(resp)
+			if parseErr != nil {
+				return nil, parseErr
+			}
 
-			if attempt+1 < attempts && isRetryableStatusCode(statusCode) {
-				delay := retryBackoff(attempt, s.retryDelay, s.maxRetryDelay)
-				s.logDebugRetry(attempt, attempts, delay, statusErr)
-
-				if waitErr := retryWait(ctx, delay); waitErr != nil {
-					return nil, statusErr
+			// Retry empty responses if retries remain
+			if attempt < s.maxRetries && s.isEmptyResponse(result) {
+				shouldRetry, delay = s.retryStrategy.ShouldRetry(attempt, resp, errEmptyResponse)
+				if shouldRetry {
+					s.logDebugRetry(attempt, s.maxRetries+1, delay, nil)
+					if waitErr := retryWait(ctx, delay); waitErr != nil {
+						return result, nil
+					}
+					continue
 				}
-
-				continue
 			}
 
-			return nil, statusErr
+			return result, nil
 		}
 
-		result, parseErr := s.parseSearchResponse(resp, args)
-		closeResponseBody(resp)
-		if parseErr != nil {
-			return nil, parseErr
+		// Retry with backoff
+		s.logDebugRetry(attempt, s.maxRetries+1, delay, err)
+		if resp != nil {
+			closeResponseBody(resp)
 		}
-
-		if s.isEmptyResponse(result) && attempt+1 < attempts {
-			delay := retryBackoff(attempt, s.retryDelay, s.maxRetryDelay)
-			s.logDebugRetry(attempt, attempts, delay, nil)
-
-			if waitErr := retryWait(ctx, delay); waitErr != nil {
-				return result, nil
-			}
-
-			continue
+		if waitErr := retryWait(ctx, delay); waitErr != nil {
+			return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, waitErr))
 		}
-
-		return result, nil
 	}
-
-	return nil, NewSearXNGError(0, "", "", errSearchRequestFailed)
 }
 
 func (s *SearXNGSearcher) executeSingleAttempt(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
