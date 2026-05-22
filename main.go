@@ -15,9 +15,9 @@ import (
 )
 
 var (
-	version            = "v1.0.4"
-	commit             = "none"
-	date               = "unknown"
+	version = "v1.0.4"
+	commit  = "none"
+	date    = "unknown"
 )
 
 const defaultResultLimit = 10
@@ -40,21 +40,23 @@ var (
 
 // CLIFlags holds parsed CLI flag values.
 type CLIFlags struct {
-	Query      string
-	JSON       bool
-	Help       bool
-	Version    bool
-	SearXNGURL string
-	Language   string
-	SafeSearch int
-	TimeRange  string
-	Categories string
-	Engines    string
-	Pageno     *int
-	Limit      *int
-	Debug      bool
-	Timeout    time.Duration
-	MaxRetries int
+	Query         string
+	JSON          bool
+	Help          bool
+	Version       bool
+	SearXNGURL    string
+	Language      string
+	SafeSearch    int
+	TimeRange     string
+	Categories    string
+	Engines       string
+	Pageno        *int
+	Limit         *int
+	Debug         bool
+	Timeout       time.Duration
+	TimeoutSet    bool
+	MaxRetries    int
+	MaxRetriesSet bool
 }
 
 type registeredFlags struct {
@@ -96,8 +98,10 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 	// "omitted = backend default/page 1" contract). Limit always has an effective
 	// default so response truncation is consistent with the documented CLI default.
 	var (
-		pagenoPtr *int
-		limitPtr  *int
+		pagenoPtr     *int
+		limitPtr      *int
+		timeoutSet    bool
+		maxRetriesSet bool
 	)
 
 	fs.Visit(func(f *flag.Flag) {
@@ -108,6 +112,14 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 		if f.Name == "limit" {
 			limitPtr = registered.limit
 		}
+
+		if f.Name == "timeout" {
+			timeoutSet = true
+		}
+
+		if f.Name == "max-retries" {
+			maxRetriesSet = true
+		}
 	})
 
 	if limitPtr == nil {
@@ -116,21 +128,23 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 	}
 
 	flags := CLIFlags{
-		Query:      *registered.query,
-		JSON:       *registered.jsonOut,
-		Help:       *registered.help,
-		Version:    *registered.version,
-		SearXNGURL: *registered.searxngURL,
-		Language:   *registered.language,
-		SafeSearch: *registered.safeSearch,
-		TimeRange:  *registered.timeRange,
-		Categories: *registered.categories,
-		Engines:    *registered.engines,
-		Pageno:     pagenoPtr,
-		Limit:      limitPtr,
-		Debug:      *registered.debug,
-		Timeout:    *registered.timeout,
-		MaxRetries: *registered.maxRetries,
+		Query:         *registered.query,
+		JSON:          *registered.jsonOut,
+		Help:          *registered.help,
+		Version:       *registered.version,
+		SearXNGURL:    *registered.searxngURL,
+		Language:      *registered.language,
+		SafeSearch:    *registered.safeSearch,
+		TimeRange:     *registered.timeRange,
+		Categories:    *registered.categories,
+		Engines:       *registered.engines,
+		Pageno:        pagenoPtr,
+		Limit:         limitPtr,
+		Debug:         *registered.debug,
+		Timeout:       *registered.timeout,
+		TimeoutSet:    timeoutSet,
+		MaxRetries:    *registered.maxRetries,
+		MaxRetriesSet: maxRetriesSet,
 	}
 
 	isCLIMode := len(args) > 0 || flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
@@ -280,12 +294,11 @@ func getConfig(flags CLIFlags) (*searxng.Config, error) {
 	}
 
 	// CLI flag overrides take precedence over env vars (and defaults).
-	// Zero means "not explicitly set" for these flags.
-	if flags.Timeout > 0 {
+	if flags.TimeoutSet {
 		cfg.Timeout = flags.Timeout
 	}
 
-	if flags.MaxRetries > 0 {
+	if flags.MaxRetriesSet {
 		cfg.MaxRetries = flags.MaxRetries
 	}
 
