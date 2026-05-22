@@ -195,27 +195,13 @@ func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (
 }
 
 func (s *SearXNGSearcher) executeSingleAttempt(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
-	postReq, postBodyStr, err := s.buildSearchRequest(ctx, args)
+	resp, _, err := s.doSearchAttempt(ctx, args)
+
 	if err != nil {
-		return nil, err
-	}
-
-	s.logDebugRequest(postReq, postBodyStr)
-
-	resp, err := s.client.Do(postReq)
-
-	s.logDebugResponse(resp, err)
-
-	if err == nil && resp != nil && (resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
-		resp, err = s.executeGETfallback(ctx, resp, postReq, postBodyStr)
-
 		var searchErr *SearXNGError
 		if errors.As(err, &searchErr) {
 			return nil, searchErr
 		}
-	}
-
-	if err != nil {
 		return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, err))
 	}
 
@@ -229,9 +215,14 @@ func (s *SearXNGSearcher) executeSingleAttempt(ctx context.Context, args *Search
 }
 
 func (s *SearXNGSearcher) executeSearchAttempt(ctx context.Context, args *SearchArgs) (*http.Response, error) {
+	resp, _, err := s.doSearchAttempt(ctx, args)
+	return resp, err
+}
+
+func (s *SearXNGSearcher) doSearchAttempt(ctx context.Context, args *SearchArgs) (*http.Response, string, error) {
 	postReq, postBodyStr, err := s.buildSearchRequest(ctx, args)
 	if err != nil {
-		return nil, err
+		return nil, postBodyStr, err
 	}
 
 	s.logDebugRequest(postReq, postBodyStr)
@@ -244,7 +235,7 @@ func (s *SearXNGSearcher) executeSearchAttempt(ctx context.Context, args *Search
 		resp, err = s.executeGETfallback(ctx, resp, postReq, postBodyStr)
 	}
 
-	return resp, err
+	return resp, postBodyStr, err
 }
 
 func (s *SearXNGSearcher) isEmptyResponse(resp *SearchResponse) bool {
