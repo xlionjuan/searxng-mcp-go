@@ -15,7 +15,7 @@ default: test
 
 # Build the binary
 build:
-    go build -o {{binary}} .
+    go build -o {{ binary }} .
 
 # Run tests with race detector
 test:
@@ -23,7 +23,7 @@ test:
 
 # Run tests with coverage
 test-cover:
-    go test -race -shuffle=on -coverprofile={{coverfile}} ./...
+    go test -race -shuffle=on -coverprofile={{ coverfile }} ./...
 
 # Run tests with verbose output
 test-verbose:
@@ -39,11 +39,11 @@ test-short:
 
 # View coverage in browser
 cover:
-    go tool cover -html={{coverfile}}
+    go tool cover -html={{ coverfile }}
 
 # View coverage as text
 cover-text:
-    go tool cover -func={{coverfile}}
+    go tool cover -func={{ coverfile }}
 
 # Format code (gofumpt + goimports)
 fmt:
@@ -85,7 +85,7 @@ test-server-start:
 
 # Remove build artifacts and coverage files
 clean:
-    rm -f {{binary}} {{coverfile}}
+    rm -f {{ binary }} {{ coverfile }}
 
 # Full CI-like pipeline: fmt → vet → lint → test
 ci: fmt vet lint
@@ -94,3 +94,10 @@ ci: fmt vet lint
 # Quick check (no formatting, just vet + lint + test)
 quick:
     just vet lint test
+
+# Update SearXNG submoudle
+update-searxng-submodule:
+    git submodule update --remote searxng-server-test/searxng
+    git add searxng-server-test/searxng
+    git commit -m "Update SearXNG submodule that for test"
+    git log -5
