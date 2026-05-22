@@ -494,8 +494,6 @@ func TestPrepareMCPStdinRejectsOversizedInitializeLine(t *testing.T) {
 	}
 }
 
-
-
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 
@@ -547,6 +545,122 @@ func TestGetConfig(t *testing.T) {
 
 		if cfg.SearXNGURL != "https://env.example.com" {
 			t.Fatalf("SearXNGURL = %q, want env value", cfg.SearXNGURL)
+		}
+	})
+
+	t.Run("timeout env parsed", func(t *testing.T) {
+		t.Setenv("SEARXNG_TIMEOUT", "250ms")
+
+		cfg, err := getConfig(CLIFlags{})
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
+
+		if cfg.Timeout != 250*time.Millisecond {
+			t.Fatalf("Timeout = %v, want 250ms", cfg.Timeout)
+		}
+	})
+
+	t.Run("max retries env parsed", func(t *testing.T) {
+		t.Setenv("SEARXNG_MAX_RETRIES", "3")
+
+		cfg, err := getConfig(CLIFlags{})
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
+
+		if cfg.MaxRetries != 3 {
+			t.Fatalf("MaxRetries = %d, want 3", cfg.MaxRetries)
+		}
+	})
+
+	t.Run("cli flags override env", func(t *testing.T) {
+		t.Setenv("SEARXNG_TIMEOUT", "30s")
+		t.Setenv("SEARXNG_MAX_RETRIES", "9")
+
+		_, flags, _, err := parseArgs([]string{
+			"--searxng-url", "https://flag.example.com",
+			"--timeout", "1500ms",
+			"--max-retries", "4",
+			"test query",
+		})
+		if err != nil {
+			t.Fatalf("parseArgs() error = %v, want nil", err)
+		}
+
+		cfg, err := getConfig(flags)
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
+
+		if cfg.Timeout != 1500*time.Millisecond {
+			t.Fatalf("Timeout = %v, want 1500ms", cfg.Timeout)
+		}
+
+		if cfg.MaxRetries != 4 {
+			t.Fatalf("MaxRetries = %d, want 4", cfg.MaxRetries)
+		}
+	})
+
+	t.Run("invalid env values fall back to defaults", func(t *testing.T) {
+		t.Setenv("SEARXNG_TIMEOUT", "not-a-duration")
+		t.Setenv("SEARXNG_MAX_RETRIES", "-1")
+
+		cfg, err := getConfig(CLIFlags{})
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
+
+		if cfg.Timeout != searxng.DefaultTimeout {
+			t.Fatalf("Timeout = %v, want default %v", cfg.Timeout, searxng.DefaultTimeout)
+		}
+
+		if cfg.MaxRetries != searxng.DefaultMaxRetries {
+			t.Fatalf("MaxRetries = %d, want default %d", cfg.MaxRetries, searxng.DefaultMaxRetries)
+		}
+	})
+
+	t.Run("max retries zero flag disables retries", func(t *testing.T) {
+		t.Setenv("SEARXNG_MAX_RETRIES", "7")
+
+		_, flags, _, err := parseArgs([]string{
+			"--searxng-url", "https://flag.example.com",
+			"--max-retries", "0",
+			"test query",
+		})
+		if err != nil {
+			t.Fatalf("parseArgs() error = %v, want nil", err)
+		}
+
+		cfg, err := getConfig(flags)
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
+
+		if cfg.MaxRetries != 0 {
+			t.Fatalf("MaxRetries = %d, want 0", cfg.MaxRetries)
+		}
+	})
+
+	t.Run("timeout zero flag overrides env", func(t *testing.T) {
+		t.Setenv("SEARXNG_TIMEOUT", "30s")
+
+		_, flags, _, err := parseArgs([]string{
+			"--searxng-url", "https://flag.example.com",
+			"--timeout", "0",
+			"test query",
+		})
+		if err != nil {
+			t.Fatalf("parseArgs() error = %v, want nil", err)
+		}
+
+		cfg, err := getConfig(flags)
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
+
+		if cfg.Timeout != 0 {
+			t.Fatalf("Timeout = %v, want 0", cfg.Timeout)
 		}
 	})
 
