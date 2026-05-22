@@ -19,57 +19,63 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
-// searchInputSchema defines the JSON schema for the search tool input.
-// Only "query" is required; all other parameters are optional.
-var searchInputSchema = `{
+// mustMarshalRawSchema marshals v to a json.RawMessage, panicking on error.
+// Used for compile-time-safe schema generation.
+func mustMarshalRawSchema(v any) json.RawMessage {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+
+// searchInputSchema is the JSON schema for the search tool input,
+// generated programmatically to ensure correctness.
+var searchInputSchema = mustMarshalRawSchema(map[string]interface{}{
 	"type": "object",
-	"properties": {
-		"query": {
-			"type": "string",
-			"description": "Search query string"
+	"properties": map[string]interface{}{
+		"query": map[string]interface{}{
+			"type":        "string",
+			"description": "Search query string",
 		},
-		"language": {
-			"type": "string",
-			"description": "` + "Language code for results. Common codes: en, zh-tw, zh, ja, " +
-	"fr, de, es, pt, ru, ar. Leave empty for auto-detect (SearXNG decides based on query)" + `"
+		"language": map[string]interface{}{
+			"type":        "string",
+			"description": "Language code for results. Common codes: en, zh-tw, zh, ja, fr, de, es, pt, ru, ar. Leave empty for auto-detect (SearXNG decides based on query)",
 		},
-		"safesearch": {
-			"type": "integer",
-			"description": "` + "SafeSearch level. 0=Off (no filtering), 1=Moderate " +
-	"(filter moderate explicit content), 2=Strict (filter all explicit content). Defaults to 0" + `",
-			"minimum": 0,
-			"maximum": 2
+		"safesearch": map[string]interface{}{
+			"type":        "integer",
+			"description": "SafeSearch level. 0=Off (no filtering), 1=Moderate (filter moderate explicit content), 2=Strict (filter all explicit content). Defaults to 0",
+			"minimum":     0,
+			"maximum":     2,
 		},
-		"time_range": {
-			"type": "string",
+		"time_range": map[string]interface{}{
+			"type":        "string",
 			"description": "Time range filter. Available values: empty (all time), day, month, year. Defaults to empty (all time)",
-			"enum": ["", "day", "month", "year"]
+			"enum":        []string{"", "day", "month", "year"},
 		},
-		"categories": {
-			"type": "string",
-			"description": "` + "Comma-separated list of categories to search. Common categories: " +
-	"general, news, images, videos, music, science, files, it, social_media, map. Leave empty for all categories" + `"
+		"categories": map[string]interface{}{
+			"type":        "string",
+			"description": "Comma-separated list of categories to search. Common categories: general, news, images, videos, music, science, files, it, social_media, map. Leave empty for all categories",
 		},
-		"engines": {
-			"type": "string",
-			"description": "` + "Comma-separated list of search engines to use " +
-	"(e.g., google, bing, duckduckgo). Leave empty to use SearXNG default engines" + `"
+		"engines": map[string]interface{}{
+			"type":        "string",
+			"description": "Comma-separated list of search engines to use (e.g., google, bing, duckduckgo). Leave empty to use SearXNG default engines",
 		},
-		"pageno": {
-			"type": ["null", "integer"],
+		"pageno": map[string]interface{}{
+			"type":        []interface{}{"null", "integer"},
 			"description": "Page number for pagination. Defaults to 1",
-			"minimum": 1
+			"minimum":     1,
 		},
-		"limit": {
-			"type": "integer",
+		"limit": map[string]interface{}{
+			"type":        "integer",
 			"description": "Maximum number of results to return (1-20). Defaults to 10",
-			"minimum": 1,
-			"maximum": 20
-		}
+			"minimum":     1,
+			"maximum":     20,
+		},
 	},
-	"required": ["query"],
-	"additionalProperties": false
-}`
+	"required":             []string{"query"},
+	"additionalProperties": false,
+})
 
 type mcpInitializeMessage struct {
 	JSONRPC string `json:"jsonrpc"`
@@ -164,48 +170,12 @@ func isValidMCPInitializeMessage(line []byte) bool {
 	return msg.JSONRPC == "2.0" && msg.Method == "initialize"
 }
 
-// attachStdin replaces os.Stdin with a pipe that reads from the given reader,
-// allowing the MCP server to consume pre-processed stdin data. It returns a
-// restore function to revert os.Stdin to its original value.
-func attachStdin(stdin io.Reader) (func(), error) {
-	originalStdin := os.Stdin
-
-	pr, pw, err := os.Pipe()
-	if err != nil {
-		return nil, err
-	}
-
-	os.Stdin = pr
-
-	go func() {
-		_, copyErr := io.Copy(pw, stdin)
-		if copyErr != nil {
-			slog.Debug("failed to copy MCP stdin", "error", copyErr)
-		}
-
-		_ = pw.Close()
-	}()
-
-	return func() {
-		os.Stdin = originalStdin
-		_ = pr.Close()
-	}, nil
-}
-
 // runMCPMode starts the MCP stdio server, registers the search tool, and
 // blocks until a signal (SIGINT/SIGTERM) is received or the server exits.
 func runMCPMode(flags CLIFlags, stdin io.Reader) {
-	restoreStdin, err := attachStdin(stdin)
-	if err != nil {
-		slog.Error("failed to prepare MCP stdin", "error", err)
-		os.Exit(1)
-	}
-	defer restoreStdin()
-
 	cfg, err := getConfig(flags)
 	if err != nil {
 		slog.Error("configuration error", "error", err)
-		//nolint:gocritic // defer restoreStdin handles normal shutdown path
 		os.Exit(1)
 	}
 
@@ -233,7 +203,7 @@ func runMCPMode(flags CLIFlags, stdin io.Reader) {
 			"files, it, social_media, map); engines - comma-separated (e.g., google, bing, " +
 			"duckduckgo), SearXNG defaults if empty; pageno - page number (default 1); " +
 			"limit - max results 1-20 (default 10).",
-		InputSchema: json.RawMessage(searchInputSchema),
+		InputSchema: searchInputSchema,
 	}, NewSearchToolHandler(searcher))
 
 	slog.Info("starting SearXNG MCP server")
@@ -241,7 +211,10 @@ func runMCPMode(flags CLIFlags, stdin io.Reader) {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	err = server.Run(ctx, &mcp.StdioTransport{})
+	err = server.Run(ctx, &mcp.IOTransport{
+		Reader: io.NopCloser(stdin),
+		Writer: os.Stdout,
+	})
 	if err != nil {
 		slog.Error("server failed", "error", err)
 		os.Exit(1)

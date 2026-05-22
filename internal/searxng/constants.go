@@ -4,10 +4,10 @@ package searxng
 import "time"
 
 // DefaultTimeout is the default timeout for SearXNG HTTP requests.
-const DefaultTimeout = 30 * time.Second
+const DefaultTimeout = 8 * time.Second
 
 // DefaultMaxRetries is the default number of retries after the initial search attempt.
-const DefaultMaxRetries = 2
+const DefaultMaxRetries = 5
 
 // DefaultRetryDelay is the default base delay for retry backoff.
 const DefaultRetryDelay = time.Second

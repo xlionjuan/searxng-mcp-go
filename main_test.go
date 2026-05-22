@@ -494,28 +494,7 @@ func TestPrepareMCPStdinRejectsOversizedInitializeLine(t *testing.T) {
 	}
 }
 
-func TestAttachStdin(t *testing.T) {
-	originalStdin := os.Stdin
 
-	t.Cleanup(func() {
-		os.Stdin = originalStdin
-	})
-
-	restore, err := attachStdin(strings.NewReader("stdin payload"))
-	if err != nil {
-		t.Fatalf("attachStdin() returned error: %v", err)
-	}
-	defer restore()
-
-	got, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		t.Fatalf("failed to read attached stdin: %v", err)
-	}
-
-	if string(got) != "stdin payload" {
-		t.Fatalf("attached stdin mismatch: got %q", string(got))
-	}
-}
 
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()

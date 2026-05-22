@@ -7,7 +7,9 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"searxng-mcp-go/internal/searxng"
 )
@@ -51,6 +53,8 @@ type CLIFlags struct {
 	Pageno     *int
 	Limit      *int
 	Debug      bool
+	Timeout    time.Duration
+	MaxRetries int
 }
 
 type registeredFlags struct {
@@ -67,6 +71,8 @@ type registeredFlags struct {
 	pageno     *int
 	limit      *int
 	debug      *bool
+	timeout    *time.Duration
+	maxRetries *int
 }
 
 // parseArgs parses command-line arguments and returns the mode, flags, and positional arguments.
@@ -123,6 +129,8 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 		Pageno:     pagenoPtr,
 		Limit:      limitPtr,
 		Debug:      *registered.debug,
+		Timeout:    *registered.timeout,
+		MaxRetries: *registered.maxRetries,
 	}
 
 	isCLIMode := len(args) > 0 || flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
@@ -149,6 +157,8 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 		pageno:     fs.Int("pageno", 1, "Page number for pagination"),
 		limit:      fs.Int("limit", defaultResultLimit, "Maximum number of results to return (1-20)"),
 		debug:      fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)"),
+		timeout:    fs.Duration("timeout", 0, "HTTP client timeout (e.g., 8s, 30s); overrides SEARXNG_TIMEOUT env var"),
+		maxRetries: fs.Int("max-retries", 0, "Max retries after initial search attempt; overrides SEARXNG_MAX_RETRIES env var"),
 	}
 
 	return fs, registered
@@ -248,6 +258,36 @@ func getConfig(flags CLIFlags) (*searxng.Config, error) {
 	}
 
 	cfg.SearXNGURL = searxngURL
+
+	// Apply SEARXNG_TIMEOUT env var (parsed as Go duration, e.g. "8s", "30s")
+	if timeoutStr := os.Getenv("SEARXNG_TIMEOUT"); timeoutStr != "" {
+		d, err := time.ParseDuration(timeoutStr)
+		if err != nil {
+			slog.Warn("invalid SEARXNG_TIMEOUT, ignoring", "value", timeoutStr, "error", err)
+		} else {
+			cfg.Timeout = d
+		}
+	}
+
+	// Apply SEARXNG_MAX_RETRIES env var (parsed as integer)
+	if maxRetriesStr := os.Getenv("SEARXNG_MAX_RETRIES"); maxRetriesStr != "" {
+		n, err := strconv.Atoi(maxRetriesStr)
+		if err != nil || n < 0 {
+			slog.Warn("invalid SEARXNG_MAX_RETRIES, ignoring", "value", maxRetriesStr, "error", err)
+		} else {
+			cfg.MaxRetries = n
+		}
+	}
+
+	// CLI flag overrides take precedence over env vars (and defaults).
+	// Zero means "not explicitly set" for these flags.
+	if flags.Timeout > 0 {
+		cfg.Timeout = flags.Timeout
+	}
+
+	if flags.MaxRetries > 0 {
+		cfg.MaxRetries = flags.MaxRetries
+	}
 
 	return cfg, nil
 }

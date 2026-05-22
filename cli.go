@@ -43,6 +43,10 @@ OPTIONS:
   --limit N          Maximum number of results to return (1-20) [default: 10]
   --debug            Enable verbose HTTP request/response logging
                      Can also be enabled via DEBUG=1 environment variable
+  --timeout DURATION HTTP client timeout (e.g., 8s, 30s) [default: 8s]
+                     Can also be set via SEARXNG_TIMEOUT environment variable
+  --max-retries N    Max retries after initial search attempt [default: 5]
+                     Can also be set via SEARXNG_MAX_RETRIES environment variable
   --help             Show this help message
   --version          Show version information
 
@@ -128,7 +132,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 
 	defer func() { _ = searcher.Close() }()
 
-	ctx, cancel := context.WithTimeout(context.Background(), searxng.DefaultTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
 	defer cancel()
 
 	resp, err := searcher.Search(ctx, args)

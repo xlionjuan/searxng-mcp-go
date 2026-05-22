@@ -40,3 +40,4 @@ REPORT.md
 # searxng-server-test
 searxng-server-test/.venv/
 searxng-server-test/settings.yml
+searxng-server-test/.bg-pid

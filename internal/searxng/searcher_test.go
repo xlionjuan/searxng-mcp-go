@@ -91,8 +91,8 @@ func TestConfigAndDefaultConfig(t *testing.T) {
 		t.Fatalf("SearXNGURL = %q, want empty string", cfg.SearXNGURL)
 	}
 
-	if cfg.Timeout != 30*time.Second {
-		t.Fatalf("Timeout = %v, want 30s", cfg.Timeout)
+	if cfg.Timeout != 8*time.Second {
+		t.Fatalf("Timeout = %v, want 8s", cfg.Timeout)
 	}
 
 	if cfg.HTTPClient != nil {
