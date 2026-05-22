@@ -99,12 +99,32 @@ func TestConfigAndDefaultConfig(t *testing.T) {
 		t.Fatalf("HTTPClient = %v, want nil", cfg.HTTPClient)
 	}
 
+	if cfg.MaxRetries != searxng.DefaultMaxRetries {
+		t.Fatalf("MaxRetries = %d, want %d", cfg.MaxRetries, searxng.DefaultMaxRetries)
+	}
+
+	if cfg.RetryDelay != searxng.DefaultRetryDelay {
+		t.Fatalf("RetryDelay = %v, want %v", cfg.RetryDelay, searxng.DefaultRetryDelay)
+	}
+
+	if cfg.MaxRetryDelay != searxng.DefaultMaxRetryDelay {
+		t.Fatalf("MaxRetryDelay = %v, want %v", cfg.MaxRetryDelay, searxng.DefaultMaxRetryDelay)
+	}
+
 	client := &http.Client{Timeout: time.Second}
 	cfg.SearXNGURL = "https://example.com/search"
 	cfg.Timeout = 5 * time.Second
+	cfg.MaxRetries = 3
+	cfg.RetryDelay = 2 * time.Millisecond
+	cfg.MaxRetryDelay = 10 * time.Millisecond
 
 	cfg.HTTPClient = client
-	if cfg.SearXNGURL != "https://example.com/search" || cfg.Timeout != 5*time.Second || cfg.HTTPClient != client {
+	if cfg.SearXNGURL != "https://example.com/search" ||
+		cfg.Timeout != 5*time.Second ||
+		cfg.HTTPClient != client ||
+		cfg.MaxRetries != 3 ||
+		cfg.RetryDelay != 2*time.Millisecond ||
+		cfg.MaxRetryDelay != 10*time.Millisecond {
 		t.Fatal("Config fields are not writable")
 	}
 }

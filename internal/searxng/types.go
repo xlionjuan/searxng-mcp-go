@@ -12,16 +12,22 @@ const maxWeatherSummaryParts = 3
 
 // Config holds the SearXNG configuration.
 type Config struct {
-	SearXNGURL string
-	Timeout    time.Duration
-	HTTPClient *http.Client // Optional custom HTTP client
+	SearXNGURL    string
+	Timeout       time.Duration
+	HTTPClient    *http.Client // Optional custom HTTP client
+	MaxRetries    int
+	RetryDelay    time.Duration
+	MaxRetryDelay time.Duration
 }
 
 // DefaultConfig returns the default configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		SearXNGURL: "",
-		Timeout:    DefaultTimeout,
+		SearXNGURL:    "",
+		Timeout:       DefaultTimeout,
+		MaxRetries:    DefaultMaxRetries,
+		RetryDelay:    DefaultRetryDelay,
+		MaxRetryDelay: DefaultMaxRetryDelay,
 	}
 }
 

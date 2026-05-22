@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -805,6 +806,86 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 				t.Fatalf("unexpected GET query params: %v", getQuery)
 			}
 		})
+	}
+}
+
+func TestSearch_RetriesRetryableStatus(t *testing.T) {
+	t.Parallel()
+
+	var attempts atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if attempts.Add(1) == 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"query":"test","number_of_results":1,"results":[{"title":"Result","url":"https://example.com","content":"ok","engine":"test"}],"suggestions":[]}`))
+	}))
+	defer server.Close()
+
+	cfg := &searxng.Config{
+		SearXNGURL:    server.URL,
+		Timeout:       30 * time.Second,
+		MaxRetries:    1,
+		RetryDelay:    time.Nanosecond,
+		MaxRetryDelay: time.Nanosecond,
+	}
+
+	result, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
+	if err != nil {
+		t.Fatalf("Search() error = %v, want nil", err)
+	}
+
+	if got := attempts.Load(); got != 2 {
+		t.Fatalf("attempts = %d, want 2", got)
+	}
+
+	if len(result.Results) != 1 {
+		t.Fatalf("results length = %d, want 1", len(result.Results))
+	}
+}
+
+func TestSearch_RetriesEmptySearchResponse(t *testing.T) {
+	t.Parallel()
+
+	var attempts atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempt := attempts.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		if attempt == 1 {
+			_, _ = w.Write([]byte(`{"query":"test","results":[],"suggestions":[]}`))
+
+			return
+		}
+
+		_, _ = w.Write([]byte(`{"query":"test","number_of_results":1,"results":[{"title":"Result","url":"https://example.com","content":"ok","engine":"test"}],"suggestions":[]}`))
+	}))
+	defer server.Close()
+
+	cfg := &searxng.Config{
+		SearXNGURL:    server.URL,
+		Timeout:       30 * time.Second,
+		MaxRetries:    1,
+		RetryDelay:    time.Nanosecond,
+		MaxRetryDelay: time.Nanosecond,
+	}
+
+	result, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
+	if err != nil {
+		t.Fatalf("Search() error = %v, want nil", err)
+	}
+
+	if got := attempts.Load(); got != 2 {
+		t.Fatalf("attempts = %d, want 2", got)
+	}
+
+	if len(result.Results) != 1 {
+		t.Fatalf("results length = %d, want 1", len(result.Results))
 	}
 }
 

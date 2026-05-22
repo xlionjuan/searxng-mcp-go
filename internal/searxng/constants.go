@@ -6,6 +6,15 @@ import "time"
 // DefaultTimeout is the default timeout for SearXNG HTTP requests.
 const DefaultTimeout = 30 * time.Second
 
+// DefaultMaxRetries is the default number of retries after the initial search attempt.
+const DefaultMaxRetries = 2
+
+// DefaultRetryDelay is the default base delay for retry backoff.
+const DefaultRetryDelay = time.Second
+
+// DefaultMaxRetryDelay is the maximum default delay between retry attempts.
+const DefaultMaxRetryDelay = 30 * time.Second
+
 // MaxContentRunes is the maximum number of UTF-8 runes in content truncation.
 const MaxContentRunes = 4000
 
