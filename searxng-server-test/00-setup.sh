@@ -78,6 +78,11 @@ else
     echo "  Warning: could not find formats section"
 fi
 
+# Enable yahoo and bing for more reliable E2E test results
+sed -i '/^  - name: yahoo$/{n;n;n;s/disabled: true/disabled: false/}' "$SETTINGS_FILE"
+sed -i '/^  - name: bing$/{n;n;n;s/disabled: true/disabled: false/}' "$SETTINGS_FILE"
+echo "  Enabled yahoo and bing engines ✓"
+
 echo ""
 echo "=== Setup complete ==="
 echo ""
