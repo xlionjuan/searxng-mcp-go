@@ -54,8 +54,8 @@ func isValidCategoryOrEngine(value string) bool {
 	return true
 }
 
-// ValidateCategories validates a comma-separated list of categories.
-func ValidateCategories(categories string) error {
+// validateCategories validates a comma-separated list of categories.
+func validateCategories(categories string) error {
 	if categories == "" {
 		return nil
 	}
@@ -73,8 +73,8 @@ func ValidateCategories(categories string) error {
 	return nil
 }
 
-// ValidateEngines validates a comma-separated list of engines.
-func ValidateEngines(engines string) error {
+// validateEngines validates a comma-separated list of engines.
+func validateEngines(engines string) error {
 	if engines == "" {
 		return nil
 	}
@@ -150,22 +150,6 @@ func validateQuery(query string) error {
 	}
 
 	return nil
-}
-
-func validateCategories(categories string) error {
-	if categories == "" {
-		return nil
-	}
-
-	return ValidateCategories(categories)
-}
-
-func validateEngines(engines string) error {
-	if engines == "" {
-		return nil
-	}
-
-	return ValidateEngines(engines)
 }
 
 func validateLanguage(args *SearchArgs) error {

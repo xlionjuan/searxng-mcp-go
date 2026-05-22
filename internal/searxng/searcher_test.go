@@ -1,4 +1,4 @@
-package searxng_test
+package searxng
 
 import (
 	"encoding/json"
@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"searxng-mcp-go/internal/searxng"
 )
 
 const testAnswerBody = "answer"
@@ -30,7 +28,7 @@ func TestNewSearXNGSearcherErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: tt.baseURL, Timeout: time.Second}, false)
+			searcher, err := NewSearXNGSearcher(&Config{SearXNGURL: tt.baseURL, Timeout: time.Second}, false)
 			if err == nil {
 				if searcher != nil {
 					_ = searcher.Close()
@@ -62,7 +60,7 @@ func TestNewSearXNGSearcherSuccess(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: tt.baseURL, Timeout: time.Second}, false)
+			searcher, err := NewSearXNGSearcher(&Config{SearXNGURL: tt.baseURL, Timeout: time.Second}, false)
 			if err != nil {
 				t.Fatalf("NewSearXNGSearcher() error = %v, want nil", err)
 			}
@@ -82,7 +80,7 @@ func TestNewSearXNGSearcherSuccess(t *testing.T) {
 func TestConfigAndDefaultConfig(t *testing.T) {
 	t.Parallel()
 
-	cfg := searxng.DefaultConfig()
+	cfg := DefaultConfig()
 	if cfg == nil {
 		t.Fatal("DefaultConfig() = nil, want config")
 	}
@@ -99,16 +97,16 @@ func TestConfigAndDefaultConfig(t *testing.T) {
 		t.Fatalf("HTTPClient = %v, want nil", cfg.HTTPClient)
 	}
 
-	if cfg.MaxRetries != searxng.DefaultMaxRetries {
-		t.Fatalf("MaxRetries = %d, want %d", cfg.MaxRetries, searxng.DefaultMaxRetries)
+	if cfg.MaxRetries != DefaultMaxRetries {
+		t.Fatalf("MaxRetries = %d, want %d", cfg.MaxRetries, DefaultMaxRetries)
 	}
 
-	if cfg.RetryDelay != searxng.DefaultRetryDelay {
-		t.Fatalf("RetryDelay = %v, want %v", cfg.RetryDelay, searxng.DefaultRetryDelay)
+	if cfg.RetryDelay != DefaultRetryDelay {
+		t.Fatalf("RetryDelay = %v, want %v", cfg.RetryDelay, DefaultRetryDelay)
 	}
 
-	if cfg.MaxRetryDelay != searxng.DefaultMaxRetryDelay {
-		t.Fatalf("MaxRetryDelay = %v, want %v", cfg.MaxRetryDelay, searxng.DefaultMaxRetryDelay)
+	if cfg.MaxRetryDelay != DefaultMaxRetryDelay {
+		t.Fatalf("MaxRetryDelay = %v, want %v", cfg.MaxRetryDelay, DefaultMaxRetryDelay)
 	}
 
 	client := &http.Client{Timeout: time.Second}
@@ -135,7 +133,7 @@ func TestSearchResponseMarshalJSON(t *testing.T) {
 	t.Run("nil slices serialize as empty arrays", func(t *testing.T) {
 		t.Parallel()
 
-		body, err := json.Marshal(searxng.SearchResponse{})
+		body, err := json.Marshal(SearchResponse{})
 		if err != nil {
 			t.Fatalf("json.Marshal() error = %v", err)
 		}
@@ -159,7 +157,7 @@ func TestSearchResponseMarshalJSON(t *testing.T) {
 	t.Run("Debug false omits unresponsive_engines", func(t *testing.T) {
 		t.Parallel()
 
-		body, err := json.Marshal(searxng.SearchResponse{
+		body, err := json.Marshal(SearchResponse{
 			UnresponsiveEngines: [][]string{{"google", "timeout"}},
 			Debug:               false,
 		})
@@ -175,7 +173,7 @@ func TestSearchResponseMarshalJSON(t *testing.T) {
 	t.Run("Debug true includes empty unresponsive_engines", func(t *testing.T) {
 		t.Parallel()
 
-		body, err := json.Marshal(searxng.SearchResponse{Debug: true})
+		body, err := json.Marshal(SearchResponse{Debug: true})
 		if err != nil {
 			t.Fatalf("json.Marshal() error = %v", err)
 		}
@@ -188,7 +186,7 @@ func TestSearchResponseMarshalJSON(t *testing.T) {
 	t.Run("Debug true includes unresponsive_engines values", func(t *testing.T) {
 		t.Parallel()
 
-		body, err := json.Marshal(searxng.SearchResponse{
+		body, err := json.Marshal(SearchResponse{
 			UnresponsiveEngines: [][]string{{"google", "timeout"}},
 			Debug:               true,
 		})
@@ -208,97 +206,97 @@ func TestDeduplicateAnswers(t *testing.T) {
 	t.Run("nil answers returns nil", func(t *testing.T) {
 		t.Parallel()
 
-		if got := searxng.DeduplicateAnswers(nil, []searxng.Infobox{{Content: "content"}}); got != nil {
-			t.Fatalf("DeduplicateAnswers() = %#v, want nil", got)
+		if got := deduplicateAnswers(nil, []Infobox{{Content: "content"}}); got != nil {
+			t.Fatalf("deduplicateAnswers() = %#v, want nil", got)
 		}
 	})
 
 	t.Run("empty answers returns empty", func(t *testing.T) {
 		t.Parallel()
 
-		answers := []searxng.Answer{}
+		answers := []Answer{}
 
-		got := searxng.DeduplicateAnswers(answers, []searxng.Infobox{{Content: "content"}})
+		got := deduplicateAnswers(answers, []Infobox{{Content: "content"}})
 		if len(got) != 0 {
-			t.Fatalf("DeduplicateAnswers() length = %d, want 0", len(got))
+			t.Fatalf("deduplicateAnswers() length = %d, want 0", len(got))
 		}
 	})
 
 	t.Run("nil infoboxes returns as-is", func(t *testing.T) {
 		t.Parallel()
 
-		answers := []searxng.Answer{{Answer: testAnswerBody}}
+		answers := []Answer{{Answer: testAnswerBody}}
 
-		got := searxng.DeduplicateAnswers(answers, nil)
+		got := deduplicateAnswers(answers, nil)
 		if len(got) != 1 || got[0].Answer != testAnswerBody {
-			t.Fatalf("DeduplicateAnswers() = %#v, want original answers", got)
+			t.Fatalf("deduplicateAnswers() = %#v, want original answers", got)
 		}
 	})
 
 	t.Run("empty infoboxes returns as-is", func(t *testing.T) {
 		t.Parallel()
 
-		answers := []searxng.Answer{{Answer: testAnswerBody}}
+		answers := []Answer{{Answer: testAnswerBody}}
 
-		got := searxng.DeduplicateAnswers(answers, []searxng.Infobox{})
+		got := deduplicateAnswers(answers, []Infobox{})
 		if len(got) != 1 || got[0].Answer != testAnswerBody {
-			t.Fatalf("DeduplicateAnswers() = %#v, want original answers", got)
+			t.Fatalf("deduplicateAnswers() = %#v, want original answers", got)
 		}
 	})
 
 	t.Run("infoboxes without content returns as-is", func(t *testing.T) {
 		t.Parallel()
 
-		answers := []searxng.Answer{{Answer: testAnswerBody}}
+		answers := []Answer{{Answer: testAnswerBody}}
 
-		got := searxng.DeduplicateAnswers(answers, []searxng.Infobox{{Infobox: "empty"}})
+		got := deduplicateAnswers(answers, []Infobox{{Infobox: "empty"}})
 		if len(got) != 1 || got[0].Answer != testAnswerBody {
-			t.Fatalf("DeduplicateAnswers() = %#v, want original answers", got)
+			t.Fatalf("deduplicateAnswers() = %#v, want original answers", got)
 		}
 	})
 
 	t.Run("answer prefix of infobox is filtered", func(t *testing.T) {
 		t.Parallel()
 
-		answers := []searxng.Answer{{Answer: "Albert Einstein was a theoretical physicist"}}
+		answers := []Answer{{Answer: "Albert Einstein was a theoretical physicist"}}
 
-		infoboxes := []searxng.Infobox{{Content: "Albert Einstein was a theoretical physicist who developed relativity."}}
-		if got := searxng.DeduplicateAnswers(answers, infoboxes); len(got) != 0 {
-			t.Fatalf("DeduplicateAnswers() = %#v, want answer filtered", got)
+		infoboxes := []Infobox{{Content: "Albert Einstein was a theoretical physicist who developed relativity."}}
+		if got := deduplicateAnswers(answers, infoboxes); len(got) != 0 {
+			t.Fatalf("deduplicateAnswers() = %#v, want answer filtered", got)
 		}
 	})
 
 	t.Run("answer that is not prefix is kept", func(t *testing.T) {
 		t.Parallel()
 
-		answers := []searxng.Answer{{Answer: "Marie Curie discovered polonium"}}
-		infoboxes := []searxng.Infobox{{Content: "Albert Einstein was a theoretical physicist."}}
+		answers := []Answer{{Answer: "Marie Curie discovered polonium"}}
+		infoboxes := []Infobox{{Content: "Albert Einstein was a theoretical physicist."}}
 
-		got := searxng.DeduplicateAnswers(answers, infoboxes)
+		got := deduplicateAnswers(answers, infoboxes)
 		if len(got) != 1 || got[0].Answer != answers[0].Answer {
-			t.Fatalf("DeduplicateAnswers() = %#v, want original answer", got)
+			t.Fatalf("deduplicateAnswers() = %#v, want original answer", got)
 		}
 	})
 
 	t.Run("More at Wikipedia suffix is trimmed before checking", func(t *testing.T) {
 		t.Parallel()
 
-		answers := []searxng.Answer{{Answer: "Ada Lovelace was an English mathematician More at Wikipedia"}}
+		answers := []Answer{{Answer: "Ada Lovelace was an English mathematician More at Wikipedia"}}
 
-		infoboxes := []searxng.Infobox{{Content: "Ada Lovelace was an English mathematician and writer."}}
-		if got := searxng.DeduplicateAnswers(answers, infoboxes); len(got) != 0 {
-			t.Fatalf("DeduplicateAnswers() = %#v, want answer filtered", got)
+		infoboxes := []Infobox{{Content: "Ada Lovelace was an English mathematician and writer."}}
+		if got := deduplicateAnswers(answers, infoboxes); len(got) != 0 {
+			t.Fatalf("deduplicateAnswers() = %#v, want answer filtered", got)
 		}
 	})
 
 	t.Run("lowercase fallback when exact case fails", func(t *testing.T) {
 		t.Parallel()
 
-		answers := []searxng.Answer{{Answer: "Grace Hopper was a computer scientist"}}
+		answers := []Answer{{Answer: "Grace Hopper was a computer scientist"}}
 
-		infoboxes := []searxng.Infobox{{Content: "grace hopper was a computer scientist and naval officer."}}
-		if got := searxng.DeduplicateAnswers(answers, infoboxes); len(got) != 0 {
-			t.Fatalf("DeduplicateAnswers() = %#v, want answer filtered by lowercase fallback", got)
+		infoboxes := []Infobox{{Content: "grace hopper was a computer scientist and naval officer."}}
+		if got := deduplicateAnswers(answers, infoboxes); len(got) != 0 {
+			t.Fatalf("deduplicateAnswers() = %#v, want answer filtered by lowercase fallback", got)
 		}
 	})
 }
@@ -306,9 +304,9 @@ func TestDeduplicateAnswers(t *testing.T) {
 func TestHTTPStatusError(t *testing.T) {
 	t.Parallel()
 
-	err := searxng.HTTPStatusError(http.StatusTooManyRequests, "text/plain", []byte("slow down"))
+	err := HTTPStatusError(http.StatusTooManyRequests, "text/plain", []byte("slow down"))
 
-	var searxErr *searxng.SearXNGError
+	var searxErr *SearXNGError
 	if !errors.As(err, &searxErr) {
 		t.Fatalf("HTTPStatusError() = %T, want SearXNGError", err)
 	}

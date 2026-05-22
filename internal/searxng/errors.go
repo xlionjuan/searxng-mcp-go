@@ -44,8 +44,8 @@ func (e *ValidationError) Is(target error) bool {
 	return e.Field == ve.Field && e.Message == ve.Message
 }
 
-// TruncateBody returns a truncated preview of body for error messages.
-func TruncateBody(body []byte, maxLen int) string {
+// truncateBody returns a truncated preview of body for error messages.
+func truncateBody(body []byte, maxLen int) string {
 	if len(body) == 0 || maxLen <= 0 {
 		return ""
 	}
@@ -55,8 +55,8 @@ func TruncateBody(body []byte, maxLen int) string {
 	return string(body[:previewLen])
 }
 
-// IsValidationError checks if an error is a ValidationError.
-func IsValidationError(err error) bool {
+// isValidationError checks if an error is a ValidationError.
+func isValidationError(err error) bool {
 	var ve *ValidationError
 
 	return errors.As(err, &ve)
@@ -76,7 +76,7 @@ func NewSearXNGError(statusCode int, contentType, body string, err error) *SearX
 	return &SearXNGError{
 		StatusCode:      statusCode,
 		RespContentType: contentType,
-		ResponseBody:    TruncateBody([]byte(body), MaxErrorDisplayChars),
+		ResponseBody:    truncateBody([]byte(body), MaxErrorDisplayChars),
 		UnderlyingErr:   err,
 	}
 }
@@ -100,7 +100,7 @@ func (e *SearXNGError) Unwrap() error {
 
 // HTTPStatusError creates a SearXNGError from an HTTP status code.
 func HTTPStatusError(statusCode int, contentType string, body []byte) error {
-	bodyStr := TruncateBody(body, MaxErrorDisplayChars)
+	bodyStr := truncateBody(body, MaxErrorDisplayChars)
 
 	var err error
 

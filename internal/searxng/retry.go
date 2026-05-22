@@ -61,10 +61,6 @@ func retryBackoff(attempt int, base, max time.Duration) time.Duration {
 	return half + time.Duration(rand.Int64N(int64(jitterRange)))
 }
 
-func retryBackoffWait(ctx context.Context, attempt int, base, max time.Duration) error {
-	return retryWait(ctx, retryBackoff(attempt, base, max))
-}
-
 func retryWait(ctx context.Context, delay time.Duration) error {
 	timer := time.NewTimer(delay)
 	defer timer.Stop()

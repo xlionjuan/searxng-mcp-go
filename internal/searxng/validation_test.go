@@ -1,4 +1,4 @@
-package searxng_test
+package searxng
 
 import (
 	"errors"
@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-
-	"searxng-mcp-go/internal/searxng"
 )
 
 var (
@@ -22,7 +20,7 @@ func requireValidationError(t *testing.T, err error, field string) {
 		t.Fatalf("expected validation error for %s, got nil", field)
 	}
 
-	var ve *searxng.ValidationError
+	var ve *ValidationError
 	if !errors.As(err, &ve) {
 		t.Fatalf("expected ValidationError, got %T: %v", err, err)
 	}
@@ -37,17 +35,17 @@ func TestValidateSearchArgs(t *testing.T) {
 
 	t.Run("nil args", func(t *testing.T) {
 		t.Parallel()
-		requireValidationError(t, searxng.ValidateSearchArgs(nil), "args")
+		requireValidationError(t, ValidateSearchArgs(nil), "args")
 	})
 
 	t.Run("empty query", func(t *testing.T) {
 		t.Parallel()
-		requireValidationError(t, searxng.ValidateSearchArgs(&searxng.SearchArgs{}), "query")
+		requireValidationError(t, ValidateSearchArgs(&SearchArgs{}), "query")
 	})
 
 	t.Run("whitespace-only query", func(t *testing.T) {
 		t.Parallel()
-		requireValidationError(t, searxng.ValidateSearchArgs(&searxng.SearchArgs{Query: " \t "}), "query")
+		requireValidationError(t, ValidateSearchArgs(&SearchArgs{Query: " \t "}), "query")
 	})
 
 	t.Run("query with control characters", func(t *testing.T) {
@@ -56,7 +54,7 @@ func TestValidateSearchArgs(t *testing.T) {
 		for _, query := range []string{"test\x00query", "test\x1fquery", "test\x7fquery", "test\nquery"} {
 			t.Run(fmt.Sprintf("%q", query), func(t *testing.T) {
 				t.Parallel()
-				requireValidationError(t, searxng.ValidateSearchArgs(&searxng.SearchArgs{Query: query}), "query")
+				requireValidationError(t, ValidateSearchArgs(&SearchArgs{Query: query}), "query")
 			})
 		}
 	})
@@ -64,14 +62,14 @@ func TestValidateSearchArgs(t *testing.T) {
 	t.Run("query exceeding MaxQueryLength", func(t *testing.T) {
 		t.Parallel()
 
-		args := &searxng.SearchArgs{Query: strings.Repeat("a", searxng.MaxQueryLength+1)}
-		requireValidationError(t, searxng.ValidateSearchArgs(args), "query")
+		args := &SearchArgs{Query: strings.Repeat("a", MaxQueryLength+1)}
+		requireValidationError(t, ValidateSearchArgs(args), "query")
 	})
 
 	t.Run("valid query", func(t *testing.T) {
 		t.Parallel()
 
-		err := searxng.ValidateSearchArgs(&searxng.SearchArgs{Query: "golang search"})
+		err := ValidateSearchArgs(&SearchArgs{Query: "golang search"})
 		if err != nil {
 			t.Fatalf("ValidateSearchArgs() error = %v, want nil", err)
 		}
@@ -79,13 +77,13 @@ func TestValidateSearchArgs(t *testing.T) {
 
 	t.Run("invalid time_range", func(t *testing.T) {
 		t.Parallel()
-		requireValidationError(t, searxng.ValidateSearchArgs(&searxng.SearchArgs{Query: "test", TimeRange: "week"}), "time_range")
+		requireValidationError(t, ValidateSearchArgs(&SearchArgs{Query: "test", TimeRange: "week"}), "time_range")
 	})
 
 	t.Run("valid time_range", func(t *testing.T) {
 		t.Parallel()
 
-		err := searxng.ValidateSearchArgs(&searxng.SearchArgs{Query: "test", TimeRange: "day"})
+		err := ValidateSearchArgs(&SearchArgs{Query: "test", TimeRange: "day"})
 		if err != nil {
 			t.Fatalf("ValidateSearchArgs() error = %v, want nil", err)
 		}
@@ -93,13 +91,13 @@ func TestValidateSearchArgs(t *testing.T) {
 
 	t.Run("SafeSearch out of range", func(t *testing.T) {
 		t.Parallel()
-		requireValidationError(t, searxng.ValidateSearchArgs(&searxng.SearchArgs{Query: "test", SafeSearch: 3}), "safesearch")
+		requireValidationError(t, ValidateSearchArgs(&SearchArgs{Query: "test", SafeSearch: 3}), "safesearch")
 	})
 
 	t.Run("SafeSearch valid", func(t *testing.T) {
 		t.Parallel()
 
-		err := searxng.ValidateSearchArgs(&searxng.SearchArgs{Query: "test", SafeSearch: 2})
+		err := ValidateSearchArgs(&SearchArgs{Query: "test", SafeSearch: 2})
 		if err != nil {
 			t.Fatalf("ValidateSearchArgs() error = %v, want nil", err)
 		}
@@ -109,22 +107,22 @@ func TestValidateSearchArgs(t *testing.T) {
 		t.Parallel()
 
 		pageno := 0
-		requireValidationError(t, searxng.ValidateSearchArgs(&searxng.SearchArgs{Query: "test", Pageno: &pageno}), "pageno")
+		requireValidationError(t, ValidateSearchArgs(&SearchArgs{Query: "test", Pageno: &pageno}), "pageno")
 	})
 
 	t.Run("Limit out of range", func(t *testing.T) {
 		t.Parallel()
 
 		limit := 21
-		requireValidationError(t, searxng.ValidateSearchArgs(&searxng.SearchArgs{Query: "test", Limit: &limit}), "limit")
+		requireValidationError(t, ValidateSearchArgs(&SearchArgs{Query: "test", Limit: &limit}), "limit")
 	})
 
 	t.Run("Language auto normalized to empty", func(t *testing.T) {
 		t.Parallel()
 
-		args := &searxng.SearchArgs{Query: "test", Language: "auto"}
+		args := &SearchArgs{Query: "test", Language: "auto"}
 
-		err := searxng.ValidateSearchArgs(args)
+		err := ValidateSearchArgs(args)
 		if err != nil {
 			t.Fatalf("ValidateSearchArgs() error = %v, want nil", err)
 		}
@@ -136,13 +134,13 @@ func TestValidateSearchArgs(t *testing.T) {
 
 	t.Run("Language invalid format", func(t *testing.T) {
 		t.Parallel()
-		requireValidationError(t, searxng.ValidateSearchArgs(&searxng.SearchArgs{Query: "test", Language: "en_US"}), "language")
+		requireValidationError(t, ValidateSearchArgs(&SearchArgs{Query: "test", Language: "en_US"}), "language")
 	})
 
 	t.Run("Language valid", func(t *testing.T) {
 		t.Parallel()
 
-		err := searxng.ValidateSearchArgs(&searxng.SearchArgs{Query: "test", Language: "en-US"})
+		err := ValidateSearchArgs(&SearchArgs{Query: "test", Language: "en-US"})
 		if err != nil {
 			t.Fatalf("ValidateSearchArgs() error = %v, want nil", err)
 		}
@@ -168,7 +166,7 @@ func TestValidateCategories(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := searxng.ValidateCategories(tt.categories)
+			err := validateCategories(tt.categories)
 			if tt.wantErr {
 				requireValidationError(t, err, "categories")
 
@@ -176,7 +174,7 @@ func TestValidateCategories(t *testing.T) {
 			}
 
 			if err != nil {
-				t.Fatalf("ValidateCategories() error = %v, want nil", err)
+				t.Fatalf("validateCategories() error = %v, want nil", err)
 			}
 		})
 	}
@@ -201,7 +199,7 @@ func TestValidateEngines(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := searxng.ValidateEngines(tt.engines)
+			err := validateEngines(tt.engines)
 			if tt.wantErr {
 				requireValidationError(t, err, "engines")
 
@@ -209,7 +207,7 @@ func TestValidateEngines(t *testing.T) {
 			}
 
 			if err != nil {
-				t.Fatalf("ValidateEngines() error = %v, want nil", err)
+				t.Fatalf("validateEngines() error = %v, want nil", err)
 			}
 		})
 	}
@@ -218,25 +216,25 @@ func TestValidateEngines(t *testing.T) {
 func TestValidationError(t *testing.T) {
 	t.Parallel()
 
-	err := searxng.NewValidationError("query", "search query cannot be only whitespace")
+	err := NewValidationError("query", "search query cannot be only whitespace")
 	if got, want := err.Error(), `validation error on "query": search query cannot be only whitespace`; got != want {
 		t.Fatalf("Error() = %q, want %q", got, want)
 	}
 
-	if !errors.Is(err, searxng.NewValidationError("query", "search query cannot be only whitespace")) {
+	if !errors.Is(err, NewValidationError("query", "search query cannot be only whitespace")) {
 		t.Fatal("errors.Is() = false, want true for matching ValidationError")
 	}
 
-	if errors.Is(err, searxng.NewValidationError("query", "different")) {
+	if errors.Is(err, NewValidationError("query", "different")) {
 		t.Fatal("errors.Is() = true, want false for non-matching ValidationError")
 	}
 
-	if !searxng.IsValidationError(fmt.Errorf("wrapped: %w", err)) {
-		t.Fatal("IsValidationError() = false, want true for wrapped ValidationError")
+	if !isValidationError(fmt.Errorf("wrapped: %w", err)) {
+		t.Fatal("isValidationError() = false, want true for wrapped ValidationError")
 	}
 
-	if searxng.IsValidationError(errPlainTestError) {
-		t.Fatal("IsValidationError() = true, want false for non-validation error")
+	if isValidationError(errPlainTestError) {
+		t.Fatal("isValidationError() = true, want false for non-validation error")
 	}
 }
 
@@ -245,7 +243,7 @@ func TestSearXNGErrorAndHTMLResponseError(t *testing.T) {
 
 	underlying := errNetworkTestError
 
-	searxErr := searxng.NewSearXNGError(503, "text/plain", strings.Repeat("x", searxng.MaxErrorDisplayChars+1), underlying)
+	searxErr := NewSearXNGError(503, "text/plain", strings.Repeat("x", MaxErrorDisplayChars+1), underlying)
 	if !errors.Is(searxErr, underlying) {
 		t.Fatal("errors.Is() = false, want true for SearXNGError underlying error")
 	}
@@ -258,15 +256,15 @@ func TestSearXNGErrorAndHTMLResponseError(t *testing.T) {
 		t.Fatalf("RespContentType = %q, want text/plain", searxErr.RespContentType)
 	}
 
-	if len(searxErr.ResponseBody) != searxng.MaxErrorDisplayChars {
-		t.Fatalf("ResponseBody length = %d, want %d", len(searxErr.ResponseBody), searxng.MaxErrorDisplayChars)
+	if len(searxErr.ResponseBody) != MaxErrorDisplayChars {
+		t.Fatalf("ResponseBody length = %d, want %d", len(searxErr.ResponseBody), MaxErrorDisplayChars)
 	}
 
 	if !strings.Contains(searxErr.Error(), "searxng error (status 503) - content-type text/plain") {
 		t.Fatalf("SearXNGError.Error() = %q, want status and content-type", searxErr.Error())
 	}
 
-	htmlErr := &searxng.HTMLResponseError{Body: "<html></html>", UnderlyingErr: underlying}
+	htmlErr := &HTMLResponseError{Body: "<html></html>", UnderlyingErr: underlying}
 	if got, want := htmlErr.Error(), "searxng returned html instead of json - json output may not be enabled on the server"; got != want {
 		t.Fatalf("HTMLResponseError.Error() = %q, want %q", got, want)
 	}

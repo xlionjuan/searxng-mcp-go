@@ -406,12 +406,9 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 // Search Implementation
 // ============================================================================
 
-// DeduplicateAnswers filters out answers whose text is a prefix (substring)
+// deduplicateAnswers filters out answers whose text is a prefix (substring)
 // of any infobox content.
-//
-// DeduplicateAnswers is exported for testing. External consumers should use
-// Search/SearchResponse instead.
-func DeduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
+func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 	if len(answers) == 0 || len(infoboxes) == 0 {
 		return answers
 	}

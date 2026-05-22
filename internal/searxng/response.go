@@ -126,7 +126,7 @@ func (s *SearXNGSearcher) normalizeResponse(result *SearchResponse, args *Search
 		result.NumberOfResults = len(result.Results)
 	}
 
-	result.Answers = DeduplicateAnswers(result.Answers, result.Infoboxes)
+	result.Answers = deduplicateAnswers(result.Answers, result.Infoboxes)
 
 	if args.Limit != nil && *args.Limit >= 0 && len(result.Results) > *args.Limit {
 		result.Results = result.Results[:*args.Limit]
