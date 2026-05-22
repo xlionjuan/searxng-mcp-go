@@ -189,6 +189,7 @@ When a field in the query results has no value, the behavior is as follows:
 - `infobox.urls` is empty → omit the `URLs:` subsection for that infobox
 - `results` is empty → omit the entire `=== Results ===` section
 - `result.content` is empty → omit the `Summary:` line for that result
+- `result.publishedDate` is empty → omit the `Published date:` line for that result
 - `suggestions` is empty → omit the entire `=== Search Suggestions ===` section
 
 **JSON mode:**
@@ -242,7 +243,7 @@ suggestions
   "infoboxes": [],
   "results": [],
   "suggestions": [],
-  "unresponsive_engines": []  // 僅 debug mode
+  "unresponsive_engines": []  // debug mode only
 }
 ```
 
@@ -271,7 +272,7 @@ Whether each field is populated depends on the results returned by the SearXNG b
 | `engine` | Always populated; indicates which search engine produced this result |
 | `publishedDate` | SearXNG provided a publication date for the result |
 
-**Content Truncation:** Result summaries (`content` field) are truncated to **4000 Unicode characters (runes)** to keep output manageable for LLM context windows.
+**Content Truncation:** Result summaries (`content` field) and infobox content are both truncated to **4000 Unicode characters (runes)** to keep output manageable for LLM context windows.
 
 ---
 

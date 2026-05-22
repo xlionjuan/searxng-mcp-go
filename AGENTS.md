@@ -26,6 +26,7 @@ searxng-mcp-go/
 ├── mcp_tool_integration_test.go # MCP tool integration tests
 ├── mcp_tool_test.go     # MCP tool tests
 ├── golden_capture_test.go # Golden file/capture tests
+├── e2e_mcp_test.go       # End-to-end MCP tests (build tag e2e)
 ├── testhelpers.go       # Test helper functions
 ├── README.md            # Project README
 ├── go.mod               # Go module definition
@@ -33,14 +34,26 @@ searxng-mcp-go/
 ├── .golangci.yml        # Linter configuration
 ├── codecov.yml          # Code coverage configuration
 ├── .env.example         # Environment variable template
-├── .github/workflows/   # CI: lint, security, test
+├── .github/workflows/   # CI: lint, security, test, e2e, release
+├── .github/renovate.json # Renovate dependency update config
 ├── internal/
 │   └── searxng/         # SearXNG client library
-│       ├── searcher.go  # SearXNGSearcher, NewSearXNGSearcher, Search, performSearch method, DeduplicateAnswers, HTTP client/host checks
-│       ├── types.go     # SearchArgs, SearchResponse, SearchResult, Answer, Infobox, InfoboxAttribute, InfoboxURL
+│       ├── client.go    # HTTP client creation, redirect policy, isPrivateHost, validateBaseURL, normalizeRetryConfig
+│       ├── constants.go # Size limits and configuration constants
+│       ├── deduplicate.go # Answer deduplication against infobox content
 │       ├── errors.go    # Error types and handling
+│       ├── request.go   # buildSearchRequest, setBrowserHeaders
+│       ├── response.go  # parseSearchResponse, readLimitedBody, decodeSearchResponse, normalizeResponse
+│       ├── retry.go     # isRetryableError, isRetryableStatusCode, retryBackoff, retryWait
+│       ├── searcher.go  # SearXNGSearcher, NewSearXNGSearcher, Search, performSearch method
+│       ├── types.go     # SearchArgs, SearchResponse, SearchResult, Answer, Infobox, InfoboxAttribute, InfoboxURL
 │       ├── validation.go # Search argument validation
-│       └── constants.go # Size limits and configuration constants
+│       ├── deduplicate_internal_test.go # Internal deduplication tests
+│       ├── errors_internal_test.go      # Internal error handling tests
+│       ├── response_internal_test.go    # Internal response parsing tests
+│       ├── retry_internal_test.go       # Internal retry logic tests
+│       ├── searcher_test.go             # Searcher tests
+│       └── validation_test.go           # Validation tests
 └── docs/
     ├── INSTALL.md           # Installation, build, configuration
     ├── MCP_TOOLS.md         # MCP tool documentation
@@ -60,7 +73,9 @@ searxng-mcp-go/
         ├── 003-http-warning-for-non-private-hosts.md  # ADR: HTTP warning for non-private hosts
         ├── 004-mcp-stdin-env-only.md          # ADR: MCP stdin mode env-only
         ├── 005-no-corrections.md              # ADR: No corrections exposure
-        └── 006-unresponsive-engines-debug-only.md  # ADR: unresponsive_engines debug-only
+        ├── 006-unresponsive-engines-debug-only.md  # ADR: unresponsive_engines debug-only
+        ├── 007-no-dns-rebinding.md            # ADR: No DNS rebinding
+        └── 008-same-hostname-redirect.md      # ADR: Same-hostname redirect
 ```
 
 ## Documentation Index
@@ -81,6 +96,10 @@ All detailed documentation lives in `docs/`. Here's where to find what:
 | Test queries reference | [docs/SEARXNG_TEST_QUERIES.md](docs/SEARXNG_TEST_QUERIES.md) |
 | Performance report | [docs/REPORT_PERF_2026-04-19.md](docs/REPORT_PERF_2026-04-19.md) |
 | Prompt injection & external content safety research | [docs/PROMPT_INJECTION_SAFETY.md](docs/PROMPT_INJECTION_SAFETY.md) |
+| External content JSON boundary marking research | [docs/research-external-content-json-boundary-marking.md](docs/research-external-content-json-boundary-marking.md) |
+| Agent issue tracker docs | [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md) |
+| Agent triage labels docs | [docs/agents/triage-labels.md](docs/agents/triage-labels.md) |
+| Agent domain docs | [docs/agents/domain.md](docs/agents/domain.md) |
 | Architecture Decision Records | [docs/adr/](docs/adr/) |
 
 ## Code Cleanliness

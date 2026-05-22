@@ -9,7 +9,7 @@ A Model Context Protocol (MCP) server and CLI tool that proxies web search reque
 **SearXNGSearcher**: The HTTP client that holds a base URL and an `*http.Client` and communicates with a SearXNG instance to execute search queries.
 _Avoid_: Searcher (ambiguous — appears only in docstrings, not as a separate exported type)
 
-**Config**: The connection parameters for a SearXNG instance — a base URL, a timeout duration, and an optional custom HTTP client.
+**Config**: The connection parameters for a SearXNG instance — a base URL, a timeout duration, retry configuration (MaxRetries, RetryDelay, MaxRetryDelay), and an optional custom HTTP client.
 
 **SearchArgs**: All input parameters for a search operation — the search query, language code, SafeSearch level, time range, categories, engines, page number, and result limit.
 _Avoid_: SearchParams
@@ -63,7 +63,7 @@ _Avoid_: BotHeaders, StealthHeaders
 **GET Fallback**: The automatic retry mechanism that re-issues a failed POST search as a GET request when the SearXNG instance returns HTTP 405 (Method Not Allowed) or 501 (Not Implemented).
 _Avoid_: POSTtoGETFallback (internal test function name)
 
-**Private Host Detection**: The validation that classifies literal IP addresses and known private hostname suffixes (10.x, 172.16-31, 192.168, localhost, `*.local`, `*.internal`, IPv6 unique-local, link-local, etc.) without DNS resolution — used to warn when HTTP is used to reach non-private hosts.
+**Private Host Detection**: The validation that classifies literal IP addresses and known private hostname suffixes (10.x, 172.16-31, 192.168, localhost, `*.local`, `*.internal`, `*.lan`, `*.home`, IPv6 unique-local, link-local, etc.) without DNS resolution — used to warn when HTTP is used to reach non-private hosts.
 
 **prepareMCPStdin**: The function that peeks at the first line of stdin to verify it contains a valid MCP initialize message (JSON-RPC 2.0 with method `initialize`), preventing the MCP server from hanging when piped non-MCP input.
 

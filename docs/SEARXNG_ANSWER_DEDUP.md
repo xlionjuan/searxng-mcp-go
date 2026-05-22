@@ -93,4 +93,4 @@ Deduplication happens while normalizing the SearXNG response, using `deduplicate
 
 - **Function**: `deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer` in `internal/searxng/deduplicate.go`
 - **Called**: During response normalization after JSON unmarshalling, before the response is returned to formatting/output code
-- **Tests**: 9 test cases in `search_test.go` covering empty inputs, exact match, prefix match, DDG "More at Wikipedia" suffix stripping, case insensitivity, distinct answers (IP), mixed scenarios, and empty answer skipping
+- **Tests**: 11 test cases in `internal/searxng/deduplicate_internal_test.go` covering empty inputs, exact match, prefix match, DDG "More at Wikipedia" suffix stripping, case insensitivity, distinct answers (IP), mixed scenarios, empty answer skipping, typed answers with fallback text, and fixture survival

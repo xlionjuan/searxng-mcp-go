@@ -47,6 +47,8 @@ searxng-mcp-go "recipes" --pageno 2
 | `--engines`       | string |         | Comma-separated engines (google, bing, duckduckgo)    |
 | `--pageno`        | int    | 1       | Page number (>= 1)                                    |
 | `--limit`         | int    | 10      | Maximum number of results returned (1-20)             |
+| `--timeout`       | duration | 8s    | HTTP client timeout (overrides `SEARXNG_TIMEOUT` env) |
+| `--max-retries`   | int    | 5       | Max retries after initial search attempt (overrides `SEARXNG_MAX_RETRIES` env) |
 | `--help`          | bool   | false   | Show help message                                     |
 | `--version`       | bool   | false   | Show version                                          |
 | `--debug`         | bool   | false   | Enable verbose HTTP request/response logging          |
@@ -100,6 +102,8 @@ See [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) for full tool documentation and respo
 |----------------|----------|--------------------------------|--------------------------------------|
 | `SEARXNG_URL`  | **Yes**  | — (required, no default) | SearXNG instance URL to query        |
 | `DEBUG`        | No       |                                | Set to `1` to enable verbose HTTP request/response logging |
+| `SEARXNG_TIMEOUT` | No       | 8s                             | HTTP client timeout duration (e.g., 8s, 30s) |
+| `SEARXNG_MAX_RETRIES` | No | 5                              | Max retries after initial search attempt |
 
 Configuration priority: **CLI flag** > **environment variable**. A value is required — there is no default.
 
