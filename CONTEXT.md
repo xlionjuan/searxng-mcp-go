@@ -83,7 +83,7 @@ _Avoid_: POSTtoGETFallback (internal test function name)
 - **CLIFlags** maps to **SearchArgs** fields plus mode-selection flags (--json, --help, --version, --debug, --searxng-url).
 - **ValidationError** is returned by `ValidateSearchArgs`, which pre-checks all **SearchArgs** before any HTTP request.
 - **SearXNGError** wraps HTTP-level failures from the SearXNG service; **HTMLResponseError** is a specific case returned when HTML is received instead of JSON.
-- **Config** reads the SearXNG URL from **CLIFlags** or the `SEARXNG_URL` environment variable, falling back to the default URL constant.
+- **Config** reads the SearXNG URL from **CLIFlags** or the `SEARXNG_URL` environment variable, returning an error (`SEARXNG_URL is required`) if neither is set.
 
 ## Example dialogue
 

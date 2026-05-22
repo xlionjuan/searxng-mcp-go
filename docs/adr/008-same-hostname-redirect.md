@@ -16,13 +16,13 @@ A simpler alternative was proposed: **only follow redirects that stay on the sam
 ## Rationale
 
 1. **Eliminates the SSRF attack surface entirely** — no private IP detection, no DNS resolution, no normalization edge cases.
-2. **Removes `isPrivateHost()` and all its complexity** — no need to maintain a blocklist of dangerous IP ranges.
+2. **No longer uses `isPrivateHost()` for redirect decisions** — redirect safety is determined by hostname comparison rather than private IP blocklists.
 3. **SearXNG instances do not need cross-host redirects** — if an instance redirects to a different host, it is either misconfigured or malicious; neither case should be followed.
 4. **Trivially testable** — the security test becomes: "redirect to different host → rejected."
 
 ## Consequences
 
 - `CheckRedirect` is replaced with a simple hostname comparison.
-- `isPrivateHost()` and related normalization logic are removed.
+- `isPrivateHost()` is no longer used for redirect decisions, but is retained for the HTTP warning that fires when a non-private SearXNG URL uses `http://` instead of `https://`.
 - The `getDefaultHTTPClient` TLS tests remain unchanged.
 - If a legitimate SearXNG deployment requires cross-host redirects (unlikely), this decision should be revisited.
