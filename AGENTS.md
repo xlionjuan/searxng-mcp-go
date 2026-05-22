@@ -111,6 +111,7 @@ All detailed documentation lives in `docs/`. Here's where to find what:
 - Edit files with `patch` (find-and-replace), not `sed`; new files with `write_file`
 - Subagent code changes must be verified by compiling and running tests before committing
 - **Critical: Never trust your own knowledge of version numbers, release dates, or specification statuses.** Any information that is time-sensitive (language versions, dependency versions, API stability, RFC status, etc.) MUST be verified via web search before being stated as fact. Training data is frozen at a cutoff date; asserting version facts without verification has repeatedly caused serious errors.
+- **GitHub API operations MUST use `gh` CLI** via terminal, NOT MCP GitHub tools (`mcp_github_*`). Use `gh` for issues, PRs, CI status, and any other GitHub API interaction.
 
 ## Agent skills
 
