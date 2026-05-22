@@ -83,6 +83,10 @@ sed -i '/^  - name: yahoo$/{n;n;n;s/disabled: true/disabled: false/}' "$SETTINGS
 sed -i '/^  - name: bing$/{n;n;n;s/disabled: true/disabled: false/}' "$SETTINGS_FILE"
 echo "  Enabled yahoo and bing engines ✓"
 
+# Enable ddg definitions for infobox content
+sed -i '/^  - name: ddg definitions$/{n;n;n;n;s/disabled: true/disabled: false/}' "$SETTINGS_FILE"
+echo "  Enabled ddg definitions engine ✓"
+
 echo ""
 echo "=== Setup complete ==="
 echo ""
