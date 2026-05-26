@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+var errNotValidationTestError = errors.New("not a validation error")
+
 // --- Private truncateBody tests ---
 
 func TestTruncateBody(t *testing.T) {
@@ -139,7 +141,7 @@ func TestIsValidationError(t *testing.T) {
 			t.Errorf("isValidationError(err) = false, want true")
 		}
 
-		if isValidationError(errors.New("not a validation error")) {
+		if isValidationError(errNotValidationTestError) {
 			t.Errorf("isValidationError(non-ValidationError) = true, want false")
 		}
 

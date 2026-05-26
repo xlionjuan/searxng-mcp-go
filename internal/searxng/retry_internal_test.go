@@ -8,7 +8,10 @@ import (
 	"time"
 )
 
-var errRetryTestConnectionReset = errors.New("connection reset")
+var (
+	errRetryTestConnectionReset        = errors.New("connection reset")
+	errRetryTestRequestCreationFailure = errors.New("request creation failed")
+)
 
 func TestRetryableStatusCode(t *testing.T) {
 	t.Parallel()
@@ -40,17 +43,18 @@ func TestRetryableError(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	if !isRetryableError(ctx, errors.New("connection reset")) {
+	if !isRetryableError(ctx, errRetryTestConnectionReset) {
 		t.Fatal("plain network error should be retryable")
 	}
 
-	if isRetryableError(ctx, NewSearXNGError(0, "", "", errors.New("request creation failed"))) {
+	if isRetryableError(ctx, NewSearXNGError(0, "", "", errRetryTestRequestCreationFailure)) {
 		t.Fatal("SearXNGError should not be retryable")
 	}
 
 	canceledCtx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if isRetryableError(canceledCtx, errors.New("connection reset")) {
+
+	if isRetryableError(canceledCtx, errRetryTestConnectionReset) {
 		t.Fatal("errors should not be retryable after context cancellation")
 	}
 }

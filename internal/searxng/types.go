@@ -10,6 +10,16 @@ import (
 	"time"
 )
 
+var (
+	errTimeoutNegativeMessage = "Timeout cannot be negative"
+
+	errURLRequired           = errors.New("SearXNGURL cannot be empty")
+	errTimeoutNegative       = errors.New(errTimeoutNegativeMessage)
+	errMaxRetriesNegative    = errors.New("MaxRetries cannot be negative")
+	errRetryDelayNegative    = errors.New("RetryDelay cannot be negative")
+	errMaxRetryDelayNegative = errors.New("MaxRetryDelay cannot be negative")
+)
+
 type Config struct {
 	SearXNGURL    string
 	Timeout       time.Duration
@@ -33,19 +43,19 @@ func DefaultConfig() *Config {
 // No side effects: no HTTP calls, no logging.
 func (c *Config) Validate() error {
 	if c.SearXNGURL == "" {
-		return errors.New("SearXNGURL cannot be empty")
+		return errURLRequired
 	}
 	if c.Timeout < 0 {
-		return errors.New("Timeout cannot be negative")
+		return errTimeoutNegative
 	}
 	if c.MaxRetries < 0 {
-		return errors.New("MaxRetries cannot be negative")
+		return errMaxRetriesNegative
 	}
 	if c.RetryDelay < 0 {
-		return errors.New("RetryDelay cannot be negative")
+		return errRetryDelayNegative
 	}
 	if c.MaxRetryDelay < 0 {
-		return errors.New("MaxRetryDelay cannot be negative")
+		return errMaxRetryDelayNegative
 	}
 	return nil
 }
