@@ -3,7 +3,7 @@ module searxng-mcp-go
 go 1.26.2
 
 require (
-	github.com/modelcontextprotocol/go-sdk v1.6.0
+	github.com/modelcontextprotocol/go-sdk v1.6.1
 	go.uber.org/goleak v1.3.0
 )
 
