@@ -20,13 +20,13 @@ import (
 )
 
 // buildSearchSchema generates the JSON Schema for the search tool input from
-// the centralised SearchParams table.
+// the centralized SearchParams table.
 func buildSearchSchema() json.RawMessage {
-	props := make(map[string]interface{})
+	props := make(map[string]any)
 	var required []string
 
 	for _, p := range searxng.SearchParams {
-		prop := map[string]interface{}{
+		prop := map[string]any{
 			"type": p.MCPType,
 		}
 		if p.Description != "" {
@@ -51,7 +51,7 @@ func buildSearchSchema() json.RawMessage {
 		props[p.Name] = prop
 	}
 
-	schema := map[string]interface{}{
+	schema := map[string]any{
 		"type":                 "object",
 		"properties":           props,
 		"additionalProperties": false,
@@ -60,12 +60,16 @@ func buildSearchSchema() json.RawMessage {
 		schema["required"] = required
 	}
 
-	data, _ := json.Marshal(schema)
+	data, err := json.Marshal(schema)
+	if err != nil {
+		panic(fmt.Sprintf("marshal search schema: %v", err))
+	}
+
 	return json.RawMessage(data)
 }
 
 // buildToolDescription generates the MCP search tool description from the
-// centralised SearchParams table.
+// centralized SearchParams table.
 func buildToolDescription() string {
 	var sb strings.Builder
 	sb.WriteString("Search the web using SearXNG meta-search engine. ")
@@ -173,13 +177,14 @@ func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) {
 	})
 	if err != nil {
 		slog.Error("server failed", "error", err)
+		stop()
 		os.Exit(1)
 	}
 }
 
 // searcher is the minimal interface the MCP handler needs from a search provider.
 type searcher interface {
-	Search(context.Context, *searxng.SearchArgs) (*searxng.SearchResponse, error)
+	Search(ctx context.Context, args *searxng.SearchArgs) (*searxng.SearchResponse, error)
 }
 
 // NewSearchToolHandler creates an MCP tool handler function that performs SearXNG searches.

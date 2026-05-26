@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-const testAnswerBody = "answer"
-
 func TestNewSearXNGSearcherErrors(t *testing.T) {
 	t.Parallel()
 

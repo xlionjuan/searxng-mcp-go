@@ -65,7 +65,7 @@ func TestRetryBackoffBounds(t *testing.T) {
 	base := 10 * time.Millisecond
 	maxDelay := 15 * time.Millisecond
 
-	for attempt := 0; attempt < 10; attempt++ {
+	for attempt := range 10 {
 		delay := retryBackoff(attempt, base, maxDelay)
 		if delay < base/2 {
 			t.Fatalf("retryBackoff(%d) = %v, want at least %v", attempt, delay, base/2)

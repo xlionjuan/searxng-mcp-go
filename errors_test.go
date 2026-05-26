@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	errSomeTestError         = errors.New("some error")
 	errBadRequestTest        = errors.New("bad request")
 	errConnectionRefusedTest = errors.New("connection refused")
 )

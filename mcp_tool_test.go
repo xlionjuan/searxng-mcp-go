@@ -101,8 +101,16 @@ func setupMCPSession(t *testing.T, handler http.HandlerFunc) (*mcp.ClientSession
 	}
 
 	cleanup := func() {
-		clientSession.Close()
-		serverSession.Wait()
+		err := clientSession.Close()
+		if err != nil {
+			t.Errorf("client session close failed: %v", err)
+		}
+
+		err = serverSession.Wait()
+		if err != nil {
+			t.Errorf("server session wait failed: %v", err)
+		}
+
 		cleanupSearcher()
 	}
 

@@ -38,9 +38,7 @@ OPTIONS:
 	for _, p := range searxng.SearchParams {
 		flagExpr := "--" + p.Name + " " + p.CLIType
 		padding := 18 - len(flagExpr)
-		if padding < 1 {
-			padding = 1
-		}
+		padding = max(padding, 1)
 		fmt.Printf("  %s%s%s\n", flagExpr, strings.Repeat(" ", padding), p.CLIHelp)
 	}
 	fmt.Println(`  --debug            Enable verbose HTTP request/response logging

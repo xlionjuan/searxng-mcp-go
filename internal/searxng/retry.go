@@ -52,42 +52,39 @@ func isRetryableError(ctx context.Context, err error) bool {
 	}
 
 	var searchErr *SearXNGError
-	if errors.As(err, &searchErr) {
-		return false
-	}
 
-	return true
+	return !errors.As(err, &searchErr)
 }
 
 func isRetryableStatusCode(statusCode int) bool {
 	return statusCode == http.StatusTooManyRequests || statusCode >= http.StatusInternalServerError
 }
 
-func retryBackoff(attempt int, base, max time.Duration) time.Duration {
+func retryBackoff(attempt int, base, maxDelay time.Duration) time.Duration {
 	if base <= 0 {
 		base = DefaultRetryDelay
 	}
 
-	if max <= 0 {
-		max = DefaultMaxRetryDelay
+	if maxDelay <= 0 {
+		maxDelay = DefaultMaxRetryDelay
 	}
 
-	if max < base {
-		max = base
+	if maxDelay < base {
+		maxDelay = base
 	}
 
 	delay := base
 	for range attempt {
-		if delay > max/2 {
-			delay = max
+		if delay > maxDelay/2 {
+			delay = maxDelay
 			break
 		}
 
 		delay *= 2
 	}
 
-	if delay > max {
-		delay = max
+	if delay > maxDelay {
+		delay = maxDelay
 	}
 
 	half := delay / 2

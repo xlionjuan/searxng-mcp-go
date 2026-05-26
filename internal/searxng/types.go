@@ -20,6 +20,7 @@ var (
 	errMaxRetryDelayNegative = errors.New("MaxRetryDelay cannot be negative")
 )
 
+// Config controls SearXNG client behavior.
 type Config struct {
 	SearXNGURL    string
 	Timeout       time.Duration
@@ -29,6 +30,7 @@ type Config struct {
 	MaxRetryDelay time.Duration
 }
 
+// DefaultConfig returns a Config populated with default timeout and retry settings.
 func DefaultConfig() *Config {
 	return &Config{
 		SearXNGURL:    "",
@@ -80,6 +82,7 @@ func (c *Config) Normalize() *Config {
 	return &cfg
 }
 
+// SearchArgs contains normalized search request parameters.
 type SearchArgs struct {
 	Query      string `json:"query"`
 	Language   string `json:"language"`
@@ -101,6 +104,7 @@ func UnescapeIfNeeded(s string) string {
 	return html.UnescapeString(s)
 }
 
+// SearchResult is a single web result returned by SearXNG.
 type SearchResult struct {
 	Title         string  `json:"title"`
 	URL           string  `json:"url"`
@@ -109,16 +113,19 @@ type SearchResult struct {
 	PublishedDate *string `json:"publishedDate,omitempty"`
 }
 
+// InfoboxURL is a link associated with a SearXNG infobox.
 type InfoboxURL struct {
 	Title string `json:"title"`
 	URL   string `json:"url"`
 }
 
+// InfoboxAttribute is a label-value pair associated with a SearXNG infobox.
 type InfoboxAttribute struct {
 	Label string `json:"label"`
 	Value string `json:"value"`
 }
 
+// Infobox is a structured summary returned by SearXNG.
 type Infobox struct {
 	Infobox    string             `json:"infobox"`
 	Content    string             `json:"content"`
@@ -143,6 +150,7 @@ type Answer struct {
 	Service      string            `json:"service,omitempty"`
 }
 
+// TranslationItem is a translation entry from a typed SearXNG answer.
 type TranslationItem struct {
 	Text            string   `json:"text"`
 	Transliteration string   `json:"transliteration,omitempty"`
@@ -151,6 +159,7 @@ type TranslationItem struct {
 	Synonyms        []string `json:"synonyms,omitempty"`
 }
 
+// WeatherItem is a current or forecast weather entry from a typed SearXNG answer.
 type WeatherItem struct {
 	Location    WeatherLocation  `json:"location"`
 	Datetime    *WeatherDateTime `json:"datetime,omitempty"`
@@ -165,6 +174,7 @@ type WeatherItem struct {
 	CloudCover  *int             `json:"cloud_cover,omitempty"`
 }
 
+// WeatherLocation describes the location for a weather answer.
 type WeatherLocation struct {
 	Name        string  `json:"name"`
 	Latitude    float64 `json:"latitude,omitempty"`
@@ -174,10 +184,12 @@ type WeatherLocation struct {
 	Timezone    string  `json:"timezone,omitempty"`
 }
 
+// WeatherDateTime contains the timestamp for a weather answer.
 type WeatherDateTime struct {
 	Datetime string `json:"datetime"`
 }
 
+// WeatherMeasure is a numeric weather measurement and optional unit.
 type WeatherMeasure struct {
 	Val  float64 `json:"val"`
 	Unit string  `json:"unit,omitempty"`
@@ -197,6 +209,7 @@ func (m WeatherMeasure) String() string {
 	return value + " " + m.Unit
 }
 
+// SearchResponse is the normalized response returned to CLI and MCP callers.
 type SearchResponse struct {
 	Query               string         `json:"query"`
 	Warning             string         `json:"warning,omitempty"`

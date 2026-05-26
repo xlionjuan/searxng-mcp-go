@@ -42,8 +42,13 @@ type ParamDef struct {
 	Required bool
 }
 
-// intPtr returns a pointer to the given int.
-func intPtr(v int) *int { return &v }
+var (
+	paramMinSafeSearch = 0
+	paramMaxSafeSearch = 2
+	paramMinPage       = 1
+	paramMinLimit      = 1
+	paramMaxLimit      = 20
+)
 
 // SearchParams is the canonical list of all search parameters used by both CLI
 // and MCP layers. Adding or changing a parameter here propagates to flag
@@ -69,8 +74,8 @@ var SearchParams = []ParamDef{
 		CLIHelp:     "SafeSearch level: 0=Off, 1=Moderate, 2=Strict [default: 0]",
 		CLIType:     "0-2",
 		MCPType:     "integer",
-		Minimum:     intPtr(0),
-		Maximum:     intPtr(2),
+		Minimum:     &paramMinSafeSearch,
+		Maximum:     &paramMaxSafeSearch,
 	},
 	{
 		Name: "time_range", GoType: "string", Default: "",
@@ -101,7 +106,7 @@ var SearchParams = []ParamDef{
 		CLIType:     "N",
 		MCPType:     "integer",
 		Nullable:    true,
-		Minimum:     intPtr(1),
+		Minimum:     &paramMinPage,
 	},
 	{
 		Name: "limit", GoType: "int", Default: "10",
@@ -109,7 +114,7 @@ var SearchParams = []ParamDef{
 		CLIHelp:     "Maximum number of results to return (1-20) [default: 10]",
 		CLIType:     "N",
 		MCPType:     "integer",
-		Minimum:     intPtr(1),
-		Maximum:     intPtr(20),
+		Minimum:     &paramMinLimit,
+		Maximum:     &paramMaxLimit,
 	},
 }

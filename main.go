@@ -26,6 +26,7 @@ var (
 	errArgumentParseFailed = errors.New("failed to parse arguments")
 	errSearXNGURLRequired  = errors.New("SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
 	errTestConfigRequired  = errors.New("testPerformSearch: cfg cannot be nil")
+	errUnexpectedFlagType  = errors.New("registered search flag has unexpected type")
 )
 
 // ============================================================================
@@ -62,7 +63,7 @@ type registeredFlags struct {
 	// Search parameters are registered generically from the shared
 	// searxng.SearchParams table and stored in searchFlags. Each value is
 	// either *string or *int matching the ParamDef.GoType.
-	searchFlags map[string]interface{}
+	searchFlags map[string]any
 }
 
 // parseArgs parses command-line arguments and returns the mode, flags, and positional arguments.
@@ -119,17 +120,47 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 		limitPtr = &defaultLimit
 	}
 
+	queryPtr, err := searchFlagPtr[string](registered.searchFlags, "query")
+	if err != nil {
+		return false, CLIFlags{}, nil, err
+	}
+
+	languagePtr, err := searchFlagPtr[string](registered.searchFlags, "language")
+	if err != nil {
+		return false, CLIFlags{}, nil, err
+	}
+
+	safeSearchPtr, err := searchFlagPtr[int](registered.searchFlags, "safesearch")
+	if err != nil {
+		return false, CLIFlags{}, nil, err
+	}
+
+	timeRangePtr, err := searchFlagPtr[string](registered.searchFlags, "time_range")
+	if err != nil {
+		return false, CLIFlags{}, nil, err
+	}
+
+	categoriesPtr, err := searchFlagPtr[string](registered.searchFlags, "categories")
+	if err != nil {
+		return false, CLIFlags{}, nil, err
+	}
+
+	enginesPtr, err := searchFlagPtr[string](registered.searchFlags, "engines")
+	if err != nil {
+		return false, CLIFlags{}, nil, err
+	}
+
 	flags := CLIFlags{
-		Query:         *registered.searchFlags["query"].(*string),
+		Query:         *queryPtr,
 		JSON:          *registered.jsonOut,
 		Help:          *registered.help,
 		Version:       *registered.version,
 		SearXNGURL:    *registered.searxngURL,
-		Language:      *registered.searchFlags["language"].(*string),
-		SafeSearch:    *registered.searchFlags["safesearch"].(*int),
-		TimeRange:     *registered.searchFlags["time_range"].(*string),
-		Categories:    *registered.searchFlags["categories"].(*string),
-		Engines:       *registered.searchFlags["engines"].(*string),
+		Language:      *languagePtr,
+		SafeSearch:    *safeSearchPtr,
+		TimeRange:     *timeRangePtr,
+		Categories:    *categoriesPtr,
+		Engines:       *enginesPtr,
 		Pageno:        pagenoPtr,
 		Limit:         limitPtr,
 		Debug:         *registered.debug,
@@ -157,7 +188,7 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 		debug:       fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)"),
 		timeout:     fs.Duration("timeout", 0, "HTTP client timeout (e.g., 8s); overrides SEARXNG_TIMEOUT env var"),
 		maxRetries:  fs.Int("max-retries", 0, "Max retries after initial search attempt; overrides SEARXNG_MAX_RETRIES env var"),
-		searchFlags: make(map[string]interface{}),
+		searchFlags: make(map[string]any),
 	}
 
 	// Register search parameters from the shared table.
@@ -173,6 +204,15 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 	}
 
 	return fs, r
+}
+
+func searchFlagPtr[T any](searchFlags map[string]any, name string) (*T, error) {
+	ptr, ok := searchFlags[name].(*T)
+	if !ok {
+		return nil, fmt.Errorf("%w: %s", errUnexpectedFlagType, name)
+	}
+
+	return ptr, nil
 }
 
 func extractPositionalArgs(args []string, fs *flag.FlagSet) ([]string, []string) {

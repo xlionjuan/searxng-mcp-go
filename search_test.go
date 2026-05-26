@@ -122,32 +122,7 @@ func TestSearch_PreservesUnresponsiveEngines(t *testing.T) {
 func TestSearch_RequestParameters(t *testing.T) {
 	t.Parallel()
 
-	capturedParams := make(chan url.Values, 1)
-	searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
-	body := mustMarshalJSON(t, searchResp)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var params url.Values
-		if r.Method == http.MethodPost {
-			_ = r.ParseForm()
-			params = make(url.Values, len(r.PostForm))
-			for key, values := range r.PostForm {
-				params[key] = append([]string(nil), values...)
-			}
-		} else {
-			params = r.URL.Query()
-		}
-
-		capturedParams <- params
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
-	}))
-	defer server.Close()
-
 	page := 2
-	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
 
 	tests := []struct {
 		name       string
@@ -210,6 +185,36 @@ func TestSearch_RequestParameters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			capturedParams := make(chan url.Values, 1)
+			searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
+			body := mustMarshalJSON(t, searchResp)
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var params url.Values
+
+				if r.Method == http.MethodPost {
+					_ = r.ParseForm()
+
+					params = make(url.Values, len(r.PostForm))
+					for key, values := range r.PostForm {
+						params[key] = append([]string(nil), values...)
+					}
+				} else {
+					params = r.URL.Query()
+				}
+
+				capturedParams <- params
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(body)
+			}))
+			defer server.Close()
+
+			cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+
 			_, err := testPerformSearch(t.Context(), t, cfg, tt.args)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -528,6 +533,10 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 func TestSearch_RetriesRetryableStatus(t *testing.T) {
 	t.Parallel()
 
+	const successResponseBody = `{"query":"test","number_of_results":1,` +
+		`"results":[{"title":"Result","url":"https://example.com","content":"ok","engine":"test"}],` +
+		`"suggestions":[]}`
+
 	var attempts atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		if attempts.Add(1) == 1 {
@@ -538,7 +547,7 @@ func TestSearch_RetriesRetryableStatus(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"query":"test","number_of_results":1,"results":[{"title":"Result","url":"https://example.com","content":"ok","engine":"test"}],"suggestions":[]}`))
+		_, _ = w.Write([]byte(successResponseBody))
 	}))
 	defer server.Close()
 
@@ -567,6 +576,10 @@ func TestSearch_RetriesRetryableStatus(t *testing.T) {
 func TestSearch_RetriesEmptySearchResponse(t *testing.T) {
 	t.Parallel()
 
+	const successResponseBody = `{"query":"test","number_of_results":1,` +
+		`"results":[{"title":"Result","url":"https://example.com","content":"ok","engine":"test"}],` +
+		`"suggestions":[]}`
+
 	var attempts atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		attempt := attempts.Add(1)
@@ -579,7 +592,7 @@ func TestSearch_RetriesEmptySearchResponse(t *testing.T) {
 			return
 		}
 
-		_, _ = w.Write([]byte(`{"query":"test","number_of_results":1,"results":[{"title":"Result","url":"https://example.com","content":"ok","engine":"test"}],"suggestions":[]}`))
+		_, _ = w.Write([]byte(successResponseBody))
 	}))
 	defer server.Close()
 
