@@ -194,13 +194,15 @@ func TestDeduplicateAnswers_TypedAnswersGetFallbackText(t *testing.T) {
 
 	answers := []Answer{
 		{
-			Engine:   "libretranslate",
-			Template: "answer/translations.html",
+			Answer:      "Translation: bonjour",
+			Engine:      "libretranslate",
+			Template:    "answer/translations.html",
 			Translations: []TranslationItem{
 				{Text: "bonjour"},
 			},
 		},
 		{
+			Answer:   "Weather: Berlin, 11.2 °C, partly cloudy",
 			Engine:   "open_meteo",
 			Template: "answer/weather.html",
 			Current: &WeatherItem{
@@ -245,6 +247,11 @@ func TestTypedAnswerFixturesSurviveDeduplication(t *testing.T) {
 			err = json.Unmarshal(body, &resp)
 			if err != nil {
 				t.Fatalf("Unmarshal() error = %v", err)
+			}
+
+			// Apply typed answer fallback (normally done in normalizeResponse).
+			for i := range resp.Answers {
+				ensureAnswerFallback(&resp.Answers[i])
 			}
 
 			got := deduplicateAnswers(resp.Answers, []Infobox{{Infobox: "Other", Content: "unrelated"}})
