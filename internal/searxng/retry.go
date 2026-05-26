@@ -93,6 +93,7 @@ func retryBackoff(attempt int, base, maxDelay time.Duration) time.Duration {
 		return delay
 	}
 
+	//nolint:gosec // jitter doesn't need cryptographic randomness; math/rand/v2 is correct here
 	return half + time.Duration(rand.Int64N(int64(jitterRange)))
 }
 
