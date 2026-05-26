@@ -1,7 +1,6 @@
 package main
 
 import (
-	"html"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -18,11 +17,7 @@ const noResultsFound = "No results found."
 // unescapeIfNeeded calls html.UnescapeString only when the string contains
 // HTML entities, avoiding unnecessary allocations.
 func unescapeIfNeeded(s string) string {
-	if !strings.ContainsAny(s, "&<>\"") {
-		return s
-	}
-
-	return html.UnescapeString(s)
+	return searxng.UnescapeIfNeeded(s)
 }
 
 // truncateRunes truncates s to at most limit runes in a single pass.

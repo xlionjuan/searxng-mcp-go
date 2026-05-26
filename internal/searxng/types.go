@@ -3,6 +3,7 @@ package searxng
 import (
 	"encoding/json"
 	"errors"
+	"html"
 	"net/http"
 	"strconv"
 	"strings"
@@ -80,6 +81,16 @@ type SearchArgs struct {
 	Engines    string `json:"engines"`
 	Pageno     *int   `json:"pageno"`
 	Limit      *int   `json:"limit"`
+}
+
+// UnescapeIfNeeded calls html.UnescapeString only when the string contains
+// HTML entities, avoiding unnecessary allocations.
+func UnescapeIfNeeded(s string) string {
+	if !strings.ContainsAny(s, "&<>\"") {
+		return s
+	}
+
+	return html.UnescapeString(s)
 }
 
 type SearchResult struct {

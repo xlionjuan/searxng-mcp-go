@@ -2,7 +2,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -104,92 +103,6 @@ func makeLargeSearchResponse(n int) *searxng.SearchResponse {
 }
 
 // ============================================================================
-// JSON Unmarshal Benchmarks
-// ============================================================================
-
-func BenchmarkJSONUnmarshal(b *testing.B) {
-	data := readSampleResponse(b)
-
-	b.ReportAllocs()
-
-	for b.Loop() {
-		var resp searxng.SearchResponse
-
-		err := json.Unmarshal(data, &resp)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkJSONUnmarshalLarge(b *testing.B) {
-	// Create a large JSON payload (100 results)
-	largeResp := makeLargeSearchResponse(100)
-
-	data, err := json.Marshal(largeResp)
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	b.ReportAllocs()
-
-	for b.Loop() {
-		var resp searxng.SearchResponse
-
-		err := json.Unmarshal(data, &resp)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-// ============================================================================
-// MarshalJSON Benchmarks
-// ============================================================================
-
-func BenchmarkMarshalJSON(b *testing.B) {
-	resp := makeLargeSearchResponse(10)
-
-	b.ReportAllocs()
-
-	for b.Loop() {
-		_, err := resp.MarshalJSON()
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkMarshalJSONLarge(b *testing.B) {
-	resp := makeLargeSearchResponse(100)
-
-	b.ReportAllocs()
-
-	for b.Loop() {
-		_, err := resp.MarshalJSON()
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-// Standard json.Marshal for comparison.
-func BenchmarkStdMarshalJSON(b *testing.B) {
-	type stdSearchResponse searxng.SearchResponse
-
-	resp := stdSearchResponse(*makeLargeSearchResponse(10))
-
-	b.ReportAllocs()
-
-	for b.Loop() {
-		_, err := json.Marshal(resp)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-// ============================================================================
 // Format Benchmarks
 // ============================================================================
 
@@ -266,64 +179,6 @@ func BenchmarkFormatResultsInfoboxes(b *testing.B) {
 
 	for b.Loop() {
 		_ = formatResults(resp)
-	}
-}
-
-func BenchmarkUnescapeIfNeeded(b *testing.B) {
-	inputs := []string{
-		"Simple string without entities",
-		"String with &amp; &lt; &gt; entities",
-		"&quot;Quoted&quot; &apos;text&apos; here",
-		"a]normal string",
-	}
-
-	b.ReportAllocs()
-
-	for _, input := range inputs {
-		b.Run(fmt.Sprintf("len_%d", len(input)), func(b *testing.B) {
-			for b.Loop() {
-				_ = unescapeIfNeeded(input)
-			}
-		})
-	}
-}
-
-// ============================================================================
-// Validation Benchmarks
-// ============================================================================
-
-func BenchmarkValidateSearchArgs(b *testing.B) {
-	pageno := 1
-	args := &searxng.SearchArgs{
-		Query:      "golang programming",
-		Language:   "en",
-		SafeSearch: 0,
-		TimeRange:  "month",
-		Categories: "general,it",
-		Engines:    "google,bing",
-		Pageno:     &pageno,
-	}
-
-	b.ReportAllocs()
-
-	for b.Loop() {
-		err := searxng.ValidateSearchArgs(args)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkValidateSearchArgsMinimal(b *testing.B) {
-	args := &searxng.SearchArgs{Query: "test"}
-
-	b.ReportAllocs()
-
-	for b.Loop() {
-		err := searxng.ValidateSearchArgs(args)
-		if err != nil {
-			b.Fatal(err)
-		}
 	}
 }
 
