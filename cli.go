@@ -75,7 +75,7 @@ For more information, see: https://github.com/xlionjuan/searxng-mcp-go`)
 }
 
 // runCLIMode executes the CLI-mode search flow.
-func runCLIMode(flags CLIFlags, positionalArgs []string) error {
+func runCLIMode(debug bool, flags CLIFlags, positionalArgs []string) error {
 	if flags.Help {
 		printCLIHelp()
 
@@ -125,7 +125,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 		return fmt.Errorf("%w: %w", errSearchValidation, err)
 	}
 
-	searcher, err := searxng.NewSearXNGSearcher(cfg, debugMode)
+	searcher, err := searxng.NewSearXNGSearcher(cfg, debug)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errSearcherCreation, err)
 	}
@@ -141,7 +141,7 @@ func runCLIMode(flags CLIFlags, positionalArgs []string) error {
 	}
 
 	if flags.JSON {
-		if debugMode {
+		if debug {
 			fmt.Println()
 		}
 

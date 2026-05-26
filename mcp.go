@@ -115,14 +115,14 @@ func isValidMCPInitializeMessage(line []byte) bool {
 
 // runMCPMode starts the MCP stdio server, registers the search tool, and
 // blocks until a signal (SIGINT/SIGTERM) is received or the server exits.
-func runMCPMode(flags CLIFlags, stdin io.Reader) {
+func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) {
 	cfg, err := getConfig(flags)
 	if err != nil {
 		slog.Error("configuration error", "error", err)
 		os.Exit(1)
 	}
 
-	searcher, err := searxng.NewSearXNGSearcher(cfg, debugMode)
+	searcher, err := searxng.NewSearXNGSearcher(cfg, debug)
 	if err != nil {
 		slog.Error("failed to create searcher", "error", err)
 		os.Exit(1)

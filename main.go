@@ -22,14 +22,6 @@ var (
 
 const defaultResultLimit = 10
 
-// debugMode is set to true when --debug flag or DEBUG=1 env var is active.
-//
-// No race condition: assignment happens before any goroutine starts
-// (parseArgs → main → runMCPMode/runCLIMode all complete in a single
-// goroutine). If runtime modification is needed in the future, use
-// atomic.Bool to guarantee concurrent safety.
-var debugMode bool
-
 var (
 	errArgumentParseFailed = errors.New("failed to parse arguments")
 	errSearXNGURLRequired  = errors.New("SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
@@ -233,15 +225,15 @@ func main() {
 	}
 
 	// Enable debug mode via --debug flag or DEBUG=1 env var
-	debugMode = flags.Debug || os.Getenv("DEBUG") == "1"
-	if debugMode {
+	debug := flags.Debug || os.Getenv("DEBUG") == "1"
+	if debug {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 		slog.Debug("debug mode enabled", "version", version)
 		slog.Warn("debug mode logs search queries and HTTP requests in plain text; avoid sensitive searches")
 	}
 
 	if isCLIMode {
-		err = runCLIMode(flags, positionalArgs)
+		err = runCLIMode(debug, flags, positionalArgs)
 		if err != nil {
 			slog.Error("CLI error", "error", err)
 			os.Exit(1)
@@ -256,7 +248,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	runMCPMode(flags, mcpStdin)
+	runMCPMode(debug, flags, mcpStdin)
 }
 
 func getConfig(flags CLIFlags) (*searxng.Config, error) {

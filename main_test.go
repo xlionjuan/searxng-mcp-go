@@ -761,17 +761,13 @@ func TestRunCLIMode_Success(t *testing.T) {
 			}
 			defer server.Close()
 
-			oldDebug := debugMode
-			debugMode = tt.debug
-			defer func() { debugMode = oldDebug }()
-
 			flags := tt.flags
 			flags.SearXNGURL = server.URL
 
 			var err error
 
 			output := captureStdout(t, func() {
-				err = runCLIMode(flags, tt.positional)
+				err = runCLIMode(tt.debug, flags, tt.positional)
 			})
 			if err != nil {
 				t.Fatalf("runCLIMode() error = %v", err)
@@ -785,7 +781,7 @@ func TestRunCLIMode_Success(t *testing.T) {
 func TestRunCLIMode_MultiplePositionalArgsError(t *testing.T) {
 	t.Parallel()
 
-	err := runCLIMode(CLIFlags{Pageno: nil}, []string{"golang", "programming"})
+	err := runCLIMode(false, CLIFlags{Pageno: nil}, []string{"golang", "programming"})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -865,7 +861,7 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := runCLIMode(tt.flags, tt.query)
+			err := runCLIMode(false, tt.flags, tt.query)
 			if tt.wantErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -885,7 +881,7 @@ func TestRunCLIMode_HelpFlag(t *testing.T) {
 	flags := CLIFlags{Help: true, Language: "", SafeSearch: 0, Pageno: nil}
 
 	output := captureStdout(t, func() {
-		err := runCLIMode(flags, []string{})
+		err := runCLIMode(false, flags, []string{})
 		if err != nil {
 			t.Errorf("runCLIMode() with --help should return nil, got: %v", err)
 		}
@@ -904,7 +900,7 @@ func TestRunCLIMode_VersionFlag(t *testing.T) {
 	flags := CLIFlags{Version: true, Language: "", SafeSearch: 0, Pageno: nil}
 
 	output := captureStdout(t, func() {
-		err := runCLIMode(flags, []string{})
+		err := runCLIMode(false, flags, []string{})
 		if err != nil {
 			t.Errorf("runCLIMode() with --version should return nil, got: %v", err)
 		}
@@ -924,7 +920,7 @@ func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
 
 	flags := CLIFlags{Query: "test", SearXNGURL: "http://localhost:99999", Language: "", SafeSearch: 0, Pageno: nil}
 
-	err := runCLIMode(flags, []string{})
+	err := runCLIMode(false, flags, []string{})
 	if err == nil {
 		t.Fatal("expected error for invalid URL, got nil")
 	}
@@ -973,7 +969,7 @@ func TestRunCLIMode_FlagOnlyInvocations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := runCLIMode(tt.flags, []string{})
+			err := runCLIMode(false, tt.flags, []string{})
 			if tt.wantErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
