@@ -70,7 +70,8 @@ homebrew_casks:
       name: homebrew-tap
       branch: main
       git:
-        url: https://github.com/xlionjuan/homebrew-tap.git
+        url: ssh://git@github.com/xlionjuan/homebrew-tap.git
+        private_key: "{{ .Env.HOMEBREW_TAP_SSH_KEY }}"
     directory: Casks
     homepage: "https://github.com/xlionjuan/searxng-mcp-go"
     description: "SearXNG MCP Server — web search via Meta Search Engine"
