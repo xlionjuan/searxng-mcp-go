@@ -120,6 +120,25 @@ Most detailed topic docs live in `docs/`; root docs (README.md, CONTEXT.md, AGEN
 - CI `go-version` must use a fixed version, not `stable`; step/job names must not contain version numbers
 - MCP stdin mode does not accept CLI args — use env vars only (see `docs/adr/004-mcp-stdin-env-only.md`)
 
+### Version Bump & Release Workflow
+**Tag style:** `v{major}.{minor}.{patch}` (e.g. `v1.0.4`, `v1.1.0`). No `-beta`, `-rc`, or other suffixes.
+
+**To release a new version:**
+1. Patch `main.go` line 18: `version = "vX.Y.Z"` to the new version
+2. Commit: `git commit -m "chore: bump version to vX.Y.Z"` (note: use `-m` flag, do not invoke interactive editor)
+3. Create annotated tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
+4. Push both: `git push origin main && git push origin vX.Y.Z` — this triggers the `release.yml` GoReleaser workflow
+
+**GoReleaser outputs (`.goreleaser.yaml`):**
+- Archives: `tar.zst` format, `linux/amd64` + `linux/arm64` (static, `CGO_ENABLED=0`)
+- Name template: `searxng-mcp-go_v{Version}_{Os}_{Arch}`
+- Contents: binary + README.md + LICENSE + checksums file
+- GitHub Release (auto prerelease detection, `make_latest: true`)
+- Homebrew tap auto-update to `xlionjuan/homebrew-tap`
+- Changelog auto-generated from commits (excludes `docs:`, `test:`, `chore:` prefixes)
+
+**Version injection:** GoReleaser's ldflags (`-X main.version=v{{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}`) override the hardcoded `main.go` value at build time. The hardcoded value is for `--version` flag when not built by GoReleaser.
+
 ### Documentation
 - All docs (`docs/*.md`, README, CONTEXT, AGENTS) must be in English
 
