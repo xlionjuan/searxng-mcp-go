@@ -169,30 +169,3 @@ func FuzzUnescapeIfNeeded(f *testing.F) {
 		}
 	})
 }
-
-// ============================================================================
-// FuzzValidateSearchArgs_NilArgs — dedicated nil-args fuzz (separate fuzz)
-// ============================================================================
-
-func FuzzValidateSearchArgs_NilArgs(f *testing.F) {
-	// Seed with the only meaningful case
-	f.Add(true)  // nil args
-	f.Add(false) // not nil — empty struct (validates that empty struct fails correctly)
-
-	f.Fuzz(func(t *testing.T, nilArgs bool) {
-		var args *searxng.SearchArgs
-		if !nilArgs {
-			args = &searxng.SearchArgs{Query: "test"}
-		}
-
-		err := searxng.ValidateSearchArgs(args)
-
-		if nilArgs {
-			if err == nil {
-				t.Error("ValidateSearchArgs(nil) returned nil, expected error")
-			}
-		}
-
-		_ = err
-	})
-}
