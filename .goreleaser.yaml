@@ -83,7 +83,7 @@ homebrew_casks:
       email: gh-xlionjuan-bot1@mail.xlion.tw
       signing:
         enabled: true
-        key: "{{ .Env.GPG_SIGNING_KEY }}"
+        key: "{{ .Env.GPG_FINGERPRINT }}"
         program: gpg2
         format: openpgp
     commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"

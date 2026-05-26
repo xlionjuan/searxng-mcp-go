@@ -26,6 +26,32 @@ jobs:
         with:
           go-version: "1.26.3"
 
+      - name: Prepare ephemeral GPG home
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          echo "GNUPGHOME=$(mktemp -d)" >> "$GITHUB_ENV"
+          echo "GPG_TTY=" >> "$GITHUB_ENV"
+
+      - name: Import GPG Key
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+
+          IMPORT_FPR="$(
+            printf '%s' "$GPG_PRIVATE_KEY" |
+            gpg --batch --yes --status-fd=1 --import 2>/dev/null |
+            sed 's/\[GNUPG:\]/\n[GNUPG:]/g' |
+            awk '/^\[GNUPG:\] IMPORT_OK/ {print $4; exit}'
+          )"
+          test -n "$IMPORT_FPR"
+
+          echo "GPG_FINGERPRINT=$IMPORT_FPR" >> "$GITHUB_ENV"
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
         with:
@@ -35,4 +61,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_SSH_KEY: ${{ secrets.HOMEBREW_TAP_SSH_KEY }}
-          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+
+      - name: Clean up
+        if: always()
+        run: |
+          rm -rf "$GNUPGHOME" || true
