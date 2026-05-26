@@ -164,10 +164,15 @@ func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) {
 	}
 }
 
+// searcher is the minimal interface the MCP handler needs from a search provider.
+type searcher interface {
+	Search(context.Context, *searxng.SearchArgs) (*searxng.SearchResponse, error)
+}
+
 // NewSearchToolHandler creates an MCP tool handler function that performs SearXNG searches.
 // It returns a function suitable for use as an mcp.ToolHandler, which validates the search
 // arguments, executes the search, and returns the formatted results.
-func NewSearchToolHandler(searcher *searxng.SearXNGSearcher) func(
+func NewSearchToolHandler(searcher searcher) func(
 	context.Context, *mcp.CallToolRequest, searxng.SearchArgs,
 ) (*mcp.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcp.CallToolRequest, args searxng.SearchArgs) (*mcp.CallToolResult, any, error) {

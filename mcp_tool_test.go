@@ -14,6 +14,15 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
+// mockSearcher is a minimal implementation of the searcher interface for tests.
+type mockSearcher struct {
+	searchFunc func(context.Context, *searxng.SearchArgs) (*searxng.SearchResponse, error)
+}
+
+func (m *mockSearcher) Search(ctx context.Context, args *searxng.SearchArgs) (*searxng.SearchResponse, error) {
+	return m.searchFunc(ctx, args)
+}
+
 func mockSearXNGHandler(tb testing.TB) http.HandlerFunc {
 	tb.Helper()
 
@@ -200,7 +209,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 	t.Run("creates handler", func(t *testing.T) {
 		t.Parallel()
 
-		if handler := NewSearchToolHandler(&searxng.SearXNGSearcher{}); handler == nil {
+		if handler := NewSearchToolHandler(&mockSearcher{}); handler == nil {
 			t.Fatal("expected handler function")
 		}
 	})
@@ -208,7 +217,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 	t.Run("validates input", func(t *testing.T) {
 		t.Parallel()
 
-		handler := NewSearchToolHandler(&searxng.SearXNGSearcher{})
+		handler := NewSearchToolHandler(&mockSearcher{})
 
 		for _, tt := range []struct {
 			name string
