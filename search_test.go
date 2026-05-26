@@ -44,16 +44,7 @@ func TestSearch_Success(t *testing.T) {
 	}
 	body := mustMarshalJSON(t, searchResp)
 
-	var capturedQuery url.Values
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			_ = r.ParseForm()
-			capturedQuery = r.PostForm
-		} else {
-			capturedQuery = r.URL.Query()
-		}
-
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
@@ -65,9 +56,7 @@ func TestSearch_Success(t *testing.T) {
 		Timeout:    30 * time.Second,
 	}
 	args := &searxng.SearchArgs{
-		Query:      "test",
-		Language:   "en",
-		SafeSearch: 1,
+		Query: "test",
 	}
 
 	ctx := t.Context()
@@ -83,23 +72,6 @@ func TestSearch_Success(t *testing.T) {
 
 	if result.Results[0].Title != "Result 1" {
 		t.Errorf("expected 'Result 1', got %s", result.Results[0].Title)
-	}
-
-	// Verify request parameters using captured query
-	tests := []struct {
-		name  string
-		param string
-		want  string
-	}{
-		{"query", "q", "test"},
-		{"format", "format", "json"},
-		{"language", "language", "en"},
-		{"safesearch", "safesearch", "1"},
-	}
-	for _, tt := range tests {
-		if capturedQuery.Get(tt.param) != tt.want {
-			t.Errorf("expected %s=%q, got %q", tt.param, tt.want, capturedQuery.Get(tt.param))
-		}
 	}
 }
 
@@ -147,85 +119,26 @@ func TestSearch_PreservesUnresponsiveEngines(t *testing.T) {
 	}
 }
 
-func TestSearch_TimeRangeParam(t *testing.T) {
+func TestSearch_RequestParameters(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name      string
-		timeRange string
-		want      string
-	}{
-		{name: "day", timeRange: "day", want: "day"},
-		{name: "month", timeRange: "month", want: "month"},
-		{name: "year", timeRange: "year", want: "year"},
-		{name: "empty", timeRange: "", want: ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			var capturedTimeRange string
-
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method == http.MethodPost {
-					capturedTimeRange = r.PostFormValue("time_range")
-				} else {
-					capturedTimeRange = r.URL.Query().Get("time_range")
-				}
-
-				searchResp := searxng.SearchResponse{
-					Results:         []searxng.SearchResult{},
-					NumberOfResults: 0,
-					Query:           "test",
-				}
-				body := mustMarshalJSON(t, searchResp)
-
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write(body)
-			}))
-			defer server.Close()
-
-			cfg := &searxng.Config{
-				SearXNGURL: server.URL,
-				Timeout:    30 * time.Second,
-			}
-			args := &searxng.SearchArgs{Query: "test", TimeRange: tt.timeRange}
-			ctx := t.Context()
-
-			_, err := testPerformSearch(ctx, t, cfg, args)
-			if err != nil {
-				t.Errorf("testPerformSearch() error = %v", err)
-
-				return
-			}
-
-			if capturedTimeRange != tt.want {
-				t.Errorf("time_range = %q, want %q", capturedTimeRange, tt.want)
-			}
-		})
-	}
-}
-
-func TestSearch_DefaultLanguage(t *testing.T) {
-	t.Parallel()
-
-	var capturedLanguage string
+	capturedParams := make(chan url.Values, 1)
+	searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
+	body := mustMarshalJSON(t, searchResp)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var params url.Values
 		if r.Method == http.MethodPost {
-			capturedLanguage = r.PostFormValue("language")
+			_ = r.ParseForm()
+			params = make(url.Values, len(r.PostForm))
+			for key, values := range r.PostForm {
+				params[key] = append([]string(nil), values...)
+			}
 		} else {
-			capturedLanguage = r.URL.Query().Get("language")
+			params = r.URL.Query()
 		}
 
-		searchResp := searxng.SearchResponse{
-			Results:         []searxng.SearchResult{},
-			NumberOfResults: 0,
-			Query:           "test",
-		}
-		body := mustMarshalJSON(t, searchResp)
+		capturedParams <- params
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -233,71 +146,87 @@ func TestSearch_DefaultLanguage(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &searxng.Config{
-		SearXNGURL: server.URL,
-		Timeout:    30 * time.Second,
-	}
-	args := &searxng.SearchArgs{Query: "test"} // Language is empty, should not be sent to SearXNG
-
-	ctx := t.Context()
-
-	_, err := testPerformSearch(ctx, t, cfg, args)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if capturedLanguage != "" {
-		t.Errorf("expected no language param when empty, got %q", capturedLanguage)
-	}
-}
-
-func TestSearch_OptionalParams(t *testing.T) {
-	t.Parallel()
+	page := 2
+	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
 
 	tests := []struct {
-		name    string
-		args    *searxng.SearchArgs
-		param   string
-		wantVal string
+		name       string
+		args       *searxng.SearchArgs
+		wantParams map[string]string
+		wantAbsent []string
 	}{
-		{"categories forwarded", &searxng.SearchArgs{Query: "test", Categories: "general,news"}, "categories", "general,news"},
-		{"engines forwarded", &searxng.SearchArgs{Query: "test", Engines: "google,bing"}, "engines", "google,bing"},
-		{"pageno forwarded", &searxng.SearchArgs{Query: "test", Pageno: new(2)}, "pageno", "2"},
+		{
+			name: "basic parameters",
+			args: &searxng.SearchArgs{Query: "test", Language: "en", SafeSearch: 1},
+			wantParams: map[string]string{
+				"q":          "test",
+				"format":     "json",
+				"language":   "en",
+				"safesearch": "1",
+			},
+		},
+		{
+			name:       "default language omitted",
+			args:       &searxng.SearchArgs{Query: "test"},
+			wantParams: map[string]string{"q": "test", "format": "json"},
+			wantAbsent: []string{"language"},
+		},
+		{
+			name:       "time range day forwarded",
+			args:       &searxng.SearchArgs{Query: "test", TimeRange: "day"},
+			wantParams: map[string]string{"time_range": "day"},
+		},
+		{
+			name:       "time range month forwarded",
+			args:       &searxng.SearchArgs{Query: "test", TimeRange: "month"},
+			wantParams: map[string]string{"time_range": "month"},
+		},
+		{
+			name:       "time range year forwarded",
+			args:       &searxng.SearchArgs{Query: "test", TimeRange: "year"},
+			wantParams: map[string]string{"time_range": "year"},
+		},
+		{
+			name:       "empty time range omitted",
+			args:       &searxng.SearchArgs{Query: "test", TimeRange: ""},
+			wantAbsent: []string{"time_range"},
+		},
+		{
+			name:       "categories forwarded",
+			args:       &searxng.SearchArgs{Query: "test", Categories: "general,news"},
+			wantParams: map[string]string{"categories": "general,news"},
+		},
+		{
+			name:       "engines forwarded",
+			args:       &searxng.SearchArgs{Query: "test", Engines: "google,bing"},
+			wantParams: map[string]string{"engines": "google,bing"},
+		},
+		{
+			name:       "pageno forwarded",
+			args:       &searxng.SearchArgs{Query: "test", Pageno: &page},
+			wantParams: map[string]string{"pageno": "2"},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			var capturedParams url.Values
-
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method == http.MethodPost {
-					_ = r.ParseForm()
-					capturedParams = r.PostForm
-				} else {
-					capturedParams = r.URL.Query()
-				}
-
-				searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
-				body := mustMarshalJSON(t, searchResp)
-
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write(body)
-			}))
-			defer server.Close()
-
-			cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
-			ctx := t.Context()
-
-			_, err := testPerformSearch(ctx, t, cfg, tt.args)
+			_, err := testPerformSearch(t.Context(), t, cfg, tt.args)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			if capturedParams.Get(tt.param) != tt.wantVal {
-				t.Errorf("param %q = %q, want %q", tt.param, capturedParams.Get(tt.param), tt.wantVal)
+			params := <-capturedParams
+
+			for key, want := range tt.wantParams {
+				if got := params.Get(key); got != want {
+					t.Errorf("%s = %q, want %q", key, got, want)
+				}
+			}
+
+			for _, key := range tt.wantAbsent {
+				if _, ok := params[key]; ok {
+					t.Errorf("expected %s to be omitted, got values %v", key, params[key])
+				}
 			}
 		})
 	}
