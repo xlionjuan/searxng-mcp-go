@@ -8,13 +8,6 @@ import (
 	"time"
 )
 
-// RetryStrategy determines whether a failed search attempt should be retried
-// and returns the delay before the next attempt.
-type RetryStrategy interface {
-	ShouldRetry(attempt int, resp *http.Response, err error) (bool, time.Duration)
-}
-
-// exponentialBackoffStrategy implements RetryStrategy with exponential backoff.
 // It handles retryable errors, retryable HTTP status codes, and caps the
 // backoff to a maximum delay with jitter.
 type exponentialBackoffStrategy struct {
@@ -23,7 +16,6 @@ type exponentialBackoffStrategy struct {
 	maxRetryDelay time.Duration
 }
 
-// newExponentialBackoffStrategy creates a new exponentialBackoffStrategy.
 func newExponentialBackoffStrategy(maxRetries int, retryDelay, maxRetryDelay time.Duration) *exponentialBackoffStrategy {
 	return &exponentialBackoffStrategy{
 		maxRetries:    maxRetries,
@@ -32,9 +24,6 @@ func newExponentialBackoffStrategy(maxRetries int, retryDelay, maxRetryDelay tim
 	}
 }
 
-// ShouldRetry returns whether the attempt should be retried and the delay to wait.
-// It handles retryable errors, retryable status codes, and the empty-response
-// signal (via errEmptyResponse).
 func (s *exponentialBackoffStrategy) ShouldRetry(attempt int, resp *http.Response, err error) (bool, time.Duration) {
 	if attempt >= s.maxRetries {
 		return false, 0

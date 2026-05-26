@@ -28,7 +28,7 @@ type SearXNGSearcher struct {
 	maxRetries    int
 	retryDelay    time.Duration
 	maxRetryDelay time.Duration
-	retryStrategy RetryStrategy
+	retryStrategy *exponentialBackoffStrategy
 }
 
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.

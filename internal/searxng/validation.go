@@ -54,38 +54,18 @@ func isValidCategoryOrEngine(value string) bool {
 	return true
 }
 
-// validateCategories validates a comma-separated list of categories.
-func validateCategories(categories string) error {
-	if categories == "" {
+func validateCSVIdentifiers(value, field, noun string) error {
+	if value == "" {
 		return nil
 	}
 
-	for cat := range strings.SplitSeq(categories, ",") {
-		if strings.TrimSpace(cat) == "" {
-			return NewValidationError("categories", "contains invalid category")
+	for item := range strings.SplitSeq(value, ",") {
+		if strings.TrimSpace(item) == "" {
+			return NewValidationError(field, "contains invalid "+noun)
 		}
 
-		if !isValidCategoryOrEngine(cat) {
-			return NewValidationError("categories", "contains invalid category")
-		}
-	}
-
-	return nil
-}
-
-// validateEngines validates a comma-separated list of engines.
-func validateEngines(engines string) error {
-	if engines == "" {
-		return nil
-	}
-
-	for eng := range strings.SplitSeq(engines, ",") {
-		if strings.TrimSpace(eng) == "" {
-			return NewValidationError("engines", "contains invalid engine")
-		}
-
-		if !isValidCategoryOrEngine(eng) {
-			return NewValidationError("engines", "contains invalid engine")
+		if !isValidCategoryOrEngine(item) {
+			return NewValidationError(field, "contains invalid "+noun)
 		}
 	}
 
@@ -118,12 +98,12 @@ func ValidateSearchArgs(args *SearchArgs) error {
 		return err
 	}
 
-	err = validateCategories(args.Categories)
+	err = validateCSVIdentifiers(args.Categories, "categories", "category")
 	if err != nil {
 		return err
 	}
 
-	err = validateEngines(args.Engines)
+	err = validateCSVIdentifiers(args.Engines, "engines", "engine")
 	if err != nil {
 		return err
 	}

@@ -166,7 +166,7 @@ func TestValidateCategories(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := validateCategories(tt.categories)
+			err := validateCSVIdentifiers(tt.categories, "categories", "category")
 			if tt.wantErr {
 				requireValidationError(t, err, "categories")
 
@@ -174,7 +174,7 @@ func TestValidateCategories(t *testing.T) {
 			}
 
 			if err != nil {
-				t.Fatalf("validateCategories() error = %v, want nil", err)
+				t.Fatalf("validateCSVIdentifiers() error = %v, want nil", err)
 			}
 		})
 	}
@@ -199,7 +199,7 @@ func TestValidateEngines(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := validateEngines(tt.engines)
+			err := validateCSVIdentifiers(tt.engines, "engines", "engine")
 			if tt.wantErr {
 				requireValidationError(t, err, "engines")
 
@@ -207,7 +207,7 @@ func TestValidateEngines(t *testing.T) {
 			}
 
 			if err != nil {
-				t.Fatalf("validateEngines() error = %v, want nil", err)
+				t.Fatalf("validateCSVIdentifiers() error = %v, want nil", err)
 			}
 		})
 	}
