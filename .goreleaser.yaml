@@ -66,6 +66,8 @@ release:
 homebrew_casks:
   - name: searxng-mcp-go
     repository:
+      owner: xlionjuan
+      name: homebrew-tap
       branch: main
       git:
         url: https://github.com/xlionjuan/homebrew-tap.git
