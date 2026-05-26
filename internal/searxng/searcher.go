@@ -26,8 +26,6 @@ type SearXNGSearcher struct {
 	baseURL       string
 	debug         bool // When true, enables verbose HTTP request/response logging
 	maxRetries    int
-	retryDelay    time.Duration
-	maxRetryDelay time.Duration
 	retryStrategy *exponentialBackoffStrategy
 }
 
@@ -37,13 +35,13 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		return nil, errSearcherConfigRequired
 	}
 
-	// Normalize config: apply safe defaults for zero values
-	cfg = cfg.Normalize()
-
-	// Validate config
+	// Validate config first to catch invalid negative values before normalization
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("newSearXNGSearcher: %w", err)
 	}
+
+	// Normalize config: apply safe defaults for zero values
+	cfg = cfg.Normalize()
 
 	baseURL := cfg.SearXNGURL
 
@@ -91,8 +89,6 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		baseURL:       baseURL,
 		debug:         debug,
 		maxRetries:    cfg.MaxRetries,
-		retryDelay:    cfg.RetryDelay,
-		maxRetryDelay: cfg.MaxRetryDelay,
 		retryStrategy: newExponentialBackoffStrategy(cfg.MaxRetries, cfg.RetryDelay, cfg.MaxRetryDelay),
 	}, nil
 }
@@ -108,17 +104,8 @@ func (s *SearXNGSearcher) Close() error {
 	return nil
 }
 
-// Search is the external API entry point that delegates to the internal performSearch method.
+// Search executes the search query against SearXNG with retry support.
 func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
-	return s.performSearch(ctx, args)
-}
-
-// ============================================================================
-// Search Implementation
-// ============================================================================
-
-// performSearch executes the search query against SearXNG with retry support.
-func (s *SearXNGSearcher) performSearch(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	err := ValidateSearchArgs(args)
 	if err != nil {
 		return nil, err
