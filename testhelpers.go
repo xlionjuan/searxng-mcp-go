@@ -3,10 +3,17 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"searxng-mcp-go/internal/searxng"
 )
+
+type cancelRoundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f cancelRoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 // testPerformSearch is a test helper that creates a temporary SearXNGSearcher
 // from the provided Config and delegates to its Search method.

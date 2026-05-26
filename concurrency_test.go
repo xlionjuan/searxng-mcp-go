@@ -1,3 +1,5 @@
+//go:build stress
+
 package main
 
 import (
@@ -14,21 +16,11 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
-type cancelRoundTripperFunc func(*http.Request) (*http.Response, error)
-
-func (f cancelRoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return f(req)
-}
-
 // --- Concurrent Search Stress Tests ---
 
 // TestConcurrentSearches runs multiple searches simultaneously with different parameters.
 func TestConcurrentSearches(t *testing.T) {
 	t.Parallel()
-
-	if testing.Short() {
-		t.Skip("Skipping concurrent search stress test in short mode")
-	}
 
 	requestCount := int64(0)
 
@@ -91,10 +83,6 @@ func TestConcurrentSearches(t *testing.T) {
 // TestConcurrentContextCancellation tests concurrent context cancellation.
 func TestConcurrentContextCancellation(t *testing.T) {
 	t.Parallel()
-
-	if testing.Short() {
-		t.Skip("Skipping concurrent cancellation stress test in short mode")
-	}
 
 	requestCount := int64(0)
 	canceledCount := int64(0)
@@ -189,10 +177,6 @@ func TestConcurrentContextCancellation(t *testing.T) {
 func TestChannelDeadlockDetection(t *testing.T) {
 	t.Parallel()
 
-	if testing.Short() {
-		t.Skip("Skipping deadlock stress test in short mode")
-	}
-
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		searchResp := searxng.SearchResponse{
 			Results:         []searxng.SearchResult{},
@@ -247,10 +231,6 @@ func TestChannelDeadlockDetection(t *testing.T) {
 // TestRaceConditionOnSharedState tests for race conditions on shared HTTP client.
 func TestRaceConditionOnSharedState(t *testing.T) {
 	t.Parallel()
-
-	if testing.Short() {
-		t.Skip("Skipping shared state race test in short mode")
-	}
 
 	requestCount := int64(0)
 
@@ -332,10 +312,6 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 // all in-flight performSearch calls must return context.Canceled.
 func TestGracefulShutdownWithContextCancel(t *testing.T) {
 	t.Parallel()
-
-	if testing.Short() {
-		t.Skip("Skipping graceful shutdown stress test in short mode")
-	}
 
 	const numGoroutines = 20
 
@@ -448,9 +424,6 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 func TestContextDeadlineExceededDuringSearch(t *testing.T) {
 	t.Parallel()
 
-	if testing.Short() {
-		t.Skip("Skipping deadline stress test in short mode")
-	}
 	// Use a custom RoundTripper that blocks until context cancellation,
 	// avoiding httptest.Server.Close() blocking on active connections.
 	client := &http.Client{
@@ -488,10 +461,6 @@ func TestContextDeadlineExceededDuringSearch(t *testing.T) {
 // TestConcurrentValidationAndSearch tests concurrent validation and search operations.
 func TestConcurrentValidationAndSearch(t *testing.T) {
 	t.Parallel()
-
-	if testing.Short() {
-		t.Skip("Skipping validation/search concurrency stress test in short mode")
-	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		searchResp := searxng.SearchResponse{
