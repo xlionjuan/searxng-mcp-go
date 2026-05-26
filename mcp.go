@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -18,52 +19,72 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
-// searchInputSchema is the JSON schema for the search tool input.
-var searchInputSchema = json.RawMessage(`{
-  "type": "object",
-  "properties": {
-    "query": {
-      "type": "string",
-      "description": "Search query string"
-    },
-    "language": {
-      "type": "string",
-      "description": "Language code for results. Common codes: en, zh-tw, zh, ja, fr, de, es, pt, ru, ar. Leave empty for auto-detect (SearXNG decides based on query)"
-    },
-    "safesearch": {
-      "type": "integer",
-      "description": "SafeSearch level. 0=Off (no filtering), 1=Moderate (filter moderate explicit content), 2=Strict (filter all explicit content). Defaults to 0",
-      "minimum": 0,
-      "maximum": 2
-    },
-    "time_range": {
-      "type": "string",
-      "description": "Time range filter. Available values: empty (all time), day, month, year. Defaults to empty (all time)",
-      "enum": ["", "day", "month", "year"]
-    },
-    "categories": {
-      "type": "string",
-      "description": "Comma-separated list of categories to search. Common categories: general, news, images, videos, music, science, files, it, social_media, map. Leave empty for all categories"
-    },
-    "engines": {
-      "type": "string",
-      "description": "Comma-separated list of search engines to use (e.g., google, bing, duckduckgo). Leave empty to use SearXNG default engines"
-    },
-    "pageno": {
-      "type": ["null", "integer"],
-      "description": "Page number for pagination. Defaults to 1",
-      "minimum": 1
-    },
-    "limit": {
-      "type": "integer",
-      "description": "Maximum number of results to return (1-20). Defaults to 10",
-      "minimum": 1,
-      "maximum": 20
-    }
-  },
-  "required": ["query"],
-  "additionalProperties": false
-}`)
+// buildSearchSchema generates the JSON Schema for the search tool input from
+// the centralised SearchParams table.
+func buildSearchSchema() json.RawMessage {
+	props := make(map[string]interface{})
+	var required []string
+
+	for _, p := range searxng.SearchParams {
+		prop := map[string]interface{}{
+			"type": p.MCPType,
+		}
+		if p.Description != "" {
+			prop["description"] = p.Description
+		}
+		if p.Enum != nil {
+			prop["enum"] = p.Enum
+		}
+		if p.Minimum != nil {
+			prop["minimum"] = *p.Minimum
+		}
+		if p.Maximum != nil {
+			prop["maximum"] = *p.Maximum
+		}
+		if p.Nullable {
+			// Union type: ["null", "<type>"]
+			prop["type"] = []string{"null", p.MCPType}
+		}
+		if p.Required {
+			required = append(required, p.Name)
+		}
+		props[p.Name] = prop
+	}
+
+	schema := map[string]interface{}{
+		"type":                 "object",
+		"properties":           props,
+		"additionalProperties": false,
+	}
+	if len(required) > 0 {
+		schema["required"] = required
+	}
+
+	data, _ := json.Marshal(schema)
+	return json.RawMessage(data)
+}
+
+// buildToolDescription generates the MCP search tool description from the
+// centralised SearchParams table.
+func buildToolDescription() string {
+	var sb strings.Builder
+	sb.WriteString("Search the web using SearXNG meta-search engine. ")
+	sb.WriteString("Returns web results with titles, URLs, summaries, published dates, and engine source information. ")
+	sb.WriteString("Parameters: ")
+	for i, p := range searxng.SearchParams {
+		if i > 0 {
+			sb.WriteString("; ")
+		}
+		sb.WriteString(p.Name)
+		if p.Required {
+			sb.WriteString(" (required)")
+		}
+		sb.WriteString(" - ")
+		sb.WriteString(p.Description)
+	}
+	sb.WriteString(".")
+	return sb.String()
+}
 
 type mcpInitializeMessage struct {
 	JSONRPC string `json:"jsonrpc"`
@@ -136,17 +157,9 @@ func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) {
 	}, nil)
 
 	mcp.AddTool(server, &mcp.Tool{
-		Name: "search",
-		Description: "Search the web using SearXNG meta-search engine. " +
-			"Returns web results with titles, URLs, summaries, published dates, and engine source information. " +
-			"Parameters: query (required) - search query string; language - language code " +
-			"(e.g., en, zh-tw, ja, fr, de, es), auto-detect if empty; safesearch - 0=Off, " +
-			"1=Moderate, 2=Strict (default 0); time_range - empty (all time), day, month, year; " +
-			"categories - comma-separated (e.g., general, news, images, videos, music, science, " +
-			"files, it, social_media, map); engines - comma-separated (e.g., google, bing, " +
-			"duckduckgo), SearXNG defaults if empty; pageno - page number (default 1); " +
-			"limit - max results 1-20 (default 10).",
-		InputSchema: searchInputSchema,
+		Name:        "search",
+		Description: buildToolDescription(),
+		InputSchema: buildSearchSchema(),
 	}, NewSearchToolHandler(searcher))
 
 	slog.Info("starting SearXNG MCP server")

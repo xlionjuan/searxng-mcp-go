@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"searxng-mcp-go/internal/searxng"
 )
@@ -30,18 +31,19 @@ USAGE:
   searxng-mcp-go [OPTIONS] [QUERY]
 
 OPTIONS:
-  --query string     Search query string (alternative to positional argument)
   --json             Output results as formatted JSON instead of human-readable text
   --searxng-url URL  SearXNG instance URL (required)
-                     Can also be set via SEARXNG_URL environment variable
-  --language LANG    Language code for results (e.g., en, zh-tw, ja) [default: auto]
-  --safesearch 0-2   SafeSearch level: 0=Off, 1=Moderate, 2=Strict [default: 0]
-  --time_range RANGE Time range filter: day, month, year
-  --categories CAT   Comma-separated list of categories to search
-  --engines ENG      Comma-separated list of search engines to use
-  --pageno N         Page number for pagination [default: 1]
-  --limit N          Maximum number of results to return (1-20) [default: 10]
-  --debug            Enable verbose HTTP request/response logging
+                     Can also be set via SEARXNG_URL environment variable`)
+	// Print search parameter options from the shared table.
+	for _, p := range searxng.SearchParams {
+		flagExpr := "--" + p.Name + " " + p.CLIType
+		padding := 18 - len(flagExpr)
+		if padding < 1 {
+			padding = 1
+		}
+		fmt.Printf("  %s%s%s\n", flagExpr, strings.Repeat(" ", padding), p.CLIHelp)
+	}
+	fmt.Println(`  --debug            Enable verbose HTTP request/response logging
                      Can also be enabled via DEBUG=1 environment variable
   --timeout DURATION HTTP client timeout (e.g., 8s) [default: 8s]
                      Can also be set via SEARXNG_TIMEOUT environment variable

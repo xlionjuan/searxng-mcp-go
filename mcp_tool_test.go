@@ -78,7 +78,7 @@ func setupMCPSession(t *testing.T, handler http.HandlerFunc) (*mcp.ClientSession
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search",
 		Description: "Search the web using SearXNG meta-search engine.",
-		InputSchema: json.RawMessage(searchInputSchema),
+		InputSchema: buildSearchSchema(),
 	}, NewSearchToolHandler(searcher))
 
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
@@ -114,7 +114,7 @@ func TestSearchInputSchema(t *testing.T) {
 
 	var schema map[string]any
 
-	err := json.Unmarshal([]byte(searchInputSchema), &schema)
+	err := json.Unmarshal([]byte(buildSearchSchema()), &schema)
 	if err != nil {
 		t.Fatalf("failed to parse search input schema: %v", err)
 	}

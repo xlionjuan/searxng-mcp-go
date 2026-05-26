@@ -52,21 +52,17 @@ type CLIFlags struct {
 }
 
 type registeredFlags struct {
-	query      *string
 	jsonOut    *bool
 	help       *bool
 	version    *bool
 	searxngURL *string
-	language   *string
-	safeSearch *int
-	timeRange  *string
-	categories *string
-	engines    *string
-	pageno     *int
-	limit      *int
 	debug      *bool
 	timeout    *time.Duration
 	maxRetries *int
+	// Search parameters are registered generically from the shared
+	// searxng.SearchParams table and stored in searchFlags. Each value is
+	// either *string or *int matching the ParamDef.GoType.
+	searchFlags map[string]interface{}
 }
 
 // parseArgs parses command-line arguments and returns the mode, flags, and positional arguments.
@@ -98,11 +94,15 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 
 	fs.Visit(func(f *flag.Flag) {
 		if f.Name == "pageno" {
-			pagenoPtr = registered.pageno
+			if ptr, ok := registered.searchFlags["pageno"].(*int); ok {
+				pagenoPtr = ptr
+			}
 		}
 
 		if f.Name == "limit" {
-			limitPtr = registered.limit
+			if ptr, ok := registered.searchFlags["limit"].(*int); ok {
+				limitPtr = ptr
+			}
 		}
 
 		if f.Name == "timeout" {
@@ -120,16 +120,16 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 	}
 
 	flags := CLIFlags{
-		Query:         *registered.query,
+		Query:         *registered.searchFlags["query"].(*string),
 		JSON:          *registered.jsonOut,
 		Help:          *registered.help,
 		Version:       *registered.version,
 		SearXNGURL:    *registered.searxngURL,
-		Language:      *registered.language,
-		SafeSearch:    *registered.safeSearch,
-		TimeRange:     *registered.timeRange,
-		Categories:    *registered.categories,
-		Engines:       *registered.engines,
+		Language:      *registered.searchFlags["language"].(*string),
+		SafeSearch:    *registered.searchFlags["safesearch"].(*int),
+		TimeRange:     *registered.searchFlags["time_range"].(*string),
+		Categories:    *registered.searchFlags["categories"].(*string),
+		Engines:       *registered.searchFlags["engines"].(*string),
 		Pageno:        pagenoPtr,
 		Limit:         limitPtr,
 		Debug:         *registered.debug,
@@ -149,25 +149,30 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 	fs.SetOutput(io.Discard)
 	fs.Usage = func() {}
 
-	registered := registeredFlags{
-		query:      fs.String("query", "", "Search query string (CLI mode)"),
-		jsonOut:    fs.Bool("json", false, "Output results as JSON (CLI mode)"),
-		help:       fs.Bool("help", false, "Show this help message"),
-		version:    fs.Bool("version", false, "Show version information"),
-		searxngURL: fs.String("searxng-url", "", "SearXNG URL (can also be set via SEARXNG_URL env var)"),
-		language:   fs.String("language", "", "Language code for results (e.g., en, zh-tw, ja). Leave empty for auto"),
-		safeSearch: fs.Int("safesearch", 0, "SafeSearch level: 0=Off, 1=Moderate, 2=Strict"),
-		timeRange:  fs.String("time_range", "", "Time range filter: day, month, year"),
-		categories: fs.String("categories", "", "Comma-separated list of categories to search"),
-		engines:    fs.String("engines", "", "Comma-separated list of search engines to use"),
-		pageno:     fs.Int("pageno", 1, "Page number for pagination"),
-		limit:      fs.Int("limit", defaultResultLimit, "Maximum number of results to return (1-20)"),
-		debug:      fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)"),
-		timeout:    fs.Duration("timeout", 0, "HTTP client timeout (e.g., 8s); overrides SEARXNG_TIMEOUT env var"),
-		maxRetries: fs.Int("max-retries", 0, "Max retries after initial search attempt; overrides SEARXNG_MAX_RETRIES env var"),
+	r := registeredFlags{
+		jsonOut:     fs.Bool("json", false, "Output results as JSON (CLI mode)"),
+		help:        fs.Bool("help", false, "Show this help message"),
+		version:     fs.Bool("version", false, "Show version information"),
+		searxngURL:  fs.String("searxng-url", "", "SearXNG URL (can also be set via SEARXNG_URL env var)"),
+		debug:       fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)"),
+		timeout:     fs.Duration("timeout", 0, "HTTP client timeout (e.g., 8s); overrides SEARXNG_TIMEOUT env var"),
+		maxRetries:  fs.Int("max-retries", 0, "Max retries after initial search attempt; overrides SEARXNG_MAX_RETRIES env var"),
+		searchFlags: make(map[string]interface{}),
 	}
 
-	return fs, registered
+	// Register search parameters from the shared table.
+	// Note: "query" is also used as a positional argument in CLI mode.
+	for _, p := range searxng.SearchParams {
+		switch p.GoType {
+		case "string":
+			r.searchFlags[p.Name] = fs.String(p.Name, p.Default, p.Description)
+		case "int":
+			defaultVal, _ := strconv.Atoi(p.Default)
+			r.searchFlags[p.Name] = fs.Int(p.Name, defaultVal, p.Description)
+		}
+	}
+
+	return fs, r
 }
 
 func extractPositionalArgs(args []string, fs *flag.FlagSet) ([]string, []string) {
