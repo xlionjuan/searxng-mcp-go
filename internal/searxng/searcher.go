@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -111,81 +110,65 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 		return nil, err
 	}
 
-	if s.maxRetries == 0 {
-		return s.executeSingleAttempt(ctx, args)
-	}
+	for attempt := 0; attempt <= s.maxRetries; attempt++ {
+		resp, _, err := s.doSearchAttempt(ctx, args)
 
-	for attempt := 0; ; attempt++ {
-		resp, err := s.executeSearchAttempt(ctx, args)
 		shouldRetry, delay := s.retryStrategy.ShouldRetry(attempt, resp, err)
-		if !shouldRetry {
-			// No more retries — handle final result
-			if err != nil {
-				wrappedErr := fmt.Errorf("%w: %w", errSearchRequestFailed, err)
-				return nil, NewSearXNGError(0, "", "", wrappedErr)
-			}
 
-			if resp.StatusCode != http.StatusOK {
-				statusErr := s.handleNonOKResponse(resp)
+		if shouldRetry {
+			// Retry with backoff
+			s.logDebugRetry(attempt, s.maxRetries+1, delay, err)
+			if resp != nil {
 				closeResponseBody(resp)
-				return nil, statusErr
+			}
+			if waitErr := retryWait(ctx, delay); waitErr != nil {
+				return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, waitErr))
 			}
 
-			result, parseErr := s.parseSearchResponse(resp, args)
-			closeResponseBody(resp)
-			if parseErr != nil {
-				return nil, parseErr
-			}
+			continue
+		}
 
-			// Retry empty responses if retries remain
-			if attempt < s.maxRetries && s.isEmptyResponse(result) {
-				shouldRetry, delay = s.retryStrategy.ShouldRetry(attempt, resp, errEmptyResponse)
-				if shouldRetry {
-					s.logDebugRetry(attempt, s.maxRetries+1, delay, nil)
-					if waitErr := retryWait(ctx, delay); waitErr != nil {
-						return result, nil
-					}
-					continue
+		// No more retries — handle final result
+		if err != nil {
+			wrappedErr := fmt.Errorf("%w: %w", errSearchRequestFailed, err)
+
+			return nil, NewSearXNGError(0, "", "", wrappedErr)
+		}
+
+		result, finishErr := s.finishResponse(resp, args)
+		if finishErr != nil {
+			return nil, finishErr
+		}
+
+		// Retry empty responses if retries remain
+		if attempt < s.maxRetries && s.isEmptyResponse(result) {
+			shouldRetry, delay = s.retryStrategy.ShouldRetry(attempt, resp, errEmptyResponse)
+			if shouldRetry {
+				s.logDebugRetry(attempt, s.maxRetries+1, delay, nil)
+				if waitErr := retryWait(ctx, delay); waitErr != nil {
+					return result, nil
 				}
+
+				continue
 			}
-
-			return result, nil
 		}
 
-		// Retry with backoff
-		s.logDebugRetry(attempt, s.maxRetries+1, delay, err)
-		if resp != nil {
-			closeResponseBody(resp)
-		}
-		if waitErr := retryWait(ctx, delay); waitErr != nil {
-			return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, waitErr))
-		}
+		return result, nil
 	}
+
+	// Should never reach here
+	return nil, NewSearXNGError(0, "", "", errSearchRequestFailed)
 }
 
-func (s *SearXNGSearcher) executeSingleAttempt(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
-	resp, _, err := s.doSearchAttempt(ctx, args)
-
-	if err != nil {
-		var searchErr *SearXNGError
-		if errors.As(err, &searchErr) {
-			return nil, searchErr
-		}
-		return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, err))
-	}
-
-	defer func() { closeResponseBody(resp) }()
+// finishResponse handles non-OK status, JSON parsing, and body closure for a response.
+func (s *SearXNGSearcher) finishResponse(resp *http.Response, args *SearchArgs) (*SearchResponse, error) {
+	defer closeResponseBody(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, s.handleNonOKResponse(resp)
 	}
 
 	return s.parseSearchResponse(resp, args)
-}
-
-func (s *SearXNGSearcher) executeSearchAttempt(ctx context.Context, args *SearchArgs) (*http.Response, error) {
-	resp, _, err := s.doSearchAttempt(ctx, args)
-	return resp, err
 }
 
 func (s *SearXNGSearcher) doSearchAttempt(ctx context.Context, args *SearchArgs) (*http.Response, string, error) {
@@ -302,7 +285,7 @@ func (s *SearXNGSearcher) executeGETfallback(
 }
 
 func (s *SearXNGSearcher) handleNonOKResponse(resp *http.Response) error {
-	body, readErr := io.ReadAll(io.LimitReader(resp.Body, MaxErrorBodySize))
+	body, truncated, readErr := readBodyWithLimit(resp.Body, MaxErrorBodySize)
 	if readErr != nil {
 		return NewSearXNGError(
 			resp.StatusCode, resp.Header.Get("Content-Type"), "",
@@ -325,15 +308,9 @@ func (s *SearXNGSearcher) handleNonOKResponse(resp *http.Response) error {
 		)
 	}
 
-	truncated, truncErr := isBodyTruncated(resp.Body)
-	if truncErr != nil {
-		slog.Debug("isBodyTruncated read error", "error", truncErr)
-	}
-
 	if truncated {
-		err := fmt.Errorf("%w of %d bytes", errErrorBodyTooLarge, MaxErrorBodySize)
-
-		return NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), err)
+		return NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body),
+			fmt.Errorf("%w of %d bytes", errErrorBodyTooLarge, MaxErrorBodySize))
 	}
 
 	return HTTPStatusError(resp.StatusCode, resp.Header.Get("Content-Type"), body)

@@ -3,7 +3,6 @@ package searxng
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -102,21 +101,6 @@ func validateBaseURL(baseURL string) error {
 	}
 
 	return nil
-}
-
-func isBodyTruncated(body io.Reader) (bool, error) {
-	buf := make([]byte, 1)
-
-	_, err := body.Read(buf)
-	if err == nil {
-		return true, nil
-	}
-
-	if err == io.EOF {
-		return false, nil
-	}
-
-	return false, err
 }
 
 func closeResponseBody(resp *http.Response) {

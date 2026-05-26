@@ -50,15 +50,26 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 	return result, nil
 }
 
-func readLimitedBody(resp *http.Response) ([]byte, error) {
-	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBodySize))
+// readBodyWithLimit reads up to maxBytes+1 bytes from body and returns the data,
+// a boolean indicating if the body was truncated (exceeded maxBytes), and any error.
+func readBodyWithLimit(body io.ReadCloser, maxBytes int64) ([]byte, bool, error) {
+	data, err := io.ReadAll(io.LimitReader(body, maxBytes+1))
 	if err != nil {
-		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("%w: %w", errResponseReadFailed, err))
+		return nil, false, err
 	}
 
-	truncated, truncErr := isBodyTruncated(resp.Body)
-	if truncErr != nil {
-		slog.Debug("isBodyTruncated read error", "error", truncErr)
+	truncated := int64(len(data)) > maxBytes
+	if truncated {
+		data = data[:maxBytes]
+	}
+
+	return data, truncated, nil
+}
+
+func readLimitedBody(resp *http.Response) ([]byte, error) {
+	body, truncated, err := readBodyWithLimit(resp.Body, MaxResponseBodySize)
+	if err != nil {
+		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("%w: %w", errResponseReadFailed, err))
 	}
 
 	if truncated {
