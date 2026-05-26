@@ -131,12 +131,12 @@ func FuzzUnescapeIfNeeded(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, s string) {
-		result := unescapeIfNeeded(s)
+		result := searxng.UnescapeIfNeeded(s)
 
 		// Invariant: if input has no '&', '<', '>', '"', result must be identical to input
 		if !strings.ContainsAny(s, "&<>\"") {
 			if result != s {
-				t.Errorf("unescapeIfNeeded(%q)=%q, expected same string (no trigger chars)", s, result)
+				t.Errorf("searxng.UnescapeIfNeeded(%q)=%q, expected same string (no trigger chars)", s, result)
 			}
 		}
 
@@ -144,7 +144,7 @@ func FuzzUnescapeIfNeeded(f *testing.F) {
 		// (html.UnescapeString is not strictly idempotent in Go, so we iterate to fixed point)
 		current := result
 		for range 10 {
-			next := unescapeIfNeeded(current)
+			next := searxng.UnescapeIfNeeded(current)
 			if next == current {
 				break
 			}
@@ -152,7 +152,7 @@ func FuzzUnescapeIfNeeded(f *testing.F) {
 			current = next
 		}
 		// After stabilization, one more pass should be identity
-		final := unescapeIfNeeded(current)
+		final := searxng.UnescapeIfNeeded(current)
 		if final != current {
 			t.Errorf("unescapeIfNeeded did not stabilize after 10 iterations: input=%q, stable=%q, final=%q", s, current, final)
 		}
@@ -160,12 +160,12 @@ func FuzzUnescapeIfNeeded(f *testing.F) {
 		// Invariant: result must not be longer than input * some reasonable factor
 		// (unescaping can make strings shorter but never dramatically longer)
 		if len(result) > len(s)*10+100 {
-			t.Errorf("unescapeIfNeeded(%q) returned suspiciously long result: len=%d", s, len(result))
+			t.Errorf("searxng.UnescapeIfNeeded(%q) returned suspiciously long result: len=%d", s, len(result))
 		}
 
 		// Invariant: empty input yields empty output
 		if len(s) == 0 && len(result) != 0 {
-			t.Errorf("unescapeIfNeeded(\"\")=%q, want empty", result)
+			t.Errorf("searxng.UnescapeIfNeeded(\"\")=%q, want empty", result)
 		}
 	})
 }

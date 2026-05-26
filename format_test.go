@@ -38,9 +38,9 @@ func TestUnescapeIfNeeded(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := unescapeIfNeeded(tt.input)
+			got := searxng.UnescapeIfNeeded(tt.input)
 			if got != tt.want {
-				t.Errorf("unescapeIfNeeded(%q) = %q, want %q", tt.input, got, tt.want)
+				t.Errorf("searxng.UnescapeIfNeeded(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
 	}

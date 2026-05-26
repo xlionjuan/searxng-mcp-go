@@ -14,12 +14,6 @@ const noResultsFound = "No results found."
 // Formatting
 // ============================================================================
 
-// unescapeIfNeeded calls html.UnescapeString only when the string contains
-// HTML entities, avoiding unnecessary allocations.
-func unescapeIfNeeded(s string) string {
-	return searxng.UnescapeIfNeeded(s)
-}
-
 // truncateRunes truncates s to at most limit runes in a single pass.
 // It returns the original string unchanged if already within the limit.
 func truncateRunes(str string, limit int) string {
@@ -76,11 +70,11 @@ func writeInfoboxes(buf *strings.Builder, infoboxes []searxng.Infobox) {
 		buf.WriteByte('[')
 		buf.WriteString(strconv.Itoa(idx + 1))
 		buf.WriteString("] ")
-		buf.WriteString(unescapeIfNeeded(ib.Infobox))
+		buf.WriteString(searxng.UnescapeIfNeeded(ib.Infobox))
 		buf.WriteByte('\n')
 
 		if ib.Content != "" {
-			content := unescapeIfNeeded(ib.Content)
+			content := searxng.UnescapeIfNeeded(ib.Content)
 			content = truncateRunes(content, searxng.MaxContentRunes)
 
 			buf.WriteString("    ")
@@ -175,11 +169,11 @@ func formatResults(resp *searxng.SearchResponse) string {
 		buf.WriteString("Found ")
 		buf.WriteString(strconv.Itoa(total))
 		buf.WriteString(" results for '")
-		buf.WriteString(unescapeIfNeeded(resp.Query))
+		buf.WriteString(searxng.UnescapeIfNeeded(resp.Query))
 		buf.WriteString("':\n\n")
 
 		for idx, res := range resp.Results {
-			title := unescapeIfNeeded(res.Title)
+			title := searxng.UnescapeIfNeeded(res.Title)
 
 			buf.WriteString(strconv.Itoa(idx + 1))
 			buf.WriteString(". ")
@@ -190,7 +184,7 @@ func formatResults(resp *searxng.SearchResponse) string {
 			buf.WriteByte('\n')
 
 			if res.Content != "" {
-				content := unescapeIfNeeded(res.Content)
+				content := searxng.UnescapeIfNeeded(res.Content)
 				content = truncateRunes(content, searxng.MaxContentRunes)
 
 				buf.WriteString("   Summary: ")
