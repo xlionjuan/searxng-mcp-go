@@ -24,13 +24,13 @@ func newExponentialBackoffStrategy(maxRetries int, retryDelay, maxRetryDelay tim
 	}
 }
 
-func (s *exponentialBackoffStrategy) ShouldRetry(attempt int, resp *http.Response, err error) (bool, time.Duration) {
+func (s *exponentialBackoffStrategy) ShouldRetry(ctx context.Context, attempt int, resp *http.Response, err error) (bool, time.Duration) {
 	if attempt >= s.maxRetries {
 		return false, 0
 	}
 
 	if err != nil {
-		if isRetryableError(context.Background(), err) {
+		if isRetryableError(ctx, err) {
 			return true, retryBackoff(attempt, s.retryDelay, s.maxRetryDelay)
 		}
 		return false, 0

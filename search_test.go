@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -600,6 +602,63 @@ func TestSearch_RetriesEmptySearchResponse(t *testing.T) {
 
 	if len(result.Results) != 1 {
 		t.Fatalf("results length = %d, want 1", len(result.Results))
+	}
+}
+
+func TestSearch_EmptySearchResponseRetryCanceled(t *testing.T) {
+	t.Parallel()
+
+	firstResponseWritten := make(chan struct{}, 1)
+
+	var attempts atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempts.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"query":"test","results":[],"suggestions":[]}`))
+
+		select {
+		case firstResponseWritten <- struct{}{}:
+		default:
+		}
+	}))
+	defer server.Close()
+
+	cfg := &searxng.Config{
+		SearXNGURL:    server.URL,
+		Timeout:       30 * time.Second,
+		MaxRetries:    1,
+		RetryDelay:    500 * time.Millisecond,
+		MaxRetryDelay: 500 * time.Millisecond,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		<-firstResponseWritten
+		time.Sleep(20 * time.Millisecond)
+		cancel()
+	}()
+
+	_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
+
+	<-done
+
+	if err == nil {
+		t.Fatal("Search() error = nil, want context cancellation error")
+	}
+
+	if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Search() error = %v, want context.Canceled or context.DeadlineExceeded", err)
+	}
+
+	if got := attempts.Load(); got != 1 {
+		t.Fatalf("attempts = %d, want 1", got)
 	}
 }
 

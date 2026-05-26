@@ -113,7 +113,7 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 	for attempt := 0; attempt <= s.maxRetries; attempt++ {
 		resp, _, err := s.doSearchAttempt(ctx, args)
 
-		shouldRetry, delay := s.retryStrategy.ShouldRetry(attempt, resp, err)
+		shouldRetry, delay := s.retryStrategy.ShouldRetry(ctx, attempt, resp, err)
 
 		if shouldRetry {
 			// Retry with backoff
@@ -142,11 +142,11 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 
 		// Retry empty responses if retries remain
 		if attempt < s.maxRetries && s.isEmptyResponse(result) {
-			shouldRetry, delay = s.retryStrategy.ShouldRetry(attempt, resp, errEmptyResponse)
+			shouldRetry, delay = s.retryStrategy.ShouldRetry(ctx, attempt, resp, errEmptyResponse)
 			if shouldRetry {
 				s.logDebugRetry(attempt, s.maxRetries+1, delay, nil)
 				if waitErr := retryWait(ctx, delay); waitErr != nil {
-					return result, nil
+					return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, waitErr))
 				}
 
 				continue

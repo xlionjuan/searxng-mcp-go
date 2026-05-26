@@ -151,6 +151,10 @@ func formatResults(resp *searxng.SearchResponse) string {
 		buf.Grow(estimate)
 	}
 
+	buf.WriteString("=== Web Search Results ===\n")
+	buf.WriteString(searxng.ExternalContentWarning)
+	buf.WriteString("\n\n")
+
 	// Answers first (direct answers like IP, hash, timezone)
 	writeAnswers(&buf, resp.Answers)
 

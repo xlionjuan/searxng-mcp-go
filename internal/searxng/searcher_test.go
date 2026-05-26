@@ -18,7 +18,7 @@ func TestNewSearXNGSearcherErrors(t *testing.T) {
 		baseURL string
 		want    string
 	}{
-			{name: "empty URL", baseURL: "", want: "SearXNGURL cannot be empty"},
+		{name: "empty URL", baseURL: "", want: "SearXNGURL cannot be empty"},
 		{name: "invalid scheme", baseURL: "ftp://example.com", want: "url must use http or https scheme"},
 		{name: "missing host", baseURL: "https:///search", want: "url must include a host"},
 	}
@@ -132,7 +132,7 @@ func TestSearchResponseMarshalJSON(t *testing.T) {
 	t.Run("nil slices serialize as empty arrays", func(t *testing.T) {
 		t.Parallel()
 
-		body, err := json.Marshal(SearchResponse{})
+		body, err := json.Marshal(SearchResponse{Warning: ExternalContentWarning})
 		if err != nil {
 			t.Fatalf("json.Marshal() error = %v", err)
 		}
@@ -150,6 +150,10 @@ func TestSearchResponseMarshalJSON(t *testing.T) {
 
 		if string(got["suggestions"]) != "[]" {
 			t.Fatalf("suggestions = %s, want []", got["suggestions"])
+		}
+
+		if string(got["warning"]) != `"`+ExternalContentWarning+`"` {
+			t.Fatalf("warning = %s, want %q", got["warning"], ExternalContentWarning)
 		}
 	})
 

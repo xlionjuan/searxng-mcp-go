@@ -47,7 +47,7 @@ searxng-mcp-go/
 │       ├── request.go   # buildSearchRequest, setBrowserHeaders
 │       ├── response.go  # parseSearchResponse, normalizeResponse
 │       ├── retry.go     # Retry logic: backoff, jitter, retryable checks
-│       ├── searcher.go  # SearXNGSearcher, Search, performSearch
+│       ├── searcher.go  # SearXNGSearcher, Search, search execution and retry flow
 │       ├── types.go     # SearchArgs, SearchResponse, SearchResult, Answer, Infobox, Config
 │       ├── validation.go # Search argument validation
 │       ├── bench_test.go            # Internal benchmarks (marshal, validation)

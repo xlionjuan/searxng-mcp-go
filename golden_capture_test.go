@@ -75,6 +75,9 @@ func TestFormatResultsGoldenOutput(t *testing.T) {
 	// match the captured golden output byte-for-byte.
 	x4000 := strings.Repeat("x", searxng.MaxContentRunes)
 	golden := "" +
+		"=== Web Search Results ===\n" +
+		searxng.ExternalContentWarning + "\n" +
+		"\n" +
 		"=== Answers ===\n" +
 		"\n" +
 		"[1] 42.0\n" +

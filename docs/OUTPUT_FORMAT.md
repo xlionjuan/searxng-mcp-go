@@ -21,6 +21,9 @@ Query: `apple inc` — this query triggers Infoboxes, Results, and Suggestions s
 ```
 $ ./searxng-mcp-go "apple inc"
 
+=== Web Search Results ===
+Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.
+
 === Infoboxes ===
 
 [1] Apple Inc.
@@ -70,7 +73,26 @@ Found 16 results for 'apple inc':
 ```json
 {
   "query": "apple inc",
+  "warning": "Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.",
   "number_of_results": 16,
+  "infoboxes": [
+    {
+      "infobox": "Apple Inc.",
+      "content": "Apple Inc. is an American multinational technology company headquartered in Cupertino, California...",
+      "attributes": [
+        {
+          "label": "Type",
+          "value": "Public"
+        }
+      ],
+      "urls": [
+        {
+          "title": "Official site",
+          "url": "https://www.apple.com/"
+        }
+      ]
+    }
+  ],
   "results": [
     {
       "title": "Apple Inc.",
@@ -104,6 +126,9 @@ Query: `golang tutorial` — this query returns no Answers or Infoboxes.
 
 ```
 $ ./searxng-mcp-go "golang tutorial"
+
+=== Web Search Results ===
+Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.
 
 === Results ===
 
@@ -140,6 +165,7 @@ Found 17 results for 'golang tutorial':
 ```json
 {
   "query": "golang tutorial",
+  "warning": "Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.",
   "number_of_results": 17,
   "results": [
     {
@@ -176,13 +202,14 @@ When a field in the query results has no value, the behavior is as follows:
 | Mode | Behavior |
 |------|----------|
 | **CLI text mode** | The entire section is omitted — nothing is printed. For example, if there are no Answers, the `=== Answers ===` heading will not appear. |
-| **JSON mode** | `answers` and `infoboxes` use `omitempty` and are omitted when empty. `results` and `suggestions` are always present — forced to `[]` (empty array) when empty, never omitted or `null`. `unresponsive_engines` is omitted unless debug mode is enabled. |
+| **JSON mode** | `warning`, `results`, and `suggestions` are always present for successful searches. `answers` and `infoboxes` use `omitempty` and are omitted when empty. `results` and `suggestions` are forced to `[]` (empty array) when empty, never omitted or `null`. `unresponsive_engines` is omitted unless debug mode is enabled. |
 
 `corrections` is intentionally excluded from all output modes per ADR-005.
 
 ### Specific Rules
 
 **CLI text mode:**
+- successful output includes the `=== Web Search Results ===` warning header
 - `answers` is empty → omit the entire `=== Answers ===` section
 - `infoboxes` is empty → omit the entire `=== Infoboxes ===` section
 - `infobox.attributes` is empty → omit the `Attributes:` subsection for that infobox
@@ -193,6 +220,7 @@ When a field in the query results has no value, the behavior is as follows:
 - `suggestions` is empty → omit the entire `=== Search Suggestions ===` section
 
 **JSON mode:**
+- `warning` is present for successful search responses
 - `answers` is empty → no `answers` key in the JSON (omitempty)
 - `infoboxes` is empty → no `infoboxes` key in the JSON (omitempty)
 - `results` is empty → `"results": []` (always present, forced to empty array)
@@ -211,11 +239,12 @@ When a field in the query results has no value, the behavior is as follows:
 ### JSON Mode Field Order
 
 1. **`query`** — Search query echoed in the response
-2. **`answers`** — Direct answers (e.g., IP, hash, timezone, etc.)
-3. **`number_of_results`** — Total result count reported in JSON output
-4. **`infoboxes`** — Knowledge panels
-5. **`results`** — Search result list
-6. **`suggestions`** — Related search suggestions
+2. **`warning`** — External-content warning for AI agents and JSON consumers
+3. **`answers`** — Direct answers (e.g., IP, hash, timezone, etc.)
+4. **`number_of_results`** — Total result count reported in JSON output
+5. **`infoboxes`** — Knowledge panels
+6. **`results`** — Search result list
+7. **`suggestions`** — Related search suggestions
 
 `answers` and `infoboxes` may be omitted when empty. `results` and `suggestions` remain present as arrays.
 
@@ -223,6 +252,8 @@ When a field in the query results has no value, the behavior is as follows:
 
 ```
 query
+  ↓
+warning
   ↓
 answers
   ↓
@@ -238,6 +269,7 @@ suggestions
 ```json
 {
   "query": "string",
+  "warning": "string",
   "answers": [],
   "number_of_results": "int",
   "infoboxes": [],
@@ -247,7 +279,7 @@ suggestions
 }
 ```
 
-Note: JSON does not guarantee field order, but Go's `encoding/json.Marshal` serializes struct fields in declaration order. The order above is enforced by the Go struct definition and its `MarshalJSON` override. `answers` and `infoboxes` use `omitempty` (omitted when empty), while `results` and `suggestions` are always present (forced to `[]` when empty). `corrections` is intentionally excluded per ADR-005. `unresponsive_engines` is debug-only and omitted when debug mode is off.
+Note: JSON does not guarantee field order, but Go's `encoding/json.Marshal` serializes struct fields in declaration order. The order above is enforced by the Go struct definition and its `MarshalJSON` override. `warning`, `results`, and `suggestions` are always present for successful searches; `answers` and `infoboxes` use `omitempty` (omitted when empty). `corrections` is intentionally excluded per ADR-005. `unresponsive_engines` is debug-only and omitted when debug mode is off.
 
 ---
 

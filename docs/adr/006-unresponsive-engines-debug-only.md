@@ -23,6 +23,6 @@ In normal output (CLI and MCP), the field is omitted. When `--debug` or `DEBUG=1
 ## Consequences
 
 - `SearchResponse` gains an `UnresponsiveEngines` field with `json:",omitempty"` tag.
-- `performSearch()` or `formatResults()` conditionally includes/excludes the field based on debug mode.
+- Search response normalization and output formatting conditionally include/exclude the field based on debug mode.
 - CLI debug output logs unresponsive engines.
 - MCP JSON output includes the field only when debug is active.

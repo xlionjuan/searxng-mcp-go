@@ -6,7 +6,7 @@ The implementation uses the `language` parameter end-to-end.
 
 - MCP schema exposes `language`
 - `SearchArgs.Language` maps to `language`
-- `SearXNGSearcher.performSearch` sends `language` to SearXNG when the field is non-empty
+- Search execution sends `language` to SearXNG when the field is non-empty
 - `ValidateSearchArgs()` rejects invalid language codes
 
 ## Semantics
@@ -26,7 +26,7 @@ Earlier versions of this project and this document discussed a `lang` parameter 
 - `internal/searxng/validation.go`
 - `mcp.go`
 
-> **Note:** The curl examples below use both the `lang` and `language` parameters for comparison testing and are for research purposes. The actual code (`internal/searxng/searcher.go` / `SearXNGSearcher.performSearch`) only sends the `language` parameter and does not use `lang`.
+> **Note:** The curl examples below use both the `lang` and `language` parameters for comparison testing and are for research purposes. The actual code only sends the `language` parameter and does not use `lang`.
 
 ### Query: python programming
 
@@ -51,6 +51,6 @@ curl -s "http://localhost:8888/search?q=artificial+intelligence&format=json" | j
 ## Reference Points
 
 - `internal/searxng/types.go` — `SearchArgs` struct
-- `internal/searxng/searcher.go` — `SearXNGSearcher.performSearch` API call construction
+- `internal/searxng/searcher.go` — search request construction and execution
 - `internal/searxng/validation.go` — `ValidateSearchArgs()` language validation
 - `mcp.go` — MCP tool schema definition

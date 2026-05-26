@@ -76,8 +76,8 @@ _Avoid_: POSTtoGETFallback (internal test function name)
 - **SearXNGSearcher** is configured by **Config** (URL + timeout + optional HTTP client) and executes a search via **SearchArgs**, returning a **SearchResponse**.
 - **SearchResponse** contains zero or more **SearchResult**s, **Answer**s, **Infobox**es, **Suggestion**s, and **UnresponsiveEngines** entries.
 - **Answer**s are **Deduplicate**d against **Infobox** content to remove overlapping DuckDuckGo Wikipedia summaries.
-- **setBrowserHeaders** is applied by **SearXNGSearcher** to every HTTP request made during `performSearch`.
-- **SearXNGSearcher**'s `performSearch` falls back to a **GET Fallback** when the SearXNG instance rejects the initial POST with 405 or 501.
+- **setBrowserHeaders** is applied by **SearXNGSearcher** to every HTTP request made during search execution.
+- **SearXNGSearcher** falls back to a **GET Fallback** when the SearXNG instance rejects the initial POST with 405 or 501.
 - **CLI Mode** and **MCP Mode** are the two mutually exclusive operation modes — the program runs CLI mode when any arguments are present, MCP mode otherwise.
 - **Debug Mode** gates the exposure of **UnresponsiveEngines** in JSON output and enables verbose HTTP logging.
 - **CLIFlags** maps to **SearchArgs** fields plus mode-selection flags (--json, --help, --version, --debug, --searxng-url).
@@ -107,7 +107,7 @@ _Avoid_: POSTtoGETFallback (internal test function name)
 
 1. **"Answer" ambiguity**: The term `Answer` refers both to the Go struct (with `Answer`, `Engine`, `Template` fields) and to the top-level `answers` array in the SearXNG JSON response. Additionally, SearXNG documentation mentions a legacy `{"answer": "..."}` result format that is a flat string, which is distinct from the typed struct used in this project.
 
-2. **"Searcher" vs "SearXNGSearcher"**: The broader term "Searcher" appears in function-level docstrings and developer discussion but is not a separate exported type — only `SearXNGSearcher` exists in code. Its `performSearch` helper is an unexported method on `SearXNGSearcher`, with `Search` as the public entry point.
+2. **"Searcher" vs "SearXNGSearcher"**: The broader term "Searcher" appears in function-level docstrings and developer discussion but is not a separate exported type — only `SearXNGSearcher` exists in code. `Search` is the public entry point for executing a search.
 
 3. **`NumberOfResults` post-processing**: SearXNG may return `number_of_results = 0` even when results exist. The code silently corrects this by setting it to `len(results)` when the field is zero but results are non-empty. Consumers cannot rely on this field being an unmodified pass-through from SearXNG.
 

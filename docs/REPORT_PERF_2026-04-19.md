@@ -353,7 +353,7 @@ Do not implement this yet without benchmark evidence.
 
 ### 5. Current benchmarks do not isolate network/search-path costs
 
-`performSearch` does several string-heavy operations not covered by the current benchmark set:
+Search execution does several string-heavy operations not covered by the current benchmark set:
 
 - URL parameter encoding
 - POST body construction
@@ -479,7 +479,7 @@ Measure:
 
 Why:
 
-- There is currently no measurement around the local cost of `performSearch` setup.
+- There is currently no measurement around the local cost of search request setup.
 
 Add if needed:
 

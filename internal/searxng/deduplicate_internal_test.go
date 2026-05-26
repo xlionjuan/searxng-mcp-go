@@ -194,9 +194,9 @@ func TestDeduplicateAnswers_TypedAnswersGetFallbackText(t *testing.T) {
 
 	answers := []Answer{
 		{
-			Answer:      "Translation: bonjour",
-			Engine:      "libretranslate",
-			Template:    "answer/translations.html",
+			Answer:   "Translation: bonjour",
+			Engine:   "libretranslate",
+			Template: "answer/translations.html",
 			Translations: []TranslationItem{
 				{Text: "bonjour"},
 			},

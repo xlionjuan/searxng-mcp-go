@@ -309,7 +309,7 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 // TestGracefulShutdownWithContextCancel tests that search operations respect context cancellation.
 // It uses a custom RoundTripper that blocks until context cancellation, simulating a slow SearXNG
 // instance that gets interrupted by a graceful shutdown. When the shared context is canceled,
-// all in-flight performSearch calls must return context.Canceled.
+// all in-flight search calls must return context.Canceled.
 func TestGracefulShutdownWithContextCancel(t *testing.T) {
 	t.Parallel()
 

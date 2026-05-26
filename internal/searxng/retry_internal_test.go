@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+var errRetryTestConnectionReset = errors.New("connection reset")
+
 func TestRetryableStatusCode(t *testing.T) {
 	t.Parallel()
 
@@ -68,5 +70,22 @@ func TestRetryBackoffBounds(t *testing.T) {
 		if delay > maxDelay {
 			t.Fatalf("retryBackoff(%d) = %v, want at most %v", attempt, delay, maxDelay)
 		}
+	}
+}
+
+func TestShouldRetryHonorsCanceledContext(t *testing.T) {
+	t.Parallel()
+
+	strategy := newExponentialBackoffStrategy(1, time.Millisecond, time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	shouldRetry, delay := strategy.ShouldRetry(ctx, 0, nil, errRetryTestConnectionReset)
+	if shouldRetry {
+		t.Fatalf("ShouldRetry() shouldRetry = true, want false")
+	}
+
+	if delay != 0 {
+		t.Fatalf("ShouldRetry() delay = %v, want 0", delay)
 	}
 }
