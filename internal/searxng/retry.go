@@ -10,6 +10,10 @@ import (
 
 // It handles retryable errors, retryable HTTP status codes, and caps the
 // backoff to a maximum delay with jitter.
+
+// jitterHalfDivisor is the divisor used to compute half the delay for jitter range.
+const jitterHalfDivisor = 2
+
 type exponentialBackoffStrategy struct {
 	maxRetries    int
 	retryDelay    time.Duration
@@ -33,6 +37,7 @@ func (s *exponentialBackoffStrategy) ShouldRetry(ctx context.Context, attempt in
 		if isRetryableError(ctx, err) {
 			return true, retryBackoff(attempt, s.retryDelay, s.maxRetryDelay)
 		}
+
 		return false, 0
 	}
 
@@ -40,6 +45,7 @@ func (s *exponentialBackoffStrategy) ShouldRetry(ctx context.Context, attempt in
 		if isRetryableStatusCode(resp.StatusCode) {
 			return true, retryBackoff(attempt, s.retryDelay, s.maxRetryDelay)
 		}
+
 		return false, 0
 	}
 
@@ -77,6 +83,7 @@ func retryBackoff(attempt int, base, maxDelay time.Duration) time.Duration {
 	for range attempt {
 		if delay > maxDelay/2 {
 			delay = maxDelay
+
 			break
 		}
 
@@ -87,7 +94,8 @@ func retryBackoff(attempt int, base, maxDelay time.Duration) time.Duration {
 		delay = maxDelay
 	}
 
-	half := delay / 2
+	half := delay / jitterHalfDivisor
+
 	jitterRange := half + 1
 	if jitterRange <= 0 {
 		return delay

@@ -538,6 +538,7 @@ func TestSearch_RetriesRetryableStatus(t *testing.T) {
 		`"suggestions":[]}`
 
 	var attempts atomic.Int32
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		if attempts.Add(1) == 1 {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -581,8 +582,10 @@ func TestSearch_RetriesEmptySearchResponse(t *testing.T) {
 		`"suggestions":[]}`
 
 	var attempts atomic.Int32
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		attempt := attempts.Add(1)
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 

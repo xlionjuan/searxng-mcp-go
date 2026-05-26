@@ -340,7 +340,8 @@ func getConfig(flags CLIFlags) (*searxng.Config, error) {
 	}
 
 	// Validate the constructed config for early error detection.
-	if err := cfg.Validate(); err != nil {
+	err := cfg.Validate()
+	if err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
 

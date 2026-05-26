@@ -47,18 +47,23 @@ func (c *Config) Validate() error {
 	if c.SearXNGURL == "" {
 		return errURLRequired
 	}
+
 	if c.Timeout < 0 {
 		return errTimeoutNegative
 	}
+
 	if c.MaxRetries < 0 {
 		return errMaxRetriesNegative
 	}
+
 	if c.RetryDelay < 0 {
 		return errRetryDelayNegative
 	}
+
 	if c.MaxRetryDelay < 0 {
 		return errMaxRetryDelayNegative
 	}
+
 	return nil
 }
 
@@ -70,15 +75,19 @@ func (c *Config) Normalize() *Config {
 	if cfg.MaxRetries < 0 {
 		cfg.MaxRetries = 0
 	}
+
 	if cfg.RetryDelay <= 0 {
 		cfg.RetryDelay = DefaultRetryDelay
 	}
+
 	if cfg.MaxRetryDelay <= 0 {
 		cfg.MaxRetryDelay = DefaultMaxRetryDelay
 	}
+
 	if cfg.MaxRetryDelay < cfg.RetryDelay {
 		cfg.MaxRetryDelay = cfg.RetryDelay
 	}
+
 	return &cfg
 }
 

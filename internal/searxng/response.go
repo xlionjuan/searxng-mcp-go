@@ -147,6 +147,7 @@ func ensureAnswerFallback(a *Answer) {
 
 	if fallback := translationAnswerFallback(a); fallback != "" {
 		a.Answer = fallback
+
 		return
 	}
 

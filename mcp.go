@@ -23,6 +23,7 @@ import (
 // the centralized SearchParams table.
 func buildSearchSchema() json.RawMessage {
 	props := make(map[string]any)
+
 	var required []string
 
 	for _, p := range searxng.SearchParams {
@@ -32,22 +33,28 @@ func buildSearchSchema() json.RawMessage {
 		if p.Description != "" {
 			prop["description"] = p.Description
 		}
+
 		if p.Enum != nil {
 			prop["enum"] = p.Enum
 		}
+
 		if p.Minimum != nil {
 			prop["minimum"] = *p.Minimum
 		}
+
 		if p.Maximum != nil {
 			prop["maximum"] = *p.Maximum
 		}
+
 		if p.Nullable {
 			// Union type: ["null", "<type>"]
 			prop["type"] = []string{"null", p.MCPType}
 		}
+
 		if p.Required {
 			required = append(required, p.Name)
 		}
+
 		props[p.Name] = prop
 	}
 
@@ -75,18 +82,24 @@ func buildToolDescription() string {
 	sb.WriteString("Search the web using SearXNG meta-search engine. ")
 	sb.WriteString("Returns web results with titles, URLs, summaries, published dates, and engine source information. ")
 	sb.WriteString("Parameters: ")
+
 	for i, p := range searxng.SearchParams {
 		if i > 0 {
 			sb.WriteString("; ")
 		}
+
 		sb.WriteString(p.Name)
+
 		if p.Required {
 			sb.WriteString(" (required)")
 		}
+
 		sb.WriteString(" - ")
 		sb.WriteString(p.Description)
 	}
+
 	sb.WriteString(".")
+
 	return sb.String()
 }
 
@@ -153,8 +166,6 @@ func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) {
 		os.Exit(1)
 	}
 
-	defer func() { _ = searcher.Close() }()
-
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "searxng-mcp-go",
 		Version: version,
@@ -169,7 +180,6 @@ func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) {
 	slog.Info("starting SearXNG MCP server")
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	err = server.Run(ctx, &mcp.IOTransport{
 		Reader: io.NopCloser(stdin),
@@ -177,9 +187,14 @@ func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) {
 	})
 	if err != nil {
 		slog.Error("server failed", "error", err)
+
+		_ = searcher.Close()
+
 		stop()
 		os.Exit(1)
 	}
+
+	stop()
 }
 
 // searcher is the minimal interface the MCP handler needs from a search provider.

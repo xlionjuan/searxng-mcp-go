@@ -21,6 +21,9 @@ var (
 	errJSONEncodeFailed    = errors.New("failed to encode json")
 )
 
+// flagHelpPadding is the minimum width reserved for the flag expression column in help output.
+const flagHelpPadding = 18
+
 // printCLIHelp prints the help message for CLI mode.
 func printCLIHelp() {
 	fmt.Println(`SearXNG MCP Server - CLI Mode (` + version + `)
@@ -37,10 +40,11 @@ OPTIONS:
 	// Print search parameter options from the shared table.
 	for _, p := range searxng.SearchParams {
 		flagExpr := "--" + p.Name + " " + p.CLIType
-		padding := 18 - len(flagExpr)
+		padding := flagHelpPadding - len(flagExpr)
 		padding = max(padding, 1)
 		fmt.Printf("  %s%s%s\n", flagExpr, strings.Repeat(" ", padding), p.CLIHelp)
 	}
+
 	fmt.Println(`  --debug            Enable verbose HTTP request/response logging
                      Can also be enabled via DEBUG=1 environment variable
   --timeout DURATION HTTP client timeout (e.g., 8s) [default: 8s]

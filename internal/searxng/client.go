@@ -36,6 +36,9 @@ const (
 	transportMaxIdleConns          = 100
 	transportMaxIdleConnsPerHost   = 10
 	maxSearchRedirects             = 10
+	ipv4Private10                  = 10
+	ipv4Loopback127                = 127
+	ipv6UniqueLocalPrefix          = 0xfc
 )
 
 func newHTTPClient(timeout time.Duration) *http.Client {
@@ -146,7 +149,7 @@ func isPrivateHost(host string) bool {
 
 func isPrivateIPv4(ip4 net.IP) bool {
 	// 10.0.0.0/8
-	if ip4[0] == 10 {
+	if ip4[0] == ipv4Private10 {
 		return true
 	}
 	// 172.16.0.0/12
@@ -158,9 +161,10 @@ func isPrivateIPv4(ip4 net.IP) bool {
 		return true
 	}
 	// 127.0.0.0/8 (loopback)
-	if ip4[0] == 127 {
+	if ip4[0] == ipv4Loopback127 {
 		return true
 	}
+
 	return false
 }
 
@@ -170,12 +174,13 @@ func isPrivateIPv6(ip net.IP) bool {
 		return true
 	}
 	// fc00::/7 (unique-local)
-	if ip[0]&0xfe == 0xfc {
+	if ip[0]&0xfe == ipv6UniqueLocalPrefix {
 		return true
 	}
 	// fe80::/10 (link-local)
 	if ip[0] == 0xfe && ip[1]&0xc0 == 0x80 {
 		return true
 	}
+
 	return false
 }

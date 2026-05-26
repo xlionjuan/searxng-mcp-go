@@ -126,7 +126,6 @@ linters:
 issues:
   max-issues-per-linter: 50
   max-same-issues: 10
-  new-from-rev: main
 formatters:
   enable:
     - gci

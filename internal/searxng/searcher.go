@@ -35,7 +35,8 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	}
 
 	// Validate config first to catch invalid negative values before normalization
-	if err := cfg.Validate(); err != nil {
+	err := cfg.Validate()
+	if err != nil {
 		return nil, fmt.Errorf("newSearXNGSearcher: %w", err)
 	}
 
@@ -44,7 +45,7 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 
 	baseURL := cfg.SearXNGURL
 
-	err := validateBaseURL(baseURL)
+	err = validateBaseURL(baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("newSearXNGSearcher: %w", err)
 	}
@@ -69,9 +70,11 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 			if err != nil {
 				return err
 			}
+
 			if originalCheckRedirect != nil {
 				return originalCheckRedirect(req, via)
 			}
+
 			return nil
 		}
 		client = &wrapped
@@ -118,10 +121,13 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 		if shouldRetry {
 			// Retry with backoff
 			s.logDebugRetry(attempt, s.maxRetries+1, delay, err)
+
 			if resp != nil {
 				closeResponseBody(resp)
 			}
-			if waitErr := retryWait(ctx, delay); waitErr != nil {
+
+			waitErr := retryWait(ctx, delay)
+			if waitErr != nil {
 				return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, waitErr))
 			}
 
@@ -145,7 +151,9 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 			shouldRetry, delay = s.retryStrategy.ShouldRetry(ctx, attempt, resp, errEmptyResponse)
 			if shouldRetry {
 				s.logDebugRetry(attempt, s.maxRetries+1, delay, nil)
-				if waitErr := retryWait(ctx, delay); waitErr != nil {
+
+				waitErr := retryWait(ctx, delay)
+				if waitErr != nil {
 					return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, waitErr))
 				}
 
