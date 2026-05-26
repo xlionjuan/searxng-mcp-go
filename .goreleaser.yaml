@@ -50,9 +50,9 @@ changelog:
   sort: asc
   filters:
     exclude:
-      - '^docs:'
-      - '^test:'
-      - '^chore:'
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
       - Merge pull request
       - Merge branch
 
@@ -77,7 +77,12 @@ homebrew_casks:
     binaries:
       - searxng-mcp-go
     commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
+      name: xlionjuan-bot1
+      email: gh-xlionjuan-bot1@mail.xlion.tw
+      signing:
+        enabled: true
+        key: "{{ .Env.GPG_SIGNING_KEY }}"
+        program: gpg2
+        format: openpgp
     commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
     skip_upload: auto
