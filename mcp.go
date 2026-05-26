@@ -12,80 +12,65 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"searxng-mcp-go/internal/searxng"
 )
 
-// mustMarshalRawSchema marshals v to a json.RawMessage, panicking on error.
-// Used for compile-time-safe schema generation.
-func mustMarshalRawSchema(v any) json.RawMessage {
-	b, err := json.Marshal(v)
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
-
-// searchInputSchema is the JSON schema for the search tool input,
-// generated programmatically to ensure correctness.
-var searchInputSchema = mustMarshalRawSchema(map[string]interface{}{
-	"type": "object",
-	"properties": map[string]interface{}{
-		"query": map[string]interface{}{
-			"type":        "string",
-			"description": "Search query string",
-		},
-		"language": map[string]interface{}{
-			"type":        "string",
-			"description": "Language code for results. Common codes: en, zh-tw, zh, ja, fr, de, es, pt, ru, ar. Leave empty for auto-detect (SearXNG decides based on query)",
-		},
-		"safesearch": map[string]interface{}{
-			"type":        "integer",
-			"description": "SafeSearch level. 0=Off (no filtering), 1=Moderate (filter moderate explicit content), 2=Strict (filter all explicit content). Defaults to 0",
-			"minimum":     0,
-			"maximum":     2,
-		},
-		"time_range": map[string]interface{}{
-			"type":        "string",
-			"description": "Time range filter. Available values: empty (all time), day, month, year. Defaults to empty (all time)",
-			"enum":        []string{"", "day", "month", "year"},
-		},
-		"categories": map[string]interface{}{
-			"type":        "string",
-			"description": "Comma-separated list of categories to search. Common categories: general, news, images, videos, music, science, files, it, social_media, map. Leave empty for all categories",
-		},
-		"engines": map[string]interface{}{
-			"type":        "string",
-			"description": "Comma-separated list of search engines to use (e.g., google, bing, duckduckgo). Leave empty to use SearXNG default engines",
-		},
-		"pageno": map[string]interface{}{
-			"type":        []interface{}{"null", "integer"},
-			"description": "Page number for pagination. Defaults to 1",
-			"minimum":     1,
-		},
-		"limit": map[string]interface{}{
-			"type":        "integer",
-			"description": "Maximum number of results to return (1-20). Defaults to 10",
-			"minimum":     1,
-			"maximum":     20,
-		},
-	},
-	"required":             []string{"query"},
-	"additionalProperties": false,
-})
+// searchInputSchema is the JSON schema for the search tool input.
+var searchInputSchema = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Search query string"
+    },
+    "language": {
+      "type": "string",
+      "description": "Language code for results. Common codes: en, zh-tw, zh, ja, fr, de, es, pt, ru, ar. Leave empty for auto-detect (SearXNG decides based on query)"
+    },
+    "safesearch": {
+      "type": "integer",
+      "description": "SafeSearch level. 0=Off (no filtering), 1=Moderate (filter moderate explicit content), 2=Strict (filter all explicit content). Defaults to 0",
+      "minimum": 0,
+      "maximum": 2
+    },
+    "time_range": {
+      "type": "string",
+      "description": "Time range filter. Available values: empty (all time), day, month, year. Defaults to empty (all time)",
+      "enum": ["", "day", "month", "year"]
+    },
+    "categories": {
+      "type": "string",
+      "description": "Comma-separated list of categories to search. Common categories: general, news, images, videos, music, science, files, it, social_media, map. Leave empty for all categories"
+    },
+    "engines": {
+      "type": "string",
+      "description": "Comma-separated list of search engines to use (e.g., google, bing, duckduckgo). Leave empty to use SearXNG default engines"
+    },
+    "pageno": {
+      "type": ["null", "integer"],
+      "description": "Page number for pagination. Defaults to 1",
+      "minimum": 1
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Maximum number of results to return (1-20). Defaults to 10",
+      "minimum": 1,
+      "maximum": 20
+    }
+  },
+  "required": ["query"],
+  "additionalProperties": false
+}`)
 
 type mcpInitializeMessage struct {
 	JSONRPC string `json:"jsonrpc"`
 	Method  string `json:"method"`
 }
 
-const (
-	mcpInitializeMaxBytes    = 1 << 20
-	mcpInitializeReadTimeout = 5 * time.Second
-)
+const mcpInitializeMaxBytes = 1 << 20
 
 var errInvalidMCPInitializeMessage = errors.New("stdin does not contain a valid MCP initialize message")
 
@@ -93,64 +78,22 @@ var errInvalidMCPInitializeMessage = errors.New("stdin does not contain a valid 
 // MCP initialize message (JSON-RPC 2.0 with method "initialize"), preventing
 // the MCP server from hanging when piped non-MCP input.
 func prepareMCPStdin(stdin io.Reader) (io.Reader, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), mcpInitializeReadTimeout)
-	defer cancel()
+	reader := bufio.NewReaderSize(stdin, mcpInitializeMaxBytes+1)
 
-	type result struct {
-		reader io.Reader
-		err    error
-	}
-
-	resultCh := make(chan result, 1)
-
-	go func() {
-		reader := bufio.NewReader(stdin)
-		firstLine := make([]byte, 0)
-
-		for {
-			fragment, err := reader.ReadSlice('\n')
-
-			firstLine = append(firstLine, fragment...)
-			if len(firstLine) > mcpInitializeMaxBytes {
-				resultCh <- result{reader: nil, err: errInvalidMCPInitializeMessage}
-
-				return
-			}
-
-			if err == nil {
-				break
-			}
-
-			if err == io.EOF {
-				break
-			}
-
-			if !errors.Is(err, bufio.ErrBufferFull) {
-				resultCh <- result{reader: nil, err: errInvalidMCPInitializeMessage}
-
-				return
-			}
-		}
-
-		if len(firstLine) > mcpInitializeMaxBytes || !isValidMCPInitializeMessage(firstLine) {
-			resultCh <- result{reader: nil, err: errInvalidMCPInitializeMessage}
-
-			return
-		}
-
-		resultCh <- result{reader: io.MultiReader(bytes.NewReader(firstLine), reader)}
-	}()
-
-	select {
-	case <-ctx.Done():
+	firstLine, err := reader.ReadSlice('\n')
+	if errors.Is(err, bufio.ErrBufferFull) {
 		return nil, errInvalidMCPInitializeMessage
-	case res := <-resultCh:
-		if res.err != nil {
-			return nil, res.err
-		}
-
-		return res.reader, nil
 	}
+
+	if err != nil && !errors.Is(err, io.EOF) {
+		return nil, errInvalidMCPInitializeMessage
+	}
+
+	if len(firstLine) > mcpInitializeMaxBytes || !isValidMCPInitializeMessage(firstLine) {
+		return nil, errInvalidMCPInitializeMessage
+	}
+
+	return io.MultiReader(bytes.NewReader(firstLine), reader), nil
 }
 
 // isValidMCPInitializeMessage checks whether the given byte slice is a valid
