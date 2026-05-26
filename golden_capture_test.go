@@ -76,7 +76,7 @@ func TestFormatResultsGoldenOutput(t *testing.T) {
 	x4000 := strings.Repeat("x", searxng.MaxContentRunes)
 	golden := "" +
 		"=== Web Search Results ===\n" +
-		searxng.ExternalContentWarning + "\n" +
+		"Warning: " + searxng.ExternalContentWarning + "\n" +
 		"\n" +
 		"=== Answers ===\n" +
 		"\n" +

@@ -152,6 +152,7 @@ func formatResults(resp *searxng.SearchResponse) string {
 	}
 
 	buf.WriteString("=== Web Search Results ===\n")
+	buf.WriteString("Warning: ")
 	buf.WriteString(searxng.ExternalContentWarning)
 	buf.WriteString("\n\n")
 
