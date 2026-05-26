@@ -118,40 +118,6 @@ func TestValidationExitCode(t *testing.T) {
 	}
 }
 
-func TestParseArgs_DefaultLimit(t *testing.T) {
-	t.Parallel()
-
-	_, flags, _, err := parseArgs([]string{"test query"})
-	if err != nil {
-		t.Fatalf("parseArgs() error = %v, want nil", err)
-	}
-
-	if flags.Limit == nil {
-		t.Fatal("flags.Limit = nil, want default limit pointer")
-	}
-
-	if *flags.Limit != defaultResultLimit {
-		t.Fatalf("flags.Limit = %d, want %d", *flags.Limit, defaultResultLimit)
-	}
-}
-
-func TestParseArgs_ExplicitLimit(t *testing.T) {
-	t.Parallel()
-
-	_, flags, _, err := parseArgs([]string{"--limit", "7", "test query"})
-	if err != nil {
-		t.Fatalf("parseArgs() error = %v, want nil", err)
-	}
-
-	if flags.Limit == nil {
-		t.Fatal("flags.Limit = nil, want explicit limit pointer")
-	}
-
-	if *flags.Limit != 7 {
-		t.Fatalf("flags.Limit = %d, want 7", *flags.Limit)
-	}
-}
-
 func TestParseArgs_InvalidFlags(t *testing.T) {
 	t.Parallel()
 
@@ -189,6 +155,7 @@ func TestParseArgs(t *testing.T) {
 		wantCLIMode    bool
 		wantFlags      CLIFlags
 		wantPositional []string
+		wantLimit      *int
 		wantErr        bool
 		errSubstr      string
 	}{
@@ -200,11 +167,21 @@ func TestParseArgs(t *testing.T) {
 			wantErr:     false,
 		},
 		{
+			name:           "--limit explicitly set",
+			args:           []string{"--limit", "7", "test query"},
+			wantCLIMode:    true,
+			wantFlags:      CLIFlags{Language: "", SafeSearch: 0, Pageno: nil},
+			wantPositional: []string{"test query"},
+			wantLimit:      new(7),
+			wantErr:        false,
+		},
+		{
 			name:           "positional query only",
 			args:           []string{"test query"},
 			wantCLIMode:    true,
 			wantFlags:      CLIFlags{Language: "", SafeSearch: 0, Pageno: nil},
 			wantPositional: []string{"test query"},
+			wantLimit:      new(defaultResultLimit),
 			wantErr:        false,
 		},
 		{
@@ -343,6 +320,16 @@ func TestParseArgs(t *testing.T) {
 			if (flags.Pageno == nil) != (tt.wantFlags.Pageno == nil) ||
 				(flags.Pageno != nil && tt.wantFlags.Pageno != nil && *flags.Pageno != *tt.wantFlags.Pageno) {
 				t.Errorf("flags.Pageno = %v, want %v", flags.Pageno, tt.wantFlags.Pageno)
+			}
+
+			if tt.wantLimit != nil {
+				if flags.Limit == nil {
+					t.Fatal("flags.Limit = nil, want limit pointer")
+				}
+
+				if *flags.Limit != *tt.wantLimit {
+					t.Errorf("flags.Limit = %d, want %d", *flags.Limit, *tt.wantLimit)
+				}
 			}
 
 			if flags.Query != tt.wantFlags.Query {
@@ -678,108 +665,120 @@ func TestGetConfig(t *testing.T) {
 	})
 }
 
-func TestRunCLIMode_SuccessTextOutput(t *testing.T) {
-	server := newTestSearchServer(t, searxng.SearchResponse{
+func TestRunCLIMode_Success(t *testing.T) {
+	successResp := searxng.SearchResponse{
 		Query:           "golang",
 		NumberOfResults: 1,
 		Results:         []searxng.SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
-	})
-	defer server.Close()
-
-	var err error
-
-	output := captureStdout(t, func() {
-		err = runCLIMode(CLIFlags{Query: "golang", SearXNGURL: server.URL, Pageno: nil}, nil)
-	})
-	if err != nil {
-		t.Fatalf("runCLIMode() error = %v", err)
 	}
 
-	if !strings.Contains(output, "=== Results ===") || !strings.Contains(output, "Go") {
-		t.Fatalf("unexpected text output: %q", output)
-	}
-}
+	tests := []struct {
+		name       string
+		resp       searxng.SearchResponse
+		rawResp    string
+		flags      CLIFlags
+		positional []string
+		debug      bool
+		check      func(t *testing.T, output string)
+	}{
+		{
+			name:  "text output",
+			resp:  successResp,
+			flags: CLIFlags{Query: "golang", Pageno: nil},
+			check: func(t *testing.T, output string) {
+				t.Helper()
 
-func TestRunCLIMode_SuccessJSONOutput(t *testing.T) {
-	server := newTestSearchServer(t, searxng.SearchResponse{
-		Query:           "golang",
-		NumberOfResults: 1,
-		Results:         []searxng.SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
-	})
-	defer server.Close()
+				if !strings.Contains(output, "=== Results ===") || !strings.Contains(output, "Go") {
+					t.Fatalf("unexpected text output: %q", output)
+				}
+			},
+		},
+		{
+			name:  "json output",
+			resp:  successResp,
+			flags: CLIFlags{Query: "golang", JSON: true, Pageno: nil},
+			check: func(t *testing.T, output string) {
+				t.Helper()
 
-	var err error
+				var resp searxng.SearchResponse
 
-	output := captureStdout(t, func() {
-		err = runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: nil}, nil)
-	})
-	if err != nil {
-		t.Fatalf("runCLIMode() error = %v", err)
-	}
+				err := json.Unmarshal([]byte(output), &resp)
+				if err != nil {
+					t.Fatalf("output is not valid JSON: %v\n%s", err, output)
+				}
 
-	var resp searxng.SearchResponse
-
-	err = json.Unmarshal([]byte(output), &resp)
-	if err != nil {
-		t.Fatalf("output is not valid JSON: %v\n%s", err, output)
-	}
-
-	if resp.Query != "golang" || len(resp.Results) != 1 || resp.Results[0].Title != "Go" {
-		t.Fatalf("unexpected JSON output: %+v", resp)
-	}
-}
-
-func TestRunCLIMode_DebugJSONIncludesUnresponsiveEngines(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(
-			`{"query":"golang","number_of_results":1,` +
+				if resp.Query != "golang" || len(resp.Results) != 1 || resp.Results[0].Title != "Go" {
+					t.Fatalf("unexpected JSON output: %+v", resp)
+				}
+			},
+		},
+		{
+			name: "debug json includes unresponsive engines",
+			rawResp: `{"query":"golang","number_of_results":1,` +
 				`"results":[{"title":"Go","url":"https://go.dev","content":"Go language","engine":"google"}],` +
 				`"suggestions":[],` +
 				`"unresponsive_engines":[["brave","Suspended:\" too many \"requests"]]}`,
-		))
-	}))
-	defer server.Close()
+			flags: CLIFlags{Query: "golang", JSON: true, Pageno: nil},
+			debug: true,
+			check: func(t *testing.T, output string) {
+				t.Helper()
 
-	oldDebug := debugMode
-	debugMode = true
+				if !strings.Contains(output, "unresponsive_engines") {
+					t.Fatalf("expected debug JSON to include unresponsive_engines, got %q", output)
+				}
+			},
+		},
+		{
+			name: "query flag wins over positional query",
+			resp: searxng.SearchResponse{
+				Query:           "flag query",
+				NumberOfResults: 1,
+				Results:         []searxng.SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
+			},
+			flags:      CLIFlags{Query: "flag query", Pageno: nil},
+			positional: []string{"positional query"},
+			check: func(t *testing.T, output string) {
+				t.Helper()
 
-	defer func() { debugMode = oldDebug }()
-
-	var err error
-
-	output := captureStdout(t, func() {
-		err = runCLIMode(CLIFlags{Query: "golang", JSON: true, SearXNGURL: server.URL, Pageno: nil}, nil)
-	})
-	if err != nil {
-		t.Fatalf("runCLIMode() error = %v", err)
+				if !strings.Contains(output, "flag query") {
+					t.Fatalf("expected flag query to win, got %q", output)
+				}
+			},
+		},
 	}
 
-	if !strings.Contains(output, "unresponsive_engines") {
-		t.Fatalf("expected debug JSON to include unresponsive_engines, got %q", output)
-	}
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var server *httptest.Server
+			if tt.rawResp != "" {
+				server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write([]byte(tt.rawResp))
+				}))
+			} else {
+				server = newTestSearchServer(t, tt.resp)
+			}
+			defer server.Close()
 
-func TestRunCLIMode_QueryPrecedence(t *testing.T) {
-	server := newTestSearchServer(t, searxng.SearchResponse{
-		Query:           "flag query",
-		NumberOfResults: 1,
-		Results:         []searxng.SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
-	})
-	defer server.Close()
+			oldDebug := debugMode
+			debugMode = tt.debug
+			defer func() { debugMode = oldDebug }()
 
-	var err error
+			flags := tt.flags
+			flags.SearXNGURL = server.URL
 
-	output := captureStdout(t, func() {
-		err = runCLIMode(CLIFlags{Query: "flag query", SearXNGURL: server.URL, Pageno: nil}, []string{"positional query"})
-	})
-	if err != nil {
-		t.Fatalf("runCLIMode() error = %v", err)
-	}
+			var err error
 
-	if !strings.Contains(output, "flag query") {
-		t.Fatalf("expected flag query to win, got %q", output)
+			output := captureStdout(t, func() {
+				err = runCLIMode(flags, tt.positional)
+			})
+			if err != nil {
+				t.Fatalf("runCLIMode() error = %v", err)
+			}
+
+			tt.check(t, output)
+		})
 	}
 }
 
