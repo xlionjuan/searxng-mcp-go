@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// --- TruncateBody tests migrated from errors_test.go (root) ---
+// --- Private truncateBody tests ---
 
 func TestTruncateBody(t *testing.T) {
 	t.Parallel()
@@ -125,7 +125,7 @@ func containsRune(s string, r rune) bool {
 	return false
 }
 
-// --- IsValidationError tests migrated from errors_test.go (root) ---
+// --- Private isValidationError tests ---
 
 func TestIsValidationError(t *testing.T) {
 	t.Parallel()
