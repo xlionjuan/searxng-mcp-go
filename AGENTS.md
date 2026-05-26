@@ -18,12 +18,10 @@ searxng-mcp-go/
 ├── search_test.go       # Search tests (SearXNGSearcher, DeduplicateAnswers)
 ├── errors_test.go       # Error type tests
 ├── format_test.go       # Formatting tests (including pagination)
-├── validation_test.go   # Validation edge case tests
-├── concurrency_test.go  # Concurrency and stress tests
+├── concurrency_test.go  # Concurrency/stress tests (-tags=stress)
 ├── error_path_test.go   # Error path coverage tests
 ├── fuzz_test.go         # Fuzz tests
 ├── bench_test.go        # Benchmark tests
-├── mcp_tool_integration_test.go # MCP tool integration tests
 ├── mcp_tool_test.go     # MCP tool tests
 ├── golden_capture_test.go # Golden file/capture tests
 ├── e2e_mcp_test.go       # End-to-end MCP tests (build tag e2e)
@@ -130,7 +128,7 @@ All detailed documentation lives in `docs/`. Here's where to find what:
 - Edit files with `patch` (find-and-replace), not `sed`; new files with `write_file`
 - Subagent code changes must be verified by compiling and running tests before committing
 - **Critical: Never trust your own knowledge of version numbers, release dates, or specification statuses.** Any information that is time-sensitive (language versions, dependency versions, API stability, RFC status, etc.) MUST be verified via web search before being stated as fact. Training data is frozen at a cutoff date; asserting version facts without verification has repeatedly caused serious errors.
-- **GitHub API operations MUST use `gh` CLI** via terminal. Use `gh` for issues, PRs, CI status, and any other GitHub API interaction.
+- **🔴 GitHub API operations MUST use `gh` CLI** — via terminal, always. Use `gh` for issues, PRs, CI status, and any other GitHub API interaction. **Absolutely NO browser tools** (browser_navigate, browser_vision, etc.) for GitHub — not for Actions, not for PRs, not for anything on github.com.
 
 ## Agent skills
 
