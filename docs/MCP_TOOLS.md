@@ -175,25 +175,39 @@ The server returns the following error types:
 | `HTMLResponseError` | `searxng returned html instead of json - json output may not be enabled on the server` |
 | `SearXNGError` | Network failures, HTTP errors, or API errors from SearXNG |
 
-Actual error message formats from the server:
+Validation errors can come from two places. MCP SDK schema validation runs before
+the search handler for JSON Schema constraints; handler validation runs after
+argument decoding for project-specific checks.
 
-|| Error Condition               | Response Format (as received by MCP client)                              |
-||-------------------------------|--------------------------------------------------------------------------|
-|| Missing `query` parameter     | `validation error: validation error on "query": search query cannot be only whitespace` |
-|| Query too long (>500 chars)   | `validation error: validation error on "query": must be 500 characters or less` |
-|| Query control characters      | `validation error: validation error on "query": contains invalid control characters` |
-|| Invalid `categories` value    | `validation error: validation error on "categories": contains invalid category` |
-|| Invalid `engines` value       | `validation error: validation error on "engines": contains invalid engine` |
-|| Invalid `language` value      | `validation error: validation error on "language": must be a valid language code (e.g., en, zh-tw, ja, en-US)` |
-|| Language too long (>35 chars) | `validation error: validation error on "language": must be 35 characters or less` |
-|| Invalid `safesearch` value    | `validation error: validation error on "safesearch": must be 0 off, 1 moderate, or 2 strict` |
-|| Invalid `pageno` value        | `validation error: validation error on "pageno": must be >= 1` |
-|| Invalid `time_range` value    | `validation error: validation error on "time_range": must be one of day, month or year` |
-|| Invalid limit value           | `validation error: validation error on "limit": must be between 1 and 20` |
-|| Network failure               | `Search error: searxng error (status 0): context deadline exceeded` (or similar) |
-|| SearXNG HTTP error           | `Search error: searxng error (status 500): internal server error: the search engine encountered an internal error` |
-|| HTML response (JSON disabled)| `Search error: searxng returned html instead of json - json output may not be enabled on the server` |
-|| Invalid JSON from SearXNG     | `Search error: searxng error (status 200): failed to parse JSON response: <underlying error>` |
+SDK schema validation error examples:
+
+| Error Condition | Response Format (as received by MCP client) |
+|-----------------|---------------------------------------------|
+| Invalid `safesearch` value | `validating "arguments": ... "safesearch" ...` |
+| Invalid `pageno` value | `validating "arguments": ... "pageno" ...` |
+| Invalid `time_range` value | `validating "arguments": ... "time_range" ...` |
+| Invalid `limit` value | `validating "arguments": ... "limit" ...` |
+
+Handler validation error examples:
+
+| Error Condition               | Response Format (as received by MCP client)                              |
+|-------------------------------|--------------------------------------------------------------------------|
+| Missing or whitespace `query` | `validation error: validation error on "query": search query cannot be only whitespace` |
+| Query too long (>500 chars)   | `validation error: validation error on "query": must be 500 characters or less` |
+| Query control characters      | `validation error: validation error on "query": contains invalid control characters` |
+| Invalid `categories` value    | `validation error: validation error on "categories": contains invalid category` |
+| Invalid `engines` value       | `validation error: validation error on "engines": contains invalid engine` |
+| Invalid `language` value      | `validation error: validation error on "language": must be a valid language code (e.g., en, zh-tw, ja, en-US)` |
+| Language too long (>35 chars) | `validation error: validation error on "language": must be 35 characters or less` |
+
+Search error examples:
+
+| Error Condition | Response Format (as received by MCP client) |
+|-----------------|---------------------------------------------|
+| Network failure | `Search error: searxng error (status 0): context deadline exceeded` (or similar) |
+| SearXNG HTTP error | `Search error: searxng error (status 500): internal server error: the search engine encountered an internal error` |
+| HTML response (JSON disabled) | `Search error: searxng returned html instead of json - json output may not be enabled on the server` |
+| Invalid JSON from SearXNG | `Search error: searxng error (status 200): failed to parse JSON response: <underlying error>` |
 
 ### Implementation Details
 

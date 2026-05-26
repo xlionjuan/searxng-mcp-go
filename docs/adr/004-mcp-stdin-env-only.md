@@ -15,7 +15,7 @@ The server now detects MCP stdin mode by inspecting stdin for a valid MCP `initi
 ## Detection Flow
 
 1. CLI arguments are parsed first.
-2. Any CLI arguments, `--help`, `--version`, or explicit search flags select CLI mode.
+2. Any argument selects CLI mode, including positional queries, search flags, configuration flags such as `--searxng-url` or `--timeout`, `--debug`, `--help`, and `--version`.
 3. Otherwise the process reads stdin and requires the first message to be a valid MCP `initialize` request.
 4. If stdin does not look like MCP input, startup fails with an MCP-specific error.
 
@@ -30,18 +30,19 @@ In MCP stdin mode, configuration comes from environment variables and MCP input,
 || `SEARXNG_TIMEOUT`    | Sets the search timeout (default 8s) |
 || `SEARXNG_MAX_RETRIES` | Sets the max retry count (default 5) |
 
-The only exceptions are `--help` and `--version`, which trigger CLI mode (informational output) and are not considered MCP stdin mode arguments.
+`--help` and `--version` trigger CLI mode for informational output. Like every
+other CLI flag, they are not accepted in MCP stdin mode.
 
 ### Detection Logic
 
 ```
-MCP stdin mode = no --query, no --json, no --help, no --version, no positional args
+MCP stdin mode = no command-line arguments
 ```
 
 If stdin does not contain a valid MCP `initialize` message, the server exits with:
 
 ```
-ERROR: stdin does not contain a valid MCP initialize message
+stdin does not contain a valid MCP initialize message
 ```
 
 ### CLI mode is unaffected

@@ -13,7 +13,7 @@ Using `echo '{"jsonrpc":...}' | ./searxng-mcp-go` to test MCP is fundamentally f
 
 ## Recommended: InMemoryTransport (from official SDK)
 
-The `modelcontextprotocol/go-sdk` (v1.5.0) provides `NewInMemoryTransports()` specifically for in-process testing. No subprocess, no pipe, no network — just direct function calls.
+The `modelcontextprotocol/go-sdk` (v1.6.0) provides `NewInMemoryTransports()` specifically for in-process testing. No subprocess, no pipe, no network — just direct function calls.
 
 ### Basic Setup
 
@@ -71,7 +71,7 @@ func TestSearchTool(t *testing.T) {
     ctx := context.Background()
 
     // List tools
-    tools, err := clientSession.ListTools(ctx)
+    tools, err := clientSession.ListTools(ctx, nil)
     if err != nil {
         t.Fatal(err)
     }
@@ -136,11 +136,11 @@ But `NewInMemoryTransports()` is preferred — it uses `net.Pipe()` internally a
 
 ```bash
 # Interactive web UI
-npx @modelcontextprotocol/inspector ./searxng-mcp-go
+SEARXNG_URL=http://127.0.0.1:8888 npx @modelcontextprotocol/inspector ./searxng-mcp-go
 
 # Or with a built binary
 go build -o searxng-mcp-go .
-npx @modelcontextprotocol/inspector ./searxng-mcp-go
+SEARXNG_URL=http://127.0.0.1:8888 npx @modelcontextprotocol/inspector ./searxng-mcp-go
 ```
 
 Opens a web UI where you can:
@@ -152,7 +152,7 @@ Opens a web UI where you can:
 
 | Layer | Method | What It Tests |
 |-------|--------|---------------|
-| Unit tests | `NewSearchToolHandler()` | Search logic, validation, formatting |
+| Unit tests | `NewSearchToolHandler()` | Search logic, handler validation, JSON tool responses |
 | MCP integration | `NewInMemoryTransports()` | MCP protocol, tool registration, session lifecycle |
 | CLI integration | `exec.Command` + binary | End-to-end CLI behavior, exit codes, output format |
 | Manual/CI | MCP Inspector | Interactive verification, smoke test |

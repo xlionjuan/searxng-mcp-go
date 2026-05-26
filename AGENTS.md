@@ -43,6 +43,7 @@ searxng-mcp-go/
 │       ├── constants.go # Size limits and configuration constants
 │       ├── deduplicate.go # Answer deduplication against infobox content
 │       ├── errors.go    # Error types and handling
+│       ├── params.go    # Shared search parameter definitions for CLI/MCP
 │       ├── request.go   # buildSearchRequest, setBrowserHeaders
 │       ├── response.go  # parseSearchResponse, normalizeResponse
 │       ├── retry.go     # Retry logic: backoff, jitter, retryable checks
@@ -99,7 +100,7 @@ Most detailed topic docs live in `docs/`; root docs (README.md, CONTEXT.md, AGEN
 ## Code Cleanliness
 
 - No junk files: `.bak`, `.test` (compiled binaries), `*~`, `.swp`, `.swo`, and temp/backup files **must** be deleted before committing
-- `.gitignore` already covers `*.bak`, `*.test`, `*.swp`, `*.swo`, `*.out`, `REPORT.md`, `.env`, and `searxng-server-test/.venv/`
+- `.gitignore` already covers `*.bak`, `*.test`, `*.swp`, `*.swo`, `*.out`, `REPORT.md`, `.env`, and `searxng-server-test/.venv/`; `*~` files are not ignored and must still be removed manually
 
 ## Review & QA Workflow
 
