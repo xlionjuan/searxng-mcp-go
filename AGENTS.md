@@ -32,20 +32,24 @@ searxng-mcp-go/
 ├── .golangci.yml        # Linter configuration
 ├── codecov.yml          # Code coverage configuration
 ├── .env.example         # Environment variable template
-├── .github/workflows/   # CI: lint, security, test, e2e, release
+├── .goreleaser.yaml     # GoReleaser release config
+├── justfile             # Common task runner commands
+├── testdata/            # Test fixtures (sample JSON responses)
+├── .github/workflows/   # CI: test.yml, lint.yml, security.yml, e2e.yml, release.yml
 ├── .github/renovate.json # Renovate dependency update config
 ├── internal/
 │   └── searxng/         # SearXNG client library
-│       ├── client.go    # HTTP client creation, redirect policy, isPrivateHost, validateBaseURL, normalizeRetryConfig
+│       ├── client.go    # HTTP client creation, redirect policy, validateBaseURL
 │       ├── constants.go # Size limits and configuration constants
 │       ├── deduplicate.go # Answer deduplication against infobox content
 │       ├── errors.go    # Error types and handling
 │       ├── request.go   # buildSearchRequest, setBrowserHeaders
-│       ├── response.go  # parseSearchResponse, readLimitedBody, decodeSearchResponse, normalizeResponse
-│       ├── retry.go     # isRetryableError, isRetryableStatusCode, retryBackoff, retryWait
-│       ├── searcher.go  # SearXNGSearcher, NewSearXNGSearcher, Search, performSearch method
-│       ├── types.go     # SearchArgs, SearchResponse, SearchResult, Answer, Infobox, InfoboxAttribute, InfoboxURL
+│       ├── response.go  # parseSearchResponse, normalizeResponse
+│       ├── retry.go     # Retry logic: backoff, jitter, retryable checks
+│       ├── searcher.go  # SearXNGSearcher, Search, performSearch
+│       ├── types.go     # SearchArgs, SearchResponse, SearchResult, Answer, Infobox, Config
 │       ├── validation.go # Search argument validation
+│       ├── bench_test.go            # Internal benchmarks (marshal, validation)
 │       ├── deduplicate_internal_test.go # Internal deduplication tests
 │       ├── errors_internal_test.go      # Internal error handling tests
 │       ├── response_internal_test.go    # Internal response parsing tests
@@ -57,17 +61,17 @@ searxng-mcp-go/
     ├── MCP_TOOLS.md         # MCP tool documentation
     ├── MCP_TESTING.md       # MCP testing guide
     ├── OUTPUT_FORMAT.md     # Output format specification
-    ├── AI_UX_TEST_GUIDE.md  # AI UX testing guide
-    ├── LANGUAGE_PARAMETER_RESEARCH.md  # Language parameter research
-    ├── SEARXNG_RESPONSE_FIELDS.md  # SearXNG response fields reference
     ├── SEARXNG_ANSWER_DEDUP.md     # Answer deduplication design
-    ├── SEARXNG_TEST_QUERIES.md     # Test queries reference
     ├── SEARXNG_BOT_DETECTION.md    # SearXNG limiter & bot detection
-    ├── REPORT_PERF_2026-04-19.md   # Performance report
-    ├── PROMPT_INJECTION_SAFETY.md  # External content warning research
+    ├── SEARXNG_RESPONSE_FIELDS.md  # SearXNG response fields reference
+    ├── SEARXNG_TEST_QUERIES.md     # Test queries reference
+    ├── AI_UX_TEST_GUIDE.md         # AI UX testing guide (archived research)
+    ├── LANGUAGE_PARAMETER_RESEARCH.md  # Language parameter research (archived)
+    ├── PROMPT_INJECTION_SAFETY.md  # External content warning research (archived)
+    ├── REPORT_PERF_2026-04-19.md   # Performance profiling report (archived)
+    ├── research-external-content-json-boundary-marking.md  # Boundary marking research (archived)
     └── adr/
         ├── 001-no-pgo.md                      # ADR: No PGO optimization
-        ├── 002-missing.md                    # ADR: Skipped / never created
         ├── 003-http-warning-for-non-private-hosts.md  # ADR: HTTP warning for non-private hosts
         ├── 004-mcp-stdin-env-only.md          # ADR: MCP stdin mode env-only
         ├── 005-no-corrections.md              # ADR: No corrections exposure
@@ -78,7 +82,7 @@ searxng-mcp-go/
 
 ## Documentation Index
 
-All detailed documentation lives in `docs/`. Here's where to find what:
+Most detailed topic docs live in `docs/`; root docs (README.md, CONTEXT.md, AGENTS.md) cover project overview, domain context, and agent instructions.
 
 | Topic | Document |
 |-------|----------|
@@ -87,48 +91,61 @@ All detailed documentation lives in `docs/`. Here's where to find what:
 | MCP testing guide | [docs/MCP_TESTING.md](docs/MCP_TESTING.md) |
 | Output format (CLI + JSON) & truncation limits | [docs/OUTPUT_FORMAT.md](docs/OUTPUT_FORMAT.md) |
 | SearXNG bot detection / limiter internals | [docs/SEARXNG_BOT_DETECTION.md](docs/SEARXNG_BOT_DETECTION.md) |
-| AI UX testing guide | [docs/AI_UX_TEST_GUIDE.md](docs/AI_UX_TEST_GUIDE.md) |
-| Language parameter research | [docs/LANGUAGE_PARAMETER_RESEARCH.md](docs/LANGUAGE_PARAMETER_RESEARCH.md) |
 | SearXNG response fields reference | [docs/SEARXNG_RESPONSE_FIELDS.md](docs/SEARXNG_RESPONSE_FIELDS.md) |
 | Answer deduplication design | [docs/SEARXNG_ANSWER_DEDUP.md](docs/SEARXNG_ANSWER_DEDUP.md) |
 | Test queries reference | [docs/SEARXNG_TEST_QUERIES.md](docs/SEARXNG_TEST_QUERIES.md) |
-| Performance report | [docs/REPORT_PERF_2026-04-19.md](docs/REPORT_PERF_2026-04-19.md) |
-| Prompt injection & external content safety research | [docs/PROMPT_INJECTION_SAFETY.md](docs/PROMPT_INJECTION_SAFETY.md) |
-| External content JSON boundary marking research | [docs/research-external-content-json-boundary-marking.md](docs/research-external-content-json-boundary-marking.md) |
-| Agent issue tracker docs | [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md) |
-| Agent triage labels docs | [docs/agents/triage-labels.md](docs/agents/triage-labels.md) |
-| Agent domain docs | [docs/agents/domain.md](docs/agents/domain.md) |
 | Architecture Decision Records | [docs/adr/](docs/adr/) |
 
 ## Code Cleanliness
 
-**No junk files allowed** ⚠️
-
-- Forbidden: `.bak`, `.test` (compiled binaries), `*~`, `.swp`, `.swo`, and any temp/backup files
-- These files **must** be deleted before committing, and permanently excluded from git history (already cleaned with `--force --invert-paths`)
-- `.gitignore` already has rules for `*.bak`, `*.test`, `*.swp`, `*.swo` to prevent tracking
+- No junk files: `.bak`, `.test` (compiled binaries), `*~`, `.swp`, `.swo`, and temp/backup files **must** be deleted before committing
+- `.gitignore` already covers `*.bak`, `*.test`, `*.swp`, `*.swo`, `*.out`, `REPORT.md`, `.env`, and `searxng-server-test/.venv/`
 
 ## Review & QA Workflow
 
-**Report Guidelines** ⚠️
-
 - All code reviews, AGENTS.md reviews, test coverage analysis, etc. must be written to `REPORT.md` (project root)
 - `REPORT.md` is permanently in `.gitignore` — **never commit**
-- After each task, generate a corresponding TODO list in `REPORT.md`
-- TODO list must contain all planning information needed by the orchestrating agent
+- Append or update a task-specific section for each new review; do not overwrite previous reports
+- TODO list must be concise and contain only unfinished or handoff-relevant work
 
 ## Project Rules
 
+### Do Not Change
 - Do not modify `.gitignore` unless explicitly asked
 - Do not change MCP handler's User-Agent header
+
+### CI & Release
 - GitHub Actions `uses:` must pin to SHA with `# vX.Y.Z` version comment
 - CI `go-version` must use a fixed version, not `stable`; step/job names must not contain version numbers
 - MCP stdin mode does not accept CLI args — use env vars only (see `docs/adr/004-mcp-stdin-env-only.md`)
-- All documentation (`docs/*.md`) must be in English
-- Edit files with `patch` (find-and-replace), not `sed`; new files with `write_file`
+
+### Documentation
+- All docs (`docs/*.md`, README, CONTEXT, AGENTS) must be in English
+
+### Editing
+- Use patch-style edits for existing files; avoid `sed -i` / ad hoc rewrites
+- Use the agent's file-write primitive for new files
+
+### Verification
 - Subagent code changes must be verified by compiling and running tests before committing
-- **Critical: Never trust your own knowledge of version numbers, release dates, or specification statuses.** Any information that is time-sensitive (language versions, dependency versions, API stability, RFC status, etc.) MUST be verified via web search before being stated as fact. Training data is frozen at a cutoff date; asserting version facts without verification has repeatedly caused serious errors.
-- **🔴 GitHub API operations MUST use `gh` CLI** — via terminal, always. Use `gh` for issues, PRs, CI status, and any other GitHub API interaction. **Absolutely NO browser tools** (browser_navigate, browser_vision, etc.) for GitHub — not for Actions, not for PRs, not for anything on github.com.
+- **🔴 Critical: Never trust your own knowledge of version numbers, release dates, or specification statuses.** Time-sensitive information (language versions, dependency versions, API stability, RFC status, etc.) MUST be verified via web search before being stated as fact.
+
+### GitHub Operations
+- **🔴 GitHub API operations MUST use `gh` CLI** — via terminal, always. **Absolutely NO browser tools** (browser_navigate, browser_vision, etc.) for GitHub — not for Actions, not for PRs, not for anything on github.com.
+
+## Build & Test Commands
+
+Root benchmarks (format/search) live in `bench_test.go`; internal benchmarks (marshal/validation) live in `internal/searxng/bench_test.go`.
+
+| Command | Scope |
+|---------|-------|
+| `go build ./...` | Build all packages |
+| `go test ./...` | Run unit tests (excludes e2e, stress) |
+| `go test -race -shuffle=on ./...` | CI-style test run with race detector |
+| `go test -tags=stress -race ./...` | Include stress/concurrency tests |
+| `go test -tags=e2e -run TestMCPStdioE2E -count=1 .` | E2E test (requires `SEARXNG_URL` + test server) |
+| `golangci-lint run ./...` | Lint (CI uses v2.12.2) |
+| `go vet ./...` | Static analysis |
 
 ## Agent skills
 
