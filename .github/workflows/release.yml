@@ -26,14 +26,6 @@ jobs:
         with:
           go-version: "1.26.3"
 
-      - name: Prepare ephemeral GPG home
-        shell: bash
-        run: |
-          set -euo pipefail
-          umask 077
-          echo "GNUPGHOME=$(mktemp -d)" >> "$GITHUB_ENV"
-          echo "GPG_TTY=" >> "$GITHUB_ENV"
-
       - name: Import GPG Key
         shell: bash
         run: |
