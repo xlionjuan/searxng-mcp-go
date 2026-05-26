@@ -56,6 +56,50 @@ func newTestSearcher(t *testing.T, handler http.HandlerFunc) (*searxng.SearXNGSe
 	return searcher, cleanup
 }
 
+func setupMCPSession(t *testing.T, handler http.HandlerFunc) (*mcp.ClientSession, func()) {
+	t.Helper()
+
+	searcher, cleanupSearcher := newTestSearcher(t, handler)
+
+	server := mcp.NewServer(&mcp.Implementation{
+		Name:    "searxng-mcp-go",
+		Version: version,
+	}, nil)
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "search",
+		Description: "Search the web using SearXNG meta-search engine.",
+		InputSchema: json.RawMessage(searchInputSchema),
+	}, NewSearchToolHandler(searcher))
+
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+
+	serverSession, err := server.Connect(context.Background(), serverTransport, nil)
+	if err != nil {
+		cleanupSearcher()
+		t.Fatalf("server connect failed: %v", err)
+	}
+
+	client := mcp.NewClient(&mcp.Implementation{
+		Name:    "test-client",
+		Version: "1.0",
+	}, nil)
+
+	clientSession, err := client.Connect(context.Background(), clientTransport, nil)
+	if err != nil {
+		cleanupSearcher()
+		t.Fatalf("client connect failed: %v", err)
+	}
+
+	cleanup := func() {
+		clientSession.Close()
+		serverSession.Wait()
+		cleanupSearcher()
+	}
+
+	return clientSession, cleanup
+}
+
 func TestSearchInputSchema(t *testing.T) {
 	t.Parallel()
 
@@ -91,6 +135,62 @@ func TestSearchInputSchema(t *testing.T) {
 
 	if required[0] != "query" {
 		t.Fatalf("required[0] = %v, want query", required[0])
+	}
+}
+
+func TestMCP_Initialize(t *testing.T) {
+	session, cleanup := setupMCPSession(t, mockSearXNGHandler(t))
+	defer cleanup()
+
+	tools, err := session.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("list tools failed (session not initialized?): %v", err)
+	}
+
+	if len(tools.Tools) == 0 {
+		t.Fatal("expected at least one tool after initialize")
+	}
+}
+
+func TestMCP_ToolsList(t *testing.T) {
+	session, cleanup := setupMCPSession(t, mockSearXNGHandler(t))
+	defer cleanup()
+
+	tools, err := session.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("list tools failed: %v", err)
+	}
+
+	if len(tools.Tools) != 1 {
+		t.Fatalf("expected 1 tool, got %d", len(tools.Tools))
+	}
+
+	searchTool := tools.Tools[0]
+	if searchTool.Name != "search" {
+		t.Errorf("expected tool name 'search', got %q", searchTool.Name)
+	}
+
+	if searchTool.Description == "" {
+		t.Error("expected non-empty tool description")
+	}
+
+	schema, ok := searchTool.InputSchema.(map[string]any)
+	if !ok {
+		t.Fatalf("expected InputSchema to be map[string]any, got %T", searchTool.InputSchema)
+	}
+
+	required, ok := schema["required"]
+	if !ok {
+		t.Fatal("expected 'required' field in input schema")
+	}
+
+	reqList, ok := required.([]any)
+	if !ok || len(reqList) == 0 {
+		t.Fatal("expected non-empty required array")
+	}
+
+	if reqList[0] != "query" {
+		t.Errorf("expected first required field to be 'query', got %v", reqList[0])
 	}
 }
 
