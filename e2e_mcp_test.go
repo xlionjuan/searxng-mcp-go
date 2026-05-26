@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -103,6 +104,215 @@ func TestMCPStdioE2E(t *testing.T) {
 		}
 	})
 
+	t.Run("optional parameter forwarding", func(t *testing.T) {
+		response := requireSearchResponse(ctx, t, session, map[string]any{
+			"query":      "golang",
+			"language":   "en",
+			"safesearch": 1,
+			"categories": "general",
+			"engines":    "bing",
+			"pageno":     1,
+			"limit":      5,
+		}, &stderr, "optional parameter forwarding")
+
+		if response.Query != "golang" {
+			t.Fatalf("query = %q, want golang\nresponse: %#v\nstderr:\n%s", response.Query, response, stderr.String())
+		}
+		if len(response.Results) == 0 || len(response.Results) > 5 {
+			t.Fatalf("results length = %d, want 1..5\nresponse: %#v\nstderr:\n%s", len(response.Results), response, stderr.String())
+		}
+
+		sawBing := false
+		for i, result := range response.Results {
+			if strings.TrimSpace(result.Title) == "" {
+				t.Fatalf("result[%d] title is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
+			}
+			if strings.TrimSpace(result.URL) == "" {
+				t.Fatalf("result[%d] url is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
+			}
+			if strings.TrimSpace(result.Engine) == "" {
+				t.Fatalf("result[%d] engine is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
+			}
+			if strings.EqualFold(result.Engine, "bing") {
+				sawBing = true
+			}
+		}
+		if !sawBing {
+			t.Fatalf("no result reported bing engine\nresponse: %#v\nstderr:\n%s", response, stderr.String())
+		}
+	})
+
+	t.Run("validation errors", func(t *testing.T) {
+		tests := []struct {
+			name       string
+			argument   map[string]any
+			wantField  string
+			wantPrefix string
+		}{
+			{name: "whitespace query", argument: map[string]any{"query": "   "}, wantField: "query", wantPrefix: "validation error:"},
+			{name: "limit too high", argument: map[string]any{"query": "golang", "limit": 21}, wantField: "limit", wantPrefix: `validating "arguments":`},
+			{name: "pageno too low", argument: map[string]any{"query": "golang", "pageno": 0}, wantField: "pageno", wantPrefix: `validating "arguments":`},
+			{name: "invalid time range", argument: map[string]any{"query": "golang", "time_range": "week"}, wantField: "time_range", wantPrefix: `validating "arguments":`},
+			{name: "invalid safesearch", argument: map[string]any{"query": "golang", "safesearch": 3}, wantField: "safesearch", wantPrefix: `validating "arguments":`},
+			{name: "invalid language", argument: map[string]any{"query": "golang", "language": "not a valid language code"}, wantField: "language", wantPrefix: "validation error:"},
+			{name: "invalid categories", argument: map[string]any{"query": "golang", "categories": "general/../../x"}, wantField: "categories", wantPrefix: "validation error:"},
+			{name: "invalid engines", argument: map[string]any{"query": "golang", "engines": "bing/../../x"}, wantField: "engines", wantPrefix: "validation error:"},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				result := callSearchTool(ctx, t, session, tt.argument, &stderr)
+				if !result.IsError {
+					t.Fatalf("IsError = false, want true\nresult: %#v\nstderr:\n%s", result, stderr.String())
+				}
+				if len(result.Content) != 1 {
+					t.Fatalf("content length = %d, want 1\nresult: %#v\nstderr:\n%s", len(result.Content), result, stderr.String())
+				}
+
+				text := toolText(t, result)
+				if !strings.HasPrefix(text, tt.wantPrefix) {
+					t.Fatalf("error text = %q, want prefix %q\nstderr:\n%s", text, tt.wantPrefix, stderr.String())
+				}
+				if !strings.Contains(text, tt.wantField) {
+					t.Fatalf("error text = %q, want field %q\nstderr:\n%s", text, tt.wantField, stderr.String())
+				}
+			})
+		}
+	})
+
+	t.Run("news category with time range", func(t *testing.T) {
+		response := requireSearchResponse(ctx, t, session, map[string]any{
+			"query":      "technology",
+			"language":   "en",
+			"categories": "news",
+			"time_range": "month",
+			"limit":      5,
+		}, &stderr, "news category with time range")
+
+		if len(response.Results) == 0 || len(response.Results) > 5 {
+			t.Fatalf("results length = %d, want 1..5\nresponse: %#v\nstderr:\n%s", len(response.Results), response, stderr.String())
+		}
+
+		hasPublishedDate := false
+		hasHTTPURL := false
+		for _, result := range response.Results {
+			if result.PublishedDate != nil && strings.TrimSpace(*result.PublishedDate) != "" {
+				hasPublishedDate = true
+			}
+			if strings.HasPrefix(result.URL, "http://") || strings.HasPrefix(result.URL, "https://") {
+				hasHTTPURL = true
+			}
+		}
+		if !hasPublishedDate {
+			t.Fatalf("no result had publishedDate\nresponse: %#v\nstderr:\n%s", response, stderr.String())
+		}
+		if !hasHTTPURL {
+			t.Fatalf("no result had an http(s) URL\nresponse: %#v\nstderr:\n%s", response, stderr.String())
+		}
+	})
+
+	t.Run("unicode query round trip", func(t *testing.T) {
+		query := "日本 golang \"type parameters\" site:go.dev"
+		response := requireSearchResponse(ctx, t, session, map[string]any{
+			"query":      query,
+			"language":   "ja",
+			"engines":    "bing",
+			"categories": "general",
+			"limit":      5,
+		}, &stderr, "unicode query round trip")
+
+		if response.Query != query {
+			t.Fatalf("query = %q, want %q\nresponse: %#v\nstderr:\n%s", response.Query, query, response, stderr.String())
+		}
+		if len(response.Results) > 5 {
+			t.Fatalf("results length = %d, want <= 5\nresponse: %#v\nstderr:\n%s", len(response.Results), response, stderr.String())
+		}
+		for i, result := range response.Results {
+			if strings.TrimSpace(result.URL) == "" {
+				t.Fatalf("result[%d] URL is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
+			}
+		}
+	})
+
+	t.Run("response format invariants", func(t *testing.T) {
+		result := callSearchTool(ctx, t, session, map[string]any{
+			"query":      "site:example.invalid unlikely-no-real-result-codex-e2e",
+			"engines":    "bing",
+			"categories": "general",
+			"limit":      3,
+		}, &stderr)
+		text := toolText(t, result)
+		if result.IsError {
+			t.Fatalf("response format query returned tool error: %s\nstderr:\n%s", text, stderr.String())
+		}
+		if !strings.Contains(text, `"results":[]`) {
+			t.Fatalf("raw JSON does not contain empty results array\ntext:\n%s\nstderr:\n%s", text, stderr.String())
+		}
+		if !strings.Contains(text, `"suggestions":[]`) {
+			t.Fatalf("raw JSON does not contain empty suggestions array\ntext:\n%s\nstderr:\n%s", text, stderr.String())
+		}
+
+		var raw map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(text), &raw); err != nil {
+			t.Fatalf("response is not JSON: %v\ntext:\n%s\nstderr:\n%s", err, text, stderr.String())
+		}
+		for _, field := range []string{"answers", "infoboxes", "unresponsive_engines"} {
+			if _, ok := raw[field]; ok {
+				t.Fatalf("field %q present, want omitted when empty/debug-off\ntext:\n%s\nstderr:\n%s", field, text, stderr.String())
+			}
+		}
+
+		response := parseSearchResponse(t, result, &stderr)
+		if len(response.Results) != 0 {
+			t.Fatalf("results length = %d, want 0\nresponse: %#v\nstderr:\n%s", len(response.Results), response, stderr.String())
+		}
+		if len(response.Suggestions) != 0 {
+			t.Fatalf("suggestions length = %d, want 0\nresponse: %#v\nstderr:\n%s", len(response.Suggestions), response, stderr.String())
+		}
+	})
+
+	t.Run("concurrent searches", func(t *testing.T) {
+		queries := []string{"golang", "rust language", "python typing"}
+		var wg sync.WaitGroup
+		errs := make(chan string, len(queries))
+
+		for _, query := range queries {
+			query := query
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				result, err := session.CallTool(ctx, &mcp.CallToolParams{
+					Name: "search",
+					Arguments: map[string]any{
+						"query": query,
+						"limit": 3,
+					},
+				})
+				if err != nil {
+					errs <- "tools/call search failed for " + query + ": " + err.Error()
+					return
+				}
+				if result.IsError {
+					errs <- "search returned tool error for " + query + ": " + toolText(t, result)
+					return
+				}
+
+				response := parseSearchResponse(t, result, &stderr)
+				if len(response.Results) > 3 {
+					errs <- "search returned too many results for " + query
+				}
+			}()
+		}
+
+		wg.Wait()
+		close(errs)
+
+		for errText := range errs {
+			t.Errorf("%s\nstderr:\n%s", errText, stderr.String())
+		}
+	})
+
 	t.Log("MCP stdio session lifecycle verified")
 }
 
@@ -132,6 +342,8 @@ func findSearchTool(ctx context.Context, t *testing.T, session *mcp.ClientSessio
 	for _, tool := range tools.Tools {
 		t.Logf("  tool: %s - %s", tool.Name, tool.Description)
 		if tool.Name == "search" {
+			requireSearchToolSchema(t, tool, stderr)
+
 			return tool
 		}
 	}
@@ -210,4 +422,132 @@ func toolText(t *testing.T, result *mcp.CallToolResult) string {
 	}
 
 	return textContent.Text
+}
+
+func requireSearchToolSchema(t *testing.T, tool *mcp.Tool, stderr *bytes.Buffer) {
+	t.Helper()
+
+	schema := requireSchemaMap(t, tool.InputSchema, stderr)
+
+	if got := schema["type"]; got != "object" {
+		t.Fatalf("search schema type = %#v, want object\nschema: %#v\nstderr:\n%s", got, schema, stderr.String())
+	}
+	if got := schema["additionalProperties"]; got != false {
+		t.Fatalf("search schema additionalProperties = %#v, want false\nschema: %#v\nstderr:\n%s", got, schema, stderr.String())
+	}
+
+	required, ok := schema["required"].([]any)
+	if !ok {
+		t.Fatalf("search schema required type = %T, want []any\nschema: %#v\nstderr:\n%s", schema["required"], schema, stderr.String())
+	}
+	if len(required) != 1 || required[0] != "query" {
+		t.Fatalf("search schema required = %#v, want [query]\nschema: %#v\nstderr:\n%s", required, schema, stderr.String())
+	}
+
+	props, ok := schema["properties"].(map[string]any)
+	if !ok {
+		t.Fatalf("search schema properties type = %T, want map[string]any\nschema: %#v\nstderr:\n%s", schema["properties"], schema, stderr.String())
+	}
+
+	limit := requireProperty(t, props, "limit", stderr)
+	requirePropertyType(t, limit, "integer", stderr)
+	requireNumber(t, limit, "minimum", 1, stderr)
+	requireNumber(t, limit, "maximum", 20, stderr)
+
+	safesearch := requireProperty(t, props, "safesearch", stderr)
+	requirePropertyType(t, safesearch, "integer", stderr)
+	requireNumber(t, safesearch, "minimum", 0, stderr)
+	requireNumber(t, safesearch, "maximum", 2, stderr)
+
+	pageno := requireProperty(t, props, "pageno", stderr)
+	requirePropertyUnionType(t, pageno, []string{"null", "integer"}, stderr)
+	requireNumber(t, pageno, "minimum", 1, stderr)
+
+	timeRange := requireProperty(t, props, "time_range", stderr)
+	requireStringEnum(t, timeRange, "enum", []string{"", "day", "month", "year"}, stderr)
+}
+
+func requireSchemaMap(t *testing.T, schema any, stderr *bytes.Buffer) map[string]any {
+	t.Helper()
+
+	if schemaMap, ok := schema.(map[string]any); ok {
+		return schemaMap
+	}
+
+	data, err := json.Marshal(schema)
+	if err != nil {
+		t.Fatalf("marshal InputSchema failed: %v\nschema type: %T\nstderr:\n%s", err, schema, stderr.String())
+	}
+
+	var schemaMap map[string]any
+	if err := json.Unmarshal(data, &schemaMap); err != nil {
+		t.Fatalf("unmarshal InputSchema failed: %v\nschema JSON: %s\nstderr:\n%s", err, string(data), stderr.String())
+	}
+
+	return schemaMap
+}
+
+func requireProperty(t *testing.T, props map[string]any, name string, stderr *bytes.Buffer) map[string]any {
+	t.Helper()
+
+	prop, ok := props[name].(map[string]any)
+	if !ok {
+		t.Fatalf("schema property %q type = %T, want map[string]any\nproperties: %#v\nstderr:\n%s", name, props[name], props, stderr.String())
+	}
+
+	return prop
+}
+
+func requirePropertyType(t *testing.T, prop map[string]any, want string, stderr *bytes.Buffer) {
+	t.Helper()
+
+	if got := prop["type"]; got != want {
+		t.Fatalf("property type = %#v, want %q\nproperty: %#v\nstderr:\n%s", got, want, prop, stderr.String())
+	}
+}
+
+func requirePropertyUnionType(t *testing.T, prop map[string]any, want []string, stderr *bytes.Buffer) {
+	t.Helper()
+
+	got, ok := prop["type"].([]any)
+	if !ok {
+		t.Fatalf("property type = %T, want []any\nproperty: %#v\nstderr:\n%s", prop["type"], prop, stderr.String())
+	}
+	if len(got) != len(want) {
+		t.Fatalf("property union type = %#v, want %#v\nproperty: %#v\nstderr:\n%s", got, want, prop, stderr.String())
+	}
+	for i, wantValue := range want {
+		if got[i] != wantValue {
+			t.Fatalf("property union type = %#v, want %#v\nproperty: %#v\nstderr:\n%s", got, want, prop, stderr.String())
+		}
+	}
+}
+
+func requireNumber(t *testing.T, prop map[string]any, field string, want float64, stderr *bytes.Buffer) {
+	t.Helper()
+
+	got, ok := prop[field].(float64)
+	if !ok {
+		t.Fatalf("property %s = %T, want number\nproperty: %#v\nstderr:\n%s", field, prop[field], prop, stderr.String())
+	}
+	if got != want {
+		t.Fatalf("property %s = %v, want %v\nproperty: %#v\nstderr:\n%s", field, got, want, prop, stderr.String())
+	}
+}
+
+func requireStringEnum(t *testing.T, prop map[string]any, field string, want []string, stderr *bytes.Buffer) {
+	t.Helper()
+
+	got, ok := prop[field].([]any)
+	if !ok {
+		t.Fatalf("property %s = %T, want []any\nproperty: %#v\nstderr:\n%s", field, prop[field], prop, stderr.String())
+	}
+	if len(got) != len(want) {
+		t.Fatalf("property %s = %#v, want %#v\nproperty: %#v\nstderr:\n%s", field, got, want, prop, stderr.String())
+	}
+	for i, wantValue := range want {
+		if got[i] != wantValue {
+			t.Fatalf("property %s = %#v, want %#v\nproperty: %#v\nstderr:\n%s", field, got, want, prop, stderr.String())
+		}
+	}
 }
