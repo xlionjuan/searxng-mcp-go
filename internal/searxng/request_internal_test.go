@@ -74,6 +74,8 @@ func TestBuildSearchRequest_BasicParams(t *testing.T) {
 
 	if req == nil {
 		t.Fatal("buildSearchRequest() req = nil")
+
+		return
 	}
 
 	if req.Method != http.MethodPost {
