@@ -105,12 +105,13 @@ func TestMCPStdioE2E(t *testing.T) {
 	})
 
 	t.Run("optional parameter forwarding", func(t *testing.T) {
+		wantEngines := []string{"google", "bing", "yahoo", "ddg definitions"}
 		response := requireSearchResponse(ctx, t, session, map[string]any{
 			"query":      "golang",
 			"language":   "en",
 			"safesearch": 1,
 			"categories": "general",
-			"engines":    "bing",
+			"engines":    strings.Join(wantEngines, ","),
 			"pageno":     1,
 			"limit":      5,
 		}, &stderr, "optional parameter forwarding")
@@ -122,7 +123,7 @@ func TestMCPStdioE2E(t *testing.T) {
 			t.Fatalf("results length = %d, want 1..5\nresponse: %#v\nstderr:\n%s", len(response.Results), response, stderr.String())
 		}
 
-		sawBing := false
+		sawEngine := false
 		for i, result := range response.Results {
 			if strings.TrimSpace(result.Title) == "" {
 				t.Fatalf("result[%d] title is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
@@ -133,12 +134,14 @@ func TestMCPStdioE2E(t *testing.T) {
 			if strings.TrimSpace(result.Engine) == "" {
 				t.Fatalf("result[%d] engine is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
 			}
-			if strings.EqualFold(result.Engine, "bing") {
-				sawBing = true
+			for _, we := range wantEngines {
+				if strings.EqualFold(result.Engine, we) {
+					sawEngine = true
+				}
 			}
 		}
-		if !sawBing {
-			t.Fatalf("no result reported bing engine\nresponse: %#v\nstderr:\n%s", response, stderr.String())
+		if !sawEngine {
+			t.Fatalf("no result from any of %v\nresponse: %#v\nstderr:\n%s", wantEngines, response, stderr.String())
 		}
 	})
 
