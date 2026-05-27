@@ -13,27 +13,6 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
-type staticRoundTripper struct {
-	statusCode int
-	header     http.Header
-	body       string
-	err        error
-}
-
-func (rt *staticRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	if rt.err != nil {
-		return nil, rt.err
-	}
-
-	return &http.Response{
-		StatusCode: rt.statusCode,
-		Status:     fmt.Sprintf("%d %s", rt.statusCode, http.StatusText(rt.statusCode)),
-		Header:     rt.header.Clone(),
-		Body:       io.NopCloser(strings.NewReader(rt.body)),
-		Request:    req,
-	}, nil
-}
-
 func readSampleResponse(tb testing.TB) []byte {
 	tb.Helper()
 
@@ -123,11 +102,15 @@ func BenchmarkSearch(b *testing.B) {
 		SearXNGURL: "http://127.0.0.1",
 		Timeout:    30 * time.Second,
 		HTTPClient: &http.Client{
-			Transport: &staticRoundTripper{
-				statusCode: http.StatusOK,
-				header:     http.Header{"Content-Type": []string{"application/json"}},
-				body:       body,
-			},
+			Transport: cancelRoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Status:     "200 OK",
+					Header:     http.Header{"Content-Type": []string{"application/json"}},
+					Body:       io.NopCloser(strings.NewReader(body)),
+					Request:    r,
+				}, nil
+			}),
 		},
 	}
 	args := &searxng.SearchArgs{Query: "golang programming", Language: "en", SafeSearch: 1}
