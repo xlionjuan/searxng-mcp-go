@@ -17,9 +17,7 @@ func buildTestBinary(t *testing.T) (string, func()) {
 	t.Helper()
 	binPath := filepath.Join(t.TempDir(), "searxng-mcp-go")
 
-	cmd := exec.Command( //nolint:gosec // test runs built binary
-		"go", "build", "-o", binPath, ".",
-	)
+	cmd := exec.CommandContext(t.Context(), "go", "build", "-o", binPath, ".") //nolint:gosec // test runs built binary
 
 	cmd.Dir = "."
 

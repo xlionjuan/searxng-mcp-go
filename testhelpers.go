@@ -27,7 +27,7 @@ func testPerformSearch(
 	if cfg == nil {
 		tb.Fatal("testPerformSearch: cfg cannot be nil")
 
-		return nil, nil
+		return nil, nil //nolint:nilnil // tb.Fatal terminates the goroutine
 	}
 
 	s, err := searxng.NewSearXNGSearcher(cfg, false)
