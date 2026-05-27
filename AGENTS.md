@@ -164,6 +164,29 @@ Root benchmarks (format/search) live in `bench_test.go`; internal benchmarks (ma
 | `go test -race -shuffle=on ./...` | CI-style test run with race detector |
 | `go test -tags=stress -race ./...` | Include stress/concurrency tests |
 | `go test -tags=e2e -run TestMCPStdioE2E -count=1 .` | E2E test (requires `SEARXNG_URL` + test server) |
+
+### Local SearXNG Test Server
+
+For E2E and integration testing, a local SearXNG dev server is set up under `searxng-server-test/`:
+
+```bash
+cd searxng-server-test
+./00-setup.sh      # Clean install: venv + deps + settings.yml (one-time, re-run to reset)
+./01-start-bg.sh   # Start background server, waits for readiness on :8888
+```
+
+**Key details:**
+- Server runs on `http://127.0.0.1:8888` — set `SEARXNG_URL=http://127.0.0.1:8888` before running E2E tests
+- The `01-start-bg.sh` script polls until the server responds (up to 30s), then exits; server continues in background
+- `settings.yml` is auto-generated from SearXNG repo defaults — enables JSON format, yahoo/bing/ddg-definitions engines, and generates a random secret key
+- Stop with `kill "$(cat .bg-pid)"` or from the PID printed at startup
+- On first run, `00-setup.sh` creates a Python venv via `uv` and installs SearXNG dependencies — this takes ~30s on subsequent runs (venv reuse)
+
+**Pitfalls:**
+- Do NOT use `searx/limiter.toml` from production template — the default settings.yml has `limiter: false`
+- The repo default settings.yml has `valkey.url: false` (disabled); do not use `utils/templates/etc/searxng/settings.yml` which enables valkey
+- When testing with granian (not needed for dev), must pass `--interface wsgi`
+
 | `golangci-lint run ./...` | Lint (CI uses v2.12.2) |
 | `go vet ./...` | Static analysis |
 

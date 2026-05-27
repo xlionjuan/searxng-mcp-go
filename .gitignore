@@ -41,3 +41,5 @@ REPORT.md
 searxng-server-test/.venv/
 searxng-server-test/settings.yml
 searxng-server-test/.bg-pid
+searxng-server-test/.git/
+searxng-server-test/.gitmodules
