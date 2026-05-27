@@ -170,8 +170,12 @@ Root benchmarks (format/search) live in `bench_test.go`; internal benchmarks (ma
 For E2E and integration testing, a local SearXNG dev server is set up under `searxng-server-test/`:
 
 ```bash
+# Ensure submodule is initialized (one-time)
+git submodule update --init --depth 1 searxng-server-test/searxng
+
+# Set up and start server
 cd searxng-server-test
-./00-setup.sh      # Clean install: venv + deps + settings.yml (one-time, re-run to reset)
+./00-setup.sh      # Clean install: venv + deps + settings.yml (re-run to reset)
 ./01-start-bg.sh   # Start background server, waits for readiness on :8888
 ```
 
@@ -183,6 +187,7 @@ cd searxng-server-test
 - On first run, `00-setup.sh` creates a Python venv via `uv` and installs SearXNG dependencies — this takes ~30s on subsequent runs (venv reuse)
 
 **Pitfalls:**
+- `searxng-server-test/searxng/` is a **git submodule** registered in the root `.gitmodules` — do NOT `git init` or `git submodule add` inside `searxng-server-test/`, its state is managed by the parent repo
 - Do NOT use `searx/limiter.toml` from production template — the default settings.yml has `limiter: false`
 - The repo default settings.yml has `valkey.url: false` (disabled); do not use `utils/templates/etc/searxng/settings.yml` which enables valkey
 - When testing with granian (not needed for dev), must pass `--interface wsgi`
