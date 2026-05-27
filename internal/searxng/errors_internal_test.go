@@ -3,6 +3,9 @@ package searxng
 import (
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -158,6 +161,219 @@ func TestIsValidationError(t *testing.T) {
 
 		if !isValidationError(wrappedErr) {
 			t.Errorf("isValidationError(wrappedErr) = false, want true")
+		}
+	})
+}
+
+// --- HTTPStatusError tests (from coverage test file) ---
+
+func TestHTTPStatusError(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		statusCode  int
+		wantMessage string
+	}{
+		{http.StatusBadRequest, "bad request: the query parameters may be invalid"},
+		{http.StatusUnauthorized, "unauthorized: authentication is required"},
+		{http.StatusForbidden, "forbidden: access denied"},
+		{http.StatusNotFound, "not found: the search endpoint could not be found"},
+		{http.StatusTooManyRequests, "rate limited: too many requests"},
+		{http.StatusInternalServerError, "internal server error"},
+		{http.StatusBadGateway, "bad gateway"},
+		{http.StatusServiceUnavailable, "service unavailable"},
+		{http.StatusGatewayTimeout, "gateway timeout"},
+		{999, "unexpected status code received"},
+	}
+
+	for _, tt := range tests {
+		t.Run(http.StatusText(tt.statusCode), func(t *testing.T) {
+			t.Parallel()
+
+			err := HTTPStatusError(tt.statusCode, "text/plain", []byte("error body"))
+			if err == nil {
+				t.Fatal("HTTPStatusError() = nil, want error")
+			}
+
+			if !strings.Contains(err.Error(), tt.wantMessage) {
+				t.Fatalf("HTTPStatusError(%d).Error() = %q, want it to contain %q",
+					tt.statusCode, err.Error(), tt.wantMessage)
+			}
+
+			var searxErr *SearXNGError
+			if !AsError(t, err, &searxErr) {
+				t.Fatalf("HTTPStatusError(%d) type = %T, want *SearXNGError", tt.statusCode, err)
+			}
+
+			if searxErr.StatusCode != tt.statusCode {
+				t.Fatalf("StatusCode = %d, want %d", searxErr.StatusCode, tt.statusCode)
+			}
+
+			if searxErr.RespContentType != "text/plain" {
+				t.Fatalf("RespContentType = %q, want %q", searxErr.RespContentType, "text/plain")
+			}
+		})
+	}
+
+	// Special case: HTMLResponseError for JSON-not-enabled servers
+	t.Run("non-retryable errors include body", func(t *testing.T) {
+		t.Parallel()
+
+		body := []byte(`{"error": "invalid query"}`)
+
+		err := HTTPStatusError(http.StatusBadRequest, "application/json", body)
+		if err == nil {
+			t.Fatal("HTTPStatusError() = nil, want error")
+		}
+
+		var searxErr *SearXNGError
+		if !AsError(t, err, &searxErr) {
+			t.Fatalf("type = %T, want *SearXNGError", err)
+		}
+
+		if searxErr.ResponseBody != `{"error": "invalid query"}` {
+			t.Fatalf("ResponseBody = %q, want %q", searxErr.ResponseBody, `{"error": "invalid query"}`)
+		}
+	})
+
+	t.Run("error body truncated to MaxErrorDisplayChars", func(t *testing.T) {
+		t.Parallel()
+
+		longBody := []byte(strings.Repeat("x", MaxErrorDisplayChars+50))
+		err := HTTPStatusError(http.StatusInternalServerError, "text/plain", longBody)
+
+		var searxErr *SearXNGError
+		if !AsError(t, err, &searxErr) {
+			t.Fatalf("type = %T, want *SearXNGError", err)
+		}
+
+		if len(searxErr.ResponseBody) != MaxErrorDisplayChars {
+			t.Fatalf("ResponseBody length = %d, want %d", len(searxErr.ResponseBody), MaxErrorDisplayChars)
+		}
+	})
+}
+
+// --- SearXNGError.Error() tests for edge cases ---
+
+func TestSearXNGErrorEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	t.Run("error with content type", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewSearXNGError(200, "application/json", "ok", errPlainTestError)
+		msg := err.Error()
+
+		if !strings.Contains(msg, "content-type application/json") {
+			t.Fatalf("Error() = %q, want to contain content-type", msg)
+		}
+	})
+
+	t.Run("error without content type", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewSearXNGError(500, "", "", errNetworkTestError)
+		msg := err.Error()
+
+		if strings.Contains(msg, "content-type") {
+			t.Fatalf("Error() = %q, should not contain content-type when empty", msg)
+		}
+	})
+
+	t.Run("error without underlying", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewSearXNGError(200, "text/html", "", nil)
+		msg := err.Error()
+
+		if !strings.Contains(msg, "content-type: text/html") {
+			t.Fatalf("Error() = %q, want to contain content-type: text/html", msg)
+		}
+	})
+}
+
+// --- logDebugBody tests ---
+
+func TestLogDebugBody(t *testing.T) {
+	t.Parallel()
+
+	t.Run("debug=false does nothing", func(t *testing.T) {
+		t.Parallel()
+
+		s := &SearXNGSearcher{debug: false}
+		resp := &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+		}
+		// Should not panic
+		s.logDebugBody(resp, []byte(`{"key": "value"}`))
+	})
+
+	t.Run("debug=true with short body", func(t *testing.T) {
+		t.Parallel()
+
+		s := &SearXNGSearcher{debug: true}
+		resp := &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+		}
+		// Should not panic
+		s.logDebugBody(resp, []byte(`{"key": "value"}`))
+	})
+
+	t.Run("debug=true with long body truncated", func(t *testing.T) {
+		t.Parallel()
+
+		s := &SearXNGSearcher{debug: true}
+		resp := &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+		}
+		longBody := []byte(strings.Repeat("x", DebugBodyPreviewChars+100))
+		// Should not panic
+		s.logDebugBody(resp, longBody)
+	})
+}
+
+// --- parseSearchResponse edge cases ---
+
+func TestParseSearchEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	t.Run("HTML content type", func(t *testing.T) {
+		t.Parallel()
+
+		s := &SearXNGSearcher{}
+		resp := &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"text/html"}},
+			Body:       io.NopCloser(strings.NewReader("<html><body>not json</body></html>")),
+		}
+
+		_, err := s.parseSearchResponse(resp, &SearchArgs{})
+		if err == nil {
+			t.Fatal("parseSearchResponse() error = nil, want HTMLResponseError")
+		}
+
+		var htmlErr *HTMLResponseError
+		if !AsError(t, err, &htmlErr) {
+			t.Fatalf("error type = %T, want *HTMLResponseError", err)
+		}
+	})
+
+	t.Run("read error on body", func(t *testing.T) {
+		t.Parallel()
+
+		s := &SearXNGSearcher{}
+		resp := &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(&errorReader{}),
+		}
+
+		_, err := s.parseSearchResponse(resp, &SearchArgs{})
+		if err == nil {
+			t.Fatal("parseSearchResponse() error = nil, want error from body read failure")
 		}
 	})
 }
