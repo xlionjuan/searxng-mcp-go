@@ -25,7 +25,9 @@ func testPerformSearch(
 	tb.Helper()
 
 	if cfg == nil {
-		return nil, searxng.NewSearXNGError(0, "", "", errTestConfigRequired)
+		tb.Fatal("testPerformSearch: cfg cannot be nil")
+
+		return nil, nil
 	}
 
 	s, err := searxng.NewSearXNGSearcher(cfg, false)

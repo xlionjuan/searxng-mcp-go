@@ -25,7 +25,6 @@ const defaultResultLimit = 10
 var (
 	errArgumentParseFailed = errors.New("failed to parse arguments")
 	errSearXNGURLRequired  = errors.New("SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
-	errTestConfigRequired  = errors.New("testPerformSearch: cfg cannot be nil")
 	errUnexpectedFlagType  = errors.New("registered search flag has unexpected type")
 )
 
