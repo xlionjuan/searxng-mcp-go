@@ -80,6 +80,8 @@ func TestConfigAndDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
 	if cfg == nil {
 		t.Fatal("DefaultConfig() = nil, want config")
+
+		return
 	}
 
 	if cfg.SearXNGURL != "" {

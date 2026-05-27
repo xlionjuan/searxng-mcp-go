@@ -242,6 +242,8 @@ func TestExecuteGETfallback(t *testing.T) {
 
 		if resp == nil {
 			t.Fatal("executeGETfallback() resp = nil, want non-nil")
+
+			return
 		}
 
 		defer closeBody(resp)
@@ -293,6 +295,8 @@ func TestExecuteGETfallback(t *testing.T) {
 
 		if resp == nil {
 			t.Fatal("executeGETfallback() resp = nil, want non-nil")
+
+			return
 		}
 
 		defer closeBody(resp)
@@ -336,6 +340,8 @@ func TestExecuteGETfallback(t *testing.T) {
 
 		if resp == nil {
 			t.Fatal("executeGETfallback() resp = nil, want non-nil")
+
+			return
 		}
 
 		defer closeBody(resp)
@@ -383,6 +389,8 @@ func TestExecuteGETfallback(t *testing.T) {
 
 		if resp == nil {
 			t.Fatal("executeGETfallback() resp = nil, want non-nil")
+
+			return
 		}
 
 		defer closeBody(resp)
@@ -418,6 +426,8 @@ func TestDoSearchAttempt(t *testing.T) {
 
 		if resp == nil {
 			t.Fatal("doSearchAttempt() resp = nil, want non-nil")
+
+			return
 		}
 
 		defer closeBody(resp)
@@ -458,6 +468,8 @@ func TestDoSearchAttempt(t *testing.T) {
 
 		if resp == nil {
 			t.Fatal("doSearchAttempt() resp = nil, want non-nil")
+
+			return
 		}
 
 		defer closeBody(resp)
@@ -500,6 +512,8 @@ func TestDoSearchAttempt(t *testing.T) {
 
 		if resp == nil {
 			t.Fatal("doSearchAttempt() resp = nil, want non-nil")
+
+			return
 		}
 
 		defer closeBody(resp)
@@ -560,6 +574,8 @@ func TestDoSearchAttempt(t *testing.T) {
 
 		if resp == nil {
 			t.Fatal("doSearchAttempt() resp = nil, want non-nil")
+
+			return
 		}
 
 		defer closeBody(resp)
@@ -594,6 +610,8 @@ func TestFinishResponse(t *testing.T) {
 
 		if result == nil {
 			t.Fatal("finishResponse() result = nil, want non-nil")
+
+			return
 		}
 
 		if result.Query != "test" {
@@ -741,6 +759,8 @@ func TestSearch_Success(t *testing.T) {
 
 		if result == nil {
 			t.Fatal("Search() result = nil, want non-nil")
+
+			return
 		}
 
 		if result.Query != "test" {
@@ -774,6 +794,8 @@ func TestSearch_Success(t *testing.T) {
 
 		if result == nil {
 			t.Fatal("Search() result = nil, want non-nil")
+
+			return
 		}
 
 		if len(result.Results) != 3 {
@@ -803,6 +825,8 @@ func TestSearch_SuccessWithResults(t *testing.T) {
 
 		if result == nil {
 			t.Fatal("Search() result = nil, want non-nil")
+
+			return
 		}
 
 		if len(result.Results) != 2 {
@@ -835,6 +859,8 @@ func TestSearch_RetryOnError(t *testing.T) {
 
 		if result == nil {
 			t.Fatal("Search() result = nil, want non-nil")
+
+			return
 		}
 
 		if callCount != 2 {
@@ -916,6 +942,8 @@ func TestSearch_RetryOnStatusCode(t *testing.T) {
 
 		if result == nil {
 			t.Fatal("Search() result = nil, want non-nil")
+
+			return
 		}
 
 		if callCount != 2 {
@@ -974,6 +1002,8 @@ func TestSearch_RetryOnEmptyResponse(t *testing.T) {
 
 		if result == nil {
 			t.Fatal("Search() result = nil, want non-nil")
+
+			return
 		}
 
 		if callCount != 2 {
@@ -999,6 +1029,8 @@ func TestSearch_RetryOnEmptyResponse(t *testing.T) {
 
 		if result == nil {
 			t.Fatal("Search() result = nil, want non-nil")
+
+			return
 		}
 
 		if len(result.Results) != 0 {
@@ -1084,6 +1116,8 @@ func TestSearch_DebugMode(t *testing.T) {
 
 		if result == nil {
 			t.Fatal("Search() result = nil, want non-nil")
+
+			return
 		}
 
 		if !result.Debug {
@@ -1121,6 +1155,8 @@ func TestSearch_GETFallbackFlow(t *testing.T) {
 
 		if result == nil {
 			t.Fatal("Search() result = nil, want non-nil")
+
+			return
 		}
 
 		if callCount != 2 {
@@ -1154,6 +1190,8 @@ func TestSearch_RetryWithEmptyResponseFallback(t *testing.T) {
 
 		if result == nil {
 			t.Fatal("Search() result = nil, want non-nil")
+
+			return
 		}
 
 		// attempt=0: error -> retry; attempt=1: empty -> retry; attempt=2: empty -> return empty
@@ -1245,6 +1283,8 @@ func TestSearch_EmptyResponseRetryDoesNotSpin(t *testing.T) {
 
 		if result == nil {
 			t.Fatal("Search() result = nil, want non-nil")
+
+			return
 		}
 	})
 }
