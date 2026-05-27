@@ -77,28 +77,179 @@ An array of typed answer objects. Each object's structure depends on the answer 
 
 ### Common Answer Types
 
-#### 1. `Answer` (simple string answer)
+#### 1. `Answer` (union answer object)
+
+The Go client represents all answer types as a single `Answer` struct with
+optional typed fields. Legacy string answers populate the `answer` field;
+typed answers (translations, weather) use template-specific fields.
 
 ```json
 {
   "answer": "The computed result or information",
   "engine": "engine_name",
-  "template": "template_name"
+  "template": "template_name",
+  "url": "https://example.com/result",
+  "translations": [
+    {
+      "text": "translated text",
+      "transliteration": "transliteration",
+      "examples": ["example 1", "example 2"],
+      "definitions": ["definition 1"],
+      "synonyms": ["synonym 1"]
+    }
+  ],
+  "current": {
+    "location": { "name": "Tokyo", "country_code": "JP" },
+    "summary": "Partly cloudy",
+    "temperature": { "val": 22.5, "unit": "°C" },
+    "condition": "partly_cloudy"
+  },
+  "forecasts": [...],
+  "service": "engine_service_name"
 }
 ```
 
 Fields:
-- `answer` (string): The answer text.
+- `answer` (string): Legacy answer text. Typed answers may omit this field; a
+  fallback string is derived by the normalization layer.
 - `engine` (string): The engine that produced the answer.
 - `template` (string, optional): The engine's answer template name.
+- `url` (string, optional): A URL associated with the answer.
+- `translations` (array, optional): Translation entries, present for translation-type answers.
+- `current` (object, optional): Current weather conditions, present for weather-type answers.
+- `forecasts` (array, optional): Weather forecast entries, present for weather-type answers.
+- `service` (string, optional): Service name or category for the answer.
 
 #### 2. `Translations` (translation results)
 
-Contains translation items with definitions, examples, and synonyms.
+A translation-type answer contains one or more `TranslationItem` entries
+with the translated text, transliteration, examples, definitions, and synonyms.
+
+The Go struct for each translation entry:
+
+```json
+{
+  "text": "translated text",
+  "transliteration": "transliteration",
+  "examples": ["example 1", "example 2"],
+  "definitions": ["definition 1"],
+  "synonyms": ["synonym 1"]
+}
+```
+
+```go
+type TranslationItem struct {
+    Text            string   `json:"text"`
+    Transliteration string   `json:"transliteration,omitempty"`
+    Examples        []string `json:"examples,omitempty"`
+    Definitions     []string `json:"definitions,omitempty"`
+    Synonyms        []string `json:"synonyms,omitempty"`
+}
+```
+
+Fields:
+- `text` (string): The translated text.
+- `transliteration` (string, optional): Transliteration of the translated text.
+- `examples` (array of strings, optional): Usage examples for the translation.
+- `definitions` (array of strings, optional): Definitions of the translated term.
+- `synonyms` (array of strings, optional): Synonyms for the translated term.
+
+**Fallback display:** When the legacy `answer` string is empty and `Translations` is populated, the server produces `"Translation: <text>; <text>; ..."` using `translationAnswerFallback`.
 
 #### 3. `WeatherAnswer` (weather data)
 
-Contains structured weather information.
+A weather-type answer contains a `Current` weather observation and/or
+`Forecasts` array, each represented as a `WeatherItem`.
+
+The Go struct for a weather observation:
+
+```json
+{
+  "location": {
+    "name": "Tokyo",
+    "latitude": 35.6762,
+    "longitude": 139.6503,
+    "elevation": 40.0,
+    "country_code": "JP",
+    "timezone": "Asia/Tokyo"
+  },
+  "datetime": {
+    "datetime": "2026-05-28T12:00:00+09:00"
+  },
+  "summary": "Partly cloudy",
+  "temperature": { "val": 22.5, "unit": "°C" },
+  "feels_like": { "val": 21.0, "unit": "°C" },
+  "condition": "partly_cloudy",
+  "pressure": { "val": 1013.25, "unit": "hPa" },
+  "humidity": { "val": 65.0, "unit": "%" },
+  "wind_from": { "val": 180.0, "unit": "°" },
+  "wind_speed": { "val": 3.5, "unit": "m/s" },
+  "cloud_cover": 40
+}
+```
+
+```go
+type WeatherItem struct {
+    Location    WeatherLocation  `json:"location"`
+    Datetime    *WeatherDateTime `json:"datetime,omitempty"`
+    Summary     string           `json:"summary,omitempty"`
+    Temperature WeatherMeasure   `json:"temperature"`
+    FeelsLike   *WeatherMeasure  `json:"feels_like,omitempty"`
+    Condition   string           `json:"condition"`
+    Pressure    *WeatherMeasure  `json:"pressure,omitempty"`
+    Humidity    *WeatherMeasure  `json:"humidity,omitempty"`
+    WindFrom    *WeatherMeasure  `json:"wind_from,omitempty"`
+    WindSpeed   *WeatherMeasure  `json:"wind_speed,omitempty"`
+    CloudCover  *int             `json:"cloud_cover,omitempty"`
+}
+```
+
+Supporting types:
+
+```go
+type WeatherLocation struct {
+    Name        string  `json:"name"`
+    Latitude    float64 `json:"latitude,omitempty"`
+    Longitude   float64 `json:"longitude,omitempty"`
+    Elevation   float64 `json:"elevation,omitempty"`
+    CountryCode string  `json:"country_code,omitempty"`
+    Timezone    string  `json:"timezone,omitempty"`
+}
+
+type WeatherDateTime struct {
+    Datetime string `json:"datetime"`
+}
+
+type WeatherMeasure struct {
+    Val  float64 `json:"val"`
+    Unit string  `json:"unit,omitempty"`
+}
+```
+
+Fields (WeatherItem):
+- `location` (object): Location information (name, coordinates, country, timezone).
+- `datetime` (object, optional): ISO 8601 timestamp for the observation.
+- `summary` (string, optional): Human-readable weather summary.
+- `temperature` (object): Temperature measurement with value and unit.
+- `feels_like` (object, optional): Apparent (feels-like) temperature.
+- `condition` (string): Weather condition code (e.g., "partly_cloudy", "clear", "rain").
+- `pressure` (object, optional): Atmospheric pressure measurement.
+- `humidity` (object, optional): Relative humidity percentage.
+- `wind_from` (object, optional): Wind direction in degrees.
+- `wind_speed` (object, optional): Wind speed measurement.
+- `cloud_cover` (integer, optional): Cloud cover percentage.
+
+**Fallback display:** When the legacy `answer` string is empty and `Current` is populated, the server produces a human-readable summary using `weatherAnswerFallback`, preferring `Current.Summary` first, then falling back to `"Weather: <location>, <temperature>, <condition>"`.
+
+The `WeatherMeasure.String()` method returns a compact representation: `"<value> <unit>"` or just `"<value>"` when unit is empty.
+
+### Answer Types Summary
+
+| Template | Typed Fields | Fallback Derivation |
+|----------|-------------|---------------------|
+| `simple` or empty | None (uses legacy `answer` string) | N/A — `answer` already populated |
+| `translations.html` | `Translations []TranslationItem` | `"Translation: <text>; <text>; ..."` |
+| `weather.html` | `Current *WeatherItem`, `Forecasts []WeatherItem` | `Current.Summary` or `"Weather: <location>, <temperature>, <condition>"` |
 
 ### Source
 
@@ -168,13 +319,19 @@ The `searxng-mcp-go` codebase now exposes `answers`, `infoboxes`, and
 
 ```go
 type Answer struct {
-    Answer   string `json:"answer"`
-    Engine   string `json:"engine"`
-    Template string `json:"template,omitempty"`
+    Answer       string            `json:"answer"`
+    Engine       string            `json:"engine"`
+    Template     string            `json:"template,omitempty"`
+    URL          string            `json:"url,omitempty"`
+    Translations []TranslationItem `json:"translations,omitempty"`
+    Current      *WeatherItem      `json:"current,omitempty"`
+    Forecasts    []WeatherItem     `json:"forecasts,omitempty"`
+    Service      string            `json:"service,omitempty"`
 }
 
 type SearchResponse struct {
     Query               string         `json:"query"`
+    Warning             string         `json:"warning,omitempty"`
     Answers             []Answer       `json:"answers,omitempty"`
     NumberOfResults     int            `json:"number_of_results"`
     Infoboxes           []Infobox      `json:"infoboxes,omitempty"`

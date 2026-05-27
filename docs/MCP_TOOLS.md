@@ -205,9 +205,9 @@ Search error examples:
 | Error Condition | Response Format (as received by MCP client) |
 |-----------------|---------------------------------------------|
 | Network failure | `Search error: searxng error (status 0): context deadline exceeded` (or similar) |
-| SearXNG HTTP error | `Search error: searxng error (status 500): internal server error: the search engine encountered an internal error` |
+| SearXNG HTTP error | `Search error: searxng error (status 500) - content-type text/plain: internal server error: the search engine encountered an internal error` |
 | HTML response (JSON disabled) | `Search error: searxng returned html instead of json - json output may not be enabled on the server` |
-| Invalid JSON from SearXNG | `Search error: searxng error (status 200): failed to parse JSON response: <underlying error>` |
+| Invalid JSON from SearXNG | `Search error: searxng error (status 200) - content-type application/json: failed to parse JSON response: <underlying error>` |
 
 ### Implementation Details
 
