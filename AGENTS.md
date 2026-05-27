@@ -24,6 +24,7 @@ searxng-mcp-go/
 ├── bench_test.go        # Benchmark tests
 ├── mcp_tool_test.go     # MCP tool tests
 ├── golden_capture_test.go # Golden file/capture tests
+├── e2e_exitcode_test.go  # End-to-end exit code tests (build tag e2e)
 ├── e2e_mcp_test.go       # End-to-end MCP tests (build tag e2e)
 ├── testhelpers.go       # Test helper functions
 ├── README.md            # Project README
@@ -48,14 +49,19 @@ searxng-mcp-go/
 │       ├── response.go  # parseSearchResponse, normalizeResponse
 │       ├── retry.go     # Retry logic: backoff, jitter, retryable checks
 │       ├── searcher.go  # SearXNGSearcher, Search, search execution and retry flow
+│       ├── searcher_internal_test.go    # Internal searcher tests
+│       ├── searcher_test.go             # Searcher tests (white-box)
+│       ├── search_execution_test.go     # doSearchAttempt / GETfallback / finishResponse tests
+│       ├── search_test_helpers_test.go  # Internal test helpers
 │       ├── types.go     # SearchArgs, SearchResponse, SearchResult, Answer, Infobox, Config
 │       ├── validation.go # Search argument validation
 │       ├── bench_test.go            # Internal benchmarks (marshal, validation)
 │       ├── deduplicate_internal_test.go # Internal deduplication tests
 │       ├── errors_internal_test.go      # Internal error handling tests
+│       ├── handle_nonok_test.go         # handleNonOKResponse tests
+│       ├── request_internal_test.go    # Internal request tests
 │       ├── response_internal_test.go    # Internal response parsing tests
 │       ├── retry_internal_test.go       # Internal retry logic tests
-│       ├── searcher_test.go             # Searcher tests
 │       └── validation_test.go           # Validation tests
 └── docs/
     ├── INSTALL.md           # Installation, build, configuration
