@@ -16,6 +16,7 @@ var (
 	errURLRequired           = errors.New("SearXNGURL cannot be empty")
 	errTimeoutNegative       = errors.New(errTimeoutNegativeMessage)
 	errMaxRetriesNegative    = errors.New("MaxRetries cannot be negative")
+	errMaxRetriesTooLarge    = errors.New("MaxRetries cannot exceed 20")
 	errRetryDelayNegative    = errors.New("RetryDelay cannot be negative")
 	errMaxRetryDelayNegative = errors.New("MaxRetryDelay cannot be negative")
 )
@@ -24,7 +25,7 @@ var (
 type Config struct {
 	SearXNGURL    string
 	Timeout       time.Duration
-	HTTPClient    *http.Client // Optional custom HTTP client
+	HTTPClient    *http.Client // Optional custom HTTP client. When set, Timeout is ignored.
 	MaxRetries    int
 	RetryDelay    time.Duration
 	MaxRetryDelay time.Duration
@@ -54,6 +55,10 @@ func (c *Config) Validate() error {
 
 	if c.MaxRetries < 0 {
 		return errMaxRetriesNegative
+	}
+
+	if c.MaxRetries > 20 {
+		return errMaxRetriesTooLarge
 	}
 
 	if c.RetryDelay < 0 {
