@@ -217,19 +217,19 @@ func TestMCPErrors_InvalidInputs(t *testing.T) {
 			name:       "whitespace query",
 			arguments:  map[string]any{"query": "   "},
 			wantField:  "query",
-			wantPrefix: "validation error:",
+			wantPrefix: "Validation error:",
 		},
 		{
 			name:       "control characters in query",
 			arguments:  map[string]any{"query": "golang\x00search"},
 			wantField:  "query",
-			wantPrefix: "validation error:",
+			wantPrefix: "Validation error:",
 		},
 		{
 			name:       "long query",
 			arguments:  map[string]any{"query": strings.Repeat("a", 501)},
 			wantField:  "query",
-			wantPrefix: "validation error:",
+			wantPrefix: "Validation error:",
 		},
 		{
 			name:       "limit too high",
@@ -271,19 +271,19 @@ func TestMCPErrors_InvalidInputs(t *testing.T) {
 			name:       "invalid language",
 			arguments:  map[string]any{"query": "golang", "language": "not a valid language code"},
 			wantField:  "language",
-			wantPrefix: "validation error:",
+			wantPrefix: "Validation error:",
 		},
 		{
 			name:       "invalid categories",
 			arguments:  map[string]any{"query": "golang", "categories": "general/../../x"},
 			wantField:  "categories",
-			wantPrefix: "validation error:",
+			wantPrefix: "Validation error:",
 		},
 		{
 			name:       "invalid engines",
 			arguments:  map[string]any{"query": "golang", "engines": "bing/../../x"},
 			wantField:  "engines",
-			wantPrefix: "validation error:",
+			wantPrefix: "Validation error:",
 		},
 	}
 
