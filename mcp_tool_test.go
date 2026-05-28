@@ -261,7 +261,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 					t.Fatalf("expected *mcp.TextContent, got %T", result.Content[0])
 				}
 
-				if !strings.Contains(textContent.Text, "validation error") {
+				if !strings.Contains(textContent.Text, "Validation error") {
 					t.Fatalf("expected validation error, got: %s", textContent.Text)
 				}
 			})

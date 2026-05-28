@@ -152,7 +152,7 @@ func TestMCPStdioE2E(t *testing.T) {
 			wantField  string
 			wantPrefix string
 		}{
-			{name: "whitespace query", argument: map[string]any{"query": "   "}, wantField: "query", wantPrefix: "validation error:"},
+			{name: "whitespace query", argument: map[string]any{"query": "   "}, wantField: "query", wantPrefix: "Validation error:"},
 			{name: "limit too high", argument: map[string]any{"query": "golang", "limit": 21}, wantField: "limit", wantPrefix: `validating "arguments":`},
 			{name: "pageno too low", argument: map[string]any{"query": "golang", "pageno": 0}, wantField: "pageno", wantPrefix: `validating "arguments":`},
 			{name: "invalid time range", argument: map[string]any{"query": "golang", "time_range": "week"}, wantField: "time_range", wantPrefix: `validating "arguments":`},
