@@ -21,7 +21,7 @@ import (
 
 // buildSearchSchema generates the JSON Schema for the search tool input from
 // the centralized SearchParams table.
-func buildSearchSchema() json.RawMessage {
+func buildSearchSchema() (json.RawMessage, error) {
 	props := make(map[string]any)
 
 	var required []string
@@ -69,10 +69,10 @@ func buildSearchSchema() json.RawMessage {
 
 	data, err := json.Marshal(schema)
 	if err != nil {
-		panic(fmt.Sprintf("marshal search schema: %v", err))
+		return nil, fmt.Errorf("marshal search schema: %w", err)
 	}
 
-	return json.RawMessage(data)
+	return json.RawMessage(data), nil
 }
 
 // buildToolDescription generates the MCP search tool description from the
@@ -166,6 +166,14 @@ func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) {
 		os.Exit(1)
 	}
 
+	defer func() { _ = searcher.Close() }()
+
+	schema, err := buildSearchSchema()
+	if err != nil {
+		slog.Error("failed to build search schema", "error", err)
+		os.Exit(1)
+	}
+
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "searxng-mcp-go",
 		Version: version,
@@ -174,7 +182,7 @@ func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search",
 		Description: buildToolDescription(),
-		InputSchema: buildSearchSchema(),
+		InputSchema: schema,
 	}, NewSearchToolHandler(searcher))
 
 	slog.Info("starting SearXNG MCP server")
@@ -187,9 +195,6 @@ func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) {
 	})
 	if err != nil {
 		slog.Error("server failed", "error", err)
-
-		_ = searcher.Close()
-
 		stop()
 		os.Exit(1)
 	}
@@ -226,10 +231,11 @@ func NewSearchToolHandler(searcher searcher) func(
 
 		resp, err := searcher.Search(ctx, &args)
 		if err != nil {
+			slog.Error("search failed", "error", err)
 			//nolint:nilerr // MCP handler packs error into tool result
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Search error: " + err.Error()},
+					&mcp.TextContent{Text: "Search error: request failed"},
 				},
 				IsError: true,
 			}, nil, nil

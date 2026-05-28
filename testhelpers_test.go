@@ -9,9 +9,9 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
-type cancelRoundTripperFunc func(*http.Request) (*http.Response, error)
+type roundTripperFunc func(*http.Request) (*http.Response, error)
 
-func (f cancelRoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 

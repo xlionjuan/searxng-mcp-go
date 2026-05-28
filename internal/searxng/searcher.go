@@ -26,6 +26,7 @@ type SearXNGSearcher struct {
 	debug         bool // When true, enables verbose HTTP request/response logging
 	maxRetries    int
 	retryStrategy *exponentialBackoffStrategy
+	ownsTransport bool // true if the searcher created its own transport (safe to close)
 }
 
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
@@ -62,6 +63,8 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	}
 
 	client := cfg.HTTPClient
+	var ownsTransport bool
+
 	if client != nil {
 		originalCheckRedirect := client.CheckRedirect
 		wrapped := *client
@@ -84,6 +87,8 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		} else {
 			client = getDefaultHTTPClient()
 		}
+
+		ownsTransport = true
 	}
 
 	return &SearXNGSearcher{
@@ -92,12 +97,15 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		debug:         debug,
 		maxRetries:    cfg.MaxRetries,
 		retryStrategy: newExponentialBackoffStrategy(cfg.MaxRetries, cfg.RetryDelay, cfg.MaxRetryDelay),
+		ownsTransport: ownsTransport,
 	}, nil
 }
 
 // Close releases resources held by the searcher.
+// Close is safe to call on searchers that use a shared default client —
+// it will skip closing idle connections on transports it does not own.
 func (s *SearXNGSearcher) Close() error {
-	if s.client != nil && s.client.Transport != nil {
+	if s.ownsTransport && s.client != nil && s.client.Transport != nil {
 		if transport, ok := s.client.Transport.(*http.Transport); ok {
 			transport.CloseIdleConnections()
 		}
@@ -113,6 +121,8 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 		return nil, err
 	}
 
+	var lastErr error
+
 	for attempt := 0; attempt <= s.maxRetries; attempt++ {
 		resp, _, err := s.doSearchAttempt(ctx, args)
 
@@ -121,6 +131,7 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 		if shouldRetry {
 			// Retry with backoff
 			s.logDebugRetry(attempt, s.maxRetries+1, delay, err)
+			lastErr = err
 
 			if resp != nil {
 				closeResponseBody(resp)
@@ -128,7 +139,8 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 
 			waitErr := retryWait(ctx, delay)
 			if waitErr != nil {
-				return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, waitErr))
+				lastErr = waitErr
+				break
 			}
 
 			continue
@@ -136,9 +148,8 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 
 		// No more retries — handle final result
 		if err != nil {
-			wrappedErr := fmt.Errorf("%w: %w", errSearchRequestFailed, err)
-
-			return nil, NewSearXNGError(0, "", "", wrappedErr)
+			lastErr = err
+			break
 		}
 
 		result, finishErr := s.finishResponse(resp, args)
@@ -151,10 +162,12 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 			shouldRetry, delay = s.retryStrategy.ShouldRetry(ctx, attempt, resp, errEmptyResponse)
 			if shouldRetry {
 				s.logDebugRetry(attempt, s.maxRetries+1, delay, nil)
+				lastErr = errEmptyResponse
 
 				waitErr := retryWait(ctx, delay)
 				if waitErr != nil {
-					return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, waitErr))
+					lastErr = waitErr
+					break
 				}
 
 				continue
@@ -162,6 +175,10 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 		}
 
 		return result, nil
+	}
+
+	if lastErr != nil {
+		return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, lastErr))
 	}
 
 	// Should never reach here

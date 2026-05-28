@@ -25,6 +25,7 @@ var (
 	errInvalidURL            = errors.New("invalid URL")
 	errUnsupportedURLScheme  = errors.New("url must use http or https scheme")
 	errURLMissingHost        = errors.New("url must include a host (e.g., search.example.com)")
+	errURLHasUserInfo        = errors.New("url must not contain userinfo (user:password@host)")
 )
 
 const (
@@ -60,6 +61,10 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 }
 
 func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
+	// Note: This policy intentionally allows scheme downgrade (https → http)
+	// for compatibility with mixed-environment SearXNG instances that may run
+	// behind reverse proxies without TLS termination. A scheme-equality check
+	// can be added here if the threat model evolves to require it.
 	if req.URL != nil && len(via) > 0 {
 		prevHost := via[len(via)-1].URL.Host
 		if req.URL.Host != prevHost {
@@ -102,6 +107,10 @@ func validateBaseURL(baseURL string) error {
 		return errURLMissingHost
 	}
 
+	if parsed.User != nil {
+		return errURLHasUserInfo
+	}
+
 	return nil
 }
 
@@ -123,15 +132,18 @@ func isPrivateHost(host string) bool {
 		host = h
 	}
 
-	if host == "localhost" || strings.HasSuffix(strings.ToLower(host), ".localhost") {
+	lowerHost := strings.ToLower(host)
+
+	if lowerHost == "localhost" || strings.HasSuffix(lowerHost, ".localhost") {
 		return true
 	}
 
-	lowerHost := strings.ToLower(host)
 	if strings.HasSuffix(lowerHost, ".lan") ||
 		strings.HasSuffix(lowerHost, ".internal") ||
 		strings.HasSuffix(lowerHost, ".local") ||
-		strings.HasSuffix(lowerHost, ".home") {
+		strings.HasSuffix(lowerHost, ".home") ||
+		strings.HasSuffix(lowerHost, ".corp") ||
+		strings.HasSuffix(lowerHost, ".intranet") {
 		return true
 	}
 

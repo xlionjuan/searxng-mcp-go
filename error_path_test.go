@@ -21,7 +21,7 @@ import (
 // TestSearch_DNSFailure tests that DNS failures are properly wrapped with context.
 func TestSearch_DNSFailure(t *testing.T) {
 	client := &http.Client{
-		Transport: cancelRoundTripperFunc(func(*http.Request) (*http.Response, error) {
+		Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
 			return nil, &net.DNSError{
 				Err:        "no such host",
 				Name:       "nonexistent.invalid-domain.test",
@@ -553,7 +553,7 @@ func TestSearch_TimeoutExceeded(t *testing.T) {
 	// Use a custom RoundTripper that blocks until context cancellation,
 	// avoiding httptest.Server.Close() blocking on active connections.
 	client := &http.Client{
-		Transport: cancelRoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
 			<-r.Context().Done()
 
 			return nil, r.Context().Err()
@@ -588,7 +588,7 @@ func TestSearch_ContextDeadlineExceeded(t *testing.T) {
 	// Use a custom RoundTripper that blocks until context cancellation,
 	// avoiding httptest.Server.Close() blocking on active connections.
 	client := &http.Client{
-		Transport: cancelRoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
 			<-r.Context().Done()
 
 			return nil, r.Context().Err()

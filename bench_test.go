@@ -102,7 +102,7 @@ func BenchmarkSearch(b *testing.B) {
 		SearXNGURL: "http://127.0.0.1",
 		Timeout:    30 * time.Second,
 		HTTPClient: &http.Client{
-			Transport: cancelRoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
 				return &http.Response{
 					StatusCode: http.StatusOK,
 					Status:     "200 OK",

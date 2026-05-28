@@ -3,9 +3,10 @@ package searxng
 import (
 	"regexp"
 	"strings"
+	"unicode/utf8"
 )
 
-// MaxQueryLength is the maximum allowed length for search queries.
+// MaxQueryLength is the maximum allowed length (in runes) for search queries.
 const MaxQueryLength = 500
 
 // validTimeRanges contains the set of valid time range values.
@@ -121,7 +122,7 @@ func validateQuery(query string) error {
 		return NewValidationError("query", "search query cannot be only whitespace")
 	}
 
-	if len(query) > MaxQueryLength {
+	if utf8.RuneCountInString(query) > MaxQueryLength {
 		return NewValidationError("query", "must be 500 characters or less")
 	}
 
@@ -143,7 +144,7 @@ func validateLanguage(args *SearchArgs) error {
 		return nil
 	}
 
-	if len(args.Language) > maxLanguageLength {
+	if utf8.RuneCountInString(args.Language) > maxLanguageLength {
 		return NewValidationError("language", "must be 35 characters or less")
 	}
 

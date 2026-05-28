@@ -1,6 +1,7 @@
 package searxng
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 )
 
 var (
@@ -56,6 +58,7 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 
 // readBodyWithLimit reads up to maxBytes+1 bytes from body and returns the data,
 // a boolean indicating if the body was truncated (exceeded maxBytes), and any error.
+// When truncated, it walks back to a valid UTF-8 rune boundary to avoid splitting runes.
 func readBodyWithLimit(body io.ReadCloser, maxBytes int64) ([]byte, bool, error) {
 	data, err := io.ReadAll(io.LimitReader(body, maxBytes+1))
 	if err != nil {
@@ -65,6 +68,15 @@ func readBodyWithLimit(body io.ReadCloser, maxBytes int64) ([]byte, bool, error)
 	truncated := int64(len(data)) > maxBytes
 	if truncated {
 		data = data[:maxBytes]
+		// Walk back to a valid UTF-8 rune boundary to avoid splitting multi-byte runes.
+		for len(data) > 0 {
+			r, _ := utf8.DecodeLastRune(data)
+			if r == utf8.RuneError {
+				data = data[:len(data)-1]
+				continue
+			}
+			break
+		}
 	}
 
 	return data, truncated, nil
@@ -105,11 +117,11 @@ func (s *SearXNGSearcher) logDebugBody(resp *http.Response, body []byte) {
 }
 
 func isHTMLResponse(contentType string, body []byte) bool {
-	trimmedBody := strings.TrimSpace(string(body))
+	trimmedBody := bytes.TrimSpace(body)
 
 	return strings.Contains(contentType, "text/html") ||
-		strings.HasPrefix(trimmedBody, "<!DOCTYPE") ||
-		strings.HasPrefix(trimmedBody, "<html")
+		bytes.HasPrefix(trimmedBody, []byte("<!DOCTYPE")) ||
+		bytes.HasPrefix(trimmedBody, []byte("<html"))
 }
 
 func decodeSearchResponse(resp *http.Response, contentType string, body []byte) (*SearchResponse, error) {

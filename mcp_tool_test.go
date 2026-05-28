@@ -70,15 +70,20 @@ func setupMCPSession(t *testing.T, handler http.HandlerFunc) (*mcp.ClientSession
 
 	searcher, cleanupSearcher := newTestSearcher(t, handler)
 
+	schema, err := buildSearchSchema()
+	if err != nil {
+		t.Fatalf("buildSearchSchema failed: %v", err)
+	}
+
 	server := mcp.NewServer(&mcp.Implementation{
-		Name:    "searxng-mcp-go",
+		Name:    "test-server",
 		Version: version,
 	}, nil)
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search",
 		Description: "Search the web using SearXNG meta-search engine.",
-		InputSchema: buildSearchSchema(),
+		InputSchema: schema,
 	}, NewSearchToolHandler(searcher))
 
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
@@ -122,7 +127,12 @@ func TestSearchInputSchema(t *testing.T) {
 
 	var schema map[string]any
 
-	err := json.Unmarshal([]byte(buildSearchSchema()), &schema)
+	data, err := buildSearchSchema()
+	if err != nil {
+		t.Fatalf("buildSearchSchema() error = %v", err)
+	}
+
+	err = json.Unmarshal(data, &schema)
 	if err != nil {
 		t.Fatalf("failed to parse search input schema: %v", err)
 	}

@@ -94,6 +94,12 @@ func retryBackoff(attempt int, base, maxDelay time.Duration) time.Duration {
 		delay = maxDelay
 	}
 
+	// Ensure a minimum delay floor to avoid zero-duration backoffs
+	// when configured with very small base delays (e.g., 0 or 1ns).
+	if delay < time.Millisecond {
+		delay = time.Millisecond
+	}
+
 	half := delay / jitterHalfDivisor
 
 	jitterRange := half + 1

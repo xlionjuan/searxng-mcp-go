@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -607,8 +608,6 @@ func TestSearch_RetriesEmptySearchResponse(t *testing.T) {
 func TestSearch_EmptySearchResponseRetryCanceled(t *testing.T) {
 	t.Parallel()
 
-	firstResponseWritten := make(chan struct{}, 1)
-
 	var attempts atomic.Int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -616,11 +615,6 @@ func TestSearch_EmptySearchResponseRetryCanceled(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"query":"test","results":[],"suggestions":[]}`))
-
-		select {
-		case firstResponseWritten <- struct{}{}:
-		default:
-		}
 	}))
 	defer server.Close()
 
@@ -639,8 +633,11 @@ func TestSearch_EmptySearchResponseRetryCanceled(t *testing.T) {
 	go func() {
 		defer close(done)
 
-		<-firstResponseWritten
-		time.Sleep(20 * time.Millisecond)
+		// Wait for the first attempt to complete before canceling.
+		// Poll attempts instead of sleeping to avoid flakiness on slow CI.
+		for attempts.Load() == 0 {
+			runtime.Gosched()
+		}
 		cancel()
 	}()
 
