@@ -84,11 +84,11 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	} else {
 		if cfg.Timeout > 0 {
 			client = newHTTPClient(cfg.Timeout)
+			ownsTransport = true
 		} else {
 			client = getDefaultHTTPClient()
+			// ownsTransport remains false — we do not own the shared singleton
 		}
-
-		ownsTransport = true
 	}
 
 	return &SearXNGSearcher{
