@@ -157,9 +157,9 @@ func TestMCPStdioE2E(t *testing.T) {
 			{name: "pageno too low", argument: map[string]any{"query": "golang", "pageno": 0}, wantField: "pageno", wantPrefix: `validating "arguments":`},
 			{name: "invalid time range", argument: map[string]any{"query": "golang", "time_range": "week"}, wantField: "time_range", wantPrefix: `validating "arguments":`},
 			{name: "invalid safesearch", argument: map[string]any{"query": "golang", "safesearch": 3}, wantField: "safesearch", wantPrefix: `validating "arguments":`},
-			{name: "invalid language", argument: map[string]any{"query": "golang", "language": "not a valid language code"}, wantField: "language", wantPrefix: "validation error:"},
-			{name: "invalid categories", argument: map[string]any{"query": "golang", "categories": "general/../../x"}, wantField: "categories", wantPrefix: "validation error:"},
-			{name: "invalid engines", argument: map[string]any{"query": "golang", "engines": "bing/../../x"}, wantField: "engines", wantPrefix: "validation error:"},
+			{name: "invalid language", argument: map[string]any{"query": "golang", "language": "not a valid language code"}, wantField: "language", wantPrefix: "Validation error:"},
+			{name: "invalid categories", argument: map[string]any{"query": "golang", "categories": "general/../../x"}, wantField: "categories", wantPrefix: "Validation error:"},
+			{name: "invalid engines", argument: map[string]any{"query": "golang", "engines": "bing/../../x"}, wantField: "engines", wantPrefix: "Validation error:"},
 		}
 
 		for _, tt := range tests {
