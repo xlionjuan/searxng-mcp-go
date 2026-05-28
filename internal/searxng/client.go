@@ -40,6 +40,10 @@ const (
 	ipv4Private10                  = 10
 	ipv4Loopback127                = 127
 	ipv6UniqueLocalPrefix          = 0xfc
+	classBPrefix                   = 192
+	classBSecondOctet              = 168
+	multicastFirstOctet            = 224
+	ipv6MulticastPrefix            = 0xff
 )
 
 func newHTTPClient(timeout time.Duration) *http.Client {
@@ -190,13 +194,15 @@ func isPrivateIPv4(ip4 net.IP) bool {
 		return true
 	}
 	// 192.0.0.0/24, 192.0.2.0/24, 192.88.99.0/24, 198.51.100.0/24, 203.0.113.0/24 (IETF / TEST-NET)
-	if ip4[0] == 192 {
+	if ip4[0] == classBPrefix {
 		if ip4[1] == 0 && (ip4[2] == 0 || ip4[2] == 2) {
 			return true
 		}
-		if ip4[1] == 168 {
+
+		if ip4[1] == classBSecondOctet {
 			return true // 192.168.0.0/16
 		}
+
 		if ip4[1] == 88 && ip4[2] == 99 {
 			return true
 		}
@@ -214,7 +220,7 @@ func isPrivateIPv4(ip4 net.IP) bool {
 		return true
 	}
 	// 224.0.0.0/4 (multicast)
-	if ip4[0]&0xf0 == 224 {
+	if ip4[0]&0xf0 == multicastFirstOctet {
 		return true
 	}
 	// 255.255.255.255/32 (limited broadcast)
@@ -243,7 +249,7 @@ func isPrivateIPv6(ip net.IP) bool {
 		return true
 	}
 	// ff00::/8 (multicast)
-	if ip[0] == 0xff {
+	if ip[0] == ipv6MulticastPrefix {
 		return true
 	}
 

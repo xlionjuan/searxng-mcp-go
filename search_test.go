@@ -638,6 +638,7 @@ func TestSearch_EmptySearchResponseRetryCanceled(t *testing.T) {
 		for attempts.Load() == 0 {
 			runtime.Gosched()
 		}
+
 		cancel()
 	}()
 

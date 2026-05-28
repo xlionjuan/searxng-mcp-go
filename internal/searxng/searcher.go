@@ -63,6 +63,7 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	}
 
 	client := cfg.HTTPClient
+
 	var ownsTransport bool
 
 	if client != nil {
@@ -140,6 +141,7 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 			waitErr := retryWait(ctx, delay)
 			if waitErr != nil {
 				lastErr = waitErr
+
 				break
 			}
 
@@ -149,6 +151,7 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 		// No more retries — handle final result
 		if err != nil {
 			lastErr = err
+
 			break
 		}
 
@@ -162,11 +165,13 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 			shouldRetry, delay = s.retryStrategy.ShouldRetry(ctx, attempt, resp, errEmptyResponse)
 			if shouldRetry {
 				s.logDebugRetry(attempt, s.maxRetries+1, delay, nil)
+
 				lastErr = errEmptyResponse
 
 				waitErr := retryWait(ctx, delay)
 				if waitErr != nil {
 					lastErr = waitErr
+
 					break
 				}
 
@@ -267,7 +272,8 @@ func (s *SearXNGSearcher) logDebugRetry(attempt, maxAttempts int, delay time.Dur
 		return
 	}
 
-	slog.Debug("retrying search request",
+	slog.Debug(
+		"retrying search request",
 		"attempt", attempt+1,
 		"max_attempts", maxAttempts,
 		"delay", delay,

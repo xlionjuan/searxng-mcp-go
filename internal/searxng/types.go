@@ -17,6 +17,7 @@ var (
 	errTimeoutNegative       = errors.New(errTimeoutNegativeMessage)
 	errMaxRetriesNegative    = errors.New("MaxRetries cannot be negative")
 	errMaxRetriesTooLarge    = errors.New("MaxRetries cannot exceed 20")
+	maxRetryCap              = 20
 	errRetryDelayNegative    = errors.New("RetryDelay cannot be negative")
 	errMaxRetryDelayNegative = errors.New("MaxRetryDelay cannot be negative")
 )
@@ -57,7 +58,7 @@ func (c *Config) Validate() error {
 		return errMaxRetriesNegative
 	}
 
-	if c.MaxRetries > 20 {
+	if c.MaxRetries > maxRetryCap {
 		return errMaxRetriesTooLarge
 	}
 

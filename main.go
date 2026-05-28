@@ -292,7 +292,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := runMCPMode(debug, flags, mcpStdin); err != nil {
+	err = runMCPMode(debug, flags, mcpStdin)
+	if err != nil {
 		slog.Error("MCP server error", "error", err)
 		os.Exit(1)
 	}

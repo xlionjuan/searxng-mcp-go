@@ -219,6 +219,7 @@ func NewSearchToolHandler(searcher searcher) func(
 
 		err := searxng.ValidateSearchArgs(&args)
 		if err != nil {
+			//nolint:nilerr // MCP handler packs error into tool result
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Validation error: " + err.Error()},
@@ -230,7 +231,7 @@ func NewSearchToolHandler(searcher searcher) func(
 		resp, err := searcher.Search(ctx, &args)
 		if err != nil {
 			slog.Error("search failed", "error", err)
-			//nolint:nilerr // MCP handler packs error into tool result
+
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Search error: request failed"},
@@ -242,7 +243,7 @@ func NewSearchToolHandler(searcher searcher) func(
 		jsonBytes, err := json.Marshal(resp)
 		if err != nil {
 			slog.Error("failed to marshal search response", "error", err)
-			//nolint:nilerr // MCP handler packs error into tool result
+
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Search error: failed to format results"},

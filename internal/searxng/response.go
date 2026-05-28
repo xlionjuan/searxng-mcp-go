@@ -76,8 +76,10 @@ func readBodyWithLimit(body io.ReadCloser, maxBytes int64) ([]byte, bool, error)
 			r, size := utf8.DecodeLastRune(data)
 			if r == utf8.RuneError && size == 1 {
 				data = data[:len(data)-1]
+
 				continue
 			}
+
 			break
 		}
 	}

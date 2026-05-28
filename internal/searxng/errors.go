@@ -71,34 +71,14 @@ func truncateBytesToValidUTF8(data []byte, maxBytes int) []byte {
 		r, size := utf8.DecodeLastRune(data)
 		if r == utf8.RuneError && size == 1 {
 			data = data[:len(data)-1]
+
 			continue
 		}
+
 		break
 	}
 
 	return data
-}
-
-// truncateStringToValidUTF8 returns s truncated to at most maxRunes runes.
-// This avoids splitting multi-byte UTF-8 sequences.
-func truncateStringToValidUTF8(s string, maxRunes int) string {
-	if utf8.RuneCountInString(s) <= maxRunes {
-		return s
-	}
-
-	var b []byte
-	count := 0
-	for i := 0; i < len(s); {
-		_, size := utf8.DecodeRuneInString(s[i:])
-		if count+1 > maxRunes {
-			break
-		}
-		b = append(b, s[i:i+size]...)
-		count++
-		i += size
-	}
-
-	return string(b)
 }
 
 // isValidationError checks if an error is a ValidationError.

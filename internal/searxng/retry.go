@@ -12,7 +12,10 @@ import (
 // backoff to a maximum delay with jitter.
 
 // jitterHalfDivisor is the divisor used to compute half the delay for jitter range.
-const jitterHalfDivisor = 2
+const (
+	jitterHalfDivisor      = 2
+	retryBackoffMultiplier = 2
+)
 
 type exponentialBackoffStrategy struct {
 	maxRetries    int
@@ -91,7 +94,7 @@ func retryBackoff(attempt int, base, maxDelay time.Duration) time.Duration {
 			break
 		}
 
-		delay = min(delay*2, maxDelay)
+		delay = min(delay*retryBackoffMultiplier, maxDelay)
 	}
 
 	if delay > maxDelay {
