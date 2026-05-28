@@ -29,6 +29,10 @@ func newExponentialBackoffStrategy(maxRetries int, retryDelay, maxRetryDelay tim
 }
 
 func (s *exponentialBackoffStrategy) ShouldRetry(ctx context.Context, attempt int, resp *http.Response, err error) (bool, time.Duration) {
+	if ctx.Err() != nil {
+		return false, 0
+	}
+
 	if attempt >= s.maxRetries {
 		return false, 0
 	}
@@ -63,7 +67,7 @@ func isRetryableError(ctx context.Context, err error) bool {
 }
 
 func isRetryableStatusCode(statusCode int) bool {
-	return statusCode == http.StatusTooManyRequests || statusCode >= http.StatusInternalServerError
+	return statusCode == http.StatusTooManyRequests || statusCode == http.StatusRequestTimeout || statusCode >= http.StatusInternalServerError
 }
 
 func retryBackoff(attempt int, base, maxDelay time.Duration) time.Duration {
@@ -87,7 +91,7 @@ func retryBackoff(attempt int, base, maxDelay time.Duration) time.Duration {
 			break
 		}
 
-		delay *= 2
+		delay = min(delay*2, maxDelay)
 	}
 
 	if delay > maxDelay {
