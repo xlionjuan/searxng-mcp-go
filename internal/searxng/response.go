@@ -69,9 +69,11 @@ func readBodyWithLimit(body io.ReadCloser, maxBytes int64) ([]byte, bool, error)
 	if truncated {
 		data = data[:maxBytes]
 		// Walk back to a valid UTF-8 rune boundary to avoid splitting multi-byte runes.
+		// Only strip truly invalid trailing bytes (size == 1), not valid runes like
+		// U+FFFD which also decode as RuneError but with size == 3.
 		for len(data) > 0 {
-			r, _ := utf8.DecodeLastRune(data)
-			if r == utf8.RuneError {
+			r, size := utf8.DecodeLastRune(data)
+			if r == utf8.RuneError && size == 1 {
 				data = data[:len(data)-1]
 				continue
 			}
