@@ -292,7 +292,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	runMCPMode(debug, flags, mcpStdin)
+	if err := runMCPMode(debug, flags, mcpStdin); err != nil {
+		slog.Error("MCP server error", "error", err)
+		os.Exit(1)
+	}
 }
 
 func getConfig(flags CLIFlags) (*searxng.Config, error) {

@@ -153,25 +153,24 @@ func isValidMCPInitializeMessage(line []byte) bool {
 
 // runMCPMode starts the MCP stdio server, registers the search tool, and
 // blocks until a signal (SIGINT/SIGTERM) is received or the server exits.
-func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) {
+// It returns an error on failure so that main can handle exit codes and
+// deferred cleanup (searcher.Close) runs correctly.
+func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) error {
 	cfg, err := getConfig(flags)
 	if err != nil {
-		slog.Error("configuration error", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("configuration error: %w", err)
 	}
 
 	searcher, err := searxng.NewSearXNGSearcher(cfg, debug)
 	if err != nil {
-		slog.Error("failed to create searcher", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to create searcher: %w", err)
 	}
 
 	defer func() { _ = searcher.Close() }()
 
 	schema, err := buildSearchSchema()
 	if err != nil {
-		slog.Error("failed to build search schema", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to build search schema: %w", err)
 	}
 
 	server := mcp.NewServer(&mcp.Implementation{
@@ -188,18 +187,17 @@ func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) {
 	slog.Info("starting SearXNG MCP server")
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	err = server.Run(ctx, &mcp.IOTransport{
 		Reader: io.NopCloser(stdin),
 		Writer: os.Stdout,
 	})
 	if err != nil {
-		slog.Error("server failed", "error", err)
-		stop()
-		os.Exit(1)
+		return fmt.Errorf("server failed: %w", err)
 	}
 
-	stop()
+	return nil
 }
 
 // searcher is the minimal interface the MCP handler needs from a search provider.
@@ -223,7 +221,7 @@ func NewSearchToolHandler(searcher searcher) func(
 		if err != nil {
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: fmt.Sprintf("validation error: %v", err)},
+					&mcp.TextContent{Text: "Validation error: " + err.Error()},
 				},
 				IsError: true,
 			}, nil, nil
@@ -243,10 +241,11 @@ func NewSearchToolHandler(searcher searcher) func(
 
 		jsonBytes, err := json.Marshal(resp)
 		if err != nil {
+			slog.Error("failed to marshal search response", "error", err)
 			//nolint:nilerr // MCP handler packs error into tool result
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: "json marshal error: " + err.Error()},
+					&mcp.TextContent{Text: "Search error: failed to format results"},
 				},
 				IsError: true,
 			}, nil, nil
