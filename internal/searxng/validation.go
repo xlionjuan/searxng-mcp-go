@@ -18,9 +18,9 @@ var languagePattern = regexp.MustCompile(`^[\p{L}]{2,35}(?:-[\p{L}\p{N}]{1,35})*
 
 const maxLanguageLength = 35
 
-// containsControlCharacters checks if a string contains control characters
+// containsASCIIControlCharacters checks if a string contains ASCII control characters
 // (characters in the range \x00-\x1f and \x7f).
-func containsControlCharacters(s string) bool {
+func containsASCIIControlCharacters(s string) bool {
 	for _, r := range s {
 		if r < 32 || r == 127 {
 			return true
@@ -38,7 +38,7 @@ func isValidCategoryOrEngine(value string) bool {
 		return false
 	}
 
-	if len(trimmed) > maxIdentifierLength {
+	if utf8.RuneCountInString(trimmed) > maxIdentifierLength {
 		return false
 	}
 
@@ -58,6 +58,12 @@ func isValidCategoryOrEngine(value string) bool {
 func validateCSVIdentifiers(value, field, noun string) error {
 	if value == "" {
 		return nil
+	}
+
+	// Bound total input length to prevent abuse with multi-megabyte strings.
+	const maxCSVInputLength = 4096
+	if len(value) > maxCSVInputLength {
+		return NewValidationError(field, noun+" input too long")
 	}
 
 	for item := range strings.SplitSeq(value, ",") {
@@ -126,7 +132,7 @@ func validateQuery(query string) error {
 		return NewValidationError("query", "must be 500 characters or less")
 	}
 
-	if containsControlCharacters(query) {
+	if containsASCIIControlCharacters(query) {
 		return NewValidationError("query", "contains invalid control characters")
 	}
 
