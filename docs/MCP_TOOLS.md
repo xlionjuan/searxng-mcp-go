@@ -192,13 +192,13 @@ Handler validation error examples:
 
 | Error Condition               | Response Format (as received by MCP client)                              |
 |-------------------------------|--------------------------------------------------------------------------|
-| Missing or whitespace `query` | `validation error: validation error on "query": search query cannot be only whitespace` |
-| Query too long (>500 chars)   | `validation error: validation error on "query": must be 500 characters or less` |
-| Query control characters      | `validation error: validation error on "query": contains invalid control characters` |
-| Invalid `categories` value    | `validation error: validation error on "categories": contains invalid category` |
-| Invalid `engines` value       | `validation error: validation error on "engines": contains invalid engine` |
-| Invalid `language` value      | `validation error: validation error on "language": must be a valid language code (e.g., en, zh-tw, ja, en-US)` |
-| Language too long (>35 chars) | `validation error: validation error on "language": must be 35 characters or less` |
+| Missing or whitespace `query` | `Validation error: validation error on "query": search query cannot be only whitespace` |
+| Query too long (>500 runes)   | `Validation error: validation error on "query": must be 500 runes or less` |
+| Query control characters      | `Validation error: validation error on "query": contains invalid control characters` |
+| Invalid `categories` value    | `Validation error: validation error on "categories": contains invalid category` |
+| Invalid `engines` value       | `Validation error: validation error on "engines": contains invalid engine` |
+| Invalid `language` value      | `Validation error: validation error on "language": must be a valid language code (e.g., en, zh-tw, ja, en-US)` |
+| Language too long (>35 runes) | `Validation error: validation error on "language": must be 35 runes or less` |
 
 Search error examples:
 

@@ -23,45 +23,51 @@ searxng-mcp-go/
 ├── fuzz_test.go         # Fuzz tests
 ├── bench_test.go        # Benchmark tests
 ├── mcp_tool_test.go     # MCP tool tests
-├── golden_capture_test.go # Golden file/capture tests
-├── e2e_exitcode_test.go  # End-to-end exit code tests (build tag e2e)
-├── e2e_mcp_test.go       # End-to-end MCP tests (build tag e2e)
-├── testhelpers.go       # Test helper functions
-├── README.md            # Project README
-├── go.mod               # Go module definition
-├── go.sum               # Go dependency checksums
-├── .golangci.yml        # Linter configuration
-├── codecov.yml          # Code coverage configuration
-├── .env.example         # Environment variable template
-├── .goreleaser.yaml     # GoReleaser release config
-├── justfile             # Common task runner commands
-├── testdata/            # Test fixtures (sample JSON responses)
-├── .github/workflows/   # CI: test.yml, lint.yml, security.yml, e2e.yml, release.yml
+├── golden_capture_test.go  # Golden file/capture tests
+├── e2e_error_test.go       # End-to-end error handling tests (build tag e2e)
+├── e2e_exitcode_test.go    # End-to-end exit code tests (build tag e2e)
+├── e2e_functional_test.go  # End-to-end functional tests (build tag e2e)
+├── e2e_mcp_test.go         # End-to-end MCP tests (build tag e2e)
+├── e2e_stress_test.go      # End-to-end stress tests (build tag e2e)
+├── testhelpers_test.go   # Test helper functions
+├── README.md             # Project README
+├── go.mod                # Go module definition
+├── go.sum                # Go dependency checksums
+├── .golangci.yml         # Linter configuration
+├── codecov.yml           # Code coverage configuration
+├── .env.example          # Environment variable template
+├── .goreleaser.yaml      # GoReleaser release config
+├── justfile              # Common task runner commands
+├── testdata/             # Test fixtures (sample JSON responses)
+├── .github/workflows/    # CI: test.yml, lint.yml, security.yml, e2e.yml, release.yml
 ├── .github/renovate.json # Renovate dependency update config
 ├── internal/
-│   └── searxng/         # SearXNG client library
-│       ├── client.go    # HTTP client creation, redirect policy, validateBaseURL
-│       ├── constants.go # Size limits and configuration constants
+│   └── searxng/          # SearXNG client library
+│       ├── client.go     # HTTP client creation, redirect policy, validateBaseURL
+│       ├── constants.go  # Size limits and configuration constants
 │       ├── deduplicate.go # Answer deduplication against infobox content
-│       ├── errors.go    # Error types and handling
-│       ├── params.go    # Shared search parameter definitions for CLI/MCP
-│       ├── request.go   # buildSearchRequest, setBrowserHeaders
-│       ├── response.go  # parseSearchResponse, normalizeResponse
-│       ├── retry.go     # Retry logic: backoff, jitter, retryable checks
-│       ├── searcher.go  # SearXNGSearcher, Search, search execution and retry flow
+│       ├── errors.go     # Error types and handling
+│       ├── params.go     # Shared search parameter definitions for CLI/MCP
+│       ├── request.go    # buildSearchRequest, setBrowserHeaders
+│       ├── response.go   # parseSearchResponse, normalizeResponse
+│       ├── retry.go      # Retry logic: backoff, jitter, retryable checks
+│       ├── searcher.go   # SearXNGSearcher, Search, search execution and retry flow
 │       ├── searcher_internal_test.go    # Internal searcher tests
 │       ├── searcher_test.go             # Searcher tests (white-box)
 │       ├── search_execution_test.go     # doSearchAttempt / GETfallback / finishResponse tests
+│       ├── search_http_internal_test.go # HTTP search request tests
 │       ├── search_test_helpers_test.go  # Internal test helpers
-│       ├── types.go     # SearchArgs, SearchResponse, SearchResult, Answer, Infobox, Config
+│       ├── types.go      # SearchArgs, SearchResponse, SearchResult, Answer, Infobox, Config
 │       ├── validation.go # Search argument validation
 │       ├── bench_test.go            # Internal benchmarks (marshal, validation)
+│       ├── client_internal_test.go  # Internal HTTP client tests
 │       ├── deduplicate_internal_test.go # Internal deduplication tests
 │       ├── errors_internal_test.go      # Internal error handling tests
 │       ├── handle_nonok_test.go         # handleNonOKResponse tests
-│       ├── request_internal_test.go    # Internal request tests
+│       ├── request_internal_test.go     # Internal request tests
 │       ├── response_internal_test.go    # Internal response parsing tests
 │       ├── retry_internal_test.go       # Internal retry logic tests
+│       ├── types_internal_test.go       # Internal type tests
 │       └── validation_test.go           # Validation tests
 └── docs/
     ├── INSTALL.md           # Installation, build, configuration
@@ -170,6 +176,8 @@ Root benchmarks (format/search) live in `bench_test.go`; internal benchmarks (ma
 | `go test -race -shuffle=on ./...` | CI-style test run with race detector |
 | `go test -tags=stress -race ./...` | Include stress/concurrency tests |
 | `go test -tags=e2e -run TestMCPStdioE2E -count=1 .` | E2E test (requires `SEARXNG_URL` + test server) |
+| `golangci-lint run ./...` | Lint (CI uses v2.12.2) |
+| `go vet ./...` | Static analysis |
 
 ### Local SearXNG Test Server
 
@@ -197,9 +205,6 @@ cd searxng-server-test
 - Do NOT use `searx/limiter.toml` from production template — the default settings.yml has `limiter: false`
 - The repo default settings.yml has `valkey.url: false` (disabled); do not use `utils/templates/etc/searxng/settings.yml` which enables valkey
 - When testing with granian (not needed for dev), must pass `--interface wsgi`
-
-| `golangci-lint run ./...` | Lint (CI uses v2.12.2) |
-| `go vet ./...` | Static analysis |
 
 ## Agent skills
 

@@ -47,13 +47,15 @@ A SearXNG instance URL is **required** — there is no default. Set it via the `
 export SEARXNG_URL=https://your-searxng-instance.example.com
 ```
 
+### Max Retries
+
+The default retry count is 5 retries after the initial search attempt. Set `SEARXNG_MAX_RETRIES` to a non-negative integer (maximum 20); in CLI mode, `--max-retries` overrides the environment variable. Use `--max-retries=0` to disable retries in CLI mode.
+
 ### Timeout
 
 The default timeout for search requests is 8 seconds. Set `SEARXNG_TIMEOUT` to a Go duration such as `8s`; in CLI mode, `--timeout` overrides the environment variable.
 
-### Max Retries
-
-The default retry count is 5 retries after the initial search attempt. Set `SEARXNG_MAX_RETRIES` to a non-negative integer; in CLI mode, `--max-retries` overrides the environment variable. Use `--max-retries=0` to disable retries in CLI mode.
+> **Note:** If you provide a custom `HTTPClient` (for example, when using the library programmatically), the `Timeout` setting is ignored and the provided client is used as-is. Either set `Timeout` or supply a custom `HTTPClient`, not both.
 
 ### POST→GET Fallback
 

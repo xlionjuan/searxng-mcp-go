@@ -15,7 +15,7 @@ This warning cannot be disabled - there is no opt-out mechanism.
 The following hosts are considered "private" and will NOT trigger a warning:
 
 - Hostname: localhost (exact match) and *.localhost (suffix match)
-- TLD suffixes: .lan, .internal, .local, .home
+- TLD suffixes: .lan, .internal, .local, .home, .corp, .intranet
 - IPv4 private ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
 - IPv4 loopback: 127.0.0.0/8
 - IPv6 private: fc00::/7, fe80::/10
