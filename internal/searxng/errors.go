@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"unicode/utf8"
 )
 
 var (
@@ -45,14 +46,59 @@ func (e *ValidationError) Is(target error) bool {
 }
 
 // truncateBody returns a truncated preview of body for error messages.
+// The result is guaranteed to end on a valid UTF-8 rune boundary.
 func truncateBody(body []byte, maxLen int) string {
 	if len(body) == 0 || maxLen <= 0 {
 		return ""
 	}
 
-	previewLen := min(len(body), maxLen)
+	truncated := truncateBytesToValidUTF8(body, maxLen)
 
-	return string(body[:previewLen])
+	return string(truncated)
+}
+
+// truncateBytesToValidUTF8 returns data truncated to at most maxBytes bytes,
+// walking back to a valid UTF-8 rune boundary to avoid splitting multi-byte sequences.
+func truncateBytesToValidUTF8(data []byte, maxBytes int) []byte {
+	if len(data) <= maxBytes {
+		return data
+	}
+
+	data = data[:maxBytes]
+
+	// Walk back to a valid UTF-8 rune boundary.
+	for len(data) > 0 {
+		r, size := utf8.DecodeLastRune(data)
+		if r == utf8.RuneError && size == 1 {
+			data = data[:len(data)-1]
+			continue
+		}
+		break
+	}
+
+	return data
+}
+
+// truncateStringToValidUTF8 returns s truncated to at most maxRunes runes.
+// This avoids splitting multi-byte UTF-8 sequences.
+func truncateStringToValidUTF8(s string, maxRunes int) string {
+	if utf8.RuneCountInString(s) <= maxRunes {
+		return s
+	}
+
+	var b []byte
+	count := 0
+	for i := 0; i < len(s); {
+		_, size := utf8.DecodeRuneInString(s[i:])
+		if count+1 > maxRunes {
+			break
+		}
+		b = append(b, s[i:i+size]...)
+		count++
+		i += size
+	}
+
+	return string(b)
 }
 
 // isValidationError checks if an error is a ValidationError.

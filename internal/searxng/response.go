@@ -40,10 +40,11 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 		}
 
 		previewLen := min(bodyLen, MaxErrorDisplayChars)
+		preview := string(truncateBytesToValidUTF8(body, previewLen))
 
-		slog.Debug("HTMLResponseError: received HTML instead of JSON", "preview", string(body[:previewLen]))
+		slog.Debug("HTMLResponseError: received HTML instead of JSON", "preview", preview)
 
-		return nil, &HTMLResponseError{Body: string(body[:previewLen]), UnderlyingErr: nil}
+		return nil, &HTMLResponseError{Body: preview, UnderlyingErr: nil}
 	}
 
 	result, err := decodeSearchResponse(resp, contentType, body)
@@ -104,10 +105,7 @@ func (s *SearXNGSearcher) logDebugBody(resp *http.Response, body []byte) {
 		return
 	}
 
-	bodyPreview := string(body)
-	if len(bodyPreview) > DebugBodyPreviewChars {
-		bodyPreview = bodyPreview[:DebugBodyPreviewChars]
-	}
+	bodyPreview := string(truncateBytesToValidUTF8(body, DebugBodyPreviewChars))
 
 	slog.Debug(
 		"HTTP response body",
@@ -128,9 +126,9 @@ func isHTMLResponse(contentType string, body []byte) bool {
 
 func decodeSearchResponse(resp *http.Response, contentType string, body []byte) (*SearchResponse, error) {
 	if !strings.Contains(contentType, "application/json") && !strings.Contains(contentType, "text/json") {
-		bodyPreview := string(body)
-		if len(bodyPreview) > MaxErrorDisplayChars {
-			bodyPreview = bodyPreview[:MaxErrorDisplayChars] + "..."
+		bodyPreview := string(truncateBytesToValidUTF8(body, MaxErrorDisplayChars))
+		if len(body) > MaxErrorDisplayChars {
+			bodyPreview += "..."
 		}
 
 		slog.Debug("UnexpectedContentTypeError", "content_type", contentType, "body_preview", bodyPreview)

@@ -238,10 +238,7 @@ func (s *SearXNGSearcher) logDebugRequest(req *http.Request, body string) {
 		return
 	}
 
-	bodyPreview := body
-	if len(bodyPreview) > DebugBodyPreviewChars {
-		bodyPreview = bodyPreview[:DebugBodyPreviewChars]
-	}
+	bodyPreview := string(truncateBytesToValidUTF8([]byte(body), DebugBodyPreviewChars))
 
 	slog.Debug(
 		"HTTP request",
@@ -319,10 +316,7 @@ func (s *SearXNGSearcher) handleNonOKResponse(resp *http.Response) error {
 	}
 
 	if s.debug {
-		errBodyPreview := string(body)
-		if len(errBodyPreview) > DebugBodyPreviewChars {
-			errBodyPreview = errBodyPreview[:DebugBodyPreviewChars]
-		}
+		errBodyPreview := string(truncateBytesToValidUTF8(body, DebugBodyPreviewChars))
 
 		slog.Debug(
 			"HTTP error response body",
