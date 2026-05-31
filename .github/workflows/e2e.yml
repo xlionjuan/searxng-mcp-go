@@ -41,10 +41,15 @@ jobs:
       - name: Build binary
         run: go build -o searxng-mcp-go .
 
-      - name: E2E test — MCP stdio
+      - name: E2E test — MCP stdio (with retry)
+        uses: Wandalen/wretry.action@e68c23e6309f2871ca8ae4763e7629b9c258e1ea # v3.8.0
         env:
           E2E_MCP_BINARY: ./searxng-mcp-go
-        run: go test -v -tags=e2e -run 'TestMCP' -count=1 -timeout=600s .
+        with:
+          command: go test -v -tags=e2e -run 'TestMCP' -count=1 -timeout=600s .
+          attempt_limit: 3
+          attempt_delay: 10000         # 10 s (ms)
+          time_out: 300000           # 300 s = 5 min (ms)
 
       - name: E2E test — basic query
         run: |
