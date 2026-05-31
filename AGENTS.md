@@ -132,6 +132,9 @@ Most detailed topic docs live in `docs/`; root docs (README.md, CONTEXT.md, AGEN
 - CI `go-version` must use a fixed version, not `stable`; step/job names must not contain version numbers
 - MCP stdin mode does not accept CLI args — use env vars only (see `docs/adr/004-mcp-stdin-env-only.md`)
 
+### E2E Tests
+- **🔴 E2E tests that query the live SearXNG server MUST assert non-zero results.** Do NOT weaken `len(Results) == 0` checks to allow empty results — the live server is the project's single source of truth for functional correctness. Exceptions require explicit owner approval per test case.
+
 ### Version Bump & Release Workflow
 **Tag style:** `v{major}.{minor}.{patch}` (e.g. `v1.0.4`, `v1.1.0`). No `-beta`, `-rc`, or other suffixes.
 
