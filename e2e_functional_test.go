@@ -120,9 +120,8 @@ func TestMCPFunctional(t *testing.T) {
 
 	t.Run("all categories", func(t *testing.T) {
 		// NOTE: "files" is intentionally excluded — it consistently returns 0 results
-		// for test queries on the CI SearXNG instance (no file-search engines configured
-		// with relevant content). Retry cannot fix this; it is not transient. Do not add it
-		// back without ensuring files category has working engines.
+		// for test queries on the CI SearXNG instance. Retry cannot fix this; it is not
+		// transient. Do not add it back without ensuring the files category returns results.
 		for _, category := range []string{"general", "news", "music", "images", "videos", "science", "it"} {
 			category := category
 			t.Run(category, func(t *testing.T) {
