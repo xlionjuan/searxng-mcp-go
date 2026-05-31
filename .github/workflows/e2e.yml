@@ -48,8 +48,8 @@ jobs:
         with:
           command: go test -v -tags=e2e -run 'TestMCP' -count=1 -timeout=600s .
           attempt_limit: 10
-          attempt_delay: 10000         # 10 s (ms)
-          time_out: 900000           # 900 s = 15 min (ms)
+          attempt_delay: 10000 # 10 s (ms)
+        #  time_out: 900000           # 900 s = 15 min (ms) : caused continued waiting after success
 
       - name: E2E test — basic query
         run: |
