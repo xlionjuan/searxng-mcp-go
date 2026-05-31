@@ -49,7 +49,7 @@ func TestMCPStress_Concurrent(t *testing.T) {
 	}()
 
 	queries := []string{
-		"golang",
+		"framework computer inc",
 		"rust programming",
 		"python async",
 		"kubernetes",
@@ -177,7 +177,7 @@ func TestMCPStress_RapidFire(t *testing.T) {
 	}()
 
 	queries := []string{
-		"golang", "python", "rust", "javascript", "typescript",
+		"framework computer inc", "python", "rust", "javascript", "typescript",
 		"kubernetes", "docker", "linux", "nginx", "redis",
 		"postgresql", "mongodb", "elasticsearch", "kafka", "rabbitmq",
 		"react", "vue", "angular", "svelte", "nextjs",
@@ -264,7 +264,7 @@ func TestMCPStress_Stability(t *testing.T) {
 	}()
 
 	queries := []string{
-		"golang",
+		"framework computer inc",
 		"rust programming",
 		"python async",
 		"kubernetes",
@@ -334,7 +334,7 @@ func TestMCPStress_Randomized(t *testing.T) {
 	}()
 
 	baseQueries := []string{
-		"golang", "python", "rust", "java", "ruby",
+		"framework computer inc", "python", "rust", "java", "ruby",
 		"kubernetes", "docker", "terraform", "ansible", "prometheus",
 	}
 

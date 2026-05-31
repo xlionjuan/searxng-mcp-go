@@ -156,7 +156,7 @@ func TestMCPErrors_DebugMode(t *testing.T) {
 	if !strings.Contains(stderrStr, "debug") && !strings.Contains(stderrStr, "DEBUG") {
 		// The server may not have logged anything yet — do a search to trigger logging
 		response := requireSearchResponse(ctx, t, session, map[string]any{
-			"query": "golang",
+			"query": "framework computer inc",
 			"limit": 3,
 		}, &stderr, "debug mode search")
 
@@ -168,16 +168,30 @@ func TestMCPErrors_DebugMode(t *testing.T) {
 		}
 	}
 
-	// Verify stderr has some content indicating debug/log output
-	if stderrStr == "" {
-		t.Log("stderr is empty — this may be acceptable if server logs are buffered")
+	if !strings.Contains(stderrStr, "debug mode enabled") {
+		t.Fatalf("stderr does not contain debug startup log\nstderr:\n%s", stderrStr)
 	}
 
 	// Verify unresponsive_engines is present in the response (debug mode)
-	response := requireSearchResponse(ctx, t, session, map[string]any{
-		"query": "golang",
+	result := callSearchTool(ctx, t, session, map[string]any{
+		"query": "framework computer inc",
 		"limit": 3,
-	}, &stderr, "debug mode response fields")
+	}, &stderr)
+	if result.IsError {
+		t.Fatalf("debug mode response fields returned tool error: %s\nstderr:\n%s", toolText(t, result), stderr.String())
+	}
+	text := toolText(t, result)
+	if !strings.Contains(text, `"unresponsive_engines"`) {
+		t.Fatalf("debug response JSON does not contain unresponsive_engines\ntext:\n%s\nstderr:\n%s", text, stderr.String())
+	}
+
+	response := parseSearchResponse(t, result, &stderr)
+	if len(response.Results) == 0 {
+		t.Logf("debug mode response fields returned no results\nresponse: %#v\nstderr:\n%s", response, stderr.String())
+	}
+	if response.UnresponsiveEngines == nil {
+		t.Fatalf("response.UnresponsiveEngines is nil, want debug JSON field to unmarshal as empty or populated slice\ntext:\n%s\nstderr:\n%s", text, stderr.String())
+	}
 
 	// Verify the response is valid JSON and contains expected fields.
 	t.Logf("debug mode response: query=%q, results=%d, answers=%d, infoboxes=%d",
@@ -238,53 +252,53 @@ func TestMCPErrors_InvalidInputs(t *testing.T) {
 		},
 		{
 			name:          "limit too high",
-			arguments:     map[string]any{"query": "golang", "limit": 21},
+			arguments:     map[string]any{"query": "framework computer inc", "limit": 21},
 			wantField:     "limit",
 			wantSchemaErr: true,
 		},
 		{
 			name:          "limit too low",
-			arguments:     map[string]any{"query": "golang", "limit": 0},
+			arguments:     map[string]any{"query": "framework computer inc", "limit": 0},
 			wantField:     "limit",
 			wantSchemaErr: true,
 		},
 		{
 			name:          "pageno too low",
-			arguments:     map[string]any{"query": "golang", "pageno": 0},
+			arguments:     map[string]any{"query": "framework computer inc", "pageno": 0},
 			wantField:     "pageno",
 			wantSchemaErr: true,
 		},
 		{
 			name:          "invalid safesearch",
-			arguments:     map[string]any{"query": "golang", "safesearch": 3},
+			arguments:     map[string]any{"query": "framework computer inc", "safesearch": 3},
 			wantField:     "safesearch",
 			wantSchemaErr: true,
 		},
 		{
 			name:          "safesearch negative",
-			arguments:     map[string]any{"query": "golang", "safesearch": -1},
+			arguments:     map[string]any{"query": "framework computer inc", "safesearch": -1},
 			wantField:     "safesearch",
 			wantSchemaErr: true,
 		},
 		{
 			name:          "invalid time range",
-			arguments:     map[string]any{"query": "golang", "time_range": "week"},
+			arguments:     map[string]any{"query": "framework computer inc", "time_range": "week"},
 			wantField:     "time_range",
 			wantSchemaErr: true,
 		},
 		{
 			name:      "invalid language",
-			arguments: map[string]any{"query": "golang", "language": "not a valid language code"},
+			arguments: map[string]any{"query": "framework computer inc", "language": "not a valid language code"},
 			wantField: "language",
 		},
 		{
 			name:      "invalid categories",
-			arguments: map[string]any{"query": "golang", "categories": "general/../../x"},
+			arguments: map[string]any{"query": "framework computer inc", "categories": "general/../../x"},
 			wantField: "categories",
 		},
 		{
 			name:      "invalid engines",
-			arguments: map[string]any{"query": "golang", "engines": "bing/../../x"},
+			arguments: map[string]any{"query": "framework computer inc", "engines": "bing/../../x"},
 			wantField: "engines",
 		},
 	}
@@ -344,17 +358,17 @@ func TestMCPErrors_IncorrectParams(t *testing.T) {
 	}{
 		{
 			name:      "wrong type limit",
-			arguments: map[string]any{"query": "golang", "limit": "twenty"},
+			arguments: map[string]any{"query": "framework computer inc", "limit": "twenty"},
 			wantField: "limit",
 		},
 		{
 			name:      "wrong type safesearch",
-			arguments: map[string]any{"query": "golang", "safesearch": "two"},
+			arguments: map[string]any{"query": "framework computer inc", "safesearch": "two"},
 			wantField: "safesearch",
 		},
 		{
 			name:      "unexpected parameter",
-			arguments: map[string]any{"query": "golang", "unknown_param": "value"},
+			arguments: map[string]any{"query": "framework computer inc", "unknown_param": "value"},
 			wantField: "unknown_param",
 		},
 	}

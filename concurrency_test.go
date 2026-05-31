@@ -23,18 +23,17 @@ func TestConcurrentSearches(t *testing.T) {
 	t.Parallel()
 
 	requestCount := int64(0)
+	searchResp := searxng.SearchResponse{
+		Results: []searxng.SearchResult{
+			{Title: "Result", URL: "https://example.com/1", Content: "Content", Engine: "google"},
+		},
+		NumberOfResults: 1,
+		Query:           "test",
+	}
+	body := mustMarshalJSON(t, searchResp)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt64(&requestCount, 1)
-
-		searchResp := searxng.SearchResponse{
-			Results: []searxng.SearchResult{
-				{Title: "Result", URL: "https://example.com/1", Content: "Content", Engine: "google"},
-			},
-			NumberOfResults: 1,
-			Query:           "test",
-		}
-		body := mustMarshalJSON(t, searchResp)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -182,14 +181,14 @@ func TestConcurrentContextCancellation(t *testing.T) {
 func TestChannelDeadlockDetection(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		searchResp := searxng.SearchResponse{
-			Results:         []searxng.SearchResult{},
-			NumberOfResults: 0,
-			Query:           "test",
-		}
-		body := mustMarshalJSON(t, searchResp)
+	searchResp := searxng.SearchResponse{
+		Results:         []searxng.SearchResult{},
+		NumberOfResults: 0,
+		Query:           "test",
+	}
+	body := mustMarshalJSON(t, searchResp)
 
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
@@ -238,18 +237,17 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 	t.Parallel()
 
 	requestCount := int64(0)
+	searchResp := searxng.SearchResponse{
+		Results: []searxng.SearchResult{
+			{Title: "Result", URL: "https://example.com/1", Content: "Content", Engine: "google"},
+		},
+		NumberOfResults: 1,
+		Query:           "test",
+	}
+	body := mustMarshalJSON(t, searchResp)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt64(&requestCount, 1)
-
-		searchResp := searxng.SearchResponse{
-			Results: []searxng.SearchResult{
-				{Title: "Result", URL: "https://example.com/1", Content: "Content", Engine: "google"},
-			},
-			NumberOfResults: 1,
-			Query:           "test",
-		}
-		body := mustMarshalJSON(t, searchResp)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -467,14 +465,14 @@ func TestContextDeadlineExceededDuringSearch(t *testing.T) {
 func TestConcurrentValidationAndSearch(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		searchResp := searxng.SearchResponse{
-			Results:         []searxng.SearchResult{},
-			NumberOfResults: 0,
-			Query:           "test",
-		}
-		body := mustMarshalJSON(t, searchResp)
+	searchResp := searxng.SearchResponse{
+		Results:         []searxng.SearchResult{},
+		NumberOfResults: 0,
+		Query:           "test",
+	}
+	body := mustMarshalJSON(t, searchResp)
 
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
@@ -544,6 +542,13 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 
 	started := make(chan struct{})
 	release := make(chan struct{})
+	searchResp := searxng.SearchResponse{
+		Results:         []searxng.SearchResult{},
+		NumberOfResults: 0,
+		Query:           "test",
+		Suggestions:     []string{},
+	}
+	body := mustMarshalJSON(t, searchResp)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		select {
@@ -553,14 +558,6 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 		}
 
 		<-release
-
-		searchResp := searxng.SearchResponse{
-			Results:         []searxng.SearchResult{},
-			NumberOfResults: 0,
-			Query:           "test",
-			Suggestions:     []string{},
-		}
-		body := mustMarshalJSON(t, searchResp)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
