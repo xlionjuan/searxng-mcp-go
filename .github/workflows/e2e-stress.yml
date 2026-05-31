@@ -1,0 +1,54 @@
+name: E2E Stress
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-stress:
+    name: End-to-End Stress
+    runs-on: ubuntu-latest
+    env:
+      SEARXNG_URL: http://127.0.0.1:8888
+
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: "1.26.3"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+      - name: Setup SearXNG test server
+        working-directory: searxng-server-test
+        run: bash 00-setup.sh
+
+      - name: Start SearXNG background
+        working-directory: searxng-server-test
+        run: bash 01-start-bg.sh
+
+      - name: Build binary
+        run: go build -o searxng-mcp-go .
+
+      - name: E2E stress test
+        env:
+          E2E_MCP_BINARY: ./searxng-mcp-go
+        run: go test -v -tags='e2e stress' -run 'TestMCPStress' -count=1 -timeout=900s .
+
+      - name: Cleanup
+        if: always()
+        working-directory: searxng-server-test
+        run: |
+          if [ -f .bg-pid ]; then
+            kill "$(cat .bg-pid)" 2>/dev/null || true
+            rm -f .bg-pid
+            echo "SearXNG stopped"
+          fi

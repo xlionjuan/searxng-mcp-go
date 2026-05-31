@@ -41,7 +41,7 @@ jobs:
       - name: Build binary
         run: go build -o searxng-mcp-go .
 
-      - name: E2E test — MCP stdio (functional, error, stress)
+      - name: E2E test — MCP stdio
         env:
           E2E_MCP_BINARY: ./searxng-mcp-go
         run: go test -v -tags=e2e -run 'TestMCP' -count=1 -timeout=600s .

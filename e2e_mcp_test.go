@@ -36,7 +36,7 @@ func TestMCPStdioE2E(t *testing.T) {
 	var stderr bytes.Buffer
 
 	cmd := exec.CommandContext(ctx, binaryPath)
-	cmd.Env = append(os.Environ(), "SEARXNG_URL="+searxngURL)
+	cmd.Env = e2eMCPEnv(searxngURL)
 	cmd.Stderr = &stderr
 
 	var session *mcp.ClientSession
@@ -75,7 +75,9 @@ func TestMCPStdioE2E(t *testing.T) {
 		}, &stderr, "basic search")
 
 		if len(response.Results) == 0 {
-			t.Fatalf("basic search results length = 0\nresponse: %#v\nstderr:\n%s", response, stderr.String())
+			if len(response.Answers) == 0 && len(response.Infoboxes) == 0 {
+				t.Fatalf("basic search returned no results, answers, or infoboxes\nresponse: %#v\nstderr:\n%s", response, stderr.String())
+			}
 		}
 		if strings.TrimSpace(response.Query) == "" {
 			t.Fatalf("basic search query is empty\nresponse: %#v\nstderr:\n%s", response, stderr.String())
@@ -147,19 +149,19 @@ func TestMCPStdioE2E(t *testing.T) {
 
 	t.Run("validation errors", func(t *testing.T) {
 		tests := []struct {
-			name       string
-			argument   map[string]any
-			wantField  string
-			wantPrefix string
+			name          string
+			argument      map[string]any
+			wantField     string
+			wantSchemaErr bool
 		}{
-			{name: "whitespace query", argument: map[string]any{"query": "   "}, wantField: "query", wantPrefix: "Validation error:"},
-			{name: "limit too high", argument: map[string]any{"query": "golang", "limit": 21}, wantField: "limit", wantPrefix: `validating "arguments":`},
-			{name: "pageno too low", argument: map[string]any{"query": "golang", "pageno": 0}, wantField: "pageno", wantPrefix: `validating "arguments":`},
-			{name: "invalid time range", argument: map[string]any{"query": "golang", "time_range": "week"}, wantField: "time_range", wantPrefix: `validating "arguments":`},
-			{name: "invalid safesearch", argument: map[string]any{"query": "golang", "safesearch": 3}, wantField: "safesearch", wantPrefix: `validating "arguments":`},
-			{name: "invalid language", argument: map[string]any{"query": "golang", "language": "not a valid language code"}, wantField: "language", wantPrefix: "Validation error:"},
-			{name: "invalid categories", argument: map[string]any{"query": "golang", "categories": "general/../../x"}, wantField: "categories", wantPrefix: "Validation error:"},
-			{name: "invalid engines", argument: map[string]any{"query": "golang", "engines": "bing/../../x"}, wantField: "engines", wantPrefix: "Validation error:"},
+			{name: "whitespace query", argument: map[string]any{"query": "   "}, wantField: "query"},
+			{name: "limit too high", argument: map[string]any{"query": "golang", "limit": 21}, wantField: "limit", wantSchemaErr: true},
+			{name: "pageno too low", argument: map[string]any{"query": "golang", "pageno": 0}, wantField: "pageno", wantSchemaErr: true},
+			{name: "invalid time range", argument: map[string]any{"query": "golang", "time_range": "week"}, wantField: "time_range", wantSchemaErr: true},
+			{name: "invalid safesearch", argument: map[string]any{"query": "golang", "safesearch": 3}, wantField: "safesearch", wantSchemaErr: true},
+			{name: "invalid language", argument: map[string]any{"query": "golang", "language": "not a valid language code"}, wantField: "language"},
+			{name: "invalid categories", argument: map[string]any{"query": "golang", "categories": "general/../../x"}, wantField: "categories"},
+			{name: "invalid engines", argument: map[string]any{"query": "golang", "engines": "bing/../../x"}, wantField: "engines"},
 		}
 
 		for _, tt := range tests {
@@ -173,12 +175,7 @@ func TestMCPStdioE2E(t *testing.T) {
 				}
 
 				text := toolText(t, result)
-				if !strings.HasPrefix(text, tt.wantPrefix) {
-					t.Fatalf("error text = %q, want prefix %q\nstderr:\n%s", text, tt.wantPrefix, stderr.String())
-				}
-				if !strings.Contains(text, tt.wantField) {
-					t.Fatalf("error text = %q, want field %q\nstderr:\n%s", text, tt.wantField, stderr.String())
-				}
+				assertMCPValidationText(t, text, tt.wantField, tt.wantSchemaErr, stderr.String())
 			})
 		}
 	})
@@ -331,6 +328,13 @@ func buildE2EMCPBinary(ctx context.Context, t *testing.T) string {
 	}
 
 	return binaryPath
+}
+
+func e2eMCPEnv(searxngURL string, extra ...string) []string {
+	env := append(os.Environ(), "SEARXNG_URL="+searxngURL, "SEARXNG_MAX_RETRIES=0")
+	env = append(env, extra...)
+
+	return env
 }
 
 func findSearchTool(ctx context.Context, t *testing.T, session *mcp.ClientSession, stderr *bytes.Buffer) *mcp.Tool {

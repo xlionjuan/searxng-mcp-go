@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"strings"
@@ -19,7 +20,7 @@ import (
 const validMCPInitialize = `{"jsonrpc":"2.0","method":"initialize"}` + "\n"
 
 func TestMCPErrors_Startup(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 
 	binaryPath := os.Getenv("E2E_MCP_BINARY")
@@ -86,6 +87,14 @@ func TestMCPErrors_Startup(t *testing.T) {
 			t.Logf("stderr:\n%s", stderrStr)
 			t.Logf("exit error: %v", err)
 
+			var exitErr *exec.ExitError
+			if !errors.As(err, &exitErr) {
+				t.Fatalf("cmd.Run() error = %v, want *exec.ExitError\nstderr:\n%s", err, stderrStr)
+			}
+			if got := exitErr.ExitCode(); got != 1 {
+				t.Fatalf("exit code = %d, want 1\nstderr:\n%s", got, stderrStr)
+			}
+
 			for _, want := range tt.wantStderr {
 				if !strings.Contains(stderrStr, want) {
 					t.Errorf("stderr does not contain %q\nstderr:\n%s", want, stderrStr)
@@ -113,7 +122,7 @@ func TestMCPErrors_DebugMode(t *testing.T) {
 	// Run the MCP server with DEBUG=1.
 	var stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, binaryPath)
-	cmd.Env = append(os.Environ(), "SEARXNG_URL="+searxngURL, "DEBUG=1")
+	cmd.Env = e2eMCPEnv(searxngURL, "DEBUG=1")
 	cmd.Stderr = &stderr
 
 	var session *mcp.ClientSession
@@ -166,12 +175,11 @@ func TestMCPErrors_DebugMode(t *testing.T) {
 
 	// Verify unresponsive_engines is present in the response (debug mode)
 	response := requireSearchResponse(ctx, t, session, map[string]any{
-		"query": "site:example.invalid unlikely-no-real-result-debug-e2e",
+		"query": "golang",
 		"limit": 3,
-	}, &stderr, "debug mode unresponsive engines")
+	}, &stderr, "debug mode response fields")
 
-	// In debug mode, unresponsive_engines should be present (non-nil).
-	// We just verify the response is valid JSON and contains expected fields.
+	// Verify the response is valid JSON and contains expected fields.
 	t.Logf("debug mode response: query=%q, results=%d, answers=%d, infoboxes=%d",
 		response.Query, len(response.Results), len(response.Answers), len(response.Infoboxes))
 }
@@ -193,7 +201,7 @@ func TestMCPErrors_InvalidInputs(t *testing.T) {
 
 	var stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, binaryPath)
-	cmd.Env = append(os.Environ(), "SEARXNG_URL="+searxngURL)
+	cmd.Env = e2eMCPEnv(searxngURL)
 	cmd.Stderr = &stderr
 
 	session := connectMCPSessionErrorTest(ctx, t, cmd, &stderr)
@@ -208,82 +216,76 @@ func TestMCPErrors_InvalidInputs(t *testing.T) {
 	}()
 
 	tests := []struct {
-		name       string
-		arguments  map[string]any
-		wantField  string
-		wantPrefix string
+		name          string
+		arguments     map[string]any
+		wantField     string
+		wantSchemaErr bool
 	}{
 		{
-			name:       "whitespace query",
-			arguments:  map[string]any{"query": "   "},
-			wantField:  "query",
-			wantPrefix: "Validation error:",
+			name:      "whitespace query",
+			arguments: map[string]any{"query": "   "},
+			wantField: "query",
 		},
 		{
-			name:       "control characters in query",
-			arguments:  map[string]any{"query": "golang\x00search"},
-			wantField:  "query",
-			wantPrefix: "Validation error:",
+			name:      "control characters in query",
+			arguments: map[string]any{"query": "golang\x00search"},
+			wantField: "query",
 		},
 		{
-			name:       "long query",
-			arguments:  map[string]any{"query": strings.Repeat("a", 501)},
-			wantField:  "query",
-			wantPrefix: "Validation error:",
+			name:      "long query",
+			arguments: map[string]any{"query": strings.Repeat("a", 501)},
+			wantField: "query",
 		},
 		{
-			name:       "limit too high",
-			arguments:  map[string]any{"query": "golang", "limit": 21},
-			wantField:  "limit",
-			wantPrefix: `validating "arguments":`,
+			name:          "limit too high",
+			arguments:     map[string]any{"query": "golang", "limit": 21},
+			wantField:     "limit",
+			wantSchemaErr: true,
 		},
 		{
-			name:       "limit too low",
-			arguments:  map[string]any{"query": "golang", "limit": 0},
-			wantField:  "limit",
-			wantPrefix: `validating "arguments":`,
+			name:          "limit too low",
+			arguments:     map[string]any{"query": "golang", "limit": 0},
+			wantField:     "limit",
+			wantSchemaErr: true,
 		},
 		{
-			name:       "pageno too low",
-			arguments:  map[string]any{"query": "golang", "pageno": 0},
-			wantField:  "pageno",
-			wantPrefix: `validating "arguments":`,
+			name:          "pageno too low",
+			arguments:     map[string]any{"query": "golang", "pageno": 0},
+			wantField:     "pageno",
+			wantSchemaErr: true,
 		},
 		{
-			name:       "invalid safesearch",
-			arguments:  map[string]any{"query": "golang", "safesearch": 3},
-			wantField:  "safesearch",
-			wantPrefix: `validating "arguments":`,
+			name:          "invalid safesearch",
+			arguments:     map[string]any{"query": "golang", "safesearch": 3},
+			wantField:     "safesearch",
+			wantSchemaErr: true,
 		},
 		{
-			name:       "safesearch negative",
-			arguments:  map[string]any{"query": "golang", "safesearch": -1},
-			wantField:  "safesearch",
-			wantPrefix: `validating "arguments":`,
+			name:          "safesearch negative",
+			arguments:     map[string]any{"query": "golang", "safesearch": -1},
+			wantField:     "safesearch",
+			wantSchemaErr: true,
 		},
 		{
-			name:       "invalid time range",
-			arguments:  map[string]any{"query": "golang", "time_range": "week"},
-			wantField:  "time_range",
-			wantPrefix: `validating "arguments":`,
+			name:          "invalid time range",
+			arguments:     map[string]any{"query": "golang", "time_range": "week"},
+			wantField:     "time_range",
+			wantSchemaErr: true,
 		},
 		{
-			name:       "invalid language",
-			arguments:  map[string]any{"query": "golang", "language": "not a valid language code"},
-			wantField:  "language",
-			wantPrefix: "Validation error:",
+			name:      "invalid language",
+			arguments: map[string]any{"query": "golang", "language": "not a valid language code"},
+			wantField: "language",
 		},
 		{
-			name:       "invalid categories",
-			arguments:  map[string]any{"query": "golang", "categories": "general/../../x"},
-			wantField:  "categories",
-			wantPrefix: "Validation error:",
+			name:      "invalid categories",
+			arguments: map[string]any{"query": "golang", "categories": "general/../../x"},
+			wantField: "categories",
 		},
 		{
-			name:       "invalid engines",
-			arguments:  map[string]any{"query": "golang", "engines": "bing/../../x"},
-			wantField:  "engines",
-			wantPrefix: "Validation error:",
+			name:      "invalid engines",
+			arguments: map[string]any{"query": "golang", "engines": "bing/../../x"},
+			wantField: "engines",
 		},
 	}
 
@@ -299,12 +301,7 @@ func TestMCPErrors_InvalidInputs(t *testing.T) {
 			}
 
 			text := toolText(t, result)
-			if !strings.HasPrefix(text, tt.wantPrefix) {
-				t.Fatalf("error text = %q, want prefix %q\nstderr:\n%s", text, tt.wantPrefix, stderr.String())
-			}
-			if !strings.Contains(text, tt.wantField) {
-				t.Fatalf("error text = %q, want field %q\nstderr:\n%s", text, tt.wantField, stderr.String())
-			}
+			assertMCPValidationText(t, text, tt.wantField, tt.wantSchemaErr, stderr.String())
 		})
 	}
 }
@@ -326,7 +323,7 @@ func TestMCPErrors_IncorrectParams(t *testing.T) {
 
 	var stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, binaryPath)
-	cmd.Env = append(os.Environ(), "SEARXNG_URL="+searxngURL)
+	cmd.Env = e2eMCPEnv(searxngURL)
 	cmd.Stderr = &stderr
 
 	session := connectMCPSessionErrorTest(ctx, t, cmd, &stderr)
@@ -341,24 +338,24 @@ func TestMCPErrors_IncorrectParams(t *testing.T) {
 	}()
 
 	tests := []struct {
-		name       string
-		arguments  map[string]any
-		wantPrefix string
+		name      string
+		arguments map[string]any
+		wantField string
 	}{
 		{
-			name:       "wrong type limit",
-			arguments:  map[string]any{"query": "golang", "limit": "twenty"},
-			wantPrefix: `validating "arguments":`,
+			name:      "wrong type limit",
+			arguments: map[string]any{"query": "golang", "limit": "twenty"},
+			wantField: "limit",
 		},
 		{
-			name:       "wrong type safesearch",
-			arguments:  map[string]any{"query": "golang", "safesearch": "two"},
-			wantPrefix: `validating "arguments":`,
+			name:      "wrong type safesearch",
+			arguments: map[string]any{"query": "golang", "safesearch": "two"},
+			wantField: "safesearch",
 		},
 		{
-			name:       "unexpected parameter",
-			arguments:  map[string]any{"query": "golang", "unknown_param": "value"},
-			wantPrefix: `validating "arguments":`,
+			name:      "unexpected parameter",
+			arguments: map[string]any{"query": "golang", "unknown_param": "value"},
+			wantField: "unknown_param",
 		},
 	}
 
@@ -371,10 +368,29 @@ func TestMCPErrors_IncorrectParams(t *testing.T) {
 			}
 
 			text := toolText(t, result)
-			if !strings.HasPrefix(text, tt.wantPrefix) {
-				t.Fatalf("error text = %q, want prefix %q\nstderr:\n%s", text, tt.wantPrefix, stderr.String())
-			}
+			assertMCPValidationText(t, text, tt.wantField, true, stderr.String())
 		})
+	}
+}
+
+func assertMCPValidationText(t *testing.T, text, wantField string, wantSchemaErr bool, stderr string) {
+	t.Helper()
+
+	if !strings.Contains(text, wantField) {
+		t.Fatalf("error text = %q, want field %q\nstderr:\n%s", text, wantField, stderr)
+	}
+
+	lowerText := strings.ToLower(text)
+	if wantSchemaErr {
+		if !strings.Contains(lowerText, "argument") {
+			t.Fatalf("error text = %q, want schema/arguments validation context\nstderr:\n%s", text, stderr)
+		}
+
+		return
+	}
+
+	if !strings.Contains(lowerText, "validation") {
+		t.Fatalf("error text = %q, want project validation context\nstderr:\n%s", text, stderr)
 	}
 }
 

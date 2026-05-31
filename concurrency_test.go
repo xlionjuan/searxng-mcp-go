@@ -46,6 +46,11 @@ func TestConcurrentSearches(t *testing.T) {
 		SearXNGURL: server.URL,
 		Timeout:    30 * time.Second,
 	}
+	searcher, err := searxng.NewSearXNGSearcher(cfg, false)
+	if err != nil {
+		t.Fatalf("NewSearXNGSearcher() error = %v", err)
+	}
+	defer func() { _ = searcher.Close() }()
 
 	const (
 		numGoroutines       = 20
@@ -65,7 +70,7 @@ func TestConcurrentSearches(t *testing.T) {
 
 				ctx := context.Background()
 
-				_, err := testPerformSearch(ctx, t, cfg, args)
+				_, err := searcher.Search(ctx, args)
 				if err != nil {
 					t.Errorf("Search error for %s: %v", query, err)
 				}
