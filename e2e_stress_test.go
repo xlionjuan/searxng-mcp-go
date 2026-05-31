@@ -280,6 +280,10 @@ func TestMCPStress_Stability(t *testing.T) {
 				"limit": 3,
 			}, &stderr, fmt.Sprintf("stability search %d", i))
 
+			if len(response.Results) == 0 {
+				t.Fatalf("search %d (%q) returned 0 results\nstderr:\n%s", i, query, stderr.String())
+			}
+
 			for j, result := range response.Results {
 				if strings.TrimSpace(result.Title) == "" {
 					t.Fatalf("search %d result[%d] title is empty\nstderr:\n%s", i, j, stderr.String())

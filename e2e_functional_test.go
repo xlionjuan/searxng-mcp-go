@@ -75,6 +75,10 @@ func TestMCPFunctional(t *testing.T) {
 					"limit":      3,
 				}, &stderr, "all safesearch levels")
 
+				if len(response.Results) == 0 {
+					t.Fatalf("safesearch=%d results length = 0\nresponse: %#v\nstderr:\n%s", safesearch, response, stderr.String())
+				}
+
 				for i, result := range response.Results {
 					if strings.TrimSpace(result.Title) == "" {
 						t.Fatalf("safesearch=%d result[%d] title is empty\nresponse: %#v\nstderr:\n%s", safesearch, i, response, stderr.String())
@@ -101,6 +105,10 @@ func TestMCPFunctional(t *testing.T) {
 				}
 				response := requireSearchResponse(ctx, t, session, args, &stderr, "all time ranges")
 
+				if len(response.Results) == 0 {
+					t.Fatalf("time_range=%q results length = 0\nresponse: %#v\nstderr:\n%s", timeRange, response, stderr.String())
+				}
+
 				for i, result := range response.Results {
 					if strings.TrimSpace(result.Title) == "" {
 						t.Fatalf("time_range=%q result[%d] title is empty\nresponse: %#v\nstderr:\n%s", timeRange, i, response, stderr.String())
@@ -119,6 +127,10 @@ func TestMCPFunctional(t *testing.T) {
 					"categories": category,
 					"limit":      3,
 				}, &stderr, "all categories")
+
+				if len(response.Results) == 0 {
+					t.Fatalf("categories=%q results length = 0\nresponse: %#v\nstderr:\n%s", category, response, stderr.String())
+				}
 
 				for i, result := range response.Results {
 					if strings.TrimSpace(result.Title) == "" {
@@ -162,6 +174,10 @@ func TestMCPFunctional(t *testing.T) {
 					"limit":  3,
 				}, &stderr, "paginations")
 
+				if len(response.Results) == 0 {
+					t.Fatalf("pageno=%d results length = 0\nresponse: %#v\nstderr:\n%s", pageno, response, stderr.String())
+				}
+
 				for i, result := range response.Results {
 					if strings.TrimSpace(result.Title) == "" {
 						t.Fatalf("pageno=%d result[%d] title is empty\nresponse: %#v\nstderr:\n%s", pageno, i, response, stderr.String())
@@ -201,6 +217,10 @@ func TestMCPFunctional(t *testing.T) {
 				"limit":      3,
 			}, &stderr, "parameter combinations language+categories")
 
+			if len(response.Results) == 0 {
+				t.Fatalf("language+categories results length = 0\nresponse: %#v\nstderr:\n%s", response, stderr.String())
+			}
+
 			for i, result := range response.Results {
 				if strings.TrimSpace(result.Title) == "" {
 					t.Fatalf("language+categories result[%d] title is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
@@ -233,7 +253,7 @@ func TestMCPFunctional(t *testing.T) {
 				"limit":  5,
 			}, &stderr, "parameter combinations pageno+limit")
 
-			if len(response.Results) > 5 {
+			if len(response.Results) == 0 || len(response.Results) > 5 {
 				t.Fatalf("pageno+limit got %d results, want <= 5\nresponse: %#v\nstderr:\n%s", len(response.Results), response, stderr.String())
 			}
 			for i, result := range response.Results {
@@ -254,6 +274,9 @@ func TestMCPFunctional(t *testing.T) {
 			if !strings.Contains(response.Query, "你好") {
 				t.Fatalf("chinese query not preserved in response: query=%q\nstderr:\n%s", response.Query, stderr.String())
 			}
+			if len(response.Results) == 0 {
+				t.Fatalf("chinese query results length = 0\nresponse: %#v\nstderr:\n%s", response, stderr.String())
+			}
 		})
 
 		t.Run("japanese", func(t *testing.T) {
@@ -265,6 +288,9 @@ func TestMCPFunctional(t *testing.T) {
 			if !strings.Contains(response.Query, "こんにちは") {
 				t.Fatalf("japanese query not preserved in response: query=%q\nstderr:\n%s", response.Query, stderr.String())
 			}
+			if len(response.Results) == 0 {
+				t.Fatalf("japanese query results length = 0\nresponse: %#v\nstderr:\n%s", response, stderr.String())
+			}
 		})
 
 		t.Run("emoji", func(t *testing.T) {
@@ -273,8 +299,8 @@ func TestMCPFunctional(t *testing.T) {
 				"limit": 3,
 			}, &stderr, "unicode emoji query")
 
-			if strings.TrimSpace(response.Query) == "" {
-				t.Fatalf("emoji query is empty in response\nresponse: %#v\nstderr:\n%s", response, stderr.String())
+			if len(response.Results) == 0 {
+				t.Fatalf("emoji query results length = 0\nresponse: %#v\nstderr:\n%s", response, stderr.String())
 			}
 		})
 	})
@@ -284,6 +310,10 @@ func TestMCPFunctional(t *testing.T) {
 			"query": "golang",
 			"limit": 10,
 		}, &stderr, "response structure")
+
+		if len(response.Results) == 0 {
+			t.Fatalf("response structure results length = 0\nresponse: %#v\nstderr:\n%s", response, stderr.String())
+		}
 
 		for i, result := range response.Results {
 			if strings.TrimSpace(result.Title) == "" {

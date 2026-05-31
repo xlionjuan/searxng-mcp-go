@@ -75,9 +75,7 @@ func TestMCPStdioE2E(t *testing.T) {
 		}, &stderr, "basic search")
 
 		if len(response.Results) == 0 {
-			if len(response.Answers) == 0 && len(response.Infoboxes) == 0 {
-				t.Fatalf("basic search returned no results, answers, or infoboxes\nresponse: %#v\nstderr:\n%s", response, stderr.String())
-			}
+			t.Fatalf("basic search results length = 0\nresponse: %#v\nstderr:\n%s", response, stderr.String())
 		}
 		if strings.TrimSpace(response.Query) == "" {
 			t.Fatalf("basic search query is empty\nresponse: %#v\nstderr:\n%s", response, stderr.String())
