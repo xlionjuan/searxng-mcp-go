@@ -133,7 +133,9 @@ Most detailed topic docs live in `docs/`; root docs (README.md, CONTEXT.md, AGEN
 - MCP stdin mode does not accept CLI args — use env vars only (see `docs/adr/004-mcp-stdin-env-only.md`)
 
 ### E2E Tests
-- **🔴 E2E tests that query the live SearXNG server MUST assert non-zero results.** Do NOT weaken `len(Results) == 0` checks to allow empty results — the live server is the project's single source of truth for functional correctness. Exceptions require explicit owner approval per test case.
+- **Core functional tests assert non-zero results.** Tests that validate search results (`basic_search`, `response_structure`, `all_safesearch_levels`, `paginations`, `limit_boundaries`, `parameter_combinations`, `unicode_and_special_characters`) use strict `len(Results) > 0` checks. If the live server returns only an infobox with 0 web results, those tests log a `t.Logf` warning instead of failing, and the warnings are collected in a `WARNING SUMMARY` block at the end of each test group (`TestMCPFunctional`, `TestMCPStdioE2E`).
+- **Exceptions are owner-approved and documented.** Known limitations of the CI SearXNG instance (e.g. `files` category removed, `all_time_ranges` day/month/year relaxed, `pageno+limit` warning-only) have explicit owner approval. Do not add new leniency without approval.
+- **Adding new strict assertions is preferred.** When a test currently tolerates empty results but could meaningfully assert non-zero results (e.g. with a different query or parameter combination), prefer tightening over leaving it lenient.
 
 ### Version Bump & Release Workflow
 **Tag style:** `v{major}.{minor}.{patch}` (e.g. `v1.0.4`, `v1.1.0`). No `-beta`, `-rc`, or other suffixes.
