@@ -16,6 +16,8 @@ set -euo pipefail
 #   ./02-stop.sh --force   # kill orphaned searx/webapp.py if .bg-pid is stale
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./lib-searxng-pid.sh
+source "${SCRIPT_DIR}/lib-searxng-pid.sh"
 SEARXNG_PID_FILE="${SCRIPT_DIR}/.bg-pid"
 # SEARXNG_LOG_FILE is intentionally kept on disk for post-mortem debugging
 # (see 01-start-bg.sh). It is not deleted by this script.
@@ -44,14 +46,17 @@ stop_pid() {
 stopped=0
 
 # Primary path: read .bg-pid
+# The is_searxng_pid check guards against a recycled PID: a live but unrelated
+# process must not be SIGTERM/SIGKILLed just because it happens to share the
+# recorded PID number.
 if [ -f "$SEARXNG_PID_FILE" ]; then
     pid="$(cat "$SEARXNG_PID_FILE" 2>/dev/null || true)"
-    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    if [ -n "$pid" ] && is_searxng_pid "$pid"; then
         echo "Stopping SearXNG (PID $pid)..."
         stop_pid "$pid"
         stopped=1
     else
-        echo "Stale PID file (PID ${pid:-?} not running); removing."
+        echo "Stale/reused PID file (PID ${pid:-?} is not this SearXNG); removing."
     fi
     rm -f "$SEARXNG_PID_FILE"
 fi

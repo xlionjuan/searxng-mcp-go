@@ -19,6 +19,8 @@ set -euo pipefail
 #   just test-server-status
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./lib-searxng-pid.sh
+source "${SCRIPT_DIR}/lib-searxng-pid.sh"
 SEARXNG_PID_FILE="${SCRIPT_DIR}/.bg-pid"
 SEARXNG_PORT="${SEARXNG_PORT:-8888}"
 
@@ -28,7 +30,7 @@ is_port_open() {
 
 if [ -f "$SEARXNG_PID_FILE" ]; then
     pid="$(cat "$SEARXNG_PID_FILE" 2>/dev/null || true)"
-    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    if [ -n "$pid" ] && is_searxng_pid "$pid"; then
         if is_port_open; then
             echo "live  — PID $pid, port $SEARXNG_PORT responding"
             exit 0
@@ -37,7 +39,7 @@ if [ -f "$SEARXNG_PID_FILE" ]; then
         echo "           process may still be starting up; tail searxng.log"
         exit 1
     fi
-    echo "stale — .bg-pid points at PID ${pid:-?} which is no longer running"
+    echo "stale — .bg-pid points at PID ${pid:-?} which is not this SearXNG"
     echo "         (PID file will be cleared on next start; run ./02-stop.sh to clean up)"
     exit 1
 fi

@@ -117,6 +117,10 @@ test-server-logs:
 # Restart the background SearXNG test server
 test-server-restart: test-server-stop test-server-start
 
+# Unit-test the is_searxng_pid helper (PID ownership contract)
+test-server-pid-helper:
+    bash searxng-server-test/test-pid-helper.sh
+
 # Update SearXNG submoudle
 update-searxng-submodule:
     git submodule update --remote searxng-server-test/searxng

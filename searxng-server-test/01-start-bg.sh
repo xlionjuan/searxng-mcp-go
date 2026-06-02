@@ -19,6 +19,8 @@ set -euo pipefail
 #   ${SCRIPT_DIR}/searxng.log  — stdout/stderr of the background process
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./lib-searxng-pid.sh
+source "${SCRIPT_DIR}/lib-searxng-pid.sh"
 VENV_DIR="${SCRIPT_DIR}/.venv"
 SEARXNG_DIR="${SCRIPT_DIR}/searxng"
 SETTINGS_FILE="${SCRIPT_DIR}/settings.yml"
@@ -50,11 +52,13 @@ if [ ! -f "${SEARXNG_DIR}/searx/webapp.py" ]; then
 fi
 
 # Reject double-start: if .bg-pid points at a live process, refuse to spawn a
-# second instance. Stale PID files (process gone) are silently cleared so the
-# caller can retry without manual cleanup.
+# second instance. Stale PID files (process gone or PID recycled by an
+# unrelated process) are silently cleared so the caller can retry without
+# manual cleanup. The ownership check (is_searxng_pid) prevents a recycled
+# PID from blocking startup or being misread as a running SearXNG.
 if [ -f "$SEARXNG_PID_FILE" ]; then
     existing_pid="$(cat "$SEARXNG_PID_FILE" 2>/dev/null || true)"
-    if [ -n "$existing_pid" ] && kill -0 "$existing_pid" 2>/dev/null; then
+    if [ -n "$existing_pid" ] && is_searxng_pid "$existing_pid"; then
         echo "Error: SearXNG is already running (PID $existing_pid)." >&2
         echo "       Run ./02-stop.sh first, or 'just test-server-restart'." >&2
         exit 1

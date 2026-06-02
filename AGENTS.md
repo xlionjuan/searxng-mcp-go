@@ -235,6 +235,8 @@ Underlying scripts (rarely needed directly):
 | `searxng-server-test/01-start-fg.sh` | Foreground start — **do not use from agents/CI** |
 | `searxng-server-test/02-stop.sh` | Stop background instance; `--force` kills orphans |
 | `searxng-server-test/03-status.sh` | Report live/stale/dead/orphan state |
+| `searxng-server-test/lib-searxng-pid.sh` | Shared helper: `is_searxng_pid` PID-ownership check (sourced by the three scripts above) |
+| `searxng-server-test/test-pid-helper.sh` | Shell unit tests for `is_searxng_pid` (run via `just test-server-pid-helper`) |
 
 **Key details:**
 - Server runs on `http://127.0.0.1:8888` — set `SEARXNG_URL=http://127.0.0.1:8888` before running E2E tests
@@ -256,6 +258,7 @@ Underlying scripts (rarely needed directly):
 - **Never run `01-start-fg.sh` from an agent or CI context** — it runs SearXNG in the foreground and blocks the calling shell until killed. Use `just test-server-start` (background) instead
 - If E2E tests fail with a connection/timeout error, check `searxng-server-test/searxng.log` for SearXNG-side stack traces before assuming the test is broken
 - `.bg-pid` can go stale (e.g. agent shell killed → PID file lost, but searx process lives on). Recovery: `pgrep -f 'searx/webapp.py'` to inspect, then `just test-server-stop` (with `--force` if the PID file is gone)
+- A recorded `.bg-pid` may be **recycled** by an unrelated process (classic Unix PID-reuse). The start/stop/status scripts now verify the PID's argv contains `searx/webapp.py` via `is_searxng_pid` before signaling or reporting it as live; a non-matching PID is treated as stale. Don't bypass that check.
 
 ## Agent skills
 
