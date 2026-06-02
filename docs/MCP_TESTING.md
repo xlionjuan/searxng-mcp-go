@@ -13,7 +13,7 @@ Using `echo '{"jsonrpc":...}' | ./searxng-mcp-go` to test MCP is fundamentally f
 
 ## Recommended: InMemoryTransport (from official SDK)
 
-The `modelcontextprotocol/go-sdk` (v1.6.0) provides `NewInMemoryTransports()` specifically for in-process testing. No subprocess, no pipe, no network — just direct function calls.
+The `modelcontextprotocol/go-sdk` provides `NewInMemoryTransports()` specifically for in-process testing. No subprocess, no pipe, no network — just direct function calls.
 
 ### Basic Setup
 
