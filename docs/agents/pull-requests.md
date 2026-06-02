@@ -15,6 +15,31 @@ Common commands:
 - **Read review comments**: `gh pr view <number> --comments`
 - **Comment on a PR**: `gh pr comment <number> --body "..."`
 
+## Git Identity
+
+Do not change git author or committer identity as part of normal PR work. In
+particular, do not run:
+
+- `git config user.name ...`
+- `git config user.email ...`
+- `git config --global user.name ...`
+- `git config --global user.email ...`
+
+If a commit fails because git does not know the author identity, stop and report
+the error instead of inventing an identity. If the user explicitly asks you to
+investigate missing git identity behavior, use an isolated temporary repository;
+do not change global config or this repo's local config.
+
+When a PR adds or changes a GitHub Actions workflow or agent workflow that can
+commit, verify the exact author and committer identity used by the workflow or
+action. Do not enable workflows that commit as generic or unverified GitHub
+noreply identities such as `<tool>@users.noreply.github.com`. Never derive a
+commit email from a tool name, action name, repository name, or package name
+unless that exact identity is verified. The identity must be an explicit,
+reviewed bot/app identity owned by the workflow provider or this repo owner. If
+the action config does not make that clear, document the risk and leave the
+workflow disabled or blocked for human review.
+
 ## Local Reports
 
 `REPORT.md` is only for local ad hoc review/report work. PR agents must ignore

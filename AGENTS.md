@@ -179,6 +179,13 @@ Run this workflow only when the user explicitly asks for a release and the targe
 ### GitHub Operations
 - **🔴 GitHub API operations MUST use `gh` CLI** — via terminal, always. **Absolutely NO browser tools** (browser_navigate, browser_vision, etc.) for GitHub — not for Actions, not for PRs, not for anything on github.com.
 
+### Git Identity
+- Agents must not run `git config user.name`, `git config user.email`, `git config --global user.name`, or `git config --global user.email` in this repo unless the user explicitly asks for that exact operation.
+- If `git commit` fails because author identity is missing, stop and report the failure. Do not invent or set a fallback identity.
+- Do not use generic or unverified GitHub noreply identities such as `<tool>@users.noreply.github.com` for commits. Never derive a commit email from a tool name, action name, repository name, or package name unless that exact identity is verified. Automated workflows that create commits must use an explicit, reviewed bot/app identity owned by the workflow provider or this repo owner.
+- When editing GitHub Actions or agent workflows that can commit, review the workflow/action documentation or source for the exact commit author and committer identity. Treat unknown, generic, or user-name-derived noreply identities as a bug to fix before enabling the workflow.
+- If testing Git behavior around missing identity, use an isolated temporary repository and do not change global or repo-local config for this project.
+
 ## Build & Test Commands
 
 Root benchmarks (format/search) live in `bench_test.go`; internal benchmarks (marshal/validation) live in `internal/searxng/bench_test.go`.
