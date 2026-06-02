@@ -423,8 +423,8 @@ func TestMCPStress_Randomized(t *testing.T) {
 
 // resolveRandomSeed returns the random seed for stress tests. It honors the
 // E2E_RANDOM_SEED env var so a failed run can be reproduced by re-running the
-// test with the same value. When the env var is unset or invalid, a fresh
-// nanosecond seed is generated automatically.
+// test with the same value. An invalid value fails the test; when the env var
+// is unset, a fresh nanosecond seed is generated automatically.
 func resolveRandomSeed(t *testing.T) int64 {
 	t.Helper()
 
