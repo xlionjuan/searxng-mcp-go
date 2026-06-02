@@ -71,7 +71,7 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 	// can be added here if the threat model evolves to require it.
 	if req.URL != nil && len(via) > 0 {
 		prevHost := via[len(via)-1].URL.Host
-		if req.URL.Host != prevHost {
+		if !strings.EqualFold(req.URL.Host, prevHost) {
 			return fmt.Errorf("%w: %s -> %s", errRedirectDifferentHost, prevHost, req.URL.Host)
 		}
 	}

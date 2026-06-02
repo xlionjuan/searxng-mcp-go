@@ -244,6 +244,34 @@ func TestEnforceSearchRedirectPolicy(t *testing.T) {
 			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil", err)
 		}
 	})
+
+	t.Run("allow same host with different letter case", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "https://search.Example.com/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://search.example.com/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for case-variant host", err)
+		}
+	})
+
+	t.Run("allow same host differing only in letter case with port", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "https://Search.Example.COM:8443/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://search.example.com:8443/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for case-variant host with port", err)
+		}
+	})
 }
 
 func mustParseURL(t *testing.T, raw string) *url.URL {
