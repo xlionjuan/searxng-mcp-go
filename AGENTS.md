@@ -171,6 +171,8 @@ Run this workflow only when the user explicitly asks for a release and the targe
 
 ### Verification
 - Code changes must be verified with the narrowest meaningful build/test commands before committing. Broaden verification for shared behavior, public interfaces, test infrastructure, or release/CI changes.
+- PR agents must run local verification themselves before opening or updating a PR; do not rely on CI or reviewers as the first validation pass. For Go code, test, CI, or script changes, the minimum local gate is `go test ./...` plus `golangci-lint run ./...`.
+- If `golangci-lint` is unavailable in the local environment, run `go vet ./...` as the fallback static check and state in the PR body that the linter itself could not be run.
 - If a subagent made code changes, the coordinating agent must review and verify those changes before committing.
 - Never trust your own knowledge of version numbers, release dates, or specification statuses. Time-sensitive external facts (language versions, dependency versions, API stability, RFC status, etc.) must be verified against a current authoritative source before being stated as fact; if that verification is unavailable, avoid making the claim or state the verification gap.
 

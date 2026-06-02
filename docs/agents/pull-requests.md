@@ -62,8 +62,21 @@ Do not silently bypass these accepted decisions:
 
 ## Verification
 
-Run the narrowest meaningful tests for the change, then broaden when the blast
-radius is larger.
+PR agents must run local verification themselves before opening or updating a
+PR. Do not rely on CI or reviewers as the first validation pass.
+
+For Go code, test, CI, or script changes, the minimum local gate is:
+
+- `go test ./...`
+- `golangci-lint run ./...`
+
+If `golangci-lint` is unavailable, run `go vet ./...` as the fallback static
+check and state in the PR body that the linter itself could not be run. If any
+minimum check fails because of the PR's changes, fix the failure before opening
+or updating the PR. If a failure is pre-existing or environment-specific, record
+the exact command, failure summary, and why it is not caused by the PR.
+
+After the minimum gate, broaden verification when the blast radius is larger.
 
 Common checks:
 
