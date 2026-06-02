@@ -28,6 +28,14 @@ var (
 	errUnexpectedFlagType  = errors.New("registered search flag has unexpected type")
 )
 
+// Process exit codes. CLI failures exit with exitCodeCLIError; MCP mode
+// failures (stdin validation, server startup/run) exit with exitCodeMCPError
+// to match the documented contract in cli.go's "EXIT CODES" section.
+const (
+	exitCodeCLIError = 1
+	exitCodeMCPError = 2
+)
+
 // ============================================================================
 
 // CLIFlags holds parsed CLI flag values.
@@ -265,7 +273,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\033[31mERROR: %v\033[0m\n", err)
 		fmt.Fprintln(os.Stderr, "")
 		printCLIHelp()
-		os.Exit(1)
+		os.Exit(exitCodeCLIError)
 	}
 
 	// Enable debug mode via --debug flag or DEBUG=1 env var
@@ -280,7 +288,7 @@ func main() {
 		err = runCLIMode(debug, flags, positionalArgs)
 		if err != nil {
 			slog.Error("CLI error", "error", err)
-			os.Exit(1)
+			os.Exit(exitCodeCLIError)
 		}
 
 		return
@@ -289,13 +297,13 @@ func main() {
 	mcpStdin, err := prepareMCPStdin(os.Stdin)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
+		os.Exit(exitCodeMCPError)
 	}
 
 	err = runMCPMode(debug, flags, mcpStdin)
 	if err != nil {
 		slog.Error("MCP server error", "error", err)
-		os.Exit(1)
+		os.Exit(exitCodeMCPError)
 	}
 }
 
