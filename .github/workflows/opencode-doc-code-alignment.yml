@@ -1,0 +1,154 @@
+name: OpenCode Doc-Code Alignment Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      review_scope:
+        description: "Optional scope hint, such as docs/, internal/searxng/, or all"
+        required: false
+        default: "all"
+      allow_pr:
+        description: "Allow narrow, unambiguous fixes to be opened as PRs"
+        required: true
+        type: boolean
+        default: false
+      extra_instructions:
+        description: "Optional additional review instructions"
+        required: false
+        default: ""
+
+jobs:
+  opencode-doc-code-alignment:
+    name: Documentation and code alignment review
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: read
+      issues: write
+    steps:
+      - name: Checkout repository with submodules
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0 # So agent can see the history
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: "1.26.3"
+
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
+        with:
+          version: v2.12.2
+          install-only: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+      - name: Install just
+        run: uv tool install rust-just
+
+      - name: Run OpenCode documentation/code alignment review
+        uses: anomalyco/opencode/github@385cb694419f98103af0e8fc6187ddcbcbb6eecb # v1.15.13
+        env:
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        with:
+          model: minimax/MiniMax-M3
+          prompt: |
+            Run a multi-dimensional documentation/code alignment review for this repository.
+
+            Manual run inputs:
+            - review_scope: ${{ inputs.review_scope }}
+            - allow_pr: ${{ inputs.allow_pr }}
+            - extra_instructions: ${{ inputs.extra_instructions }}
+
+            Use a subagent-based workflow when the environment supports it:
+            - Assign independent read-only subagents to inspect different review dimensions.
+            - Each subagent should gather evidence only and avoid file changes.
+            - The coordinating agent must merge overlapping findings, remove duplicates, and calibrate severity.
+            - Use external verification only for time-sensitive or upstream-dependent facts, and cite authoritative sources when such verification is used.
+            - If subagents are not available, perform the same review dimensions sequentially in a single agent run.
+
+            Repository rules:
+            - Read and follow AGENTS.md before doing any work.
+            - Respect the documented project boundaries:
+              - Entry points: main.go, cli.go, mcp.go, format.go
+              - Core package: internal/searxng/
+              - Main documentation: README.md, CONTEXT.md, docs/, docs/adr/
+            - Use patch-style edits for existing files if changes are explicitly allowed.
+            - Use OpenCode's GitHub integration for PR creation when PRs are explicitly allowed.
+            - Use gh CLI for Issue creation; OpenCode's GitHub integration handles PRs and comments, but it does not provide native Issue creation in this workflow.
+            - Do not modify .gitignore.
+            - Do not change the MCP handler User-Agent header.
+            - Do not create or update REPORT.md.
+            - Do not broaden E2E test exceptions without clear owner-approved evidence.
+            - Do not state external version numbers, release dates, or specification status unless verified against current authoritative sources.
+
+            Review dimensions:
+            1. Documentation-to-code alignment
+               - Check whether README.md, CONTEXT.md, docs/*.md, docs/agents/*.md, and docs/adr/*.md accurately describe current CLI behavior, MCP parameters, environment variables, output format, errors, tests, release workflow, and architecture decisions.
+               - Identify stale instructions, missing behavior, renamed parameters, undocumented limits, mismatched examples, or claims not supported by code.
+
+            2. Code-to-documentation alignment
+               - Find public behavior in main.go, cli.go, mcp.go, format.go, and internal/searxng/ that is not documented where users or agents would expect it.
+               - Pay special attention to MCP tool schema, stdin/env behavior, search parameters, output truncation, error handling, debug/config behavior, and SearXNG response handling.
+
+            3. Test-to-documentation alignment
+               - Compare root *_test.go, internal/searxng/*_test.go, e2e_*_test.go, and stress tests against docs/MCP_TESTING.md, docs/SEARXNG_TEST_QUERIES.md, and docs/agents/test-server.md.
+               - Flag documented test workflows that no longer match actual commands, build tags, required env vars, warnings, or CI behavior.
+
+            4. CI/release/agent workflow alignment
+               - Check .github/workflows/ against AGENTS.md, docs/agents/pull-requests.md, docs/agents/release.md, and docs/agents/issue-tracker.md.
+               - Verify that documented constraints are reflected in workflows where applicable, including pinned GitHub Actions uses entries with version comments, fixed Go version, and env-only MCP stdin mode.
+
+            5. Risk and prioritization
+               - Classify each finding as one of:
+                 - correctness bug
+                 - stale documentation
+                 - missing documentation
+                 - ambiguous or misleading documentation
+                 - test workflow mismatch
+                 - CI/release workflow mismatch
+                 - ADR/domain consistency issue
+               - Assign severity:
+                 - High: likely to break users, CI, releases, MCP clients, or agent workflows.
+                 - Medium: likely to mislead contributors or cause wrong usage.
+                 - Low: clarity, completeness, or maintenance improvement.
+
+            Decision policy for Issues vs PR:
+            - Default to opening GitHub Issues, not PRs, for audit findings.
+            - Open one Issue per coherent finding or tightly related finding group.
+            - Do not create a single omnibus Issue if findings are independent.
+            - Do not open a PR for findings that require maintainer judgment, product decisions, ADR changes, release policy changes, or broad cross-document rewrites.
+            - Open a PR only when allow_pr is true and all of these are true:
+              - the fix is narrow and unambiguous;
+              - the expected text/code change is directly supported by repository evidence;
+              - the change does not alter behavior unless explicitly requested;
+              - related docs and tests can be updated in the same branch;
+              - local verification can be run according to AGENTS.md.
+            - If allow_pr is false, do not modify files and do not open PRs.
+            - If opening a PR, keep the PR title and body in English and include summary, docs impact, tests run, linked issues, and limitations.
+            - If only Issues are opened, do not modify files.
+
+            For each finding, provide:
+            - title
+            - severity
+            - category
+            - affected files
+            - evidence from code/docs/tests
+            - why it matters
+            - recommended action
+            - whether it should be an Issue or PR
+            - if Issue: proposed Issue title and body
+            - if PR: exact intended scope and required verification
+
+            Final output:
+            - Summarize the number of findings by severity and category.
+            - List Issues created, if any, with links.
+            - List PRs created, if any, with links.
+            - If no Issues or PRs were created, explain why.
+            - Explicitly state whether documentation updates are needed.
