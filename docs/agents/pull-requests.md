@@ -124,3 +124,11 @@ Every PR body should include:
 - Tests run
 - Linked issue(s)
 - Known limitations or follow-up work, if any
+
+## PR Title and Body Language
+
+The PR title and body must be in English even if the user originally
+discussed the change in another language. PR comments and review replies
+should reply in whatever language the user is using. See the
+`### PR Title and Body Language` section in the root `AGENTS.md` for the
+canonical rule.

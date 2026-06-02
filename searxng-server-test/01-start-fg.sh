@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Foreground start script for SearXNG test server.
+#
+# ⚠️  HUMAN INTERACTIVE DEBUG ONLY — runs SearXNG in the foreground and blocks
+# the calling shell. Agents and CI must use 01-start-bg.sh (or the
+# `just test-server-start` recipe) instead, otherwise the agent's terminal
+# will be stuck on this process until it is killed.
+#
+# Usage:
+#   ./01-start-fg.sh                # start in foreground, port 8888
+#   SEARXNG_DEBUG=1 ./01-start-fg.sh
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="${SCRIPT_DIR}/.venv"
 SEARXNG_DIR="${SCRIPT_DIR}/searxng"

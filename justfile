@@ -93,9 +93,33 @@ quick:
 test-server-setup:
     cd searxng-server-test && bash 00-setup.sh
 
-# Start SearXNG test server (port 8888)
+# Start SearXNG test server in the background (port 8888)
 test-server-start:
-    cd searxng-server-test && bash 01-start.sh
+    cd searxng-server-test && bash 01-start-bg.sh
+
+# Start SearXNG test server in the foreground (human interactive debug only —
+# blocks the calling shell; agents and CI must use test-server-start instead)
+test-server-start-fg:
+    cd searxng-server-test && bash 01-start-fg.sh
+
+# Stop the background SearXNG test server (no-op if not running)
+test-server-stop:
+    cd searxng-server-test && bash 02-stop.sh
+
+# Show whether the background SearXNG test server is running
+test-server-status:
+    cd searxng-server-test && bash 03-status.sh
+
+# Tail the background SearXNG test server log
+test-server-logs:
+    tail -f searxng-server-test/searxng.log
+
+# Restart the background SearXNG test server
+test-server-restart: test-server-stop test-server-start
+
+# Unit-test the is_searxng_pid helper (PID ownership contract)
+test-server-pid-helper:
+    bash searxng-server-test/test-pid-helper.sh
 
 # Update SearXNG submoudle
 update-searxng-submodule:
