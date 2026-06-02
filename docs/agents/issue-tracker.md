@@ -13,6 +13,11 @@ Issues and PRDs for this repo live as GitHub issues. Use the `gh` CLI for all op
 
 Infer the repo from `git remote -v` — `gh` does this automatically when run inside a clone.
 
+Before applying or removing labels, read `docs/agents/triage-labels.md`.
+Labels `accepted`, `needs-explain`, and `rejected` are human-only decision
+labels; do not change them unless the user explicitly requests that exact label
+operation.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a GitHub issue.
@@ -20,3 +25,9 @@ Create a GitHub issue.
 ## When a skill says "fetch the relevant ticket"
 
 Run `gh issue view <number> --comments`.
+
+## Pull requests
+
+For branch and PR work, also read `docs/agents/pull-requests.md`. PR agents
+must ignore `REPORT.md` unless explicitly asked for a local report, and every PR
+body must mention related documentation updates or explain why none were needed.

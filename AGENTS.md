@@ -108,18 +108,21 @@ Most detailed topic docs live in `docs/`; root docs (README.md, CONTEXT.md, AGEN
 | Answer deduplication design | [docs/SEARXNG_ANSWER_DEDUP.md](docs/SEARXNG_ANSWER_DEDUP.md) |
 | Test queries reference | [docs/SEARXNG_TEST_QUERIES.md](docs/SEARXNG_TEST_QUERIES.md) |
 | Architecture Decision Records | [docs/adr/](docs/adr/) |
+| Pull-request agent workflow | [docs/agents/pull-requests.md](docs/agents/pull-requests.md) |
 
 ## Code Cleanliness
 
 - No junk files: `.bak`, `.test` (compiled binaries), `*~`, `.swp`, `.swo`, and temp/backup files **must** be deleted before committing
 - `.gitignore` already covers `*.bak`, `*.test`, `*.swp`, `*.swo`, `*.out`, `REPORT.md`, `.env`, and `searxng-server-test/.venv/`; `*~` files are not ignored and must still be removed manually
 
-## Review & QA Workflow
+## Local Review & QA Reports
 
-- All code reviews, AGENTS.md reviews, test coverage analysis, etc. must be written to `REPORT.md` (project root)
-- `REPORT.md` is permanently in `.gitignore` — **never commit**
-- Append or update a task-specific section for each new review; do not overwrite previous reports
-- TODO list must be concise and contain only unfinished or handoff-relevant work
+- `REPORT.md` is a local-only scratch report for ad hoc repository reviews, AGENTS.md reviews, test coverage analysis, and similar local QA work.
+- `REPORT.md` is permanently in `.gitignore` — **never commit**.
+- Do not create or update `REPORT.md` for normal issue-fix, CI-fix, implementation, or PR-only work unless the user explicitly asks for a local review/report.
+- Independent PR agents should ignore `REPORT.md` and put their summary, test evidence, and open questions in the PR body or GitHub comments instead.
+- When using `REPORT.md`, append or update a task-specific section for each new review; do not overwrite previous reports.
+- TODO lists in reports must be concise and contain only unfinished or handoff-relevant work.
 
 ## Project Rules
 
@@ -158,6 +161,7 @@ Most detailed topic docs live in `docs/`; root docs (README.md, CONTEXT.md, AGEN
 
 ### Documentation
 - All docs (`docs/*.md`, README, CONTEXT, AGENTS) must be in English
+- Pull requests must update related documentation in the same branch when behavior, configuration, CLI/MCP parameters, output format, test workflow, release workflow, domain terminology, or ADR-governed decisions change. If no docs need updates, state that explicitly in the PR body.
 
 ### Editing
 - Use patch-style edits for existing files; avoid `sed -i` / ad hoc rewrites
@@ -217,9 +221,13 @@ cd searxng-server-test
 
 Issues are tracked on GitHub. See `docs/agents/issue-tracker.md`.
 
+### Pull requests
+
+Pull-request agents must use `gh` for GitHub operations, must not touch `REPORT.md` unless explicitly asked, and must update related docs with code changes. See `docs/agents/pull-requests.md`.
+
 ### Triage labels
 
-Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+Issue labels are defined in GitHub and documented in `docs/agents/triage-labels.md`. Always read the current label list with `gh label list` before label-sensitive work. Labels `accepted`, `needs-explain`, and `rejected` are human-only decision labels; agents may recommend them but must not apply, remove, or change them unless explicitly instructed.
 
 ### Domain docs
 
