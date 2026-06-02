@@ -52,10 +52,7 @@ func TestBuildSearchRequest_BasicParams(t *testing.T) {
 	t.Parallel()
 
 	pageno := 2
-	searcher := &SearXNGSearcher{
-		baseURL: "https://search.example.com",
-		client:  http.DefaultClient,
-	}
+	searcher := newRequestTestSearcher(t, "https://search.example.com")
 
 	args := &SearchArgs{
 		Query:      "golang testing",
@@ -128,10 +125,7 @@ func TestBuildSearchRequest_BasicParams(t *testing.T) {
 func TestBuildSearchRequest_MinimalParams(t *testing.T) {
 	t.Parallel()
 
-	searcher := &SearXNGSearcher{
-		baseURL: "https://search.example.com/search",
-		client:  http.DefaultClient,
-	}
+	searcher := newRequestTestSearcher(t, "https://search.example.com/search")
 
 	args := &SearchArgs{
 		Query: "hello",
@@ -165,7 +159,7 @@ func TestBuildSearchRequest_MinimalParams(t *testing.T) {
 		t.Fatalf("body = %q, want to contain 'format=json'", bodyStr)
 	}
 
-	// URL should append /search when path already ends with /search
+	// URL should be left unchanged when base URL path already ends with /search
 	if req.URL.String() != "https://search.example.com/search" {
 		t.Fatalf("URL = %s, want https://search.example.com/search", req.URL.String())
 	}
@@ -210,10 +204,7 @@ func TestBuildSearchRequest_URLPathHandling(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			searcher := &SearXNGSearcher{
-				baseURL: tt.baseURL,
-				client:  http.DefaultClient,
-			}
+			searcher := newRequestTestSearcher(t, tt.baseURL)
 
 			req, _, err := searcher.buildSearchRequest(context.Background(), &SearchArgs{Query: "test"})
 			if err != nil {
@@ -230,10 +221,7 @@ func TestBuildSearchRequest_URLPathHandling(t *testing.T) {
 func TestBuildSearchRequest_WithNilPageno(t *testing.T) {
 	t.Parallel()
 
-	searcher := &SearXNGSearcher{
-		baseURL: "https://search.example.com",
-		client:  http.DefaultClient,
-	}
+	searcher := newRequestTestSearcher(t, "https://search.example.com")
 
 	args := &SearchArgs{
 		Query: "test",
@@ -253,21 +241,21 @@ func TestBuildSearchRequest_WithNilPageno(t *testing.T) {
 func TestBuildSearchRequest_ErrorCases(t *testing.T) {
 	t.Parallel()
 
-	t.Run("invalid base URL", func(t *testing.T) {
+	t.Run("search endpoint not precomputed", func(t *testing.T) {
 		t.Parallel()
 
-		searcher := &SearXNGSearcher{
-			baseURL: "://invalid",
-			client:  http.DefaultClient,
-		}
+		// Programmer error: a SearXNGSearcher constructed directly (bypassing
+		// NewSearXNGSearcher) without setting searchEndpoint. buildSearchRequest
+		// must surface this as an error rather than panic.
+		searcher := &SearXNGSearcher{}
 
 		_, _, err := searcher.buildSearchRequest(context.Background(), &SearchArgs{Query: "test"})
 		if err == nil {
 			t.Fatal("buildSearchRequest() error = nil, want error")
 		}
 
-		if !strings.Contains(err.Error(), "invalid SearXNG URL") {
-			t.Fatalf("error = %q, want to contain 'invalid SearXNG URL'", err.Error())
+		if !strings.Contains(err.Error(), "search endpoint not precomputed") {
+			t.Fatalf("error = %q, want to contain 'search endpoint not precomputed'", err.Error())
 		}
 	})
 }
@@ -275,10 +263,8 @@ func TestBuildSearchRequest_ErrorCases(t *testing.T) {
 func TestBuildSearchRequest_TimeoutConfig(t *testing.T) {
 	t.Parallel()
 
-	searcher := &SearXNGSearcher{
-		baseURL: "https://search.example.com",
-		client:  &http.Client{Timeout: 5 * time.Second},
-	}
+	searcher := newRequestTestSearcher(t, "https://search.example.com")
+	searcher.client = &http.Client{Timeout: 5 * time.Second}
 
 	args := &SearchArgs{Query: "test"}
 
@@ -289,5 +275,83 @@ func TestBuildSearchRequest_TimeoutConfig(t *testing.T) {
 
 	if req.Context().Err() != nil {
 		t.Fatal("request context should not be canceled")
+	}
+}
+
+// --- computeSearchEndpoint tests ---
+
+func TestComputeSearchEndpoint(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		baseURL string
+		want    string
+	}{
+		{name: "path ends with /search", baseURL: "https://search.example.com/search", want: "https://search.example.com/search"},
+		{name: "path ends with slash", baseURL: "https://search.example.com/searxng/", want: "https://search.example.com/searxng/search"},
+		{name: "no trailing slash", baseURL: "https://search.example.com/searxng", want: "https://search.example.com/searxng/search"},
+		{name: "root path", baseURL: "https://search.example.com", want: "https://search.example.com/search"},
+		{name: "root path with trailing slash", baseURL: "https://search.example.com/", want: "https://search.example.com/search"},
+		{name: "drops trailing query", baseURL: "https://search.example.com/?foo=bar", want: "https://search.example.com/search"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := computeSearchEndpoint(tt.baseURL)
+			if err != nil {
+				t.Fatalf("computeSearchEndpoint(%q) error = %v", tt.baseURL, err)
+			}
+
+			if got == nil {
+				t.Fatal("computeSearchEndpoint() = nil, want non-nil")
+			}
+
+			if got.String() != tt.want {
+				t.Fatalf("computeSearchEndpoint(%q) = %q, want %q", tt.baseURL, got.String(), tt.want)
+			}
+
+			if got.RawQuery != "" {
+				t.Fatalf("RawQuery = %q, want empty", got.RawQuery)
+			}
+		})
+	}
+}
+
+func TestComputeSearchEndpoint_ParseError(t *testing.T) {
+	t.Parallel()
+
+	_, err := computeSearchEndpoint("://invalid")
+	if err == nil {
+		t.Fatal("computeSearchEndpoint() error = nil, want parse error")
+	}
+}
+
+// TestBuildSearchRequest_DoesNotMutatePrecomputedURL verifies that the
+// per-request URL returned by buildSearchRequest is a clone, so mutating it
+// (as the GET fallback does when it sets RawQuery) does not leak back into
+// s.searchEndpoint.
+func TestBuildSearchRequest_DoesNotMutatePrecomputedURL(t *testing.T) {
+	t.Parallel()
+
+	searcher := newRequestTestSearcher(t, "https://search.example.com")
+
+	originalURL := searcher.searchEndpoint.String()
+
+	for range 5 {
+		req, _, err := searcher.buildSearchRequest(context.Background(), &SearchArgs{Query: "test"})
+		if err != nil {
+			t.Fatalf("buildSearchRequest() error = %v", err)
+		}
+
+		// Simulate the GET fallback path mutating the per-request URL.
+		req.URL.RawQuery = "q=test&format=json"
+		req.URL.Path = "/mutated"
+	}
+
+	if got := searcher.searchEndpoint.String(); got != originalURL {
+		t.Fatalf("searchEndpoint mutated: was %q, now %q", originalURL, got)
 	}
 }

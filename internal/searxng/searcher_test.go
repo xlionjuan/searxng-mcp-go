@@ -19,6 +19,7 @@ func TestNewSearXNGSearcherErrors(t *testing.T) {
 		{name: "empty URL", baseURL: "", want: "SearXNGURL cannot be empty"},
 		{name: "invalid scheme", baseURL: "ftp://example.com", want: "url must use http or https scheme"},
 		{name: "missing host", baseURL: "https:///search", want: "url must include a host"},
+		{name: "URL parse error", baseURL: "://invalid", want: "invalid URL"},
 	}
 
 	for _, tt := range tests {
@@ -47,10 +48,12 @@ func TestNewSearXNGSearcherSuccess(t *testing.T) {
 	tests := []struct {
 		name    string
 		baseURL string
+		wantURL string
 	}{
-		{name: "valid https URL", baseURL: "https://search.example.com"},
-		{name: "valid http URL with private host", baseURL: "http://127.0.0.1:8080"},
-		{name: "URL with path", baseURL: "https://search.example.com/searxng"},
+		{name: "valid https URL", baseURL: "https://search.example.com", wantURL: "https://search.example.com/search"},
+		{name: "valid http URL with private host", baseURL: "http://127.0.0.1:8080", wantURL: "http://127.0.0.1:8080/search"},
+		{name: "URL with path", baseURL: "https://search.example.com/searxng", wantURL: "https://search.example.com/searxng/search"},
+		{name: "URL with /search path", baseURL: "https://search.example.com/search", wantURL: "https://search.example.com/search"},
 	}
 
 	for _, tt := range tests {
@@ -64,6 +67,14 @@ func TestNewSearXNGSearcherSuccess(t *testing.T) {
 
 			if searcher == nil {
 				t.Fatal("NewSearXNGSearcher() searcher = nil, want non-nil")
+			}
+
+			if searcher.searchEndpoint == nil {
+				t.Fatal("searcher.searchEndpoint = nil, want non-nil precomputed endpoint")
+			}
+
+			if got := searcher.searchEndpoint.String(); got != tt.wantURL {
+				t.Fatalf("searchEndpoint = %q, want %q", got, tt.wantURL)
 			}
 
 			err = searcher.Close()

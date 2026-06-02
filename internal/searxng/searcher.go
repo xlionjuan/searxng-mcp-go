@@ -21,12 +21,12 @@ var (
 
 // SearXNGSearcher performs web searches via a SearXNG instance.
 type SearXNGSearcher struct {
-	client        *http.Client // Configurable HTTP client
-	baseURL       string
-	debug         bool // When true, enables verbose HTTP request/response logging
-	maxRetries    int
-	retryStrategy *exponentialBackoffStrategy
-	ownsTransport bool // true if the searcher created its own transport (safe to close)
+	client         *http.Client // Configurable HTTP client
+	searchEndpoint *url.URL     // Precomputed /search endpoint URL; cloned per request
+	debug          bool         // When true, enables verbose HTTP request/response logging
+	maxRetries     int
+	retryStrategy  *exponentialBackoffStrategy
+	ownsTransport  bool // true if the searcher created its own transport (safe to close)
 }
 
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
@@ -51,12 +51,15 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		return nil, fmt.Errorf("newSearXNGSearcher: %w", err)
 	}
 
-	parsed, err := url.Parse(baseURL)
+	// Precompute the /search endpoint URL once so per-request construction
+	// only has to clone the result. computeSearchEndpoint may still fail
+	// after validateBaseURL (defensive); surface that as an internal error.
+	searchEndpoint, err := computeSearchEndpoint(baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", errSearcherURLParseInternal, err)
 	}
 
-	if parsed.Scheme == "http" && !isPrivateHost(parsed.Host) {
+	if searchEndpoint.Scheme == "http" && !isPrivateHost(searchEndpoint.Host) {
 		slog.Warn("Using HTTP for non-private host. " +
 			"Search queries may be transmitted in clear text. " +
 			"Search results could be intercepted and modified by a MITM attacker")
@@ -93,12 +96,12 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	}
 
 	return &SearXNGSearcher{
-		client:        client,
-		baseURL:       baseURL,
-		debug:         debug,
-		maxRetries:    cfg.MaxRetries,
-		retryStrategy: newExponentialBackoffStrategy(cfg.MaxRetries, cfg.RetryDelay, cfg.MaxRetryDelay),
-		ownsTransport: ownsTransport,
+		client:         client,
+		searchEndpoint: searchEndpoint,
+		debug:          debug,
+		maxRetries:     cfg.MaxRetries,
+		retryStrategy:  newExponentialBackoffStrategy(cfg.MaxRetries, cfg.RetryDelay, cfg.MaxRetryDelay),
+		ownsTransport:  ownsTransport,
 	}, nil
 }
 
