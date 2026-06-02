@@ -344,25 +344,31 @@ func TestDoSearchAttempt(t *testing.T) {
 		}
 	})
 
-	t.Run("build error returns error directly", func(t *testing.T) {
+	t.Run("build error from missing precomputed endpoint propagates", func(t *testing.T) {
 		t.Parallel()
 
-		// A searcher with an invalid URL fails at URL parse
+		// A SearXNGSearcher constructed directly (bypassing NewSearXNGSearcher)
+		// without setting searchEndpoint causes buildSearchRequest to return
+		// errSearchEndpointNotPrecomputed; doSearchAttempt must propagate it
+		// without invoking the transport.
 		s := &SearXNGSearcher{
 			client: &http.Client{
 				Transport: roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 					return nil, errTransportNotExpected
 				}),
 			},
-			baseURL: "://invalid-url",
-			debug:   false,
+			debug: false,
 		}
 
 		resp, _, err := s.doSearchAttempt(context.Background(), &SearchArgs{Query: "test"})
 		defer closeBody(resp)
 
 		if err == nil {
-			t.Fatal("doSearchAttempt() error = nil, want error for invalid URL")
+			t.Fatal("doSearchAttempt() error = nil, want errSearchEndpointNotPrecomputed")
+		}
+
+		if !errors.Is(err, errSearchEndpointNotPrecomputed) {
+			t.Fatalf("doSearchAttempt() error = %v, want errSearchEndpointNotPrecomputed", err)
 		}
 
 		if resp != nil {
@@ -384,7 +390,6 @@ func TestDoSearchAttempt(t *testing.T) {
 					return makeJSONResponse(minimalJSONBody), nil
 				}),
 			},
-			baseURL:        "https://search.example.com",
 			searchEndpoint: endpoint,
 			debug:          true,
 			maxRetries:     0,

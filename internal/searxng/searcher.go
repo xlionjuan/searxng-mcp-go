@@ -22,9 +22,8 @@ var (
 // SearXNGSearcher performs web searches via a SearXNG instance.
 type SearXNGSearcher struct {
 	client         *http.Client // Configurable HTTP client
-	baseURL        string
-	searchEndpoint *url.URL // Precomputed /search endpoint URL; cloned per request
-	debug          bool     // When true, enables verbose HTTP request/response logging
+	searchEndpoint *url.URL     // Precomputed /search endpoint URL; cloned per request
+	debug          bool         // When true, enables verbose HTTP request/response logging
 	maxRetries     int
 	retryStrategy  *exponentialBackoffStrategy
 	ownsTransport  bool // true if the searcher created its own transport (safe to close)
@@ -98,7 +97,6 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 
 	return &SearXNGSearcher{
 		client:         client,
-		baseURL:        baseURL,
 		searchEndpoint: searchEndpoint,
 		debug:          debug,
 		maxRetries:     cfg.MaxRetries,

@@ -416,7 +416,6 @@ func TestSearch_DebugMode(t *testing.T) {
 					return makeJSONResponse(minimalJSONBody), nil
 				}),
 			},
-			baseURL:        "https://search.example.com",
 			searchEndpoint: endpoint,
 			debug:          true,
 			maxRetries:     0,

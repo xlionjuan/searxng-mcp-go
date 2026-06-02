@@ -60,7 +60,6 @@ func newTestSearcher(t *testing.T, rt roundTripperFunc, maxRetries int) *SearXNG
 		client: &http.Client{
 			Transport: rt,
 		},
-		baseURL:        "https://search.example.com",
 		searchEndpoint: endpoint,
 		debug:          false,
 		maxRetries:     maxRetries,
@@ -69,8 +68,8 @@ func newTestSearcher(t *testing.T, rt roundTripperFunc, maxRetries int) *SearXNG
 	}
 }
 
-// newRequestTestSearcher creates a SearXNGSearcher with the given baseURL and
-// a precomputed search endpoint. It is intended for tests that exercise
+// newRequestTestSearcher creates a SearXNGSearcher with a precomputed search
+// endpoint derived from baseURL. It is intended for tests that exercise
 // buildSearchRequest without going through NewSearXNGSearcher.
 func newRequestTestSearcher(t *testing.T, baseURL string) *SearXNGSearcher {
 	t.Helper()
@@ -81,7 +80,6 @@ func newRequestTestSearcher(t *testing.T, baseURL string) *SearXNGSearcher {
 	}
 
 	return &SearXNGSearcher{
-		baseURL:        baseURL,
 		searchEndpoint: endpoint,
 		client:         http.DefaultClient,
 	}

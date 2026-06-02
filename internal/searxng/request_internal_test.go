@@ -159,7 +159,7 @@ func TestBuildSearchRequest_MinimalParams(t *testing.T) {
 		t.Fatalf("body = %q, want to contain 'format=json'", bodyStr)
 	}
 
-	// URL should append /search when path already ends with /search
+	// URL should be left unchanged when base URL path already ends with /search
 	if req.URL.String() != "https://search.example.com/search" {
 		t.Fatalf("URL = %s, want https://search.example.com/search", req.URL.String())
 	}
@@ -247,9 +247,7 @@ func TestBuildSearchRequest_ErrorCases(t *testing.T) {
 		// Programmer error: a SearXNGSearcher constructed directly (bypassing
 		// NewSearXNGSearcher) without setting searchEndpoint. buildSearchRequest
 		// must surface this as an error rather than panic.
-		searcher := &SearXNGSearcher{
-			baseURL: "https://search.example.com",
-		}
+		searcher := &SearXNGSearcher{}
 
 		_, _, err := searcher.buildSearchRequest(context.Background(), &SearchArgs{Query: "test"})
 		if err == nil {
@@ -331,9 +329,10 @@ func TestComputeSearchEndpoint_ParseError(t *testing.T) {
 	}
 }
 
-// TestBuildSearchRequest_DoesNotMutatePrecomputedURL verifies that mutating
-// the per-request URL (e.g. the GET fallback setting RawQuery) does not leak
-// back into s.searchEndpoint.
+// TestBuildSearchRequest_DoesNotMutatePrecomputedURL verifies that the
+// per-request URL returned by buildSearchRequest is a clone, so mutating it
+// (as the GET fallback does when it sets RawQuery) does not leak back into
+// s.searchEndpoint.
 func TestBuildSearchRequest_DoesNotMutatePrecomputedURL(t *testing.T) {
 	t.Parallel()
 
@@ -342,10 +341,14 @@ func TestBuildSearchRequest_DoesNotMutatePrecomputedURL(t *testing.T) {
 	originalURL := searcher.searchEndpoint.String()
 
 	for range 5 {
-		_, _, err := searcher.buildSearchRequest(context.Background(), &SearchArgs{Query: "test"})
+		req, _, err := searcher.buildSearchRequest(context.Background(), &SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("buildSearchRequest() error = %v", err)
 		}
+
+		// Simulate the GET fallback path mutating the per-request URL.
+		req.URL.RawQuery = "q=test&format=json"
+		req.URL.Path = "/mutated"
 	}
 
 	if got := searcher.searchEndpoint.String(); got != originalURL {
