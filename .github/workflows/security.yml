@@ -3,7 +3,11 @@ name: Security
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
   pull_request:
+    paths-ignore:
+      - "**.md"
   schedule:
     - cron: "0 6 * * 1"
 
