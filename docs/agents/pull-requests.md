@@ -11,9 +11,16 @@ Common commands:
 
 - **Inspect current PR context**: `gh pr view --json number,title,body,labels,files,reviewDecision,statusCheckRollup`
 - **Create a PR**: `gh pr create --title "..." --body "..."`
+- **Update PR metadata**: `gh pr edit <number> --title "..." --body "..."`
 - **Check CI**: `gh pr checks <number>`
 - **Read review comments**: `gh pr view <number> --comments`
 - **Comment on a PR**: `gh pr comment <number> --body "..."`
+
+When the user asks an agent to create a PR, creating the PR is part of the task.
+Do not stop after pushing a branch, and do not hand the user a
+`https://github.com/.../pull/new/...` URL as a substitute for `gh pr create`.
+If `gh pr create` fails, report the exact failure and leave the task blocked
+instead of implying that a PR exists.
 
 ## Git Identity
 
@@ -115,6 +122,30 @@ Common checks:
 E2E tests require a SearXNG test server and `SEARXNG_URL`; see `AGENTS.md` for
 setup details.
 
+## PR Title Policy
+
+PR titles are persistent repository records, not agent progress messages.
+
+Use a concise English title that names the user-visible or reviewer-visible
+change:
+
+- Prefer imperative or descriptive titles such as `Move CLI smoke checks into Go E2E`
+- Mention the subsystem when it helps review, such as `Document PR metadata requirements for agents`
+- Keep titles specific enough to distinguish the PR in history
+
+Do not include:
+
+- Agent execution state such as `PR pushed`, `branch pushed`, `created PR`, or `ready`
+- Session names, run IDs, timestamps, model names, or tool names unless the PR
+  changes that tool directly
+- Decorative arrows or symbols used as status shorthand
+- Raw issue discussion language copied from a non-English conversation
+- Vague titles such as `Fix issue`, `Update docs`, or `Changes`
+
+Before creating or updating a PR, read the final title once as a reviewer would.
+If it describes what the agent did operationally instead of what the code or
+docs change, rewrite it.
+
 ## PR Body Checklist
 
 Every PR body should include:
@@ -124,6 +155,55 @@ Every PR body should include:
 - Tests run
 - Linked issue(s)
 - Known limitations or follow-up work, if any
+
+Use this structure unless the user provides a stricter repository-specific
+template:
+
+```markdown
+## Summary
+- ...
+
+## Documentation
+- ...
+
+## Tests
+- ...
+
+## Risks / Follow-up
+- ...
+
+Closes #...
+```
+
+Keep the body focused on durable review context. Do not include:
+
+- Agent session cards, social-card images, or HTML embeds
+- Links to transient agent sessions or GitHub Actions runs unless the run is
+  directly relevant evidence for the PR
+- `https://github.com/.../pull/new/...` links after the PR has been created
+- Duplicated closing keywords such as two separate `Closes #22` lines
+- Long pasted chat transcripts or hidden reasoning
+- Claims that tests passed without the exact commands run
+
+If the PR supersedes another branch or PR, state that plainly in the summary,
+for example `Supersedes #42 by moving all live-server CLI smoke checks into Go
+E2E.` Do not use supersession as a reason to omit the normal summary,
+documentation, tests, issue link, or risk sections.
+
+## Metadata Self-Check
+
+Before running `gh pr create` or `gh pr edit`, verify:
+
+- The title is English, concise, and describes the change rather than the agent
+  workflow
+- The body is English and contains summary, documentation impact, tests, linked
+  issues, and risks or follow-up
+- The body has no social-card HTML, agent-session preview image, `/pull/new/`
+  URL, duplicated closing keyword, or branch-only handoff language
+- Any non-English user instructions have been translated or summarized in
+  English rather than copied verbatim
+- If the user explicitly asked to create the PR, the final result is an actual
+  PR URL from `gh pr create`, not only a pushed branch URL
 
 ## PR Title and Body Language
 

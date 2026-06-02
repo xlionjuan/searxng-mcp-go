@@ -185,6 +185,12 @@ Run this workflow only when the user explicitly asks for a release and the targe
 - GitHub **PR comments, issue comments, and review replies are exempt** from this rule. Reply in whatever language the user is using. The English-only rule applies only to the PR title and body.
 - This rule does not change the `### Documentation` rule above — repo docs (`docs/*.md`, README, CONTEXT, AGENTS) remain English-only, and PR body English is in addition to that.
 
+### PR Title and Body Quality
+- PR agents must create the requested pull request with `gh pr create` or update it with `gh pr edit`; do not stop after pushing a branch or giving the user a `/pull/new/...` URL unless the user explicitly asks for a branch only.
+- PR titles must be concise, human-readable change summaries. Do not include agent workflow state such as `PR pushed`, `branch pushed`, `created PR`, session names, run IDs, arrows used as decoration, or other implementation chatter.
+- PR bodies must be durable review records: include summary, docs impact, tests run, linked issues, and known limitations or follow-up work. Do not include agent session cards, social-card HTML/images, `/pull/new/...` links, duplicated closing keywords, or long pasted chat transcripts.
+- If a user asks to reopen, recreate, supersede, or replace a failed PR, the new PR title and body must clearly state what is superseded and must still satisfy the same title/body quality rules. See `docs/agents/pull-requests.md` for the full checklist.
+
 ### Git Identity
 - Agents must not run `git config user.name`, `git config user.email`, `git config --global user.name`, or `git config --global user.email` in this repo unless the user explicitly asks for that exact operation.
 - If `git commit` fails because author identity is missing, stop and report the failure. Do not invent or set a fallback identity.
