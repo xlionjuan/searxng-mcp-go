@@ -33,11 +33,7 @@ jobs:
       - name: Build
         run: go build -o searxng-mcp-go .
 
-      # PGO (Profile-Guided Optimization) is not enabled in CI because:
-      # - It requires profiling data from production workloads
-      # - The binary produced is specific to the workload profile used
-      # - For a library/tool used in varied contexts, PGO may not improve all use cases
-      # To enable PGO: add `-pgo=auto` to go build command
+      # PGO is intentionally not enabled; see docs/adr/001-no-pgo.md (ADR-001).
 
       - name: Run tests
         run: go test -race -shuffle=on -coverprofile=coverage.out ./...
