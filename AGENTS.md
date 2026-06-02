@@ -202,30 +202,54 @@ Root benchmarks (format/search) live in `bench_test.go`; internal benchmarks (ma
 
 ### Local SearXNG Test Server
 
-For E2E and integration testing, a local SearXNG dev server is set up under `searxng-server-test/`:
+For E2E and integration testing, a local SearXNG dev server is set up under `searxng-server-test/`. The `just` recipes in the root `justfile` are the primary user-facing interface; the underlying shell scripts are implementation detail.
 
 ```bash
 # Ensure submodule is initialized (one-time)
 git submodule update --init --depth 1 searxng-server-test/searxng
 
-# Set up and start server
-cd searxng-server-test
-./00-setup.sh      # Clean install: venv + deps + settings.yml (re-run to reset)
-./01-start-bg.sh   # Start background server, waits for readiness on :8888
+# One-time setup (creates venv, installs deps, generates settings.yml)
+just test-server-setup
+
+# Day-to-day
+just test-server-start     # background, waits for readiness on :8888
+just test-server-status    # live / degraded / stale / dead / orphan
+just test-server-logs      # tail -f searxng-server-test/searxng.log
+just test-server-stop      # SIGTERM (5s) → SIGKILL fallback
+just test-server-restart   # stop + start
+just test-server-start-fg  # FOREGROUND — blocks the calling shell; humans only
 ```
+
+Underlying scripts (rarely needed directly):
+
+| Script | Purpose |
+|---|---|
+| `searxng-server-test/00-setup.sh` | One-time: venv + deps + `settings.yml` (re-run to reset) |
+| `searxng-server-test/01-start-bg.sh` | Background start (detached, PID-tracked, readiness polled) |
+| `searxng-server-test/01-start-fg.sh` | Foreground start — **do not use from agents/CI** |
+| `searxng-server-test/02-stop.sh` | Stop background instance; `--force` kills orphans |
+| `searxng-server-test/03-status.sh` | Report live/stale/dead/orphan state |
 
 **Key details:**
 - Server runs on `http://127.0.0.1:8888` — set `SEARXNG_URL=http://127.0.0.1:8888` before running E2E tests
-- The `01-start-bg.sh` script polls until the server responds (up to 30s), then exits; server continues in background
+- `01-start-bg.sh` polls until the server responds (up to 30s), then exits; the server continues in the background, detached from the calling shell via `nohup`/`disown`
 - `settings.yml` is auto-generated from SearXNG repo defaults — enables JSON format, yahoo/bing/ddg-definitions engines, and generates a random secret key
-- Stop with `kill "$(cat .bg-pid)"` or from the PID printed at startup
-- On first run, `00-setup.sh` creates a Python venv via `uv` and installs SearXNG dependencies — this takes ~30s on subsequent runs (venv reuse)
+- Background state is tracked in two files (kept out of git via `.gitignore`):
+  - `searxng-server-test/.bg-pid` — PID of `searx/webapp.py`
+  - `searxng-server-test/searxng.log` — stdout/stderr of the background process
+- The log file is the first place to look when an E2E test fails (`just test-server-logs`)
+- If `.bg-pid` is missing or stale, `pgrep -f 'searx/webapp.py'` finds the real PID
+- `00-setup.sh` cold-run on a clean machine takes ~2–3 min (uv venv + pip install + searxng editable install). Subsequent runs are ~30s only if the venv already exists and is intact
+- Starting the server a second time without stopping it first is rejected with a clear error message — use `just test-server-restart` instead
 
 **Pitfalls:**
 - `searxng-server-test/searxng/` is a **git submodule** registered in the root `.gitmodules` — do NOT `git init` or `git submodule add` inside `searxng-server-test/`, its state is managed by the parent repo
 - Do NOT use `searx/limiter.toml` from production template — the default settings.yml has `limiter: false`
 - The repo default settings.yml has `valkey.url: false` (disabled); do not use `utils/templates/etc/searxng/settings.yml` which enables valkey
 - When testing with granian (not needed for dev), must pass `--interface wsgi`
+- **Never run `01-start-fg.sh` from an agent or CI context** — it runs SearXNG in the foreground and blocks the calling shell until killed. Use `just test-server-start` (background) instead
+- If E2E tests fail with a connection/timeout error, check `searxng-server-test/searxng.log` for SearXNG-side stack traces before assuming the test is broken
+- `.bg-pid` can go stale (e.g. agent shell killed → PID file lost, but searx process lives on). Recovery: `pgrep -f 'searx/webapp.py'` to inspect, then `just test-server-stop` (with `--force` if the PID file is gone)
 
 ## Agent skills
 
