@@ -179,6 +179,12 @@ Run this workflow only when the user explicitly asks for a release and the targe
 ### GitHub Operations
 - **🔴 GitHub API operations MUST use `gh` CLI** — via terminal, always. **Absolutely NO browser tools** (browser_navigate, browser_vision, etc.) for GitHub — not for Actions, not for PRs, not for anything on github.com.
 
+### PR Title and Body Language
+- **PR title and body must be in English**, even if the user originally discussed the change in another language (e.g. Chinese, Japanese). This applies to all PR agents in this repo, including OpenCode, Aider, Codex, and any other coding-agent that opens or updates a PR here.
+- The English requirement covers the PR **title** and **PR body** (the persistent, searchable record of the change). When opening or updating a PR, translate the relevant discussion material into English for the body — do not copy non-English prose verbatim.
+- GitHub **PR comments, issue comments, and review replies are exempt** from this rule. Reply in whatever language the user is using. The English-only rule applies only to the PR title and body.
+- This rule does not change the `### Documentation` rule above — repo docs (`docs/*.md`, README, CONTEXT, AGENTS) remain English-only, and PR body English is in addition to that.
+
 ### Git Identity
 - Agents must not run `git config user.name`, `git config user.email`, `git config --global user.name`, or `git config --global user.email` in this repo unless the user explicitly asks for that exact operation.
 - If `git commit` fails because author identity is missing, stop and report the failure. Do not invent or set a fallback identity.
