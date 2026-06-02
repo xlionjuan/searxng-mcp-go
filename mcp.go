@@ -194,6 +194,12 @@ func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) error {
 		Writer: os.Stdout,
 	})
 	if err != nil {
+		// SIGINT/SIGTERM cancels the context; a normal shutdown should
+		// not be reported as a server failure.
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
+
 		return fmt.Errorf("server failed: %w", err)
 	}
 

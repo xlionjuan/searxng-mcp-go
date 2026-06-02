@@ -91,8 +91,8 @@ func TestMCPErrors_Startup(t *testing.T) {
 			if !errors.As(err, &exitErr) {
 				t.Fatalf("cmd.Run() error = %v, want *exec.ExitError\nstderr:\n%s", err, stderrStr)
 			}
-			if got := exitErr.ExitCode(); got != 1 {
-				t.Fatalf("exit code = %d, want 1\nstderr:\n%s", got, stderrStr)
+			if got := exitErr.ExitCode(); got != 2 {
+				t.Fatalf("exit code = %d, want 2 (MCP server error per documented contract)\nstderr:\n%s", got, stderrStr)
 			}
 
 			for _, want := range tt.wantStderr {
