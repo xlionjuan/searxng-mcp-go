@@ -51,15 +51,39 @@ func makeSearchResponseJSON(results int) string {
 func newTestSearcher(t *testing.T, rt roundTripperFunc, maxRetries int) *SearXNGSearcher {
 	t.Helper()
 
+	endpoint, err := computeSearchEndpoint("https://search.example.com")
+	if err != nil {
+		t.Fatalf("computeSearchEndpoint() error = %v", err)
+	}
+
 	return &SearXNGSearcher{
 		client: &http.Client{
 			Transport: rt,
 		},
-		baseURL:       "https://search.example.com",
-		debug:         false,
-		maxRetries:    maxRetries,
-		retryStrategy: newExponentialBackoffStrategy(maxRetries, time.Microsecond, time.Microsecond),
-		ownsTransport: true,
+		baseURL:        "https://search.example.com",
+		searchEndpoint: endpoint,
+		debug:          false,
+		maxRetries:     maxRetries,
+		retryStrategy:  newExponentialBackoffStrategy(maxRetries, time.Microsecond, time.Microsecond),
+		ownsTransport:  true,
+	}
+}
+
+// newRequestTestSearcher creates a SearXNGSearcher with the given baseURL and
+// a precomputed search endpoint. It is intended for tests that exercise
+// buildSearchRequest without going through NewSearXNGSearcher.
+func newRequestTestSearcher(t *testing.T, baseURL string) *SearXNGSearcher {
+	t.Helper()
+
+	endpoint, err := computeSearchEndpoint(baseURL)
+	if err != nil {
+		t.Fatalf("computeSearchEndpoint(%q) error = %v", baseURL, err)
+	}
+
+	return &SearXNGSearcher{
+		baseURL:        baseURL,
+		searchEndpoint: endpoint,
+		client:         http.DefaultClient,
 	}
 }
 

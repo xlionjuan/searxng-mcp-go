@@ -373,15 +373,21 @@ func TestDoSearchAttempt(t *testing.T) {
 	t.Run("debug=true with POST does not panic", func(t *testing.T) {
 		t.Parallel()
 
+		endpoint, err := computeSearchEndpoint("https://search.example.com")
+		if err != nil {
+			t.Fatalf("computeSearchEndpoint() error = %v", err)
+		}
+
 		s := &SearXNGSearcher{
 			client: &http.Client{
 				Transport: roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 					return makeJSONResponse(minimalJSONBody), nil
 				}),
 			},
-			baseURL:    "https://search.example.com",
-			debug:      true,
-			maxRetries: 0,
+			baseURL:        "https://search.example.com",
+			searchEndpoint: endpoint,
+			debug:          true,
+			maxRetries:     0,
 		}
 
 		resp, bodyStr, err := s.doSearchAttempt(context.Background(), &SearchArgs{Query: "test"})

@@ -10,13 +10,45 @@ import (
 	"strings"
 )
 
-var errInvalidSearXNGURL = errors.New("invalid SearXNG URL")
+var errSearchEndpointNotPrecomputed = errors.New("search endpoint not precomputed")
+
+// computeSearchEndpoint parses the baseURL and normalizes its path so the
+// returned URL points at the SearXNG /search endpoint. The result has no
+// query string and is intended to be cloned per request rather than re-parsed.
+// This is called once at searcher construction time.
+func computeSearchEndpoint(baseURL string) (*url.URL, error) {
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	parsed.RawQuery = ""
+	trimmedPath := strings.TrimRight(parsed.Path, "/")
+
+	lastSegment := trimmedPath
+	if idx := strings.LastIndex(trimmedPath, "/"); idx >= 0 {
+		lastSegment = trimmedPath[idx+1:]
+	}
+
+	if lastSegment != "search" {
+		if trimmedPath == "" {
+			parsed.Path = "/search"
+		} else {
+			parsed.Path = trimmedPath + "/search"
+		}
+	} else {
+		parsed.Path = trimmedPath
+	}
+
+	return parsed, nil
+}
 
 // buildSearchRequest constructs an HTTP request for searching SearXNG.
+// It clones the precomputed search endpoint URL and only sets the per-request
+// body; the endpoint path is never re-derived here.
 func (s *SearXNGSearcher) buildSearchRequest(ctx context.Context, args *SearchArgs) (*http.Request, string, error) {
-	baseURL, err := url.Parse(s.baseURL)
-	if err != nil {
-		return nil, "", NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errInvalidSearXNGURL, err))
+	if s.searchEndpoint == nil {
+		return nil, "", NewSearXNGError(0, "", "", errSearchEndpointNotPrecomputed)
 	}
 
 	params := url.Values{}
@@ -46,24 +78,10 @@ func (s *SearXNGSearcher) buildSearchRequest(ctx context.Context, args *SearchAr
 		params.Set("pageno", strconv.Itoa(*args.Pageno))
 	}
 
-	searchURL := *baseURL
-	searchURL.RawQuery = ""
-	trimmedPath := strings.TrimRight(searchURL.Path, "/")
-
-	lastSegment := trimmedPath
-	if idx := strings.LastIndex(trimmedPath, "/"); idx >= 0 {
-		lastSegment = trimmedPath[idx+1:]
-	}
-
-	if lastSegment != "search" {
-		if trimmedPath == "" {
-			searchURL.Path = "/search"
-		} else {
-			searchURL.Path = trimmedPath + "/search"
-		}
-	} else {
-		searchURL.Path = trimmedPath
-	}
+	// Clone the immutable endpoint; this is a shallow copy of the *url.URL
+	// struct so per-request mutation of RawQuery (via the GET fallback) does
+	// not leak back into the precomputed value.
+	searchURL := *s.searchEndpoint
 
 	postBodyStr := params.Encode()
 
