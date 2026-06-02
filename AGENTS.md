@@ -87,9 +87,12 @@ AGENTS.md) cover project overview, domain context, and agent instructions.
   `all_time_ranges`, must not be broadened without approval.
 - Adding strict assertions is preferred when a test can meaningfully assert
   non-zero results with a better query or parameter combination.
-- Live-server CLI assertions belong in Go E2E tests. Shell smoke in
-  `.github/workflows/e2e.yml` should stay limited to deterministic exit-code or
-  structural checks.
+- Live-server assertions belong in Go E2E tests (`TestMCPFunctional`,
+  `TestMCPStdioE2E`, `TestCLISmoke`) so they can use the shared warning-summary
+  path. Shell smoke in `.github/workflows/e2e.yml` must stay limited to
+  deterministic exit-code or structural checks and must not use `|| echo`,
+  `grep -Eq "A|B"`, swallowed `python3 -c` assertions, or similar patterns that
+  mask missing live-server evidence.
 - For local server setup, use `just test-server-start`; never run
   `searxng-server-test/01-start-fg.sh` from agents or CI. See
   `docs/agents/test-server.md`.
