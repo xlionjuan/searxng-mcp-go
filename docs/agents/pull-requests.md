@@ -119,8 +119,8 @@ Common checks:
 - `go vet ./...`
 - `golangci-lint run ./...`
 
-E2E tests require a SearXNG test server and `SEARXNG_URL`; see `AGENTS.md` for
-setup details.
+E2E tests require a SearXNG test server and `SEARXNG_URL`; see
+`docs/agents/test-server.md` for setup details.
 
 ## PR Title Policy
 
@@ -207,8 +207,7 @@ Before running `gh pr create` or `gh pr edit`, verify:
 
 ## PR Title and Body Language
 
-The PR title and body must be in English even if the user originally
-discussed the change in another language. PR comments and review replies
-should reply in whatever language the user is using. See the
-`### PR Title and Body Language` section in the root `AGENTS.md` for the
-canonical rule.
+The PR title and body must be in English even if the user originally discussed
+the change in another language. PR comments and review replies should reply in
+whatever language the user is using. See the `GitHub and PR Work` section in the
+root `AGENTS.md` for the canonical summary.

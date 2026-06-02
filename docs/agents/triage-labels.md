@@ -3,7 +3,11 @@
 Issue labels live in GitHub. Always read the current list with `gh label list`
 before doing label-sensitive work.
 
-## Current Labels
+## Known Labels
+
+This table documents the expected label set, but GitHub is authoritative. If
+`gh label list` differs from this table, use the live GitHub labels and mention
+the documentation drift.
 
 | Label | Meaning | Agent use |
 | ----- | ------- | --------- |
