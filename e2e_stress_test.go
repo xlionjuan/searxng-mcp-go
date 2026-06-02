@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -77,7 +78,12 @@ func TestMCPStress_Concurrent(t *testing.T) {
 				return
 			}
 			if result.IsError {
-				errs <- fmt.Sprintf("search returned tool error for %q: %s", query, toolText(t, result))
+				text, ok := toolTextFromResult(result)
+				if !ok {
+					errs <- fmt.Sprintf("search returned tool error with malformed content for %q", query)
+					return
+				}
+				errs <- fmt.Sprintf("search returned tool error for %q: %s", query, text)
 				return
 			}
 		}()
@@ -206,7 +212,12 @@ func TestMCPStress_RapidFire(t *testing.T) {
 				return
 			}
 			if result.IsError {
-				errs <- fmt.Sprintf("search returned tool error for %q: %s", query, toolText(t, result))
+				text, ok := toolTextFromResult(result)
+				if !ok {
+					errs <- fmt.Sprintf("search returned tool error with malformed content for %q", query)
+					return
+				}
+				errs <- fmt.Sprintf("search returned tool error for %q: %s", query, text)
 				return
 			}
 		}()
@@ -338,7 +349,10 @@ func TestMCPStress_Randomized(t *testing.T) {
 		"kubernetes", "docker", "terraform", "ansible", "prometheus",
 	}
 
-	rng := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec // Test randomization only.
+	seed := resolveRandomSeed(t)
+	t.Logf("randomized seed: %d (set E2E_RANDOM_SEED to replay)", seed)
+
+	rng := rand.New(rand.NewSource(seed)) //nolint:gosec // Test randomization only.
 	numSearches := 10
 	searchArgs := make([]map[string]any, numSearches)
 	searchQueries := make([]string, numSearches)
@@ -360,6 +374,7 @@ func TestMCPStress_Randomized(t *testing.T) {
 
 		searchArgs[i] = args
 		searchQueries[i] = query
+		t.Logf("randomized search %d: query=%q args=%#v", i, query, args)
 	}
 
 	var wg sync.WaitGroup
@@ -376,11 +391,16 @@ func TestMCPStress_Randomized(t *testing.T) {
 				Arguments: searchArgs[i],
 			})
 			if err != nil {
-				errs <- fmt.Sprintf("tools/call search failed for %q: %v", searchQueries[i], err)
+				errs <- fmt.Sprintf("tools/call search failed for %q (args=%#v): %v", searchQueries[i], searchArgs[i], err)
 				return
 			}
 			if result.IsError {
-				errs <- fmt.Sprintf("search returned tool error for %q: %s", searchQueries[i], toolText(t, result))
+				text, ok := toolTextFromResult(result)
+				if !ok {
+					errs <- fmt.Sprintf("search returned tool error with malformed content for %q (args=%#v)", searchQueries[i], searchArgs[i])
+					return
+				}
+				errs <- fmt.Sprintf("search returned tool error for %q (args=%#v): %s", searchQueries[i], searchArgs[i], text)
 				return
 			}
 		}()
@@ -396,9 +416,28 @@ func TestMCPStress_Randomized(t *testing.T) {
 	}
 
 	if failCount > 0 {
-		t.Fatalf("%d randomized searches failed", failCount)
+		t.Fatalf("%d randomized searches failed (seed=%d)", failCount, seed)
 	}
-	t.Logf("all %d randomized searches completed successfully", numSearches)
+	t.Logf("all %d randomized searches completed successfully (seed=%d)", numSearches, seed)
+}
+
+// resolveRandomSeed returns the random seed for stress tests. It honors the
+// E2E_RANDOM_SEED env var so a failed run can be reproduced by re-running the
+// test with the same value. An invalid value fails the test; when the env var
+// is unset, a fresh nanosecond seed is generated automatically.
+func resolveRandomSeed(t *testing.T) int64 {
+	t.Helper()
+
+	if raw := os.Getenv("E2E_RANDOM_SEED"); raw != "" {
+		parsed, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			t.Fatalf("E2E_RANDOM_SEED=%q is not a valid int64: %v", raw, err)
+		}
+
+		return parsed
+	}
+
+	return time.Now().UnixNano()
 }
 
 // connectMCPSession builds the MCP client and connects to a stdio-based MCP server.
