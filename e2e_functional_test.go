@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"strconv"
@@ -13,6 +14,8 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"searxng-mcp-go/internal/searxng"
 )
 
 func TestMCPFunctional(t *testing.T) {
@@ -373,4 +376,128 @@ func TestMCPFunctional(t *testing.T) {
 		}
 	}
 	t.Log("MCP functional tests completed")
+}
+
+// TestCLISmoke exercises the binary in flag-driven (non-MCP) CLI mode.
+// It is the Go E2E replacement for the two loose shell smoke assertions
+// previously hosted in .github/workflows/e2e.yml:
+//
+//   - `--time_range year` previously used
+//     `grep -Eq "Results|No results found" || echo "WARN:..."`, which
+//     exits 0 even when neither pattern matches.
+//   - `--safesearch 2 "test"` previously used
+//     `grep -Eq "Results|No results found"`, which silently accepted
+//     "No results found" without routing through the WARNING SUMMARY
+//     path used by every other Go E2E test.
+//
+// Both cases now parse structured `--json` output and route empty
+// Results into the WARNING SUMMARY at the end of the test, matching the
+// AGENTS.md "E2E Tests" rules. Non-empty results are still asserted to
+// have a title and URL.
+func TestCLISmoke(t *testing.T) {
+	searxngURL := os.Getenv("SEARXNG_URL")
+	if searxngURL == "" {
+		t.Skip("SEARXNG_URL not set")
+	}
+	var warnings []string
+
+	ctx, cancel := context.WithTimeout(t.Context(), 180*time.Second)
+	defer cancel()
+
+	binaryPath := os.Getenv("E2E_MCP_BINARY")
+	if binaryPath == "" {
+		binaryPath = buildE2EMCPBinary(ctx, t)
+	}
+	t.Logf("using CLI smoke binary: %s", binaryPath)
+
+	// runCLI executes the binary in CLI mode with --json, parses the
+	// structured SearchResponse, and surfaces command failures / parse
+	// errors as test failures. Each call uses a per-test timeout.
+	runCLI := func(t *testing.T, name string, args ...string) searxng.SearchResponse {
+		t.Helper()
+
+		subCtx, subCancel := context.WithTimeout(ctx, 60*time.Second)
+		defer subCancel()
+
+		cliArgs := append([]string{"--json", "--searxng-url", searxngURL}, args...)
+
+		cmd := exec.CommandContext(subCtx, binaryPath, cliArgs...) //nolint:gosec // test runs built binary
+		cmd.Env = append(os.Environ(), "SEARXNG_MAX_RETRIES=2")
+
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("%s: binary failed: %v\nstdout:\n%s\nstderr:\n%s",
+				name, err, stdout.String(), stderr.String())
+		}
+
+		var response searxng.SearchResponse
+		if err := json.Unmarshal(bytes.TrimSpace(stdout.Bytes()), &response); err != nil {
+			t.Fatalf("%s: --json output is not SearchResponse JSON: %v\nstdout:\n%s\nstderr:\n%s",
+				name, err, stdout.String(), stderr.String())
+		}
+
+		t.Logf("%s parsed: query=%q, results=%d, answers=%d, infoboxes=%d",
+			name, response.Query, len(response.Results), len(response.Answers), len(response.Infoboxes))
+
+		return response
+	}
+
+	t.Run("time_range year", func(t *testing.T) {
+		// Mirrors the previous E2E shell smoke for --time_range year.
+		// The original shell step used `grep -Eq "Results|No results found" || echo "WARN:..."`,
+		// which exits 0 even when neither pattern matches. This Go version
+		// always parses structured output; an empty Results is recorded in
+		// the WARNING SUMMARY instead of being silently swallowed.
+		response := runCLI(t, "time_range year", "--time_range", "year", "golang")
+
+		if len(response.Results) == 0 {
+			warning := "time_range=year results length = 0"
+			warnings = append(warnings, warning)
+			t.Logf("%s\nresponse: %#v", warning, response)
+		}
+
+		for i, result := range response.Results {
+			if strings.TrimSpace(result.Title) == "" {
+				t.Fatalf("time_range=year result[%d] title is empty\nresponse: %#v", i, response)
+			}
+			if strings.TrimSpace(result.URL) == "" {
+				t.Fatalf("time_range=year result[%d] URL is empty\nresponse: %#v", i, response)
+			}
+		}
+	})
+
+	t.Run("safesearch strict", func(t *testing.T) {
+		// Mirrors the previous E2E shell smoke for --safesearch 2.
+		// The original shell step accepted "No results found" without
+		// routing through the WARNING SUMMARY path. This Go version
+		// asserts non-empty Results (with a warning fallback) per
+		// AGENTS.md "Core functional tests assert non-zero results".
+		response := runCLI(t, "safesearch strict", "--safesearch", "2", "test")
+
+		if len(response.Results) == 0 {
+			warning := "safesearch=2 strict results length = 0"
+			warnings = append(warnings, warning)
+			t.Logf("%s\nresponse: %#v", warning, response)
+		}
+
+		for i, result := range response.Results {
+			if strings.TrimSpace(result.Title) == "" {
+				t.Fatalf("safesearch=2 result[%d] title is empty\nresponse: %#v", i, response)
+			}
+			if strings.TrimSpace(result.URL) == "" {
+				t.Fatalf("safesearch=2 result[%d] URL is empty\nresponse: %#v", i, response)
+			}
+		}
+	})
+
+	if len(warnings) > 0 {
+		t.Logf("--- WARNING SUMMARY ---")
+		for _, warning := range warnings {
+			t.Logf("  WARN: %s", warning)
+		}
+	}
+	t.Log("CLI smoke tests completed")
 }

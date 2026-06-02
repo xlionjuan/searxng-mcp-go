@@ -122,12 +122,6 @@ jobs:
           echo "$output"
           python3 -c "import sys; s = sys.stdin.read(); assert any('\u4e00' <= c <= '\u9fff' for c in s)" <<< "$output"
 
-      - name: E2E test — time range parameter
-        run: |
-          output=$(./searxng-mcp-go --time_range year "golang" 2>&1)
-          echo "$output"
-          echo "$output" | grep -Eq "Results|No results found" || echo "WARN: time_range test may be affected by temporary server state"
-
       - name: E2E test — categories parameter
         run: |
           output=$(./searxng-mcp-go --categories news "news" 2>&1)
@@ -140,12 +134,6 @@ jobs:
           output=$(./searxng-mcp-go "$query" 2>&1)
           echo "$output"
           echo "$output" | grep -q "Results"
-
-      - name: E2E test — strict safesearch parameter
-        run: |
-          output=$(./searxng-mcp-go --safesearch 2 "test" 2>&1)
-          echo "$output"
-          echo "$output" | grep -Eq "Results|No results found"
 
       - name: Cleanup
         if: always()
