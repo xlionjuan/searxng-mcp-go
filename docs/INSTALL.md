@@ -113,13 +113,22 @@ which searxng-mcp-go
 }
 ```
 
-When debug mode (`DEBUG=1`) is enabled, the server logs HTTP request/response details, including query text. On startup the server emits the following warning to stderr:
+When debug mode (`DEBUG=1`) is enabled, the server logs HTTP request/response details, including query text. On startup the server writes a single warning line to stderr whose stable message body is:
 
 ```text
-WARN debug mode logs search queries and HTTP requests in plain text; avoid sensitive searches
+debug mode logs search queries and HTTP requests in plain text; avoid sensitive searches
 ```
 
-Most MCP clients do not surface stderr to the user, so do not rely on the warning to communicate the privacy risk. Avoid enabling debug mode with sensitive queries.
+The line is emitted via Go's default `slog` handler, which routes through
+the standard logger and prepends a timestamp and level (e.g.
+`2026/06/03 12:34:56 WARN …`); the prefix is handler-dependent and may
+change with the configured slog handler, so do not pin it in tests or
+automation. Grep the stderr output for the stable message body above if
+you need to assert that the warning was emitted.
+
+Most MCP clients do not surface stderr to the user, so do not rely on
+the warning to communicate the privacy risk. Avoid enabling debug mode
+with sensitive queries.
 
 ### CLI Mode Configuration
 
