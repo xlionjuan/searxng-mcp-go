@@ -154,9 +154,25 @@ Root benchmarks live in `bench_test.go`; internal benchmarks live in
 | `go test -race -shuffle=on ./...` | CI-style test run with race detector |
 | `go test -tags=stress -race ./...` | In-process concurrency stress tests (`concurrency_test.go`); no live server required |
 | `go test -tags='e2e stress' -race -run 'TestMCPStress' -count=1 -timeout=900s .` | E2E stress tests (`e2e_stress_test.go`); requires `SEARXNG_URL` and the local test server |
-| `go test -tags=e2e -run TestMCPStdioE2E -count=1 .` | E2E test; requires `SEARXNG_URL` and test server |
+| `go test -tags=e2e -run TestMCPStdioE2E -count=1 .` | E2E test; requires `SEARXNG_URL` and test server. Set `E2E_MCP_BINARY=/path/to/built/binary` to skip the per-test `go build`. |
 | `golangci-lint run ./...` | Lint; CI uses v2.12.2 |
 | `go vet ./...` | Static analysis fallback |
+
+E2E notes:
+
+- `E2E_MCP_BINARY` is read by every test that uses `mcp.CommandTransport`
+  (`e2e_mcp_test.go`, `e2e_functional_test.go`, `e2e_error_test.go`,
+  `e2e_stress_test.go`). When unset, each test builds a fresh binary in
+  `t.TempDir()`; CI sets it once in `.github/workflows/e2e.yml` so the retry
+  loop does not rebuild.
+- The shared `e2eMCPEnv` helper injects `SEARXNG_MAX_RETRIES=2` (production
+  default is 5) to keep E2E wall-clock time predictable while still exercising
+  the retry path. Do not change this without an explicit reason.
+- `e2e_exitcode_test.go` is the one E2E file that does not use
+  `mcp.CommandTransport`; it asserts CLI exit codes via raw `exec.Command` and
+  builds its own binary regardless of `E2E_MCP_BINARY`.
+- See `docs/MCP_TESTING.md` for the full layering of unit, in-memory MCP,
+  subprocess MCP, and CLI exit-code tests.
 
 ## GitHub and PR Work
 

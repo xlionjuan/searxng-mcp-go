@@ -117,30 +117,21 @@ which searxng-mcp-go
       "env": {
         "SEARXNG_URL": "https://your-searxng-instance.example.com",
         "SEARXNG_TIMEOUT": "8s",
-        "SEARXNG_MAX_RETRIES": "5",
-        "DEBUG": "1"
+        "SEARXNG_MAX_RETRIES": "5"
       }
     }
   }
 }
 ```
 
-When debug mode (`DEBUG=1`) is enabled, the server logs HTTP request/response details, including query text. On startup the server writes a single warning line to stderr whose stable message body is:
+#### Debug Mode (opt-in, do not enable by default)
 
-```text
-debug mode logs search queries and HTTP requests in plain text; avoid sensitive searches
-```
+> **Warning:** Debug mode writes HTTP request and response details, including
+> the full query text, to stderr in plain text. Do not enable it for production
+> use, shared hosts, or any workload where queries may be sensitive.
 
-The line is emitted via Go's default `slog` handler, which routes through
-the standard logger and prepends a timestamp and level (e.g.
-`2026/06/03 12:34:56 WARN …`); the prefix is handler-dependent and may
-change with the configured slog handler, so do not pin it in tests or
-automation. Grep the stderr output for the stable message body above if
-you need to assert that the warning was emitted.
-
-Most MCP clients do not surface stderr to the user, so do not rely on
-the warning to communicate the privacy risk. Avoid enabling debug mode
-with sensitive queries.
+To enable debug logging temporarily for troubleshooting, add `"DEBUG": "1"` to
+the `env` block above. Remove it once the issue is diagnosed.
 
 ### CLI Mode Configuration
 
