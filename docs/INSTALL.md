@@ -69,9 +69,21 @@ not see the warning at all.
 
 If you need strict validation (for example in CI), prefer the
 `--timeout` and `--max-retries` CLI flags instead of the environment
-variables. An invalid value supplied on the command line is reported
-on stderr, the CLI help is printed, and the process exits with a
-non-zero status — no search request is issued.
+variables. Invalid CLI values follow two distinct paths depending on
+where they are rejected:
+
+- **Flag parse errors** — values the command-line parser cannot
+  interpret at all (for example `--timeout=abc`) are caught before
+  any search flow runs. The error is reported on stderr, the CLI help
+  is printed, and the process exits with a non-zero status. No search
+  request is issued.
+- **Semantic validation errors** — values that parse successfully but
+  fall outside the documented range (for example `--max-retries=-1`,
+  or a value above the maximum allowed retries) are accepted by the
+  parser and only fail later, during configuration validation inside
+  the CLI search flow. The error is reported on stderr, the process
+  exits with a non-zero status, and **no CLI help is printed**. No
+  search request is issued.
 
 > **Note:** If you provide a custom `HTTPClient` (for example, when using the library programmatically), the `Timeout` setting is ignored and the provided client is used as-is. Either set `Timeout` or supply a custom `HTTPClient`, not both.
 
