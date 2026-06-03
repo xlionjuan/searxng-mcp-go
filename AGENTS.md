@@ -146,8 +146,9 @@ Root benchmarks live in `bench_test.go`; internal benchmarks live in
 | `go build ./...` | Build all packages |
 | `go test ./...` | Run unit tests, excluding e2e and stress |
 | `go test -race -shuffle=on ./...` | CI-style test run with race detector |
-| `go test -tags=stress -race ./...` | Include stress/concurrency tests |
-| `go test -tags=e2e -run TestMCPStdioE2E -count=1 -timeout=600s .` | E2E test; requires `SEARXNG_URL` and test server |
+| `go test -tags=stress -race ./...` | In-process concurrency stress tests (`concurrency_test.go`); no live server required |
+| `go test -tags='e2e stress' -race -run 'TestMCPStress' -count=1 -timeout=900s .` | E2E stress tests (`e2e_stress_test.go`); requires `SEARXNG_URL` and the local test server |
+| `go test -tags=e2e -run TestMCPStdioE2E -count=1 .` | E2E test; requires `SEARXNG_URL` and test server |
 | `golangci-lint run ./...` | Lint; CI uses v2.12.2 |
 | `go vet ./...` | Static analysis fallback |
 

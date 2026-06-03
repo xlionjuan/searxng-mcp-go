@@ -115,7 +115,9 @@ Common checks:
 - `go build ./...`
 - `go test ./...`
 - `go test -race -shuffle=on ./...`
-- `go test -tags=stress -race ./...`
+- `go test -tags=stress -race ./...` (in-process concurrency stress; no live server)
+- `go test -tags='e2e stress' -race -run 'TestMCPStress' -count=1 -timeout=900s .`
+  (E2E stress; requires `SEARXNG_URL` and the local test server)
 - `go vet ./...`
 - `golangci-lint run ./...`
 

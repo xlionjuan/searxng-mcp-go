@@ -29,9 +29,17 @@ test-cover:
 test-verbose:
     go test -race -shuffle=on -v ./...
 
-# Run integration-tagged tests
-test-integration:
-    go test -race -shuffle=on -tags=integration ./...
+# Run in-process concurrency stress tests (concurrency_test.go, build tag `stress`).
+# No live server required; safe to run anywhere `go test ./...` works.
+test-stress:
+    go test -race -shuffle=on -tags=stress ./...
+
+# Run E2E tests against a live SearXNG instance (build tag `e2e`).
+# Requires `just test-server-start` and `SEARXNG_URL` exported.
+# Runs both the regular MCP E2E tests and the E2E stress tests in
+# e2e_stress_test.go (which also requires the `stress` build tag).
+test-e2e:
+    go test -race -tags='e2e stress' -count=1 -timeout=900s .
 
 # Run tests in short mode (skip slow tests)
 test-short:

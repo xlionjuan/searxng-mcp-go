@@ -1,5 +1,17 @@
 //go:build e2e && stress
 
+// This file requires BOTH the `e2e` and `stress` build tags.
+//
+// The `stress` tag groups the in-process concurrency tests
+// (concurrency_test.go) with the live-server E2E stress tests below.
+// The `e2e` tag gates the live-server tests in this repo.
+//
+// The combined tag is intentional: it keeps the live-server stress suite
+// out of the default `./...` runs and the in-process-only `go test
+// -tags=stress ./...` invocations documented in AGENTS.md. Run with
+// `-tags='e2e stress'` (or via the `e2e-stress` workflow / `just test-e2e`
+// recipe) to include it.
+
 package main
 
 import (
