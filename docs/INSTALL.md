@@ -60,23 +60,18 @@ The default timeout for search requests is 8 seconds. Set `SEARXNG_TIMEOUT` to a
 `SEARXNG_TIMEOUT` and `SEARXNG_MAX_RETRIES` accept a fixed format (a Go
 duration and a non-negative integer, respectively). When a value is set
 to something the server cannot parse — for example
-`SEARXNG_TIMEOUT=abc` or `SEARXNG_MAX_RETRIES=-1` — the server logs a
-warning to stderr and silently falls back to the built-in default. The
-server does **not** exit with an error in MCP stdio mode, so most MCP
-clients will not surface the warning to the user.
-
-Each warning is emitted via `slog` at `WARN` level with the message
-`invalid SEARXNG_TIMEOUT, ignoring` or `invalid SEARXNG_MAX_RETRIES,
-ignoring` plus `value` and `error` attributes carrying the offending
-input and the parse error. The exact wire format (timestamp, quoting,
-attribute layout) is determined by the active `slog` handler and may
-change between Go releases, so grep for the stable message fragment
-rather than matching the full line byte for byte.
+`SEARXNG_TIMEOUT=abc` or `SEARXNG_MAX_RETRIES=-1` — the server writes a
+warning line to stderr that names the offending variable and value, and
+then silently falls back to the built-in default. The process
+**continues running** and does not exit. In MCP stdio mode, most MCP
+clients do not surface the stderr stream, so end users typically do
+not see the warning at all.
 
 If you need strict validation (for example in CI), prefer the
-`--timeout` and `--max-retries` CLI flags. Invalid values are
-validated on the command line and cause the process to exit with a
-non-zero status instead of falling back to the default.
+`--timeout` and `--max-retries` CLI flags instead of the environment
+variables. An invalid value supplied on the command line is reported
+on stderr, the CLI help is printed, and the process exits with a
+non-zero status — no search request is issued.
 
 > **Note:** If you provide a custom `HTTPClient` (for example, when using the library programmatically), the `Timeout` setting is ignored and the provided client is used as-is. Either set `Timeout` or supply a custom `HTTPClient`, not both.
 
