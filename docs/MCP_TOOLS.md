@@ -208,6 +208,7 @@ Search error examples:
 | SearXNG HTTP error | `Search error: request failed` (full error logged server-side) |
 | HTML response (JSON disabled) | `Search error: request failed` (full error logged server-side) |
 | Invalid JSON from SearXNG | `Search error: request failed` (full error logged server-side) |
+| Response marshal failure | `Search error: failed to format results` (full error logged server-side) |
 
 ### Implementation Details
 
