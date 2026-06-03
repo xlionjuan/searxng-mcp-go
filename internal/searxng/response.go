@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime"
 	"net/http"
+	"slices"
 	"strings"
 	"unicode/utf8"
 )
@@ -119,15 +121,49 @@ func (s *SearXNGSearcher) logDebugBody(resp *http.Response, body []byte) {
 }
 
 func isHTMLResponse(contentType string, body []byte) bool {
-	trimmedBody := bytes.TrimSpace(body)
+	if isHTMLContentType(contentType) {
+		return true
+	}
 
-	return strings.Contains(contentType, "text/html") ||
-		bytes.HasPrefix(trimmedBody, []byte("<!DOCTYPE")) ||
-		bytes.HasPrefix(trimmedBody, []byte("<html"))
+	trimmedBody := bytes.TrimSpace(body)
+	lowerBody := bytes.ToLower(trimmedBody)
+
+	return bytes.HasPrefix(lowerBody, []byte("<!doctype")) ||
+		bytes.HasPrefix(lowerBody, []byte("<html"))
+}
+
+// isJSONContentType reports whether the Content-Type header value, when parsed
+// as a media type, identifies a JSON payload (application/json or text/json).
+// The comparison is case-insensitive and parameters such as charset are
+// ignored. An empty or unparseable Content-Type returns false.
+func isJSONContentType(contentType string) bool {
+	return mediaTypeIs(contentType, "application/json", "text/json")
+}
+
+// isHTMLContentType reports whether the Content-Type header value, when parsed
+// as a media type, identifies an HTML payload (text/html). The comparison is
+// case-insensitive and parameters such as charset are ignored. An empty or
+// unparseable Content-Type returns false.
+func isHTMLContentType(contentType string) bool {
+	return mediaTypeIs(contentType, "text/html")
+}
+
+// mediaTypeIs reports whether contentType, when parsed as a media type,
+// matches any of want. mime.ParseMediaType lowercases the type and parameter
+// names, so a successful parse yields a normalized base type. If parsing
+// fails, the content type is treated as not matching, which lets body-based
+// fallbacks (e.g., HTML body detection) still apply.
+func mediaTypeIs(contentType string, want ...string) bool {
+	mt, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return false
+	}
+
+	return slices.Contains(want, mt)
 }
 
 func decodeSearchResponse(resp *http.Response, contentType string, body []byte) (*SearchResponse, error) {
-	if !strings.Contains(contentType, "application/json") && !strings.Contains(contentType, "text/json") {
+	if !isJSONContentType(contentType) {
 		bodyPreview := string(truncateBytesToValidUTF8(body, MaxErrorDisplayChars))
 		if len(body) > MaxErrorDisplayChars {
 			bodyPreview += "..."
