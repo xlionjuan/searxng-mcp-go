@@ -57,10 +57,9 @@ func truncateBody(body []byte, maxLen int) string {
 	return string(truncated)
 }
 
-// buildErrorPreview returns a UTF-8-safe preview of body suitable for storage
-// in SearXNGError.ResponseBody. The preview is truncated to at most
-// MaxErrorDisplayChars bytes, walking back to a valid rune boundary so callers
-// only allocate the small string they actually keep.
+// buildErrorPreview returns a preview of body suitable for storage in
+// SearXNGError.ResponseBody. The size and UTF-8 safety contract are
+// defined by MaxErrorDisplayChars; see its doc comment for details.
 func buildErrorPreview(body []byte) string {
 	return truncateBody(body, MaxErrorDisplayChars)
 }
