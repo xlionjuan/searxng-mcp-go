@@ -18,8 +18,9 @@ configured SearXNG instance.
 - OpenCode agent runtime: comment `/oc` on an issue or PR to invoke
   `.github/workflows/opencode.yml`; the manual
   `.github/workflows/opencode-doc-code-alignment.yml` workflow runs a
-  doc/code alignment audit. These are not yet indexed in this table — see the
-  workflow files for inputs and permissions.
+  doc/code alignment audit. GitHub comments must include `/oc`; comments
+  without that trigger text will not invoke the workflow. These are not yet
+  indexed in this table — see the workflow files for inputs and permissions.
 - Domain context and terminology: `CONTEXT.md`
 - Architecture decisions: `docs/adr/`
 
