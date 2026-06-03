@@ -26,8 +26,10 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 |              |         |          |         | - `year` = Last 365 days                       |
 | `categories` | string  | No       | -       | Comma-separated list of categories to search    |
 |              |         |          |         | (e.g., general, news, music)                   |
+|              |         |          |         | Max 4096 bytes for the full string             |
 | `engines`    | string  | No       | -       | Comma-separated list of search engines to use  |
 |              |         |          |         | (e.g., google, bing, duckduckgo)               |
+|              |         |          |         | Max 4096 bytes for the full string             |
 | `pageno`     | integer, null | No       | -       | Page number for pagination (omitted = backend default/page 1) |
 | `limit`      | integer | No       | 10      | Maximum number of results returned (1-20)      |
 
