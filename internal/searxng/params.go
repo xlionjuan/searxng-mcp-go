@@ -91,14 +91,14 @@ var SearchParams = []ParamDef{
 	{
 		Name: "categories", GoType: "string", Default: "",
 		Description: "Comma-separated list of categories to search (max 4096 bytes for the full string)",
-		CLIHelp:     "Comma-separated list of categories to search",
+		CLIHelp:     "Comma-separated list of categories to search [max 4096 bytes]",
 		CLIType:     "CAT",
 		MCPType:     "string",
 	},
 	{
 		Name: "engines", GoType: "string", Default: "",
 		Description: "Comma-separated list of search engines to use (max 4096 bytes for the full string)",
-		CLIHelp:     "Comma-separated list of search engines to use",
+		CLIHelp:     "Comma-separated list of search engines to use [max 4096 bytes]",
 		CLIType:     "ENG",
 		MCPType:     "string",
 	},
