@@ -10,8 +10,16 @@ configured SearXNG instance.
 - Core package: `internal/searxng/`
 - Unit and integration tests: root `*_test.go` plus `internal/searxng/*_test.go`
 - E2E and stress tests: `e2e_*_test.go`, build tags `e2e` and `stress`
+- Golden regression test: `golden_capture_test.go` is a byte-for-byte lock on
+  `formatResults()` output. Any intentional formatting change requires updating
+  the inline golden string in that test.
 - Fixtures: `testdata/`
 - CI and release workflows: `.github/workflows/`
+- OpenCode agent runtime: comment `/oc` on an issue or PR to invoke
+  `.github/workflows/opencode.yml`; the manual
+  `.github/workflows/opencode-doc-code-alignment.yml` workflow runs a
+  doc/code alignment audit. These are not yet indexed in this table — see the
+  workflow files for inputs and permissions.
 - Domain context and terminology: `CONTEXT.md`
 - Architecture decisions: `docs/adr/`
 

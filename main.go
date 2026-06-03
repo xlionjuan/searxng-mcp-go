@@ -296,7 +296,7 @@ func main() {
 
 	mcpStdin, err := prepareMCPStdin(os.Stdin)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		fmt.Fprintf(os.Stderr, "\033[31mERROR: %v\033[0m\n", err)
 		os.Exit(exitCodeMCPError)
 	}
 

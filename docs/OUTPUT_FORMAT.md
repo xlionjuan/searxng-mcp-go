@@ -312,6 +312,24 @@ formatting truncation.
 
 ---
 
+## Limits
+
+The server applies two size limits to keep responses manageable and to
+protect consumers from a misbehaving SearXNG upstream.
+
+| Limit | Value | Applies to | Behavior on overflow |
+|-------|-------|------------|----------------------|
+| Response body size | 2 MB (`MaxResponseBodySize`) | All modes (CLI, JSON, MCP) | The response is rejected with a `SearXNGError` whose message contains `"response body exceeded maximum size limit"`. This is a guardrail against a malformed or misconfigured upstream; a normal SearXNG JSON response is well under 2 MB. |
+| Per-result content | 4000 Unicode characters (`MaxContentRunes`) | CLI text mode only | `formatResults` truncates result summaries (`content` field) and infobox content to 4000 runes. JSON mode and MCP mode return the full normalized response without this formatting truncation. |
+
+The response-body-size cap is checked before the JSON is parsed, so the
+result is a hard error rather than a partial response. MCP consumers receive
+the `SearXNGError` as a `Search error: ...` reply; CLI consumers see it in
+stderr/exit code. The error's `ResponseBody` field carries up to 200
+characters of the truncated body for debugging (`MaxErrorDisplayChars`).
+
+---
+
 ## Quick Reference
 
 ```bash
@@ -322,7 +340,7 @@ formatting truncation.
 ./searxng-mcp-go "apple inc" --json
 
 # With additional parameters
-./searxng-mcp-go "apple inc" --json --language=en --safesearch=1 --time_range=month
+./searxng-mcp-go "apple inc" --json --language en --safesearch 1 --time_range month
 
 # Custom SearXNG server
 ./searxng-mcp-go "query" --searxng-url=https://your-searxng.example.com

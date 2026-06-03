@@ -198,6 +198,15 @@ func TestMCPErrors_DebugMode(t *testing.T) {
 		response.Query, len(response.Results), len(response.Answers), len(response.Infoboxes))
 }
 
+// TestMCPErrors_InvalidInputs is the exhaustive validation coverage test for
+// the MCP handler: it runs every handler-level error path including ones that
+// the SDK schema does not catch (whitespace and control characters in the
+// query, 501-rune query, negative safesearch, pageno zero, etc.).
+//
+// It overlaps with the "validation errors" subtest inside TestMCPStdioE2E in
+// e2e_mcp_test.go on purpose — that subtest is the integration check through
+// the full live MCP stdio session; this one is the coverage test. Do not
+// consolidate the two.
 func TestMCPErrors_InvalidInputs(t *testing.T) {
 	searxngURL := os.Getenv("SEARXNG_URL")
 	if searxngURL == "" {

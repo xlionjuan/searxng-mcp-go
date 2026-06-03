@@ -40,6 +40,7 @@ The tool returns a JSON text response containing the full `SearchResponse` objec
 | Field | Type | Description |
 |-------|------|-------------|
 | `query` | string | The original search query |
+| `warning` | string | External-content advisory noting that search results come from untrusted sources and should be verified before use (always present on successful responses) |
 | `answers` | array | Direct answers (omitted when empty) |
 | `number_of_results` | integer | Total count of results; if SearXNG returns 0 while results exist, normalized to `len(results)` |
 | `infoboxes` | array | Knowledge panels with content, attributes, URLs (omitted when empty) |
@@ -58,6 +59,8 @@ The tool returns a JSON text response containing the full `SearchResponse` objec
 | `publishedDate` | string | Publication date provided by SearXNG (omitted when the backend does not include it; no normalization is applied) |
 
 **Note:** The `number_of_results` field may return 0 from SearXNG even when results are present. The server normalizes this by replacing 0 with `len(results)` when results exist. If `pageno` is omitted, the server does not send the parameter and SearXNG uses its page 1 default.
+
+**Note:** The `warning` field is a static advisory emitted on every successful response to remind AI agents and JSON consumers that search results originate from external, untrusted sources. It is not a per-result provenance marker; the canonical wire-format ordering and JSON-mode behavior are documented in [docs/OUTPUT_FORMAT.md](OUTPUT_FORMAT.md).
 
 ### Example Usage
 
@@ -136,9 +139,12 @@ The tool returns a JSON text response containing the full `SearchResponse` objec
 
 ### Example Response
 
+Legacy instant-answer example (query `ip`):
+
 ```json
 {
   "query": "golang tutorial",
+  "warning": "Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.",
   "answers": [
     {"answer": "203.0.113.42", "engine": "ip_lookup"}
   ],
@@ -165,6 +171,61 @@ The tool returns a JSON text response containing the full `SearchResponse` objec
 }
 ```
 
+Typed-answer example (query `translate hello to french`):
+
+```json
+{
+  "query": "translate hello to french",
+  "answers": [
+    {
+      "answer": "bonjour",
+      "engine": "lingva",
+      "translations": [
+        {
+          "text": "bonjour",
+          "transliteration": "bɔ̃ʒuʁ",
+          "examples": ["Bonjour le monde", "Bonjour, comment ça va ?"],
+          "definitions": ["a formal greeting"],
+          "synonyms": ["salut", "coucou"]
+        }
+      ]
+    }
+  ],
+  "number_of_results": 0,
+  "results": [],
+  "suggestions": []
+}
+```
+
+Typed-weather-answer example (query `weather Berlin`):
+
+```json
+{
+  "query": "weather Berlin",
+  "answers": [
+    {
+      "engine": "open-meteo",
+      "current": {
+        "location": {"name": "Berlin", "latitude": 52.52, "longitude": 13.41, "timezone": "Europe/Berlin"},
+        "temperature": {"val": 18.4, "unit": "°C"},
+        "condition": "Partly cloudy",
+        "humidity": {"val": 62, "unit": "%"}
+      },
+      "forecasts": [],
+      "service": "open-meteo.com"
+    }
+  ],
+  "number_of_results": 0,
+  "results": [],
+  "suggestions": []
+}
+```
+
+Typed answers (translations, weather) populate `translations`, `current`,
+`forecasts`, and `service` instead of the legacy `answer` string. See
+`internal/searxng/types.go` (`Answer` struct) for the full set of typed
+fields and their `omitempty` behavior.
+
 ### Error Responses
 
 The server returns the following error types:
@@ -178,6 +239,12 @@ The server returns the following error types:
 Validation errors can come from two places. MCP SDK schema validation runs before
 the search handler for JSON Schema constraints; handler validation runs after
 argument decoding for project-specific checks.
+
+The SDK version is pinned in `go.mod` (`github.com/modelcontextprotocol/go-sdk`)
+and the format is verified by `TestMCPErrors_InvalidInputs` against that pinned
+version. Treat the response-format strings below as the contract for that
+pinned version; a SDK upgrade must update both the table and the guarding test
+in the same change.
 
 SDK schema validation error examples:
 
@@ -208,6 +275,7 @@ Search error examples:
 | SearXNG HTTP error | `Search error: request failed` (full error logged server-side) |
 | HTML response (JSON disabled) | `Search error: request failed` (full error logged server-side) |
 | Invalid JSON from SearXNG | `Search error: request failed` (full error logged server-side) |
+| Response marshal failure | `Search error: failed to format results` (full error logged server-side) |
 
 ### Implementation Details
 
