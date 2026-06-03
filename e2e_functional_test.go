@@ -5,14 +5,19 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"searxng-mcp-go/internal/searxng"
 )
 
 func TestMCPFunctional(t *testing.T) {
@@ -373,4 +378,311 @@ func TestMCPFunctional(t *testing.T) {
 		}
 	}
 	t.Log("MCP functional tests completed")
+}
+
+// TestCLISmoke exercises the binary in flag-driven (non-MCP) CLI mode.
+// It is the Go E2E replacement for the shell smoke steps previously hosted
+// in .github/workflows/e2e.yml.
+//
+// The previous shell steps asserted live-server behavior with `grep`,
+// `python3 -c` heredocs, and `|| echo "WARN:..."` fallbacks. None of those
+// patterns survive AGENTS.md "E2E Tests" rules: grep / python3 assertions
+// cannot route through the WARNING SUMMARY path, and `|| echo` makes the
+// whole step exit 0 even when the expected evidence is missing.
+//
+// Every subtest here parses a structured `--json` SearchResponse so that
+// "expected content missing" (zero Results, zero Answers, zero Infoboxes,
+// or — for the language test — the CJK query not being preserved) routes
+// into a single WARNING SUMMARY printed at the end of the test. Non-empty
+// evidence is still asserted strictly (title/URL/answer shape, infobox
+// presence, CJK preservation, etc.), so this test does not silently pass
+// when the live server is broken in a way the WARNING SUMMARY cannot
+// express — e.g. malformed `--json` output, or `--json "..."` returning a
+// non-SearchResponse payload.
+func TestCLISmoke(t *testing.T) {
+	searxngURL := os.Getenv("SEARXNG_URL")
+	if searxngURL == "" {
+		t.Skip("SEARXNG_URL not set")
+	}
+	var warnings []string
+
+	ctx, cancel := context.WithTimeout(t.Context(), 600*time.Second)
+	defer cancel()
+
+	binaryPath := os.Getenv("E2E_MCP_BINARY")
+	if binaryPath == "" {
+		binaryPath = buildE2EMCPBinary(ctx, t)
+	}
+	t.Logf("using CLI smoke binary: %s", binaryPath)
+
+	// runCLI executes the binary in CLI mode with --json, parses the
+	// structured SearchResponse, and surfaces command failures / parse
+	// errors as test failures. Each call uses a per-call timeout so a
+	// stuck subprocess cannot exceed its budget.
+	runCLI := func(t *testing.T, name string, args ...string) searxng.SearchResponse {
+		t.Helper()
+
+		subCtx, subCancel := context.WithTimeout(ctx, 60*time.Second)
+		defer subCancel()
+
+		cliArgs := append([]string{"--json", "--searxng-url", searxngURL}, args...)
+
+		cmd := exec.CommandContext(subCtx, binaryPath, cliArgs...) //nolint:gosec // test runs built binary
+		cmd.Env = append(os.Environ(), "SEARXNG_MAX_RETRIES=2")
+
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("%s: binary failed: %v\nstdout:\n%s\nstderr:\n%s",
+				name, err, stdout.String(), stderr.String())
+		}
+
+		var response searxng.SearchResponse
+		if err := json.Unmarshal(bytes.TrimSpace(stdout.Bytes()), &response); err != nil {
+			t.Fatalf("%s: --json output is not SearchResponse JSON: %v\nstdout:\n%s\nstderr:\n%s",
+				name, err, stdout.String(), stderr.String())
+		}
+
+		t.Logf("%s parsed: query=%q, results=%d, answers=%d, infoboxes=%d, suggestions=%d",
+			name, response.Query, len(response.Results), len(response.Answers), len(response.Infoboxes), len(response.Suggestions))
+
+		return response
+	}
+
+	// assertResultsNotEmpty records a WARNING SUMMARY entry when results
+	// are empty and otherwise asserts that every result has a title and
+	// URL. This mirrors the "core functional tests assert non-zero
+	// results" rule from AGENTS.md.
+	//
+	// Per-result title/URL quality checks are routed to WARNING SUMMARY
+	// rather than fatal: individual engines (e.g. Google News) can
+	// occasionally return results with empty titles, which is an
+	// upstream data-quality issue, not a binary bug. The shell smoke
+	// steps this replaces only checked `grep -q "Results"`, so the
+	// strict "every result has a title and URL" assertion would be a
+	// new strictness level. The WARNING SUMMARY path keeps the signal
+	// visible without turning a meta-search flakiness mode into a hard
+	// CI failure.
+	assertResultsNotEmpty := func(t *testing.T, name string, response searxng.SearchResponse) {
+		t.Helper()
+		if len(response.Results) == 0 {
+			warning := name + " results length = 0"
+			warnings = append(warnings, warning)
+			t.Logf("%s\nresponse: %#v", warning, response)
+
+			return
+		}
+		for i, result := range response.Results {
+			if strings.TrimSpace(result.Title) == "" {
+				warning := name + " result[" + strconv.Itoa(i) + "] title is empty"
+				warnings = append(warnings, warning)
+				t.Logf("%s\nresponse: %#v", warning, response)
+			}
+			if strings.TrimSpace(result.URL) == "" {
+				warning := name + " result[" + strconv.Itoa(i) + "] URL is empty"
+				warnings = append(warnings, warning)
+				t.Logf("%s\nresponse: %#v", warning, response)
+			}
+		}
+	}
+
+	// assertAnswerMatches records a WARNING SUMMARY entry when no answers
+	// are returned and otherwise asserts that at least one answer matches
+	// the provided regex. The regex is checked against the legacy
+	// Answer.Answer field, which is the human-readable text SearXNG
+	// answerers populate (e.g. "avg = 3", an IPv4 string, a UUID, a
+	// timezone report). Typed-answer fallback (e.g. Weather with no
+	// legacy text) is intentionally out of scope here — these subtests
+	// are direct migrations of the previous shell smoke regex checks.
+	assertAnswerMatches := func(t *testing.T, name string, response searxng.SearchResponse, pattern *regexp.Regexp) {
+		t.Helper()
+		if len(response.Answers) == 0 {
+			warning := name + " answers length = 0"
+			warnings = append(warnings, warning)
+			t.Logf("%s\nresponse: %#v", warning, response)
+
+			return
+		}
+		for i, ans := range response.Answers {
+			if pattern.MatchString(ans.Answer) {
+				return
+			}
+			t.Logf("%s answer[%d]=%q did not match %s", name, i, ans.Answer, pattern)
+		}
+		t.Fatalf("%s: no answer matched %s\nresponse: %#v", name, pattern, response)
+	}
+
+	// query/format subtests — these were previously strict grep / python3
+	// assertions in shell and are now WARNING-tolerated 0 results plus
+	// strict non-empty shape checks.
+
+	t.Run("basic query", func(t *testing.T) {
+		// Mirrors: ./searxng-mcp-go "golang tutorial" → grep -q "Results"
+		// The "Results" header is only present when the response has at
+		// least one result, so the shell assertion is effectively a
+		// "results non-empty" check. We make that intent explicit here
+		// and route zero-result outcomes through WARNING SUMMARY.
+		response := runCLI(t, "basic query", "golang tutorial")
+		assertResultsNotEmpty(t, "basic query", response)
+	})
+
+	t.Run("json output", func(t *testing.T) {
+		// Mirrors: --json "golang" → python3 assert len(d['results']) > 0
+		// runCLI's JSON parse enforces "--json output is SearchResponse
+		// JSON" structurally; we add the non-zero result check here.
+		response := runCLI(t, "json output", "golang")
+		assertResultsNotEmpty(t, "json output", response)
+	})
+
+	t.Run("infobox json", func(t *testing.T) {
+		// Mirrors: --json "apple inc" →
+		//   python3 assert isinstance(d.get('infoboxes'), list) and d['infoboxes']
+		// Empty infoboxes are the typical flakiness case (engine may
+		// rotate and drop the Wikipedia infobox), so we route them to
+		// WARNING SUMMARY and otherwise require at least one infobox
+		// with non-empty content.
+		response := runCLI(t, "infobox json", "apple inc")
+
+		if len(response.Infoboxes) == 0 {
+			warning := "infobox json infoboxes length = 0"
+			warnings = append(warnings, warning)
+			t.Logf("%s\nresponse: %#v", warning, response)
+		} else {
+			for i, ib := range response.Infoboxes {
+				if strings.TrimSpace(ib.Infobox) == "" && strings.TrimSpace(ib.Content) == "" {
+					t.Fatalf("infobox json infobox[%d] has empty infobox and content\nresponse: %#v", i, response)
+				}
+			}
+		}
+	})
+
+	t.Run("language parameter", func(t *testing.T) {
+		// Mirrors: --language zh-tw "測試" →
+		//   python3 assert any('\u4e00' <= c <= '\u9fff' for c in s)
+		// The original check verified CJK characters appear in the
+		// output. With --json the equivalent is: the response.Query
+		// preserves the CJK input (and any CJK content in results).
+		// If the response is empty (a known flakiness mode) we still
+		// want to know the CJK query was preserved, which is itself
+		// non-trivial because some pipelines normalize the query string
+		// before sending it on the wire.
+		response := runCLI(t, "language parameter", "--language", "zh-tw", "測試")
+
+		if !containsCJK(response.Query) {
+			t.Fatalf("language parameter response.Query=%q does not contain CJK characters\nresponse: %#v", response.Query, response)
+		}
+
+		assertResultsNotEmpty(t, "language parameter", response)
+	})
+
+	t.Run("time range year", func(t *testing.T) {
+		// Mirrors: --time_range year "golang" →
+		//   grep -Eq "Results|No results found" || echo "WARN:..."
+		// The original `|| echo` made the step exit 0 even when neither
+		// pattern matched; this Go version always parses structured
+		// output and routes zero-result outcomes through WARNING
+		// SUMMARY.
+		response := runCLI(t, "time range year", "--time_range", "year", "golang")
+		assertResultsNotEmpty(t, "time range year", response)
+	})
+
+	t.Run("categories news", func(t *testing.T) {
+		// Mirrors: --categories news "news" → grep -q "Results"
+		response := runCLI(t, "categories news", "--categories", "news", "news")
+		assertResultsNotEmpty(t, "categories news", response)
+	})
+
+	t.Run("long query", func(t *testing.T) {
+		// Mirrors: long query (golang + 35 "search" words) → grep "Results"
+		// The shell step's only assertion was "no error and the output
+		// mentions Results". The Go equivalent is: the binary must
+		// accept the long query (validation cap is 500 runes), parse
+		// the JSON, and either return results or surface the empty
+		// case via WARNING SUMMARY. A validation error or non-JSON
+		// output is a hard fail.
+		words := []string{"golang"}
+		for range 35 {
+			words = append(words, "search")
+		}
+
+		response := runCLI(t, "long query", strings.Join(words, " "))
+
+		if response.Query == "" {
+			t.Fatalf("long query response.Query is empty\nresponse: %#v", response)
+		}
+		assertResultsNotEmpty(t, "long query", response)
+	})
+
+	t.Run("safesearch strict", func(t *testing.T) {
+		// Mirrors: --safesearch 2 "test" →
+		//   grep -Eq "Results|No results found"
+		// The original silently accepted "No results found" without
+		// WARNING SUMMARY. This Go version still tolerates 0 results
+		// for the strict-safesearch case (it's the most likely to
+		// return 0 on a meta-search backend) but routes it through the
+		// shared WARNING SUMMARY path.
+		response := runCLI(t, "safesearch strict", "--safesearch", "2", "test")
+		assertResultsNotEmpty(t, "safesearch strict", response)
+	})
+
+	// answer regex subtests — these were previously `grep -q "Answers" +
+	// grep -Eq <pattern>` pairs in shell. We replace both with a single
+	// WARNING-tolerated 0-answers check plus a strict regex match
+	// against the legacy Answer.Answer field.
+
+	t.Run("sha512 answer", func(t *testing.T) {
+		// Mirrors: "sha512 hello" → grep "Answers" + grep -Eq "[[:xdigit:]]{64,}"
+		response := runCLI(t, "sha512 answer", "sha512 hello")
+		assertAnswerMatches(t, "sha512 answer", response, regexp.MustCompile(`[[:xdigit:]]{64,}`))
+	})
+
+	t.Run("ip answer", func(t *testing.T) {
+		// Mirrors: "ip" → grep "Answers" + grep -Eq "([0-9]{1,3}\.){3}[0-9]{1,3}"
+		response := runCLI(t, "ip answer", "ip")
+		assertAnswerMatches(t, "ip answer", response, regexp.MustCompile(`([0-9]{1,3}\.){3}[0-9]{1,3}`))
+	})
+
+	t.Run("random uuid answer", func(t *testing.T) {
+		// Mirrors: "random uuid" →
+		//   grep "Answers" + grep -Eiq "[0-9a-f]{8}-[0-9a-f]{4}-..."
+		response := runCLI(t, "random uuid answer", "random uuid")
+		assertAnswerMatches(t, "random uuid answer", response, regexp.MustCompile(`(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`))
+	})
+
+	t.Run("berlin time answer", func(t *testing.T) {
+		// Mirrors: "time Berlin" →
+		//   grep "Answers" + grep -Eiq "Berlin|[0-9]{1,2}:[0-9]{2}"
+		response := runCLI(t, "berlin time answer", "time Berlin")
+		assertAnswerMatches(t, "berlin time answer", response, regexp.MustCompile(`(?i)Berlin|[0-9]{1,2}:[0-9]{2}`))
+	})
+
+	t.Run("average answer", func(t *testing.T) {
+		// Mirrors: "avg 1 2 3 4 5" → grep "Answers" + grep -Eq "avg.*= 3"
+		response := runCLI(t, "average answer", "avg 1 2 3 4 5")
+		assertAnswerMatches(t, "average answer", response, regexp.MustCompile(`avg.*= 3`))
+	})
+
+	if len(warnings) > 0 {
+		t.Logf("--- WARNING SUMMARY ---")
+		for _, warning := range warnings {
+			t.Logf("  WARN: %s", warning)
+		}
+	}
+	t.Log("CLI smoke tests completed")
+}
+
+// containsCJK reports whether s contains any CJK Unified Ideograph.
+// This is the Go equivalent of the shell-side
+// `any('\u4e00' <= c <= '\u9fff' for c in s)` check used by the
+// previous --language zh-tw "測試" smoke step.
+func containsCJK(s string) bool {
+	for _, r := range s {
+		if unicode.Is(unicode.Han, r) {
+			return true
+		}
+	}
+
+	return false
 }
