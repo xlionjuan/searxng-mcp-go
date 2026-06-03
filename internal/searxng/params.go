@@ -83,7 +83,10 @@ var SearchParams = []ParamDef{
 		CLIHelp:     "Time range filter: day, month, year",
 		CLIType:     "RANGE",
 		MCPType:     "string",
-		Enum:        []string{"", "day", "month", "year"},
+		// Keep in sync with validTimeRanges in validation.go.
+		// The empty string means "no time restriction" and is short-circuited
+		// by validateTimeRange, so it intentionally has no entry in that map.
+		Enum: []string{"", "day", "month", "year"},
 	},
 	{
 		Name: "categories", GoType: "string", Default: "",
