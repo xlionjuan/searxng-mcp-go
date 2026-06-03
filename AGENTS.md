@@ -92,9 +92,13 @@ AGENTS.md) cover project overview, domain context, and agent instructions.
   group (`TestMCPFunctional`, `TestMCPStdioE2E`, `TestCLISmoke`).
 - Exceptions are owner-approved and documented. Known limitations of the CI
   SearXNG instance — for example, the `files` category being excluded from
-  `TestMCPFunctional`'s category loop, or the `time_range` subtests in
-  `TestMCPFunctional` downgrading zero-result outcomes to a warning — must
-  not be broadened without approval.
+  `TestMCPFunctional`'s category loop, or the `time_range=""` subtest
+  (named `"all"` at `e2e_functional_test.go:99`) downgrading zero-result
+  outcomes to a `WARNING SUMMARY` entry — must not be broadened without
+  approval. The `time_range="day"`, `"month"`, and `"year"` subtests are
+  expected to potentially return zero results and log the outcome as
+  `(persistent, expected)`; they are not downgraded to warnings and are
+  not part of the exception list.
 - Adding strict assertions is preferred when a test can meaningfully assert
   non-zero results with a better query or parameter combination.
 - Live-server assertions belong in Go E2E tests (`TestMCPFunctional`,
