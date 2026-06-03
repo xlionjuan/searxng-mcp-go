@@ -9,7 +9,10 @@ import (
 // MaxQueryLength is the maximum allowed length (in runes) for search queries.
 const MaxQueryLength = 500
 
-// validTimeRanges contains the set of valid time range values.
+// validTimeRanges contains the set of valid time range values. The empty
+// string is handled separately as "no restriction" in validateTimeRange and
+// is therefore not a key here. Keep this map in sync with the Enum for the
+// "time_range" ParamDef in params.go.
 var validTimeRanges = map[string]bool{"day": true, "month": true, "year": true}
 
 // languagePattern validates common BCP47-like language tags used by SearXNG.

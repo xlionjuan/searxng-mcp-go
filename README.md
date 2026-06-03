@@ -116,7 +116,7 @@ The server exposes a single **`search`** tool. For full parameter details, respo
 | `SEARXNG_URL` missing | The server has no default SearXNG instance. Set `SEARXNG_URL` or pass `--searxng-url`. |
 | Connection refused / timeout | SearXNG instance not reachable. Check the URL and network connectivity. `SEARXNG_TIMEOUT` controls the timeout. |
 | HTML returned instead of JSON | SearXNG JSON API not enabled. Ensure `search.formats` includes `json` in your SearXNG `settings.yml`. |
-| Empty or invalid query | Queries must be non-empty strings. `time_range` must be one of: `day`, `month`, `year`. |
+| Empty or invalid query | Queries must be non-empty strings. For the full per-parameter rules (`time_range`, `categories`, `engines`, `language`, `pageno`, `limit`), see [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md). |
 
 ## More Documentation
 
