@@ -212,4 +212,29 @@ func TestSearchResponseMarshalJSON(t *testing.T) {
 			t.Fatalf("json = %s, want unresponsive_engines values", body)
 		}
 	})
+
+	t.Run("Empty warning is always serialized", func(t *testing.T) {
+		t.Parallel()
+
+		body, err := json.Marshal(SearchResponse{})
+		if err != nil {
+			t.Fatalf("json.Marshal() error = %v", err)
+		}
+
+		var got map[string]json.RawMessage
+
+		err = json.Unmarshal(body, &got)
+		if err != nil {
+			t.Fatalf("json.Unmarshal() error = %v", err)
+		}
+
+		raw, ok := got["warning"]
+		if !ok {
+			t.Fatalf("json = %s, want warning field always present", body)
+		}
+
+		if string(raw) != `""` {
+			t.Fatalf("warning = %s, want empty string", raw)
+		}
+	})
 }

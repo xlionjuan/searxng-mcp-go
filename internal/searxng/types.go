@@ -227,7 +227,7 @@ func (m WeatherMeasure) String() string {
 // SearchResponse is the normalized response returned to CLI and MCP callers.
 type SearchResponse struct {
 	Query               string         `json:"query"`
-	Warning             string         `json:"warning,omitempty"`
+	Warning             string         `json:"warning"`
 	Answers             []Answer       `json:"answers,omitempty"`
 	NumberOfResults     int            `json:"number_of_results"`
 	Infoboxes           []Infobox      `json:"infoboxes,omitempty"`
@@ -241,7 +241,7 @@ type SearchResponse struct {
 // anonymous struct definitions.
 type searchResponseJSON struct {
 	Query               string         `json:"query"`
-	Warning             string         `json:"warning,omitempty"`
+	Warning             string         `json:"warning"`
 	Answers             []Answer       `json:"answers,omitempty"`
 	NumberOfResults     int            `json:"number_of_results"`
 	Infoboxes           []Infobox      `json:"infoboxes,omitempty"`
