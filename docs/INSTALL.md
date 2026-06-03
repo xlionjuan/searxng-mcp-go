@@ -63,17 +63,20 @@ to something the server cannot parse — for example
 `SEARXNG_TIMEOUT=abc` or `SEARXNG_MAX_RETRIES=-1` — the server logs a
 warning to stderr and silently falls back to the built-in default. The
 server does **not** exit with an error in MCP stdio mode, so most MCP
-clients will not surface the warning to the user. The exact warning
-strings are:
+clients will not surface the warning to the user.
 
-```text
-WARN invalid SEARXNG_TIMEOUT, ignoring value=abc error=...
-WARN invalid SEARXNG_MAX_RETRIES, ignoring value=-1 error=...
-```
+Each warning is emitted via `slog` at `WARN` level with the message
+`invalid SEARXNG_TIMEOUT, ignoring` or `invalid SEARXNG_MAX_RETRIES,
+ignoring` plus `value` and `error` attributes carrying the offending
+input and the parse error. The exact wire format (timestamp, quoting,
+attribute layout) is determined by the active `slog` handler and may
+change between Go releases, so grep for the stable message fragment
+rather than matching the full line byte for byte.
 
 If you need strict validation (for example in CI), prefer the
-`--timeout` and `--max-retries` CLI flags, which the standard Go
-`flag` package rejects on the command line.
+`--timeout` and `--max-retries` CLI flags. Invalid values are
+validated on the command line and cause the process to exit with a
+non-zero status instead of falling back to the default.
 
 > **Note:** If you provide a custom `HTTPClient` (for example, when using the library programmatically), the `Timeout` setting is ignored and the provided client is used as-is. Either set `Timeout` or supply a custom `HTTPClient`, not both.
 

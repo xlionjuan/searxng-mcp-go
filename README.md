@@ -112,7 +112,8 @@ The server exposes a single **`search`** tool. For full parameter details, respo
 > to a value the server cannot parse (or, for `SEARXNG_MAX_RETRIES`, to a
 > negative number), the server logs a warning to stderr and falls back to
 > the built-in default. It does not exit. For strict validation, use the
-> `--timeout` and `--max-retries` CLI flags.
+> `--timeout` and `--max-retries` CLI flags, which are validated on the
+> command line and exit with a non-zero status on invalid input.
 
 ## Troubleshooting
 
