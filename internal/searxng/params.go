@@ -91,14 +91,14 @@ var SearchParams = []ParamDef{
 	},
 	{
 		Name: "time_range", GoType: "string", Default: "",
-		Description: "Time range filter: " + strings.Join(ValidTimeRanges, ", "),
-		CLIHelp:     "Time range filter: " + strings.Join(ValidTimeRanges, ", "),
+		Description: "Time range filter: " + strings.Join(ValidTimeRanges(), ", "),
+		CLIHelp:     "Time range filter: " + strings.Join(ValidTimeRanges(), ", "),
 		CLIType:     "RANGE",
 		MCPType:     "string",
-		// Enum is derived from ValidTimeRanges (bounds.go) plus the empty
+		// Enum is derived from ValidTimeRanges() plus the empty
 		// string, which means "no time restriction" and is short-circuited
 		// by validateTimeRange.
-		Enum: append([]string{""}, ValidTimeRanges...),
+		Enum: append([]string{""}, ValidTimeRanges()...),
 	},
 	{
 		Name: "categories", GoType: "string", Default: "",

@@ -11,19 +11,23 @@ import (
 const MaxQueryLength = 500
 
 // validTimeRanges is the package-private set-lookup form of the shared
-// ValidTimeRanges list (bounds.go). The empty string is intentionally
+// validTimeRangesList (bounds.go). The empty string is intentionally
 // excluded: validateTimeRange short-circuits on "" (no restriction) before
-// consulting this map. Keep ValidTimeRanges and the time_range ParamDef Enum
+// consulting this map. Keep validTimeRangesList and the time_range ParamDef Enum
 // in params.go in sync; the drift test in
 // params_validation_drift_test.go enforces this.
 var validTimeRanges = func() map[string]bool {
-	m := make(map[string]bool, len(ValidTimeRanges))
-	for _, r := range ValidTimeRanges {
+	ranges := ValidTimeRanges()
+
+	m := make(map[string]bool, len(ranges))
+	for _, r := range ranges {
 		m[r] = true
 	}
 
 	return m
 }()
+
+var validTimeRangesText = strings.Join(ValidTimeRanges(), ", ")
 
 // languagePattern validates common BCP47-like language tags used by SearXNG.
 // Empty values are handled separately as "auto" mode.
@@ -191,7 +195,7 @@ func validatePagination(pageno *int, limit *int) error {
 
 func validateTimeRange(timeRange string) error {
 	if timeRange != "" && !validTimeRanges[timeRange] {
-		return NewValidationError("time_range", "must be one of "+strings.Join(ValidTimeRanges, ", "))
+		return NewValidationError("time_range", "must be one of "+validTimeRangesText)
 	}
 
 	return nil

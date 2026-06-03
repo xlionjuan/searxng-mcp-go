@@ -29,9 +29,16 @@ const (
 	MaxResultLimit = 20
 )
 
-// ValidTimeRanges is the canonical list of time-range values accepted by the
+// validTimeRangesList is the canonical list of time-range values accepted by the
 // time_range parameter. The empty string is handled separately as "no
 // restriction" by both schema and validation, so it intentionally has no
 // entry here. Keep this list in sync with the time_range ParamDef's Enum
 // in params.go and with validTimeRanges in validation.go.
-var ValidTimeRanges = []string{"day", "month", "year"}
+var validTimeRangesList = []string{"day", "month", "year"}
+
+// ValidTimeRanges returns the canonical list of time-range values accepted by
+// the time_range parameter. The returned slice is a copy and can be safely
+// appended to or modified by callers without mutating package-level state.
+func ValidTimeRanges() []string {
+	return append([]string(nil), validTimeRangesList...)
+}

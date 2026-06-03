@@ -222,7 +222,7 @@ func TestMCPSearchSchemaPagenoBoundsDeriveFromConstant(t *testing.T) {
 
 // TestMCPSearchSchemaTimeRangeEnumDerivesFromConstant guards the MCP
 // JSON Schema enum for `time_range`. The Enum field in SearchParams is
-// derived from ValidTimeRanges, so the schema must reflect that.
+// derived from ValidTimeRanges(), so the schema must reflect that.
 func TestMCPSearchSchemaTimeRangeEnumDerivesFromConstant(t *testing.T) {
 	t.Parallel()
 
@@ -253,7 +253,7 @@ func TestMCPSearchSchemaTimeRangeEnumDerivesFromConstant(t *testing.T) {
 		t.Fatalf("time_range enum has unexpected type %T", raw["enum"])
 	}
 
-	want := append([]string{""}, searxng.ValidTimeRanges...)
+	want := append([]string{""}, searxng.ValidTimeRanges()...)
 
 	if len(rawEnum) != len(want) {
 		t.Fatalf("time_range enum length = %d, want %d (got=%v, want=%v)",

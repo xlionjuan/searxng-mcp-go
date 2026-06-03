@@ -137,14 +137,14 @@ func TestSearchParamsLimitBounds(t *testing.T) {
 
 // TestSearchParamsTimeRangeEnum is the drift guard for the time_range
 // ParamDef: its Enum must equal ["", "day", "month", "year"], which is
-// ValidTimeRanges with the empty "no restriction" sentinel prepended.
+// ValidTimeRanges() with the empty "no restriction" sentinel prepended.
 // This keeps the JSON Schema enum in sync with the runtime validator.
 func TestSearchParamsTimeRangeEnum(t *testing.T) {
 	t.Parallel()
 
 	p := findParam(t, "time_range")
 
-	want := append([]string{""}, ValidTimeRanges...)
+	want := append([]string{""}, ValidTimeRanges()...)
 
 	if len(p.Enum) != len(want) {
 		t.Fatalf("time_range Enum length = %d, want %d (got=%v, want=%v)",
@@ -159,8 +159,8 @@ func TestSearchParamsTimeRangeEnum(t *testing.T) {
 	}
 
 	// Runtime validator agreement: validateTimeRange must accept every
-	// non-empty value in ValidTimeRanges and reject a synthetic value.
-	for _, v := range ValidTimeRanges {
+	// non-empty value in ValidTimeRanges() and reject a synthetic value.
+	for _, v := range ValidTimeRanges() {
 		verifyTimeRangeAccepts(t, v)
 	}
 
@@ -171,10 +171,30 @@ func TestSearchParamsTimeRangeEnum(t *testing.T) {
 	verifyTimeRangeAccepts(t, "")
 }
 
+// TestValidTimeRangesReturnsDefensiveCopy guards the public accessor shape:
+// callers must not be able to mutate the canonical time_range list used by
+// schema generation and validation.
+func TestValidTimeRangesReturnsDefensiveCopy(t *testing.T) {
+	t.Parallel()
+
+	ranges := ValidTimeRanges()
+	if len(ranges) == 0 {
+		t.Fatal("ValidTimeRanges() returned an empty list")
+	}
+
+	original := ValidTimeRanges()
+	ranges[0] = "mutated"
+
+	afterMutation := ValidTimeRanges()
+	if afterMutation[0] != original[0] {
+		t.Fatalf("ValidTimeRanges() returned shared state: got first value %q, want %q", afterMutation[0], original[0])
+	}
+}
+
 // TestValidateTimeRangeErrorMessageUsesValidTimeRanges guards the error
 // message in validateTimeRange so it does not silently drift from the
-// shared ValidTimeRanges list. The message is generated from
-// strings.Join(ValidTimeRanges, ", "), so an extra or missing range entry
+// shared ValidTimeRanges() list. The message is generated from
+// strings.Join(ValidTimeRanges(), ", "), so an extra or missing range entry
 // shows up here.
 func TestValidateTimeRangeErrorMessageUsesValidTimeRanges(t *testing.T) {
 	t.Parallel()
@@ -184,7 +204,7 @@ func TestValidateTimeRangeErrorMessageUsesValidTimeRanges(t *testing.T) {
 		t.Fatal("validateTimeRange(\"nope\") = nil, want error")
 	}
 
-	wantSubstr := strings.Join(ValidTimeRanges, ", ")
+	wantSubstr := strings.Join(ValidTimeRanges(), ", ")
 	if !strings.Contains(err.Error(), wantSubstr) {
 		t.Errorf("error %q does not contain %q (ValidTimeRanges join)", err.Error(), wantSubstr)
 	}
