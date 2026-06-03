@@ -357,8 +357,8 @@ func TestNewSearchToolHandler(t *testing.T) {
 			t.Fatal("expected default limit to be applied, got nil")
 		}
 
-		if *captured.Limit != defaultResultLimit {
-			t.Fatalf("captured limit = %d, want %d", *captured.Limit, defaultResultLimit)
+		if *captured.Limit != searxng.DefaultResultLimit {
+			t.Fatalf("captured limit = %d, want %d", *captured.Limit, searxng.DefaultResultLimit)
 		}
 	})
 

@@ -45,11 +45,11 @@ OPTIONS:
 		fmt.Printf("  %s%s%s\n", flagExpr, strings.Repeat(" ", padding), p.CLIHelp)
 	}
 
-	fmt.Println(`  --debug            Enable verbose HTTP request/response logging
+	fmt.Printf(`  --debug            Enable verbose HTTP request/response logging
                      Can also be enabled via DEBUG=1 environment variable
-  --timeout DURATION HTTP client timeout (e.g., 8s) [default: 8s]
+  --timeout DURATION HTTP client timeout (e.g., 8s) [default: %s]
                      Can also be set via SEARXNG_TIMEOUT environment variable
-  --max-retries N    Max retries after initial search attempt [default: 5]
+  --max-retries N    Max retries after initial search attempt [default: %d]
                      Can also be set via SEARXNG_MAX_RETRIES environment variable
   --help             Show this help message
   --version          Show version information
@@ -75,7 +75,9 @@ EXIT CODES:
   1   Search error or invalid arguments
   2   MCP server error (in MCP mode)
 
-For more information, see: https://github.com/xlionjuan/searxng-mcp-go`)
+For more information, see: https://github.com/xlionjuan/searxng-mcp-go
+`,
+		searxng.DefaultTimeout, searxng.DefaultMaxRetries)
 }
 
 // runCLIMode executes the CLI-mode search flow.

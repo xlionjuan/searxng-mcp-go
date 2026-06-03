@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -124,7 +125,7 @@ func TestParseArgs(t *testing.T) {
 			wantCLIMode:    true,
 			wantFlags:      CLIFlags{Language: "", SafeSearch: 0, Pageno: nil},
 			wantPositional: []string{"test query"},
-			wantLimit:      new(defaultResultLimit),
+			wantLimit:      new(searxng.DefaultResultLimit),
 			wantErr:        false,
 		},
 		{
@@ -427,6 +428,9 @@ func TestPrepareMCPStdinRejectsOversizedInitializeLine(t *testing.T) {
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 
+	stdoutMu.Lock()
+	defer stdoutMu.Unlock()
+
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
@@ -452,6 +456,14 @@ func captureStdout(t *testing.T, fn func()) string {
 
 	return buf.String()
 }
+
+// stdoutMu serializes access to the process-global os.Stdout variable inside
+// captureStdout. Without it, two tests that call captureStdout in parallel can
+// race: one test's os.Stdout swap may capture output belonging to another
+// test, or one test's own output may be captured by the other. The mutex keeps
+// the invariant local to captureStdout so individual tests can keep
+// t.Parallel() without coordinating at the call site.
+var stdoutMu sync.Mutex
 
 func TestGetConfig(t *testing.T) {
 	t.Setenv("SEARXNG_URL", "https://env.example.com")

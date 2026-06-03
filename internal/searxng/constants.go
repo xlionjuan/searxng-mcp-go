@@ -15,6 +15,11 @@ const DefaultRetryDelay = time.Second
 // DefaultMaxRetryDelay is the fallback upper bound for retry backoff delays.
 const DefaultMaxRetryDelay = 30 * time.Second
 
+// DefaultResultLimit is the default value applied when callers omit a result
+// limit. It is the single source of truth used by CLI flag defaulting, MCP
+// handler defaulting, and the canonical ParamDef metadata in params.go.
+const DefaultResultLimit = 10
+
 // MaxContentRunes is the maximum result content length retained after normalization.
 const MaxContentRunes = 4000
 
@@ -24,7 +29,14 @@ const MaxErrorBodySize = 100 * 1024
 // MaxResponseBodySize is the maximum successful search response body size.
 const MaxResponseBodySize = 2 * 1024 * 1024
 
-// MaxErrorDisplayChars is the maximum number of error body characters shown to callers.
+// MaxErrorDisplayChars caps the size of error body previews retained on
+// SearXNGError.ResponseBody (and surfaced in debug logs and error messages).
+//
+// Despite the "Chars" suffix, this is a byte ceiling, not a rune/character
+// count: callers truncate with truncateBytesToValidUTF8, which slices at
+// most MaxErrorDisplayChars bytes and walks back to a valid UTF-8 rune
+// boundary so multi-byte sequences are never split. The "Chars" name
+// follows the display-preview convention used by DebugBodyPreviewChars.
 const MaxErrorDisplayChars = 200
 
 // ResultSizeEstimate is the approximate JSON result size used for response preallocation.

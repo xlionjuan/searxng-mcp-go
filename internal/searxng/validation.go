@@ -1,6 +1,7 @@
 package searxng
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -9,11 +10,24 @@ import (
 // MaxQueryLength is the maximum allowed length (in runes) for search queries.
 const MaxQueryLength = 500
 
-// validTimeRanges contains the set of valid time range values. The empty
-// string is handled separately as "no restriction" in validateTimeRange and
-// is therefore not a key here. Keep this map in sync with the Enum for the
-// "time_range" ParamDef in params.go.
-var validTimeRanges = map[string]bool{"day": true, "month": true, "year": true}
+// validTimeRanges is the package-private set-lookup form of the shared
+// validTimeRangesList (bounds.go). The empty string is intentionally
+// excluded: validateTimeRange short-circuits on "" (no restriction) before
+// consulting this map. Keep validTimeRangesList and the time_range ParamDef Enum
+// in params.go in sync; the drift test in
+// params_validation_drift_test.go enforces this.
+var validTimeRanges = func() map[string]bool {
+	ranges := ValidTimeRanges()
+
+	m := make(map[string]bool, len(ranges))
+	for _, r := range ranges {
+		m[r] = true
+	}
+
+	return m
+}()
+
+var validTimeRangesText = strings.Join(ValidTimeRanges(), ", ")
 
 // languagePattern validates common BCP47-like language tags used by SearXNG.
 // Empty values are handled separately as "auto" mode.
@@ -165,12 +179,15 @@ func validateLanguage(args *SearchArgs) error {
 }
 
 func validatePagination(pageno *int, limit *int) error {
-	if pageno != nil && *pageno < 1 {
-		return NewValidationError("pageno", "must be >= 1")
+	if pageno != nil && *pageno < MinPageno {
+		return NewValidationError("pageno", fmt.Sprintf("must be >= %d", MinPageno))
 	}
 
-	if limit != nil && (*limit < 1 || *limit > 20) {
-		return NewValidationError("limit", "must be between 1 and 20")
+	if limit != nil && (*limit < MinResultLimit || *limit > MaxResultLimit) {
+		return NewValidationError(
+			"limit",
+			fmt.Sprintf("must be between %d and %d", MinResultLimit, MaxResultLimit),
+		)
 	}
 
 	return nil
@@ -178,15 +195,18 @@ func validatePagination(pageno *int, limit *int) error {
 
 func validateTimeRange(timeRange string) error {
 	if timeRange != "" && !validTimeRanges[timeRange] {
-		return NewValidationError("time_range", "must be one of day, month or year")
+		return NewValidationError("time_range", "must be one of "+validTimeRangesText)
 	}
 
 	return nil
 }
 
 func validateSafesearch(safeSearch int) error {
-	if safeSearch < 0 || safeSearch > 2 {
-		return NewValidationError("safesearch", "must be 0 off, 1 moderate, or 2 strict")
+	if safeSearch < MinSafeSearch || safeSearch > MaxSafeSearch {
+		return NewValidationError(
+			"safesearch",
+			fmt.Sprintf("must be %d off, %d moderate, or %d strict", MinSafeSearch, MinSafeSearch+1, MaxSafeSearch),
+		)
 	}
 
 	return nil

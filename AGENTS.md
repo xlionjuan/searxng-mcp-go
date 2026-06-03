@@ -176,9 +176,11 @@ exception live in `docs/MCP_TESTING.md`; do not duplicate them here.
   `branch pushed`, session names, run IDs, decorative arrows, or implementation
   chatter.
 - PR bodies must be durable review records: include summary, docs impact, tests
-  run, linked issues, and known limitations or follow-up work. Do not include
-  agent session cards, social-card HTML/images, `/pull/new/...` links,
-  duplicated closing keywords, or pasted chat transcripts.
+  run, linked issues, and known limitations or follow-up work. Automatically
+  appended agent session cards, social-card HTML/images, and GitHub Actions run
+  links are allowed, but they must not replace the durable review record. Do not
+  include `/pull/new/...` links, duplicated closing keywords, or pasted chat
+  transcripts.
 - See `docs/agents/pull-requests.md` for the full PR checklist.
 
 ## Git Identity

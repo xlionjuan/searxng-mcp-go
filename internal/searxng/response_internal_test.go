@@ -153,12 +153,21 @@ func TestIsHTMLResponse(t *testing.T) {
 	}{
 		{name: "content-type text/html", contentType: "text/html", body: "<html></html>", want: true},
 		{name: "content-type text/html; charset=utf-8", contentType: "text/html; charset=utf-8", body: "hello", want: true},
+		{name: "content-type TEXT/HTML (uppercase)", contentType: "TEXT/HTML", body: "hello", want: true},
+		{name: "content-type Text/Html (mixed case)", contentType: "Text/Html", body: "hello", want: true},
+		{name: "content-type text/html with extra params", contentType: "text/html; charset=utf-8; boundary=xyz", body: "hello", want: true},
 		{name: "body starts with <!DOCTYPE", contentType: "application/json", body: "<!DOCTYPE html>", want: true},
+		{name: "body starts with <!doctype (lowercase)", contentType: "application/json", body: "<!doctype html>", want: true},
 		{name: "body starts with <html", contentType: "application/json", body: "<html lang=\"en\">", want: true},
-		{name: "body starts with <html (case sensitive)", contentType: "application/json", body: "<HTML>", want: false},
+		{name: "body starts with <HTML (uppercase)", contentType: "application/json", body: "<HTML>", want: true},
+		{name: "body starts with <Html (mixed case)", contentType: "application/json", body: "<Html lang=\"en\">", want: true},
 		{name: "json response", contentType: "application/json", body: `{"key": "value"}`, want: false},
 		{name: "empty body", contentType: "application/json", body: "", want: false},
 		{name: "trimmed body with spaces then DOCTYPE", contentType: "text/plain", body: "  <!DOCTYPE html>", want: true},
+		{name: "trimmed body with spaces then lowercase doctype", contentType: "text/plain", body: "  <!doctype html>", want: true},
+		{name: "near-match text/htmlish with json body", contentType: "text/htmlish", body: `{"key": "value"}`, want: false},
+		{name: "malformed content-type with html body", contentType: "not a mime type", body: "<!DOCTYPE html>", want: true},
+		{name: "empty content-type with json body", contentType: "", body: `{"key": "value"}`, want: false},
 	}
 
 	for _, tt := range tests {
@@ -167,6 +176,84 @@ func TestIsHTMLResponse(t *testing.T) {
 
 			if got := isHTMLResponse(tt.contentType, []byte(tt.body)); got != tt.want {
 				t.Fatalf("isHTMLResponse(%q, %q) = %v, want %v", tt.contentType, tt.body, got, tt.want)
+			}
+		})
+	}
+}
+
+// --- isJSONContentType tests ---
+
+func TestIsJSONContentType(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		contentType string
+		want        bool
+	}{
+		{name: "application/json", contentType: "application/json", want: true},
+		{name: "application/json; charset=utf-8", contentType: "application/json; charset=utf-8", want: true},
+		{name: "application/json with extra params", contentType: "application/json; charset=utf-8; foo=bar", want: true},
+		{name: "APPLICATION/JSON (uppercase)", contentType: "APPLICATION/JSON", want: true},
+		{name: "Application/Json (mixed case)", contentType: "Application/Json", want: true},
+		{name: "text/json", contentType: "text/json", want: true},
+		{name: "text/json; charset=utf-8", contentType: "text/json; charset=utf-8", want: true},
+		{name: "TEXT/JSON (uppercase)", contentType: "TEXT/JSON", want: true},
+		{name: "Text/Json (mixed case)", contentType: "Text/Json", want: true},
+		{name: "application/jsonish (near-match rejected)", contentType: "application/jsonish", want: false},
+		{name: "application/json+ld (structured extension rejected)", contentType: "application/json+ld", want: false},
+		{name: "text/jsonish (near-match rejected)", contentType: "text/jsonish", want: false},
+		{name: "text/html is not json", contentType: "text/html", want: false},
+		{name: "empty content-type", contentType: "", want: false},
+		{name: "malformed content-type", contentType: "not a mime type", want: false},
+		{name: "missing subtype", contentType: "application/", want: false},
+		{name: "missing type", contentType: "/json", want: false},
+		{name: "whitespace only", contentType: "   ", want: false},
+		{name: "application/json with surrounding whitespace", contentType: "  application/json  ", want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := isJSONContentType(tt.contentType); got != tt.want {
+				t.Fatalf("isJSONContentType(%q) = %v, want %v", tt.contentType, got, tt.want)
+			}
+		})
+	}
+}
+
+// --- isHTMLContentType tests ---
+
+func TestIsHTMLContentType(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		contentType string
+		want        bool
+	}{
+		{name: "text/html", contentType: "text/html", want: true},
+		{name: "text/html; charset=utf-8", contentType: "text/html; charset=utf-8", want: true},
+		{name: "text/html with extra params", contentType: "text/html; charset=utf-8; boundary=xyz", want: true},
+		{name: "TEXT/HTML (uppercase)", contentType: "TEXT/HTML", want: true},
+		{name: "Text/Html (mixed case)", contentType: "Text/Html", want: true},
+		{name: "text/htmlish (near-match rejected)", contentType: "text/htmlish", want: false},
+		{name: "application/xhtml+xml is not text/html", contentType: "application/xhtml+xml", want: false},
+		{name: "application/json is not html", contentType: "application/json", want: false},
+		{name: "empty content-type", contentType: "", want: false},
+		{name: "malformed content-type", contentType: "not a mime type", want: false},
+		{name: "missing subtype", contentType: "text/", want: false},
+		{name: "whitespace only", contentType: "   ", want: false},
+		{name: "text/html with surrounding whitespace", contentType: "  text/html  ", want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := isHTMLContentType(tt.contentType); got != tt.want {
+				t.Fatalf("isHTMLContentType(%q) = %v, want %v", tt.contentType, got, tt.want)
 			}
 		})
 	}
@@ -217,6 +304,141 @@ func TestDecodeSearchResponse(t *testing.T) {
 
 		if result.Query != "test" {
 			t.Fatalf("Query = %q, want %q", result.Query, "test")
+		}
+	})
+
+	t.Run("application/json with charset parameter", func(t *testing.T) {
+		t.Parallel()
+
+		body := `{"query": "test"}`
+
+		result, err := decodeSearchResponse(&http.Response{}, "application/json; charset=utf-8", []byte(body))
+		if err != nil {
+			t.Fatalf("decodeSearchResponse() error = %v", err)
+		}
+
+		if result.Query != "test" {
+			t.Fatalf("Query = %q, want %q", result.Query, "test")
+		}
+	})
+
+	t.Run("text/json with charset parameter", func(t *testing.T) {
+		t.Parallel()
+
+		body := `{"query": "test"}`
+
+		result, err := decodeSearchResponse(&http.Response{}, "text/json; charset=utf-8", []byte(body))
+		if err != nil {
+			t.Fatalf("decodeSearchResponse() error = %v", err)
+		}
+
+		if result.Query != "test" {
+			t.Fatalf("Query = %q, want %q", result.Query, "test")
+		}
+	})
+
+	t.Run("APPLICATION/JSON (uppercase)", func(t *testing.T) {
+		t.Parallel()
+
+		body := `{"query": "test"}`
+
+		result, err := decodeSearchResponse(&http.Response{}, "APPLICATION/JSON", []byte(body))
+		if err != nil {
+			t.Fatalf("decodeSearchResponse() error = %v", err)
+		}
+
+		if result.Query != "test" {
+			t.Fatalf("Query = %q, want %q", result.Query, "test")
+		}
+	})
+
+	t.Run("Application/Json (mixed case)", func(t *testing.T) {
+		t.Parallel()
+
+		body := `{"query": "test"}`
+
+		result, err := decodeSearchResponse(&http.Response{}, "Application/Json", []byte(body))
+		if err != nil {
+			t.Fatalf("decodeSearchResponse() error = %v", err)
+		}
+
+		if result.Query != "test" {
+			t.Fatalf("Query = %q, want %q", result.Query, "test")
+		}
+	})
+
+	t.Run("TEXT/JSON (uppercase)", func(t *testing.T) {
+		t.Parallel()
+
+		body := `{"query": "test"}`
+
+		result, err := decodeSearchResponse(&http.Response{}, "TEXT/JSON", []byte(body))
+		if err != nil {
+			t.Fatalf("decodeSearchResponse() error = %v", err)
+		}
+
+		if result.Query != "test" {
+			t.Fatalf("Query = %q, want %q", result.Query, "test")
+		}
+	})
+
+	t.Run("application/jsonish is rejected as near-match", func(t *testing.T) {
+		t.Parallel()
+
+		resp := &http.Response{StatusCode: http.StatusOK}
+
+		_, err := decodeSearchResponse(resp, "application/jsonish", []byte(`{"query": "test"}`))
+		if err == nil {
+			t.Fatal("decodeSearchResponse() error = nil, want error for application/jsonish")
+		}
+
+		if !strings.Contains(err.Error(), "unexpected content type: expected application/json") {
+			t.Fatalf("error = %q, want unexpected content type", err.Error())
+		}
+	})
+
+	t.Run("text/jsonish is rejected as near-match", func(t *testing.T) {
+		t.Parallel()
+
+		resp := &http.Response{StatusCode: http.StatusOK}
+
+		_, err := decodeSearchResponse(resp, "text/jsonish", []byte(`{"query": "test"}`))
+		if err == nil {
+			t.Fatal("decodeSearchResponse() error = nil, want error for text/jsonish")
+		}
+
+		if !strings.Contains(err.Error(), "unexpected content type: expected application/json") {
+			t.Fatalf("error = %q, want unexpected content type", err.Error())
+		}
+	})
+
+	t.Run("malformed content-type falls back to unexpected error", func(t *testing.T) {
+		t.Parallel()
+
+		resp := &http.Response{StatusCode: http.StatusOK}
+
+		_, err := decodeSearchResponse(resp, "not a mime type", []byte(`{"query": "test"}`))
+		if err == nil {
+			t.Fatal("decodeSearchResponse() error = nil, want error for malformed content-type")
+		}
+
+		if !strings.Contains(err.Error(), "unexpected content type: expected application/json") {
+			t.Fatalf("error = %q, want unexpected content type", err.Error())
+		}
+	})
+
+	t.Run("empty content-type is rejected", func(t *testing.T) {
+		t.Parallel()
+
+		resp := &http.Response{StatusCode: http.StatusOK}
+
+		_, err := decodeSearchResponse(resp, "", []byte(`{"query": "test"}`))
+		if err == nil {
+			t.Fatal("decodeSearchResponse() error = nil, want error for empty content-type")
+		}
+
+		if !strings.Contains(err.Error(), "unexpected content type: expected application/json") {
+			t.Fatalf("error = %q, want unexpected content type", err.Error())
 		}
 	})
 
