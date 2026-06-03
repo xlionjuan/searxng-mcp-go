@@ -55,6 +55,26 @@ The default retry count is 5 retries after the initial search attempt. Set `SEAR
 
 The default timeout for search requests is 8 seconds. Set `SEARXNG_TIMEOUT` to a Go duration such as `8s`; in CLI mode, `--timeout` overrides the environment variable.
 
+### Invalid Environment Variable Values
+
+`SEARXNG_TIMEOUT` and `SEARXNG_MAX_RETRIES` accept a fixed format (a Go
+duration and a non-negative integer, respectively). When a value is set
+to something the server cannot parse — for example
+`SEARXNG_TIMEOUT=abc` or `SEARXNG_MAX_RETRIES=-1` — the server logs a
+warning to stderr and silently falls back to the built-in default. The
+server does **not** exit with an error in MCP stdio mode, so most MCP
+clients will not surface the warning to the user. The exact warning
+strings are:
+
+```text
+WARN invalid SEARXNG_TIMEOUT, ignoring value=abc error=...
+WARN invalid SEARXNG_MAX_RETRIES, ignoring value=-1 error=...
+```
+
+If you need strict validation (for example in CI), prefer the
+`--timeout` and `--max-retries` CLI flags, which the standard Go
+`flag` package rejects on the command line.
+
 > **Note:** If you provide a custom `HTTPClient` (for example, when using the library programmatically), the `Timeout` setting is ignored and the provided client is used as-is. Either set `Timeout` or supply a custom `HTTPClient`, not both.
 
 ### POST→GET Fallback
@@ -95,7 +115,13 @@ which searxng-mcp-go
 }
 ```
 
-When debug mode (`DEBUG=1`) is enabled, the server logs HTTP request/response details, including query text. Avoid using it with sensitive queries.
+When debug mode (`DEBUG=1`) is enabled, the server logs HTTP request/response details, including query text. On startup the server emits the following warning to stderr:
+
+```text
+WARN debug mode logs search queries and HTTP requests in plain text; avoid sensitive searches
+```
+
+Most MCP clients do not surface stderr to the user, so do not rely on the warning to communicate the privacy risk. Avoid enabling debug mode with sensitive queries.
 
 ### CLI Mode Configuration
 
