@@ -242,9 +242,11 @@ Opens a web UI where you can:
 
 ## Test Layers
 
-The repository tests MCP at four layers, each catching a different class of
-defect. Pick the lowest layer that can meaningfully assert what you want to
-verify.
+The repository tests MCP at five layers, each catching a different class of
+defect. The three complementary MCP testing approaches from the intro above
+cover the middle three rows of the table; unit tests and manual / smoke checks
+bookend them. Pick the lowest layer that can meaningfully assert what you want
+to verify.
 
 | Layer | Method | Files | What it catches |
 |-------|--------|-------|-----------------|
