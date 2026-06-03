@@ -104,10 +104,9 @@ Search results could be intercepted and modified by a MITM attacker."
 - The "private" predicate is fully auditable: every accepted hostname
   matches RFC 6761, and every accepted IP range is named in the published
   RFCs above. There is no internal suffix list to drift out of date.
-- Removing the speculative suffix list eliminates false negatives caused
-  by unlisted TLDs (`.home.arpa`, organization-specific suffixes) and
-  false positives caused by public TLDs that happen to match
-  (`*.corp`).
+- Removing the speculative suffix list eliminates guessing based on
+  suffixes such as `.home.arpa`, organization-specific suffixes, or
+  public TLDs that happen to match previous conventions such as `*.corp`.
 - Users running a SearXNG instance on `*.lan` / `*.local` will see the
   HTTP warning and are nudged to either terminate TLS or bind the
   instance to a literal RFC 1918/4193 address.
