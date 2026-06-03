@@ -63,7 +63,7 @@ var SearchParams = []ParamDef{
 	},
 	{
 		Name: "language", GoType: "string", Default: "",
-		Description: "Language code for results (e.g., en, zh-tw, ja). Leave empty for auto",
+		Description: "Language code for results (e.g., en, zh-tw, ja). Leave empty or pass \"auto\" to let SearXNG decide",
 		CLIHelp:     "Language code for results (e.g., en, zh-tw, ja) [default: auto]",
 		CLIType:     "LANG",
 		MCPType:     "string",
@@ -90,15 +90,15 @@ var SearchParams = []ParamDef{
 	},
 	{
 		Name: "categories", GoType: "string", Default: "",
-		Description: "Comma-separated list of categories to search",
-		CLIHelp:     "Comma-separated list of categories to search",
+		Description: "Comma-separated list of categories to search (max 4096 bytes for the full string)",
+		CLIHelp:     "Comma-separated list of categories to search [max 4096 bytes]",
 		CLIType:     "CAT",
 		MCPType:     "string",
 	},
 	{
 		Name: "engines", GoType: "string", Default: "",
-		Description: "Comma-separated list of search engines to use",
-		CLIHelp:     "Comma-separated list of search engines to use",
+		Description: "Comma-separated list of search engines to use (max 4096 bytes for the full string)",
+		CLIHelp:     "Comma-separated list of search engines to use [max 4096 bytes]",
 		CLIType:     "ENG",
 		MCPType:     "string",
 	},

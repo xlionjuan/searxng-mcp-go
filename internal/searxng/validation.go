@@ -132,7 +132,7 @@ func validateQuery(query string) error {
 	}
 
 	if utf8.RuneCountInString(query) > MaxQueryLength {
-		return NewValidationError("query", "must be 500 characters or less")
+		return NewValidationError("query", "must be 500 runes or less")
 	}
 
 	if containsASCIIControlCharacters(query) {
@@ -154,7 +154,7 @@ func validateLanguage(args *SearchArgs) error {
 	}
 
 	if utf8.RuneCountInString(args.Language) > maxLanguageLength {
-		return NewValidationError("language", "must be 35 characters or less")
+		return NewValidationError("language", "must be 35 runes or less")
 	}
 
 	if !languagePattern.MatchString(args.Language) {

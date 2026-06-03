@@ -15,7 +15,7 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 | Parameter    | Type    | Required | Default | Description                                      |
 |--------------|---------|----------|---------|--------------------------------------------------|
 | `query`      | string  | Yes      | -       | The search query string                          |
-| `language`   | string  | No       |         | Language code for results (e.g., en, zh-tw, ja). Empty = SearXNG decides |
+| `language`   | string  | No       |         | Language code for results (e.g., en, zh-tw, ja). Empty or `"auto"` = SearXNG decides |
 | `safesearch` | integer | No       | 0       | SafeSearch filtering level:                     |
 |              |         |          |         | - `0` = Off (show all results)                   |
 |              |         |          |         | - `1` = Moderate (filter some adult content)    |
@@ -26,9 +26,11 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 |              |         |          |         | - `year` = Last 365 days                       |
 | `categories` | string  | No       | -       | Comma-separated list of categories to search    |
 |              |         |          |         | (e.g., general, news, music)                   |
+|              |         |          |         | Max 4096 bytes for the full string             |
 | `engines`    | string  | No       | -       | Comma-separated list of search engines to use  |
 |              |         |          |         | (e.g., google, bing, duckduckgo)               |
-| `pageno`     | integer, null | No       | 1       | Page number for pagination (omitted = backend default/page 1) |
+|              |         |          |         | Max 4096 bytes for the full string             |
+| `pageno`     | integer, null | No       | -       | Page number for pagination (omitted = backend default/page 1) |
 | `limit`      | integer | No       | 10      | Maximum number of results returned (1-20)      |
 
 ### Response Format
@@ -285,3 +287,4 @@ Search error examples:
 - **Timeout**: 8 seconds by default; set `SEARXNG_TIMEOUT` or, in CLI mode, `--timeout`
 - **MaxRetries**: 5 retries after the initial search attempt by default; set `SEARXNG_MAX_RETRIES` or, in CLI mode, `--max-retries`
 - **POST→GET fallback**: When a POST request fails (for example, some SearXNG configurations return 405), the server automatically retries the `/search` request with GET
+- **Initialize message size limit**: The first line of stdin (the MCP `initialize` JSON-RPC message) is capped at 1 MB; oversized input causes the server to exit instead of hanging
