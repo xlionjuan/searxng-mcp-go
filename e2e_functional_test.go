@@ -648,7 +648,7 @@ func TestCLISmoke(t *testing.T) {
 		// Mirrors: "random uuid" →
 		//   grep "Answers" + grep -Eiq "[0-9a-f]{8}-[0-9a-f]{4}-..."
 		response := runCLI(t, "random uuid answer", "random uuid")
-		assertAnswerMatches(t, "random uuid answer", response, regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`))
+		assertAnswerMatches(t, "random uuid answer", response, regexp.MustCompile(`(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`))
 	})
 
 	t.Run("berlin time answer", func(t *testing.T) {
