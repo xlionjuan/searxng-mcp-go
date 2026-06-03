@@ -15,12 +15,12 @@ configured SearXNG instance.
   the inline golden string in that test.
 - Fixtures: `testdata/`
 - CI and release workflows: `.github/workflows/`
-- OpenCode agent runtime: comment `/oc` on an issue or PR to invoke
-  `.github/workflows/opencode.yml`; the manual
-  `.github/workflows/opencode-doc-code-alignment.yml` workflow runs a
-  doc/code alignment audit. GitHub comments must include `/oc`; comments
-  without that trigger text will not invoke the workflow. These are not yet
-  indexed in this table — see the workflow files for inputs and permissions.
+- OpenCode agent runtime: GitHub issue and PR comments must include `/oc` to
+  invoke `.github/workflows/opencode.yml`; comments without that trigger text
+  will not invoke OpenCode. The manual
+  `.github/workflows/opencode-doc-code-alignment.yml` workflow runs a doc/code
+  alignment audit. These are not yet indexed in this table — see the workflow
+  files for inputs and permissions.
 - Domain context and terminology: `CONTEXT.md`
 - Architecture decisions: `docs/adr/`
 
