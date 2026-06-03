@@ -340,7 +340,7 @@ characters of the truncated body for debugging (`MaxErrorDisplayChars`).
 ./searxng-mcp-go "apple inc" --json
 
 # With additional parameters
-./searxng-mcp-go "apple inc" --json --language=en --safesearch=1 --time_range=month
+./searxng-mcp-go "apple inc" --json --language en --safesearch 1 --time_range month
 
 # Custom SearXNG server
 ./searxng-mcp-go "query" --searxng-url=https://your-searxng.example.com
