@@ -51,5 +51,6 @@ jobs:
         uses: anomalyco/opencode/github@385cb694419f98103af0e8fc6187ddcbcbb6eecb # v1.15.13
         env:
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
         with:
           model: minimax/MiniMax-M3
