@@ -111,9 +111,16 @@ The server exposes a single **`search`** tool. For full parameter details, respo
 | `SEARXNG_URL` | **Yes** | — | SearXNG instance URL |
 | `SEARXNG_TIMEOUT` | No | `8s` | HTTP client timeout (e.g., `8s`) |
 | `SEARXNG_MAX_RETRIES` | No | `5` | Max retries after initial search attempt |
-| `DEBUG` | No | — | Set to `1` for verbose HTTP request/response logging |
+| `DEBUG` | No | — | Set to `1` to log search queries and HTTP request/response details in plain text. The server emits a warning to stderr on startup; most MCP clients do not surface it. Avoid using it with sensitive queries. |
 
 **Priority:** CLI flag > environment variable > hardcoded default.
+
+> **Invalid values:** If `SEARXNG_TIMEOUT` or `SEARXNG_MAX_RETRIES` is set
+> to a value the server cannot parse (or, for `SEARXNG_MAX_RETRIES`, to a
+> negative number), the server logs a warning to stderr and falls back to
+> the built-in default. It does not exit. For strict validation, use the
+> `--timeout` and `--max-retries` CLI flags, which are validated on the
+> command line and exit with a non-zero status on invalid input.
 
 ## Troubleshooting
 

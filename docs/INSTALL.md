@@ -55,6 +55,36 @@ The default retry count is 5 retries after the initial search attempt. Set `SEAR
 
 The default timeout for search requests is 8 seconds. Set `SEARXNG_TIMEOUT` to a Go duration such as `8s`; in CLI mode, `--timeout` overrides the environment variable.
 
+### Invalid Environment Variable Values
+
+`SEARXNG_TIMEOUT` and `SEARXNG_MAX_RETRIES` accept a fixed format (a Go
+duration and a non-negative integer, respectively). When a value is set
+to something the server cannot parse — for example
+`SEARXNG_TIMEOUT=abc` or `SEARXNG_MAX_RETRIES=-1` — the server writes a
+warning line to stderr that names the offending variable and value, and
+then silently falls back to the built-in default. The process
+**continues running** and does not exit. In MCP stdio mode, most MCP
+clients do not surface the stderr stream, so end users typically do
+not see the warning at all.
+
+If you need strict validation (for example in CI), prefer the
+`--timeout` and `--max-retries` CLI flags instead of the environment
+variables. Invalid CLI values follow two distinct paths depending on
+where they are rejected:
+
+- **Flag parse errors** — values the command-line parser cannot
+  interpret at all (for example `--timeout=abc`) are caught before
+  any search flow runs. The error is reported on stderr, the CLI help
+  is printed, and the process exits with a non-zero status. No search
+  request is issued.
+- **Semantic validation errors** — values that parse successfully but
+  fall outside the documented range (for example `--max-retries=-1`,
+  or a value above the maximum allowed retries) are accepted by the
+  parser and only fail later, during configuration validation inside
+  the CLI search flow. The error is reported on stderr, the process
+  exits with a non-zero status, and **no CLI help is printed**. No
+  search request is issued.
+
 > **Note:** If you provide a custom `HTTPClient` (for example, when using the library programmatically), the `Timeout` setting is ignored and the provided client is used as-is. Either set `Timeout` or supply a custom `HTTPClient`, not both.
 
 ### POST→GET Fallback
@@ -95,7 +125,22 @@ which searxng-mcp-go
 }
 ```
 
-When debug mode (`DEBUG=1`) is enabled, the server logs HTTP request/response details, including query text. Avoid using it with sensitive queries.
+When debug mode (`DEBUG=1`) is enabled, the server logs HTTP request/response details, including query text. On startup the server writes a single warning line to stderr whose stable message body is:
+
+```text
+debug mode logs search queries and HTTP requests in plain text; avoid sensitive searches
+```
+
+The line is emitted via Go's default `slog` handler, which routes through
+the standard logger and prepends a timestamp and level (e.g.
+`2026/06/03 12:34:56 WARN …`); the prefix is handler-dependent and may
+change with the configured slog handler, so do not pin it in tests or
+automation. Grep the stderr output for the stable message body above if
+you need to assert that the warning was emitted.
+
+Most MCP clients do not surface stderr to the user, so do not rely on
+the warning to communicate the privacy risk. Avoid enabling debug mode
+with sensitive queries.
 
 ### CLI Mode Configuration
 
