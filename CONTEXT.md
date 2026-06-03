@@ -63,7 +63,7 @@ _Avoid_: BotHeaders, StealthHeaders
 **GET Fallback**: The automatic retry mechanism that re-issues a failed POST search as a GET request when the SearXNG instance returns HTTP 405 (Method Not Allowed) or 501 (Not Implemented).
 _Avoid_: POSTtoGETFallback (internal test function name)
 
-**Private Host Detection**: The validation that classifies literal IP addresses and known private hostname suffixes (10.x, 172.16-31, 192.168, localhost, `*.local`, `*.internal`, `*.lan`, `*.home`, IPv6 unique-local, link-local, etc.) without DNS resolution — used to warn when HTTP is used to reach non-private hosts.
+**Private Host Detection**: The RFC-grounded classification that suppresses the HTTP warning when the configured SearXNG URL points to a private/internal destination. A host is "private" iff the literal name is `localhost` or ends in `.localhost` (RFC 6761 §6.3, Special-Use Domain Names), or the literal address falls inside one of the published private/loopback/link-local/ULA/CGNAT/multicast/broadcast ranges enumerated in `docs/adr/003-http-warning-for-non-private-hosts.md`. No DNS resolution is performed, and the contract intentionally accepts that names like `printer.local` or `nas.lan` will now trigger the warning because no IETF Standards-Track RFC reserves those suffixes for "private network" use.
 
 **prepareMCPStdin**: The function that peeks at the first line of stdin to verify it contains a valid MCP initialize message (JSON-RPC 2.0 with method `initialize`), preventing the MCP server from hanging when piped non-MCP input.
 
@@ -99,9 +99,9 @@ _Avoid_: POSTtoGETFallback (internal test function name)
 >
 > **Domain expert:** "**Debug Mode** logs the full HTTP request body, so yes — avoid sensitive queries. Also note that `--debug` gates the **UnresponsiveEngines** field in JSON output; without it you won't see which engines failed."
 >
-> **Dev:** "The server at `search.internal` uses plain HTTP. I got a warning about non-private hosts, but `192.168.1.50` doesn't get one. Why?"
+> **Dev:** "The server at `192.168.1.50` uses plain HTTP. There's no warning, but the same instance at `search.example.com` does warn. And I just noticed that `printer.local` also warns now — it used to be quiet. Why?"
 >
-> **Domain expert:** "That's **Private Host Detection**. The code classifies literal IP addresses and known private hostname suffixes (10.x, 172.16-31, 192.168, localhost, `*.local`, `*.internal`, IPv6 unique-local, etc.); it does not perform DNS resolution. If the host is private, the HTTP warning is suppressed because local networks are trusted. For a hostname like `search.internal`, it's recognized by its TLD suffix."
+> **Domain expert:** "That's **Private Host Detection**. The HTTP warning is suppressed only for RFC-grounded private destinations: literal `localhost` / `*.localhost` (RFC 6761) and literal addresses inside the private/loopback/link-local/ULA/CGNAT/multicast/broadcast ranges listed in ADR-003. There is no DNS resolution and no private-TLD allowlist. `192.168.1.50` matches RFC 1918 and is silent; `search.example.com` is a public name and warns. `printer.local` is a public TLD for our purposes — RFC 6762 defines `.local` as a multicast-DNS link-local namespace, not a private-network indicator — so it now triggers the warning too. If you don't want the warning for a LAN-only host, either bind SearXNG to a literal RFC 1918 address or put TLS in front of it."
 
 ## Flagged ambiguities
 

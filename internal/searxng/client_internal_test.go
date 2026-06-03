@@ -64,21 +64,26 @@ func TestIsPrivateHost(t *testing.T) {
 		host string
 		want bool
 	}{
-		// Hostname-based private
+		// Hostname-based private (RFC 6761 §6.3)
 		{name: "localhost", host: "localhost", want: true},
 		{name: "subdomain localhost", host: "foo.localhost", want: true},
-		{name: "lan suffix", host: "nas.lan", want: true},
-		{name: "internal suffix", host: "db.internal", want: true},
-		{name: "local suffix", host: "printer.local", want: true},
-		{name: "home suffix", host: "router.home", want: true},
-		// IPv4 private
+		{name: "uppercase localhost", host: "LOCALHOST", want: true},
+		// Non-RFC suffixes — no longer treated as private (ADR-003).
+		{name: "lan suffix is not private", host: "nas.lan", want: false},
+		{name: "internal suffix is not private", host: "db.internal", want: false},
+		{name: "local suffix is not private", host: "printer.local", want: false},
+		{name: "home suffix is not private", host: "router.home", want: false},
+		{name: "corp suffix is not private", host: "wiki.corp", want: false},
+		{name: "intranet suffix is not private", host: "wiki.intranet", want: false},
+		{name: "home.arpa suffix is not private", host: "nas.home.arpa", want: false},
+		// IPv4 private (RFC 1918, RFC 1122, RFC 5737, RFC 6598, RFC 6890, RFC 8190)
 		{name: "10.x.x.x", host: "10.0.0.1", want: true},
 		{name: "172.16.0.0", host: "172.16.0.1", want: true},
 		{name: "172.31.255.255", host: "172.31.255.255", want: true},
 		{name: "192.168.0.0", host: "192.168.1.1", want: true},
 		{name: "127.0.0.1 loopback", host: "127.0.0.1", want: true},
 		{name: "127.255.255.255 loopback", host: "127.255.255.255", want: true},
-		// IPv6 private
+		// IPv6 private (RFC 4291, RFC 4193)
 		{name: "IPv6 loopback", host: "::1", want: true},
 		{name: "IPv6 unique-local fc00", host: "fc00::1", want: true},
 		{name: "IPv6 unique-local fd00", host: "fd12:3456::1", want: true},
@@ -93,6 +98,7 @@ func TestIsPrivateHost(t *testing.T) {
 		{name: "localhost with port", host: "localhost:8080", want: true},
 		{name: "10.0.0.1 with port", host: "10.0.0.1:9090", want: true},
 		{name: "public with port", host: "example.com:443", want: false},
+		{name: "non-RFC suffix with port", host: "printer.local:8080", want: false},
 	}
 
 	for _, tt := range tests {
