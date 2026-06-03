@@ -188,13 +188,21 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 	fs.Usage = func() {}
 
 	r := registeredFlags{
-		jsonOut:     fs.Bool("json", false, "Output results as JSON (CLI mode)"),
-		help:        fs.Bool("help", false, "Show this help message"),
-		version:     fs.Bool("version", false, "Show version information"),
-		searxngURL:  fs.String("searxng-url", "", "SearXNG URL (can also be set via SEARXNG_URL env var)"),
-		debug:       fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)"),
-		timeout:     fs.Duration("timeout", 0, "HTTP client timeout (e.g., 8s); overrides SEARXNG_TIMEOUT env var"),
-		maxRetries:  fs.Int("max-retries", 0, "Max retries after initial search attempt; overrides SEARXNG_MAX_RETRIES env var"),
+		jsonOut:    fs.Bool("json", false, "Output results as JSON (CLI mode)"),
+		help:       fs.Bool("help", false, "Show this help message"),
+		version:    fs.Bool("version", false, "Show version information"),
+		searxngURL: fs.String("searxng-url", "", "SearXNG URL (can also be set via SEARXNG_URL env var)"),
+		debug:      fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)"),
+		timeout: fs.Duration(
+			"timeout",
+			searxng.DefaultTimeout,
+			"HTTP client timeout (e.g., 8s); overrides SEARXNG_TIMEOUT env var",
+		),
+		maxRetries: fs.Int(
+			"max-retries",
+			searxng.DefaultMaxRetries,
+			"Max retries after initial search attempt; overrides SEARXNG_MAX_RETRIES env var",
+		),
 		searchFlags: make(map[string]any),
 	}
 
