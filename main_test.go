@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -605,6 +606,36 @@ func TestGetConfig(t *testing.T) {
 			t.Fatalf("getConfig() error = %q, want error mentioning 'SearXNG_URL' and 'required'", err.Error())
 		}
 	})
+}
+
+// TestRegisterFlagsDefaultPinning guards against the bug reported in
+// xlionjuan/searxng-mcp-go issue: the Go flag package reports the literal
+// flag default (flag.Lookup(...).DefValue), not the effective default. If
+// the flag default diverges from searxng.DefaultTimeout / DefaultMaxRetries,
+// programmatic introspection of the FlagSet contradicts the help text and
+// any consumer relying on DefValue will see a stale value.
+func TestRegisterFlagsDefaultPinning(t *testing.T) {
+	t.Parallel()
+
+	fs, _ := registerFlags()
+
+	timeoutFlag := fs.Lookup("timeout")
+	if timeoutFlag == nil {
+		t.Fatal("timeout flag not registered")
+	}
+
+	if got, want := timeoutFlag.DefValue, searxng.DefaultTimeout.String(); got != want {
+		t.Errorf("timeout DefValue = %q, want %q (effective default)", got, want)
+	}
+
+	maxRetriesFlag := fs.Lookup("max-retries")
+	if maxRetriesFlag == nil {
+		t.Fatal("max-retries flag not registered")
+	}
+
+	if got, want := maxRetriesFlag.DefValue, strconv.Itoa(searxng.DefaultMaxRetries); got != want {
+		t.Errorf("max-retries DefValue = %q, want %q (effective default)", got, want)
+	}
 }
 
 func TestRunCLIMode_Success(t *testing.T) {
