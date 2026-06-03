@@ -152,9 +152,11 @@ Root benchmarks live in `bench_test.go`; internal benchmarks live in
 - PR agents must create requested pull requests with `gh pr create` or update
   them with `gh pr edit`; do not stop after pushing a branch or giving the user
   a `/pull/new/...` URL unless the user explicitly asks for a branch only.
-- PR titles must be concise change summaries. Do not include agent workflow
-  state such as `PR pushed`, `branch pushed`, session names, run IDs, decorative
-  arrows, or implementation chatter.
+- PR titles must use a semantic change prefix (`fix:`, `ci:`, `docs:`,
+  `test:`, `feat:`, `refactor:`, `chore:`) followed by a concise English
+  change summary. Do not include agent workflow state such as `PR pushed`,
+  `branch pushed`, session names, run IDs, decorative arrows, or implementation
+  chatter.
 - PR bodies must be durable review records: include summary, docs impact, tests
   run, linked issues, and known limitations or follow-up work. Do not include
   agent session cards, social-card HTML/images, `/pull/new/...` links,

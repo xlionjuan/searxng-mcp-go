@@ -126,21 +126,42 @@ E2E tests require a SearXNG test server and `SEARXNG_URL`; see
 
 PR titles are persistent repository records, not agent progress messages.
 
-Use a concise English title that names the user-visible or reviewer-visible
-change:
+Use a concise English title with a semantic prefix:
 
-- Prefer imperative or descriptive titles such as `Move CLI smoke checks into Go E2E`
-- Mention the subsystem when it helps review, such as `Document PR metadata requirements for agents`
+```text
+<type>: <concise change summary>
+```
+
+Allowed `type` values:
+
+- `fix`: user-visible bug fixes, CI failures, flaky tests, or broken behavior
+- `feat`: new user-visible functionality
+- `docs`: documentation-only changes
+- `test`: test-only changes that do not change runtime behavior
+- `ci`: GitHub Actions, release workflows, or other CI configuration
+- `refactor`: behavior-preserving code restructuring
+- `chore`: maintenance work that does not fit the categories above
+
+Write the summary in sentence case without a trailing period. Name the
+user-visible or reviewer-visible change:
+
+- Prefer titles such as `ci: move CLI smoke checks into Go E2E`
+- Use `docs: document PR title requirements for agents` for documentation-only
+  guidance changes
+- Use `fix: route news E2E zero results through warning summary` for bug or
+  flake fixes
 - Keep titles specific enough to distinguish the PR in history
 
 Do not include:
 
 - Agent execution state such as `PR pushed`, `branch pushed`, `created PR`, or `ready`
+- Prefixes that describe the agent instead of the change, such as `agent:`,
+  `opencode:`, `codex:`, or `bot:`
 - Session names, run IDs, timestamps, model names, or tool names unless the PR
   changes that tool directly
 - Decorative arrows or symbols used as status shorthand
 - Raw issue discussion language copied from a non-English conversation
-- Vague titles such as `Fix issue`, `Update docs`, or `Changes`
+- Vague titles such as `fix: issue`, `docs: update docs`, or `chore: changes`
 
 Before creating or updating a PR, read the final title once as a reviewer would.
 If it describes what the agent did operationally instead of what the code or
@@ -194,8 +215,8 @@ documentation, tests, issue link, or risk sections.
 
 Before running `gh pr create` or `gh pr edit`, verify:
 
-- The title is English, concise, and describes the change rather than the agent
-  workflow
+- The title is English, uses an allowed semantic prefix, and describes the
+  change rather than the agent workflow
 - The body is English and contains summary, documentation impact, tests, linked
   issues, and risks or follow-up
 - The body has no social-card HTML, agent-session preview image, `/pull/new/`
