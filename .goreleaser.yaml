@@ -28,7 +28,6 @@ builds:
       - -X main.version=v{{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.date={{.Date}}
-      - -X main.builtBy=goreleaser
 
 archives:
   - id: default

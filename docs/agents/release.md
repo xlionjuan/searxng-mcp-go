@@ -100,4 +100,6 @@ GoReleaser ldflags override the hardcoded `main.go` version at build time:
 ```
 
 The hardcoded `main.go` value is used by `--version` only when the binary is not
-built by GoReleaser.
+built by GoReleaser. Do not add ldflags for variables that `main.go` does not
+declare — `go` silently ignores unknown `-X` targets, but stale ldflags drift
+out of sync with the source the moment a variable is renamed or removed.
