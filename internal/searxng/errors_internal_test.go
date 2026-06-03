@@ -201,7 +201,7 @@ func TestHTTPStatusError(t *testing.T) {
 			}
 
 			var searxErr *SearXNGError
-			if !AsError(t, err, &searxErr) {
+			if !errors.As(err, &searxErr) {
 				t.Fatalf("HTTPStatusError(%d) type = %T, want *SearXNGError", tt.statusCode, err)
 			}
 
@@ -227,7 +227,7 @@ func TestHTTPStatusError(t *testing.T) {
 		}
 
 		var searxErr *SearXNGError
-		if !AsError(t, err, &searxErr) {
+		if !errors.As(err, &searxErr) {
 			t.Fatalf("type = %T, want *SearXNGError", err)
 		}
 
@@ -243,7 +243,7 @@ func TestHTTPStatusError(t *testing.T) {
 		err := HTTPStatusError(http.StatusInternalServerError, "text/plain", longBody)
 
 		var searxErr *SearXNGError
-		if !AsError(t, err, &searxErr) {
+		if !errors.As(err, &searxErr) {
 			t.Fatalf("type = %T, want *SearXNGError", err)
 		}
 
@@ -356,7 +356,7 @@ func TestParseSearchEdgeCases(t *testing.T) {
 		}
 
 		var htmlErr *HTMLResponseError
-		if !AsError(t, err, &htmlErr) {
+		if !errors.As(err, &htmlErr) {
 			t.Fatalf("error type = %T, want *HTMLResponseError", err)
 		}
 	})
