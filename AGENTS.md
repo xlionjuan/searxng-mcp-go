@@ -91,8 +91,10 @@ AGENTS.md) cover project overview, domain context, and agent instructions.
   warnings are collected in a `WARNING SUMMARY` block at the end of the test
   group (`TestMCPFunctional`, `TestMCPStdioE2E`, `TestCLISmoke`).
 - Exceptions are owner-approved and documented. Known limitations of the CI
-  SearXNG instance, such as removed `files` category or relaxed
-  `all_time_ranges`, must not be broadened without approval.
+  SearXNG instance — for example, the `files` category being excluded from
+  `TestMCPFunctional`'s category loop, or the `time_range` subtests in
+  `TestMCPFunctional` downgrading zero-result outcomes to a warning — must
+  not be broadened without approval.
 - Adding strict assertions is preferred when a test can meaningfully assert
   non-zero results with a better query or parameter combination.
 - Live-server assertions belong in Go E2E tests (`TestMCPFunctional`,
