@@ -129,11 +129,27 @@ func closeResponseBody(resp *http.Response) {
 	}
 }
 
-// isPrivateHost checks if the host is a private/internal address.
+// isPrivateHost reports whether the given host is RFC-grounded as a
+// private/internal destination and therefore exempt from the HTTP warning.
+//
+// The contract is fully auditable against published RFCs and performs no DNS
+// resolution:
+//   - Hostname match: the exact name "localhost" or any name ending in
+//     ".localhost" (RFC 6761 §6.3, Special-Use Domain Names).
+//   - Literal IP match: the IPv4 and IPv6 ranges enumerated by
+//     isPrivateIPv4 / isPrivateIPv6, each backed by a published RFC.
+//
+// Any other hostname — including ".lan", ".local", ".internal", ".home",
+// ".corp", ".intranet", and ".home.arpa" — is NOT considered private and
+// will trigger the HTTP warning. See docs/adr/003-http-warning-for-non-private-hosts.md.
 func isPrivateHost(host string) bool {
 	h, _, err := net.SplitHostPort(host)
 	if err == nil {
 		host = h
+	}
+
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		host = host[1 : len(host)-1]
 	}
 
 	// Strip IPv6 zone ID (e.g., "fe80::1%eth0" → "fe80::1") before parsing.
@@ -144,15 +160,6 @@ func isPrivateHost(host string) bool {
 	lowerHost := strings.ToLower(host)
 
 	if lowerHost == "localhost" || strings.HasSuffix(lowerHost, ".localhost") {
-		return true
-	}
-
-	if strings.HasSuffix(lowerHost, ".lan") ||
-		strings.HasSuffix(lowerHost, ".internal") ||
-		strings.HasSuffix(lowerHost, ".local") ||
-		strings.HasSuffix(lowerHost, ".home") ||
-		strings.HasSuffix(lowerHost, ".corp") ||
-		strings.HasSuffix(lowerHost, ".intranet") {
 		return true
 	}
 

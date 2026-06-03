@@ -349,7 +349,7 @@ func TestHTTPStatusError(t *testing.T) {
 		}
 
 		var searxErr *SearXNGError
-		if !AsError(t, err, &searxErr) {
+		if !errors.As(err, &searxErr) {
 			t.Fatalf("type = %T, want *SearXNGError", err)
 		}
 
