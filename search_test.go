@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -627,8 +626,13 @@ func TestSearch_EmptySearchResponseRetryCanceled(t *testing.T) {
 
 	var attempts atomic.Int32
 
+	firstResponseWritten := make(chan struct{})
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		attempts.Add(1)
+		if attempts.Add(1) == 1 {
+			defer close(firstResponseWritten)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"query":"test","results":[],"suggestions":[]}`))
@@ -650,11 +654,16 @@ func TestSearch_EmptySearchResponseRetryCanceled(t *testing.T) {
 	go func() {
 		defer close(done)
 
-		// Wait for the first attempt to complete before canceling.
-		// Poll attempts instead of sleeping to avoid flakiness on slow CI.
-		for attempts.Load() == 0 {
-			runtime.Gosched()
-		}
+		// Wait for the first attempt's response to be fully written before
+		// canceling. The close fires after w.Write() on the server side,
+		// which is an acceptable approximation of "fully processed by the
+		// client" — a more precise signal would require test hooks in the
+		// retry path. The short sleep afterwards gives the client time to
+		// parse the response and enter the retry wait so the cancel
+		// exercises the retry-cancellation path rather than racing the
+		// server's Write call.
+		<-firstResponseWritten
+		time.Sleep(20 * time.Millisecond)
 
 		cancel()
 	}()
