@@ -124,7 +124,7 @@ func TestParseArgs(t *testing.T) {
 			wantCLIMode:    true,
 			wantFlags:      CLIFlags{Language: "", SafeSearch: 0, Pageno: nil},
 			wantPositional: []string{"test query"},
-			wantLimit:      new(defaultResultLimit),
+			wantLimit:      new(searxng.DefaultResultLimit),
 			wantErr:        false,
 		},
 		{

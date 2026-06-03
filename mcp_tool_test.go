@@ -368,8 +368,8 @@ func TestNewSearchToolHandler(t *testing.T) {
 			t.Fatalf("expected valid JSON, got error: %v\nbody: %s", err, textContent.Text)
 		}
 
-		if len(parsed.Results) != defaultResultLimit {
-			t.Fatalf("result count = %d, want %d", len(parsed.Results), defaultResultLimit)
+		if len(parsed.Results) != searxng.DefaultResultLimit {
+			t.Fatalf("result count = %d, want %d", len(parsed.Results), searxng.DefaultResultLimit)
 		}
 	})
 

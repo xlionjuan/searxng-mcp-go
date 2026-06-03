@@ -1,5 +1,11 @@
 package searxng
 
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
 // ParamDef describes a single search parameter for use across CLI and MCP layers.
 type ParamDef struct {
 	// Name is the parameter name (flag name, JSON key).
@@ -43,16 +49,22 @@ type ParamDef struct {
 }
 
 var (
-	paramMinSafeSearch = 0
-	paramMaxSafeSearch = 2
-	paramMinPage       = 1
-	paramMinLimit      = 1
-	paramMaxLimit      = 20
+	paramMinSafeSearch = MinSafeSearch
+	paramMaxSafeSearch = MaxSafeSearch
+	paramMinPage       = MinPageno
+	paramMinLimit      = MinResultLimit
+	paramMaxLimit      = MaxResultLimit
 )
 
 // SearchParams is the canonical list of all search parameters used by both CLI
 // and MCP layers. Adding or changing a parameter here propagates to flag
 // registration, help text, and MCP schema generation automatically.
+//
+// The Default, Minimum, Maximum, and Enum fields must agree with the runtime
+// validators in validation.go. The single source of truth for those
+// constraints lives in bounds.go; the drift tests in
+// params_validation_drift_test.go verify that schema and validator stay in
+// sync.
 var SearchParams = []ParamDef{
 	{
 		Name: "query", GoType: "string", Default: "", Required: true,
@@ -69,9 +81,9 @@ var SearchParams = []ParamDef{
 		MCPType:     "string",
 	},
 	{
-		Name: "safesearch", GoType: "int", Default: "0",
+		Name: "safesearch", GoType: "int", Default: strconv.Itoa(MinSafeSearch),
 		Description: "SafeSearch level: 0=Off, 1=Moderate, 2=Strict",
-		CLIHelp:     "SafeSearch level: 0=Off, 1=Moderate, 2=Strict [default: 0]",
+		CLIHelp:     fmt.Sprintf("SafeSearch level: 0=Off, 1=Moderate, 2=Strict [default: %d]", MinSafeSearch),
 		CLIType:     "0-2",
 		MCPType:     "integer",
 		Minimum:     &paramMinSafeSearch,
@@ -79,14 +91,14 @@ var SearchParams = []ParamDef{
 	},
 	{
 		Name: "time_range", GoType: "string", Default: "",
-		Description: "Time range filter: day, month, year",
-		CLIHelp:     "Time range filter: day, month, year",
+		Description: "Time range filter: " + strings.Join(ValidTimeRanges, ", "),
+		CLIHelp:     "Time range filter: " + strings.Join(ValidTimeRanges, ", "),
 		CLIType:     "RANGE",
 		MCPType:     "string",
-		// Keep in sync with validTimeRanges in validation.go.
-		// The empty string means "no time restriction" and is short-circuited
-		// by validateTimeRange, so it intentionally has no entry in that map.
-		Enum: []string{"", "day", "month", "year"},
+		// Enum is derived from ValidTimeRanges (bounds.go) plus the empty
+		// string, which means "no time restriction" and is short-circuited
+		// by validateTimeRange.
+		Enum: append([]string{""}, ValidTimeRanges...),
 	},
 	{
 		Name: "categories", GoType: "string", Default: "",
@@ -103,18 +115,18 @@ var SearchParams = []ParamDef{
 		MCPType:     "string",
 	},
 	{
-		Name: "pageno", GoType: "int", Default: "1",
+		Name: "pageno", GoType: "int", Default: strconv.Itoa(MinPageno),
 		Description: "Page number for pagination",
-		CLIHelp:     "Page number for pagination [default: 1]",
+		CLIHelp:     fmt.Sprintf("Page number for pagination [default: %d]", MinPageno),
 		CLIType:     "N",
 		MCPType:     "integer",
 		Nullable:    true,
 		Minimum:     &paramMinPage,
 	},
 	{
-		Name: "limit", GoType: "int", Default: "10",
-		Description: "Maximum number of results to return (1-20)",
-		CLIHelp:     "Maximum number of results to return (1-20) [default: 10]",
+		Name: "limit", GoType: "int", Default: strconv.Itoa(DefaultResultLimit),
+		Description: fmt.Sprintf("Maximum number of results to return (%d-%d)", MinResultLimit, MaxResultLimit),
+		CLIHelp:     fmt.Sprintf("Maximum number of results to return (%d-%d) [default: %d]", MinResultLimit, MaxResultLimit, DefaultResultLimit),
 		CLIType:     "N",
 		MCPType:     "integer",
 		Minimum:     &paramMinLimit,

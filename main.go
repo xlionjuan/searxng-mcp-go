@@ -20,8 +20,6 @@ var (
 	date    = "unknown"
 )
 
-const defaultResultLimit = 10
-
 var (
 	errArgumentParseFailed = errors.New("failed to parse arguments")
 	errSearXNGURLRequired  = errors.New("SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
@@ -123,7 +121,7 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 	})
 
 	if limitPtr == nil {
-		defaultLimit := defaultResultLimit
+		defaultLimit := searxng.DefaultResultLimit
 		limitPtr = &defaultLimit
 	}
 
