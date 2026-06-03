@@ -105,37 +105,3 @@ func (e *errorReader) Read(_ []byte) (int, error) {
 func (e *errorReader) Close() error {
 	return nil
 }
-
-// AsError is a test helper for errors.As with generics-like assertion.
-func AsError[T error](t *testing.T, err error, target *T) bool {
-	t.Helper()
-
-	return As(err, target)
-}
-
-// As wraps errors.As for test helper compatibility.
-func As[T error](err error, target *T) bool {
-	//nolint:errorlint // errors.As with generic target
-	if e, ok := err.(T); ok {
-		*target = e
-
-		return true
-	}
-
-	//nolint:errorlint // errors.As with generic target via unwrapping
-	for e := err; e != nil; {
-		if e2, ok := e.(T); ok {
-			*target = e2
-
-			return true
-		}
-
-		if unwrapper, ok := e.(interface{ Unwrap() error }); ok {
-			e = unwrapper.Unwrap()
-		} else {
-			break
-		}
-	}
-
-	return false
-}
