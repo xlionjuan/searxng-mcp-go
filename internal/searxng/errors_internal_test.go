@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 var errNotValidationTestError = errors.New("not a validation error")
@@ -130,6 +131,89 @@ func containsRune(s string, r rune) bool {
 	return false
 }
 
+// --- buildErrorPreview tests ---
+
+func TestBuildErrorPreview(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty input", func(t *testing.T) {
+		t.Parallel()
+
+		if got := buildErrorPreview(nil); got != "" {
+			t.Errorf("buildErrorPreview(nil) = %q, want %q", got, "")
+		}
+
+		if got := buildErrorPreview([]byte{}); got != "" {
+			t.Errorf("buildErrorPreview(empty) = %q, want %q", got, "")
+		}
+	})
+
+	t.Run("short ASCII unchanged", func(t *testing.T) {
+		t.Parallel()
+
+		body := []byte("hello")
+		if got := buildErrorPreview(body); got != "hello" {
+			t.Errorf("buildErrorPreview(hello) = %q, want %q", got, "hello")
+		}
+	})
+
+	t.Run("ASCII truncated to MaxErrorDisplayChars", func(t *testing.T) {
+		t.Parallel()
+
+		body := []byte(strings.Repeat("a", MaxErrorDisplayChars+50))
+		got := buildErrorPreview(body)
+
+		if len(got) != MaxErrorDisplayChars {
+			t.Fatalf("buildErrorPreview length = %d, want %d", len(got), MaxErrorDisplayChars)
+		}
+
+		if got != strings.Repeat("a", MaxErrorDisplayChars) {
+			t.Errorf("buildErrorPreview content mismatch: got %q", got)
+		}
+	})
+
+	t.Run("oversized multi-byte body truncates on rune boundary", func(t *testing.T) {
+		t.Parallel()
+
+		// "你好" is 6 bytes in UTF-8 (3 bytes each). Build a body of many copies
+		// so it well exceeds MaxErrorDisplayChars (200 bytes) and force the
+		// truncation to land inside a multi-byte rune.
+		body := []byte(strings.Repeat("你好", MaxErrorDisplayChars))
+
+		got := buildErrorPreview(body)
+
+		if len(got) > MaxErrorDisplayChars {
+			t.Fatalf("buildErrorPreview length = %d, want <= %d", len(got), MaxErrorDisplayChars)
+		}
+
+		if !utf8.ValidString(got) {
+			t.Errorf("buildErrorPreview produced invalid UTF-8: %q (bytes: %d)", got, len(got))
+		}
+
+		if got == "" {
+			t.Fatal("buildErrorPreview returned empty string for non-empty input")
+		}
+	})
+
+	t.Run("oversized emoji body truncates on rune boundary", func(t *testing.T) {
+		t.Parallel()
+
+		// "🔥" is 4 bytes in UTF-8. Build a body of many copies so it well
+		// exceeds MaxErrorDisplayChars and force truncation inside a rune.
+		body := []byte(strings.Repeat("🔥", MaxErrorDisplayChars))
+
+		got := buildErrorPreview(body)
+
+		if len(got) > MaxErrorDisplayChars {
+			t.Fatalf("buildErrorPreview length = %d, want <= %d", len(got), MaxErrorDisplayChars)
+		}
+
+		if !utf8.ValidString(got) {
+			t.Errorf("buildErrorPreview produced invalid UTF-8: %q (bytes: %d)", got, len(got))
+		}
+	})
+}
+
 // --- Private isValidationError tests ---
 
 func TestIsValidationError(t *testing.T) {
@@ -249,6 +333,36 @@ func TestHTTPStatusError(t *testing.T) {
 
 		if len(searxErr.ResponseBody) != MaxErrorDisplayChars {
 			t.Fatalf("ResponseBody length = %d, want %d", len(searxErr.ResponseBody), MaxErrorDisplayChars)
+		}
+	})
+
+	t.Run("oversized multi-byte body truncates on rune boundary", func(t *testing.T) {
+		t.Parallel()
+
+		// "你好" is 6 bytes in UTF-8 (3 bytes each). A body of many copies well
+		// exceeds MaxErrorDisplayChars and forces truncation inside a rune.
+		multiByteBody := []byte(strings.Repeat("你好", MaxErrorDisplayChars))
+
+		err := HTTPStatusError(http.StatusInternalServerError, "text/plain; charset=utf-8", multiByteBody)
+		if err == nil {
+			t.Fatal("HTTPStatusError() = nil, want error")
+		}
+
+		var searxErr *SearXNGError
+		if !AsError(t, err, &searxErr) {
+			t.Fatalf("type = %T, want *SearXNGError", err)
+		}
+
+		if len(searxErr.ResponseBody) > MaxErrorDisplayChars {
+			t.Fatalf("ResponseBody length = %d, want <= %d", len(searxErr.ResponseBody), MaxErrorDisplayChars)
+		}
+
+		if !utf8.ValidString(searxErr.ResponseBody) {
+			t.Errorf("ResponseBody is not valid UTF-8: %q (bytes: %d)", searxErr.ResponseBody, len(searxErr.ResponseBody))
+		}
+
+		if !strings.Contains(err.Error(), "searxng error (status 500) - content-type text/plain; charset=utf-8") {
+			t.Errorf("Error() = %q, want to contain status and content-type", err.Error())
 		}
 	})
 }

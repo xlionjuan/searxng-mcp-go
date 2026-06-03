@@ -57,6 +57,13 @@ func truncateBody(body []byte, maxLen int) string {
 	return string(truncated)
 }
 
+// buildErrorPreview returns a preview of body suitable for storage in
+// SearXNGError.ResponseBody. The size and UTF-8 safety contract are
+// defined by MaxErrorDisplayChars; see its doc comment for details.
+func buildErrorPreview(body []byte) string {
+	return truncateBody(body, MaxErrorDisplayChars)
+}
+
 // truncateBytesToValidUTF8 returns data truncated to at most maxBytes bytes,
 // walking back to a valid UTF-8 rune boundary to avoid splitting multi-byte sequences.
 func truncateBytesToValidUTF8(data []byte, maxBytes int) []byte {
@@ -126,7 +133,7 @@ func (e *SearXNGError) Unwrap() error {
 
 // HTTPStatusError creates a SearXNGError from an HTTP status code.
 func HTTPStatusError(statusCode int, contentType string, body []byte) error {
-	bodyStr := truncateBody(body, MaxErrorDisplayChars)
+	bodyStr := buildErrorPreview(body)
 
 	var err error
 

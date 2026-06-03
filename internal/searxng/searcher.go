@@ -337,7 +337,7 @@ func (s *SearXNGSearcher) handleNonOKResponse(resp *http.Response) error {
 	}
 
 	if truncated {
-		return NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body),
+		return NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), buildErrorPreview(body),
 			fmt.Errorf("%w of %d bytes", errErrorBodyTooLarge, MaxErrorBodySize))
 	}
 

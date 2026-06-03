@@ -98,7 +98,7 @@ func readLimitedBody(resp *http.Response) ([]byte, error) {
 	if truncated {
 		bodySizeErr := fmt.Errorf("%w of %d bytes", errResponseBodyTooLarge, MaxResponseBodySize)
 
-		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), string(body), bodySizeErr)
+		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), buildErrorPreview(body), bodySizeErr)
 	}
 
 	return body, nil
