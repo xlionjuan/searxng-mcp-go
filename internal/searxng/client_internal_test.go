@@ -85,9 +85,12 @@ func TestIsPrivateHost(t *testing.T) {
 		{name: "127.255.255.255 loopback", host: "127.255.255.255", want: true},
 		// IPv6 private (RFC 4291, RFC 4193)
 		{name: "IPv6 loopback", host: "::1", want: true},
+		{name: "bracketed IPv6 loopback", host: "[::1]", want: true},
 		{name: "IPv6 unique-local fc00", host: "fc00::1", want: true},
+		{name: "bracketed IPv6 unique-local fc00", host: "[fc00::1]", want: true},
 		{name: "IPv6 unique-local fd00", host: "fd12:3456::1", want: true},
 		{name: "IPv6 link-local fe80", host: "fe80::1", want: true},
+		{name: "bracketed IPv6 link-local with encoded zone", host: "[fe80::1%25eth0]", want: true},
 		// Public
 		{name: "public IPv4", host: "8.8.8.8", want: false},
 		{name: "public domain", host: "example.com", want: false},
@@ -97,6 +100,7 @@ func TestIsPrivateHost(t *testing.T) {
 		// With port
 		{name: "localhost with port", host: "localhost:8080", want: true},
 		{name: "10.0.0.1 with port", host: "10.0.0.1:9090", want: true},
+		{name: "bracketed IPv6 loopback with port", host: "[::1]:8080", want: true},
 		{name: "public with port", host: "example.com:443", want: false},
 		{name: "non-RFC suffix with port", host: "printer.local:8080", want: false},
 	}

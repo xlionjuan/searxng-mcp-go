@@ -132,8 +132,8 @@ func closeResponseBody(resp *http.Response) {
 // isPrivateHost reports whether the given host is RFC-grounded as a
 // private/internal destination and therefore exempt from the HTTP warning.
 //
-// The contract is fully auditable against IETF Standards-Track RFCs and
-// performs no DNS resolution:
+// The contract is fully auditable against published RFCs and performs no DNS
+// resolution:
 //   - Hostname match: the exact name "localhost" or any name ending in
 //     ".localhost" (RFC 6761 §6.3, Special-Use Domain Names).
 //   - Literal IP match: the IPv4 and IPv6 ranges enumerated by
@@ -146,6 +146,10 @@ func isPrivateHost(host string) bool {
 	h, _, err := net.SplitHostPort(host)
 	if err == nil {
 		host = h
+	}
+
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		host = host[1 : len(host)-1]
 	}
 
 	// Strip IPv6 zone ID (e.g., "fe80::1%eth0" → "fe80::1") before parsing.

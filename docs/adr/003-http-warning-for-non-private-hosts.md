@@ -37,7 +37,7 @@ address in one of the listed ranges.
 
 | Form | Reference |
 |------|-----------|
-| `localhost` (exact match, ASCII lower-case) | RFC 6761 §6.3 |
+| `localhost` (case-insensitive exact match) | RFC 6761 §6.3 |
 | `*.localhost` (suffix match) | RFC 6761 §6.3 |
 
 ### IPv4 address ranges
@@ -73,8 +73,8 @@ address in one of the listed ranges.
 ### Explicitly NOT considered private
 
 The following suffixes were on the earlier hand-maintained list and are
-**removed** because none of them are reserved by an IETF Standards-Track
-RFC for "private network" use. Hosts matching these suffixes will now
+**removed** because none of the cited RFCs reserves them for "private network"
+use. Hosts matching these suffixes will now
 trigger the HTTP warning:
 
 - `*.lan` — no RFC reservation
@@ -102,9 +102,8 @@ Search results could be intercepted and modified by a MITM attacker."
 ### Positive
 
 - The "private" predicate is fully auditable: every accepted hostname
-  matches RFC 6761, and every accepted IP range is named in the
-  Standards-Track RFCs above. There is no internal suffix list to drift
-  out of date.
+  matches RFC 6761, and every accepted IP range is named in the published
+  RFCs above. There is no internal suffix list to drift out of date.
 - Removing the speculative suffix list eliminates false negatives caused
   by unlisted TLDs (`.home.arpa`, organization-specific suffixes) and
   false positives caused by public TLDs that happen to match
