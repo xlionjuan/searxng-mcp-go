@@ -219,7 +219,7 @@ func NewSearchToolHandler(searcher searcher) func(
 ) (*mcp.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcp.CallToolRequest, args searxng.SearchArgs) (*mcp.CallToolResult, any, error) {
 		if args.Limit == nil {
-			defaultLimit := defaultResultLimit
+			defaultLimit := searxng.DefaultResultLimit
 			args.Limit = &defaultLimit
 		}
 

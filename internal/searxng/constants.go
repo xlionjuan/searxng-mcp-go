@@ -15,6 +15,11 @@ const DefaultRetryDelay = time.Second
 // DefaultMaxRetryDelay is the fallback upper bound for retry backoff delays.
 const DefaultMaxRetryDelay = 30 * time.Second
 
+// DefaultResultLimit is the default value applied when callers omit a result
+// limit. It is the single source of truth used by CLI flag defaulting, MCP
+// handler defaulting, and the canonical ParamDef metadata in params.go.
+const DefaultResultLimit = 10
+
 // MaxContentRunes is the maximum result content length retained after normalization.
 const MaxContentRunes = 4000
 
