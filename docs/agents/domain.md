@@ -18,7 +18,6 @@ Single-context repo:
 ├── CONTEXT.md
 ├── docs/adr/
 │   ├── 001-no-pgo.md
-│   ├── 002-missing.md
 │   ├── 003-http-warning-for-non-private-hosts.md
 │   ├── 004-mcp-stdin-env-only.md
 │   ├── 005-no-corrections.md
