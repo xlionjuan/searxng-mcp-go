@@ -135,6 +135,13 @@ jobs:
             - If opening a PR, keep the PR title and body in English and include summary, docs impact, tests run, linked issues, and limitations.
             - If only Issues are opened, do not modify files.
 
+            Issue labeling:
+            - Before applying labels, run `gh label list` and follow docs/agents/triage-labels.md.
+            - Apply labels only when they are unambiguous.
+            - Prefer topical labels such as `documentation`, `bug`, `enhancement`, `question`, or `security` when appropriate.
+            - Do not apply human-only decision labels such as `accepted`, `needs-explain`, `rejected`, or `wontfix` unless explicitly instructed by the user.
+            - If no label clearly applies, leave the Issue unlabeled and mention the suggested label in the Issue body.
+
             For each finding, provide:
             - title
             - severity
@@ -144,6 +151,7 @@ jobs:
             - why it matters
             - recommended action
             - whether it should be an Issue or PR
+            - proposed Issue labels, if any
             - if Issue: proposed Issue title and body
             - if PR: exact intended scope and required verification
 
