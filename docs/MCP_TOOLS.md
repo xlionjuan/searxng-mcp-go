@@ -28,7 +28,7 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 |              |         |          |         | (e.g., general, news, music)                   |
 | `engines`    | string  | No       | -       | Comma-separated list of search engines to use  |
 |              |         |          |         | (e.g., google, bing, duckduckgo)               |
-| `pageno`     | integer, null | No       | 1       | Page number for pagination (omitted = backend default/page 1) |
+| `pageno`     | integer, null | No       | -       | Page number for pagination (omitted = backend default/page 1) |
 | `limit`      | integer | No       | 10      | Maximum number of results returned (1-20)      |
 
 ### Response Format
