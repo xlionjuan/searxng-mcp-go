@@ -14,9 +14,12 @@ import (
 // hardcoded literal. If a refactor accidentally hardcodes "8s" in the
 // help text while the constant moves to a different value, this test
 // fails.
+//
+// Not t.Parallel(): captureStdout swaps process-global os.Stdout, which
+// races with any other test that captures stdout (see issue #21). The
+// stdout-capturing tests in this file are kept serial so this PR stays
+// race-safe independent of the captureStdout mutex fix in #78.
 func TestCLIHelpTimeoutDefaultDerivesFromConstant(t *testing.T) {
-	t.Parallel()
-
 	output := captureStdout(t, func() {
 		printCLIHelp()
 	})
@@ -39,9 +42,9 @@ func TestCLIHelpTimeoutDefaultDerivesFromConstant(t *testing.T) {
 // TestCLIHelpMaxRetriesDefaultDerivesFromConstant guards issue #24: the
 // CLI help text for --max-retries must show searxng.DefaultMaxRetries,
 // not a hardcoded literal.
+//
+// Not t.Parallel(): see TestCLIHelpTimeoutDefaultDerivesFromConstant.
 func TestCLIHelpMaxRetriesDefaultDerivesFromConstant(t *testing.T) {
-	t.Parallel()
-
 	output := captureStdout(t, func() {
 		printCLIHelp()
 	})
@@ -64,9 +67,9 @@ func TestCLIHelpMaxRetriesDefaultDerivesFromConstant(t *testing.T) {
 // values. If a future refactor reintroduces a hardcoded literal, the
 // finer-grained TestCLIHelp*DefaultDerivesFromConstant tests above
 // catch the divergence at the constant level.
+//
+// Not t.Parallel(): see TestCLIHelpTimeoutDefaultDerivesFromConstant.
 func TestCLIHelpNoStaleDefaultLiterals(t *testing.T) {
-	t.Parallel()
-
 	output := captureStdout(t, func() {
 		printCLIHelp()
 	})
@@ -91,9 +94,9 @@ func TestCLIHelpNoStaleDefaultLiterals(t *testing.T) {
 // MaxResultLimit, and DefaultResultLimit at table-init time, so this test
 // is a smoke check that the wiring still produces a sensible message
 // and that the default in the help text agrees with searxng.DefaultResultLimit.
+//
+// Not t.Parallel(): see TestCLIHelpTimeoutDefaultDerivesFromConstant.
 func TestCLIHelpLimitHelpTextMatchesBounds(t *testing.T) {
-	t.Parallel()
-
 	output := captureStdout(t, func() {
 		printCLIHelp()
 	})
