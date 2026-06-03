@@ -40,6 +40,7 @@ The tool returns a JSON text response containing the full `SearchResponse` objec
 | Field | Type | Description |
 |-------|------|-------------|
 | `query` | string | The original search query |
+| `warning` | string | External-content advisory noting that search results come from untrusted sources and should be verified before use (always present on successful responses) |
 | `answers` | array | Direct answers (omitted when empty) |
 | `number_of_results` | integer | Total count of results; if SearXNG returns 0 while results exist, normalized to `len(results)` |
 | `infoboxes` | array | Knowledge panels with content, attributes, URLs (omitted when empty) |
@@ -58,6 +59,8 @@ The tool returns a JSON text response containing the full `SearchResponse` objec
 | `publishedDate` | string | Publication date provided by SearXNG (omitted when the backend does not include it; no normalization is applied) |
 
 **Note:** The `number_of_results` field may return 0 from SearXNG even when results are present. The server normalizes this by replacing 0 with `len(results)` when results exist. If `pageno` is omitted, the server does not send the parameter and SearXNG uses its page 1 default.
+
+**Note:** The `warning` field is a static advisory emitted on every successful response to remind AI agents and JSON consumers that search results originate from external, untrusted sources. It is not a per-result provenance marker; the canonical wire-format ordering and JSON-mode behavior are documented in [docs/OUTPUT_FORMAT.md](OUTPUT_FORMAT.md).
 
 ### Example Usage
 
@@ -139,6 +142,7 @@ The tool returns a JSON text response containing the full `SearchResponse` objec
 ```json
 {
   "query": "golang tutorial",
+  "warning": "Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.",
   "answers": [
     {"answer": "203.0.113.42", "engine": "ip_lookup"}
   ],
