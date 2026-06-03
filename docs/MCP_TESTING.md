@@ -1,6 +1,11 @@
-# MCP Stdio Testing Guide
+# MCP Testing Guide
 
-How to properly test the MCP stdio server in searxng-mcp-go.
+How to test the MCP server in searxng-mcp-go at the right layer. This guide
+covers three complementary approaches — in-memory transport, subprocess stdio
+with `mcp.CommandTransport`, and raw `exec.Command` for CLI exit codes — and
+when to reach for each.
+
+For the layer overview, see [Test Layers](#test-layers) below.
 
 ## Why Pipe-Based Testing Is Wrong
 
@@ -132,6 +137,98 @@ clientTransport := &mcp.IOTransport{Reader: clientReader, Writer: clientWriter}
 
 But `NewInMemoryTransports()` is preferred — it uses `net.Pipe()` internally and is designed for this exact purpose.
 
+## End-to-End: Subprocess stdio with CommandTransport
+
+In-memory transports prove the protocol surface and tool wiring, but they do
+not exercise the real stdio boundary, the binary's startup environment, or
+process lifecycle. The E2E tests in `e2e_*_test.go` (build tag `e2e`) use the
+SDK's `mcp.CommandTransport`, which spawns the built binary as a subprocess
+and talks JSON-RPC over its stdin/stdout. This is the only layer that catches
+issues like wrong env-var parsing on startup, missing stderr flushing on
+shutdown, or stdio framing regressions.
+
+### Pattern
+
+```go
+//go:build e2e
+
+import (
+    "bytes"
+    "context"
+    "os"
+    "os/exec"
+    "testing"
+    "time"
+
+    "github.com/modelcontextprotocol/go-sdk/mcp"
+)
+
+func TestE2E(t *testing.T) {
+    ctx, cancel := context.WithTimeout(t.Context(), 180*time.Second)
+    defer cancel()
+
+    // 1. Reuse a pre-built binary if E2E_MCP_BINARY is set;
+    //    otherwise fall back to building one in t.TempDir().
+    binaryPath := os.Getenv("E2E_MCP_BINARY")
+    if binaryPath == "" {
+        binaryPath = buildE2EMCPBinary(ctx, t) // go build -o <tempdir>/searxng-mcp-go .
+    }
+
+    var stderr bytes.Buffer
+    cmd := exec.CommandContext(ctx, binaryPath)
+    cmd.Env = e2eMCPEnv(os.Getenv("SEARXNG_URL")) // adds SEARXNG_MAX_RETRIES=2
+    cmd.Stderr = &stderr
+
+    client := mcp.NewClient(&mcp.Implementation{Name: "e2e", Version: "0"}, nil)
+    session, err := client.Connect(ctx, &mcp.CommandTransport{Command: cmd}, nil)
+    if err != nil {
+        t.Fatalf("connect failed: %v\nstderr:\n%s", err, stderr.String())
+    }
+    t.Cleanup(func() {
+        _ = session.Close()
+        if cmd.Process != nil && cmd.ProcessState == nil {
+            _ = cmd.Process.Kill()
+            _, _ = cmd.Process.Wait()
+        }
+    })
+
+    // ... session.ListTools(), session.CallTool(), assert results ...
+}
+```
+
+### `E2E_MCP_BINARY`
+
+`E2E_MCP_BINARY` is an optional environment variable read by every E2E test
+that uses `mcp.CommandTransport` (`e2e_mcp_test.go`, `e2e_functional_test.go`,
+`e2e_error_test.go`, `e2e_stress_test.go`). When set, the test reuses that
+binary instead of running `go build` on every test invocation. CI sets it to
+`./searxng-mcp-go` after a single explicit build step (see
+`.github/workflows/e2e.yml`), which makes the in-workflow retry loop cheap.
+For local development:
+
+```bash
+go build -o ./searxng-mcp-go .
+E2E_MCP_BINARY=$PWD/searxng-mcp-go \
+  SEARXNG_URL=http://127.0.0.1:8888 \
+  go test -tags=e2e -run TestMCPStdioE2E -count=1 .
+```
+
+When `E2E_MCP_BINARY` is unset, each test builds its own binary in
+`t.TempDir()` via the `buildE2EMCPBinary` helper.
+
+`e2e_exitcode_test.go` is the one E2E file that does not use
+`mcp.CommandTransport`; it asserts CLI exit codes via raw `exec.Command` and
+builds its own binary in `t.TempDir()` regardless of `E2E_MCP_BINARY`.
+
+### `SEARXNG_MAX_RETRIES=2`
+
+The shared `e2eMCPEnv` helper (in `e2e_mcp_test.go`) injects
+`SEARXNG_MAX_RETRIES=2` on top of the inherited environment. The production
+default is 5; the E2E tests deliberately lower it to keep wall-clock time
+predictable while still exercising the retry path. Do not raise this for new
+E2E tests without an explicit reason, and do not lower it to 0 — that would
+hide regressions in the retry layer.
+
 ## MCP Inspector (manual testing)
 
 ```bash
@@ -148,14 +245,30 @@ Opens a web UI where you can:
 - Call tools interactively
 - See all JSON-RPC messages in real time
 
-## Testing Strategy
+## Test Layers
 
-| Layer | Method | What It Tests |
-|-------|--------|---------------|
-| Unit tests | `NewSearchToolHandler()` | Search logic, handler validation, JSON tool responses |
-| MCP integration | `NewInMemoryTransports()` | MCP protocol, tool registration, session lifecycle |
-| CLI integration | `exec.Command` + binary | End-to-end CLI behavior, exit codes, output format |
-| Manual/CI | MCP Inspector | Interactive verification, smoke test |
+The repository tests MCP at five layers, each catching a different class of
+defect. The three complementary MCP testing approaches from the intro above
+cover the middle three rows of the table; unit tests and manual / smoke checks
+bookend them. Pick the lowest layer that can meaningfully assert what you want
+to verify.
+
+| Layer | Method | Files | What it catches |
+|-------|--------|-------|-----------------|
+| Unit | direct handler call (`NewSearchToolHandler()`) | `mcp_test.go`, `internal/searxng/*_test.go` | Search logic, input validation, JSON response shape |
+| MCP integration | `mcp.NewInMemoryTransports()` (`net.Pipe` in-process) | (unit-style tests of the MCP server surface) | MCP protocol wiring, tool registration, schema, session lifecycle |
+| MCP E2E (stdio) | `exec.Command` + `mcp.CommandTransport` (subprocess) | `e2e_mcp_test.go`, `e2e_functional_test.go`, `e2e_error_test.go`, `e2e_stress_test.go` | Real stdio framing, env-var startup, process lifecycle, live SearXNG behavior |
+| CLI E2E (exit codes) | raw `exec.Command` on the built binary | `e2e_exitcode_test.go` | CLI exit code contract, stderr/stdout split, flag parsing |
+| Manual / smoke | MCP Inspector, CI shell smoke | `.github/workflows/e2e.yml` | Interactive verification, deterministic exit-code smoke |
+
+Rule of thumb:
+
+- Use **InMemoryTransport** for fast, deterministic tests of the MCP protocol
+  surface (no subprocess, no live network).
+- Use **CommandTransport** when the assertion depends on the binary actually
+  starting, reading env vars, or talking over real stdin/stdout.
+- Use **raw `exec.Command`** only when the assertion is about the CLI process
+  itself (exit code, stderr text) and not about MCP protocol behavior.
 
 ## Key Gotchas
 
