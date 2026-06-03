@@ -7,7 +7,13 @@ Runs in two modes: **CLI** for direct terminal use, and **MCP stdio** for integr
 ## Requirements
 
 - A **SearXNG instance** with API access and JSON output enabled in its settings. The server proxies all search queries to this instance — there is no default.
-- **Linux** (x86_64 or arm64). macOS is not yet supported.
+- **Build & run:** Pure Go, no OS-specific imports or build constraints.
+  `go build` works on Linux, macOS, and other platforms supported by the Go
+  toolchain.
+- **Official distribution:** Linux only (x86_64 and arm64). The Homebrew cask
+  and `goreleaser` build matrix (`goos: [linux]` in `.goreleaser.yaml`)
+  intentionally target Linux. macOS is not packaged — build from source with
+  `go build` if you need it.
 
 ## Installation
 
@@ -17,7 +23,8 @@ Runs in two modes: **CLI** for direct terminal use, and **MCP stdio** for integr
 brew install --cask xlionjuan/tap/searxng-mcp-go
 ```
 
-> Currently supports Linux only (x86_64 and arm64). macOS is not yet supported.
+> Currently supports Linux only (x86_64 and arm64). The cask and goreleaser
+> build matrix target Linux. macOS users can `go build` from source.
 
 ### Manual (Download from Releases)
 

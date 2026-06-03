@@ -148,6 +148,13 @@ func TestMCPStdioE2E(t *testing.T) {
 		}
 	})
 
+	// "validation errors" overlaps with TestMCPErrors_InvalidInputs in
+	// e2e_error_test.go on purpose. This subtest is the integration check
+	// (validation through the full live MCP stdio session). The standalone
+	// TestMCPErrors_InvalidInputs is the exhaustive coverage test (extra
+	// cases such as control characters, 501-rune query, and the negative
+	// safesearch bound). Do not delete either test — they cover different
+	// layers.
 	t.Run("validation errors", func(t *testing.T) {
 		tests := []struct {
 			name          string

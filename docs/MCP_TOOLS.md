@@ -136,6 +136,8 @@ The tool returns a JSON text response containing the full `SearchResponse` objec
 
 ### Example Response
 
+Legacy instant-answer example (query `ip`):
+
 ```json
 {
   "query": "golang tutorial",
@@ -165,6 +167,61 @@ The tool returns a JSON text response containing the full `SearchResponse` objec
 }
 ```
 
+Typed-answer example (query `translate hello to french`):
+
+```json
+{
+  "query": "translate hello to french",
+  "answers": [
+    {
+      "answer": "bonjour",
+      "engine": "lingva",
+      "translations": [
+        {
+          "text": "bonjour",
+          "transliteration": "bɔ̃ʒuʁ",
+          "examples": ["Bonjour le monde", "Bonjour, comment ça va ?"],
+          "definitions": ["a formal greeting"],
+          "synonyms": ["salut", "coucou"]
+        }
+      ]
+    }
+  ],
+  "number_of_results": 0,
+  "results": [],
+  "suggestions": []
+}
+```
+
+Typed-weather-answer example (query `weather Berlin`):
+
+```json
+{
+  "query": "weather Berlin",
+  "answers": [
+    {
+      "engine": "open-meteo",
+      "current": {
+        "location": {"name": "Berlin", "latitude": 52.52, "longitude": 13.41, "timezone": "Europe/Berlin"},
+        "temperature": {"val": 18.4, "unit": "°C"},
+        "condition": "Partly cloudy",
+        "humidity": {"val": 62, "unit": "%"}
+      },
+      "forecasts": [],
+      "service": "open-meteo.com"
+    }
+  ],
+  "number_of_results": 0,
+  "results": [],
+  "suggestions": []
+}
+```
+
+Typed answers (translations, weather) populate `translations`, `current`,
+`forecasts`, and `service` instead of the legacy `answer` string. See
+`internal/searxng/types.go` (`Answer` struct) for the full set of typed
+fields and their `omitempty` behavior.
+
 ### Error Responses
 
 The server returns the following error types:
@@ -178,6 +235,12 @@ The server returns the following error types:
 Validation errors can come from two places. MCP SDK schema validation runs before
 the search handler for JSON Schema constraints; handler validation runs after
 argument decoding for project-specific checks.
+
+The SDK version is pinned in `go.mod` (`github.com/modelcontextprotocol/go-sdk`)
+and the format is verified by `TestMCPErrors_InvalidInputs` against that pinned
+version. Treat the response-format strings below as the contract for that
+pinned version; a SDK upgrade must update both the table and the guarding test
+in the same change.
 
 SDK schema validation error examples:
 

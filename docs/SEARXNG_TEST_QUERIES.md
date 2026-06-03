@@ -20,7 +20,7 @@ curl -s "http://localhost:8888/search?q=<query>&format=json" | jq '.<field>'
 | `infoboxes` | Entity queries | Search for company names, famous people, products (e.g., "apple inc", "nvidia", "elon musk") |
 | `results` | Almost always present | Standard search results; empty only on no-match queries |
 | `suggestions` | Usually present | Search suggestions; may be empty for very specific queries |
-| `corrections` | Rarely present | Only when a search engine detects a typo; most engines don't implement this |
+| `corrections` | Rarely present upstream | Excluded from this project per [ADR-005](adr/005-no-corrections.md); only relevant when verifying the upstream JSON shape, not the Go response |
 | `unresponsive_engines` | Sometimes present | List of engines that failed to respond |
 
 ---
@@ -63,7 +63,6 @@ Answers are computed **locally** by SearXNG's built-in answerers and plugins, no
 | `results` | `golang tutorial` | `results[]` = array of search results |
 | `suggestions` | `golang` | `suggestions[]` = array of search suggestions |
 | `number_of_results` | Any query | Field always present (value often 0) |
-| `corrections` | *(rare)* | Almost never populated in practice |
 
 ### Multi-field query (all fields at once)
 
