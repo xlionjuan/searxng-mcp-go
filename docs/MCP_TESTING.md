@@ -199,8 +199,9 @@ func TestE2E(t *testing.T) {
 ### `E2E_MCP_BINARY`
 
 `E2E_MCP_BINARY` is an optional environment variable read by every E2E test
-that uses `mcp.CommandTransport`. When set, the test reuses that binary
-instead of running `go build` on every test invocation. CI sets it to
+that uses `mcp.CommandTransport` (`e2e_mcp_test.go`, `e2e_functional_test.go`,
+`e2e_error_test.go`, `e2e_stress_test.go`). When set, the test reuses that
+binary instead of running `go build` on every test invocation. CI sets it to
 `./searxng-mcp-go` after a single explicit build step (see
 `.github/workflows/e2e.yml`), which makes the in-workflow retry loop cheap.
 For local development:
@@ -214,6 +215,10 @@ E2E_MCP_BINARY=$PWD/searxng-mcp-go \
 
 When `E2E_MCP_BINARY` is unset, each test builds its own binary in
 `t.TempDir()` via the `buildE2EMCPBinary` helper.
+
+`e2e_exitcode_test.go` is the one E2E file that does not use
+`mcp.CommandTransport`; it asserts CLI exit codes via raw `exec.Command` and
+builds its own binary in `t.TempDir()` regardless of `E2E_MCP_BINARY`.
 
 ### `SEARXNG_MAX_RETRIES=2`
 
