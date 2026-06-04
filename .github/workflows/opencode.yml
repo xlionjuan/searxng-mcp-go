@@ -45,7 +45,10 @@ jobs:
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
 
       - name: Install just
-        run: uv tool install rust-just
+        uses: taiki-e/install-action@25435dc8dd3baed7417e0c96d3fe89013a5b2e09 # v2.81.3
+        with:
+          tool: just@1.51.0
+          fallback: none
 
       - name: Run opencode
         uses: anomalyco/opencode/github@385cb694419f98103af0e8fc6187ddcbcbb6eecb # v1.15.13
