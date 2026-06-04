@@ -89,8 +89,34 @@ Deduplication happens while normalizing the SearXNG response, using `deduplicate
 | Case differences | Case-insensitive comparison |
 | Multiple answers, some duplicate | Keep non-duplicates, remove duplicates |
 
+## Bounded Work Cap (CAND-33fe0b85-RUNTIME-003)
+
+The dedup loop is O(len(answers) * len(infoboxes)) substring work, and for
+each answer it scans every infobox twice (exact case, then lowercase) with
+`strings.Contains`. A successful JSON body is already capped at
+`MaxResponseBodySize` (2 MiB), but compact answer/infobox arrays can still
+pack tens of thousands of entries into that envelope and force very large CPU
+work before result limiting.
+
+To bound that work, response normalization trims `Answers` and `Infoboxes`
+to `MaxAnswers` and `MaxInfoboxes` (each 100) **before** the dedup call:
+
+- Real SearXNG responses contain at most a handful of each, so 100 is a
+  generous cap.
+- Worst-case dedup work is bounded at
+  `100 * 100 * 2 = 20,000` `Contains` calls.
+- Truncation is logged with `slog.Warn` (`truncating answers/infoboxes
+  before deduplication`) and is visible in debug logs.
+
+The cap is enforced in `normalizeResponse` (see
+`internal/searxng/response.go`), not in `deduplicateAnswers` itself, so the
+dedup function remains a pure data transform and tests can exercise it
+without a searcher.
+
 ## Implementation
 
 - **Function**: `deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer` in `internal/searxng/deduplicate.go`
-- **Called**: During response normalization after JSON unmarshalling, before the response is returned to formatting/output code
-- **Tests**: 11 test cases in `internal/searxng/deduplicate_internal_test.go` covering empty inputs, exact match, prefix match, DDG "More at Wikipedia" suffix stripping, case insensitivity, distinct answers (IP), mixed scenarios, empty answer skipping, typed answers with fallback text, and fixture survival
+- **Called**: During response normalization after JSON unmarshalling, after the `MaxAnswers` / `MaxInfoboxes` cap is applied, before the response is returned to formatting/output code
+- **Tests**:
+  - 11 cases in `internal/searxng/deduplicate_internal_test.go` covering empty inputs, exact match, prefix match, DDG "More at Wikipedia" suffix stripping, case insensitivity, distinct answers (IP), mixed scenarios, empty answer skipping, typed answers with fallback text, and fixture survival
+  - 5 new subtests in `TestNormalizeResponse` (`internal/searxng/response_internal_test.go`) covering cap truncation for answers and infoboxes, no-op when at the cap, dedup behavior after truncation, and a pathological-input time budget assertion

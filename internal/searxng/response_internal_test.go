@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 // --- readBodyWithLimit tests ---
@@ -807,6 +808,143 @@ func TestNormalizeResponse(t *testing.T) {
 
 		if result.UnresponsiveEngines != nil {
 			t.Fatal("UnresponsiveEngines is not nil, want nil in non-debug mode")
+		}
+	})
+
+	t.Run("truncates answers to MaxAnswers", func(t *testing.T) {
+		t.Parallel()
+
+		s := &SearXNGSearcher{debug: false}
+
+		answers := make([]Answer, MaxAnswers+25)
+		for i := range answers {
+			answers[i] = Answer{Answer: "answer " + strings.Repeat("x", i%16), Engine: "e"}
+		}
+
+		result := &SearchResponse{Answers: answers}
+
+		s.normalizeResponse(result, &SearchArgs{})
+
+		if len(result.Answers) != MaxAnswers {
+			t.Fatalf("len(Answers) = %d, want %d", len(result.Answers), MaxAnswers)
+		}
+	})
+
+	t.Run("truncates infoboxes to MaxInfoboxes", func(t *testing.T) {
+		t.Parallel()
+
+		s := &SearXNGSearcher{debug: false}
+
+		infoboxes := make([]Infobox, MaxInfoboxes+25)
+		for i := range infoboxes {
+			infoboxes[i] = Infobox{Infobox: "topic", Content: "content"}
+		}
+
+		result := &SearchResponse{Infoboxes: infoboxes}
+
+		s.normalizeResponse(result, &SearchArgs{})
+
+		if len(result.Infoboxes) != MaxInfoboxes {
+			t.Fatalf("len(Infoboxes) = %d, want %d", len(result.Infoboxes), MaxInfoboxes)
+		}
+	})
+
+	t.Run("does not truncate when at or below cap", func(t *testing.T) {
+		t.Parallel()
+
+		s := &SearXNGSearcher{debug: false}
+
+		answers := make([]Answer, MaxAnswers)
+		for i := range answers {
+			answers[i] = Answer{Answer: "a"}
+		}
+
+		infoboxes := make([]Infobox, MaxInfoboxes)
+		for i := range infoboxes {
+			infoboxes[i] = Infobox{Infobox: "t", Content: "c"}
+		}
+
+		result := &SearchResponse{Answers: answers, Infoboxes: infoboxes}
+
+		s.normalizeResponse(result, &SearchArgs{})
+
+		if len(result.Answers) != MaxAnswers {
+			t.Fatalf("len(Answers) = %d, want %d", len(result.Answers), MaxAnswers)
+		}
+
+		if len(result.Infoboxes) != MaxInfoboxes {
+			t.Fatalf("len(Infoboxes) = %d, want %d", len(result.Infoboxes), MaxInfoboxes)
+		}
+	})
+
+	t.Run("truncation preserves dedup behavior", func(t *testing.T) {
+		t.Parallel()
+
+		s := &SearXNGSearcher{debug: false}
+
+		// Mix duplicate and non-duplicate answers past the cap. The kept
+		// prefix is all duplicates, so the result must be empty.
+		wiki := "Apple Inc. is an American multinational technology company headquartered in Cupertino, California."
+
+		answers := make([]Answer, MaxAnswers+5)
+		for i := range answers {
+			answers[i] = Answer{Answer: wiki, Engine: "duckduckgo"}
+		}
+
+		infoboxes := []Infobox{{Infobox: "Apple Inc.", Content: wiki}}
+
+		result := &SearchResponse{Answers: answers, Infoboxes: infoboxes}
+
+		s.normalizeResponse(result, &SearchArgs{})
+
+		if len(result.Answers) != 0 {
+			t.Fatalf("len(Answers) = %d, want 0 (all kept answers were duplicates of the infobox)", len(result.Answers))
+		}
+	})
+
+	t.Run("pathological answers/infoboxes count terminates quickly", func(t *testing.T) {
+		t.Parallel()
+
+		// Build a response with many more answers and infoboxes than the
+		// cap. The model artifact in CAND-33fe0b85-RUNTIME-003 shows
+		// ~47k entries each fitting under MaxResponseBodySize. The cap
+		// must keep the dedup work bounded; we assert a generous time
+		// budget to catch unbounded regressions without flaking under
+		// load.
+		const oversized = 10 * MaxAnswers
+
+		const timeBudget = 2 * time.Second
+
+		answers := make([]Answer, oversized)
+		for i := range answers {
+			answers[i] = Answer{Answer: "answer text", Engine: "e"}
+		}
+
+		infoboxes := make([]Infobox, oversized)
+		for i := range infoboxes {
+			infoboxes[i] = Infobox{Infobox: "t", Content: "content"}
+		}
+
+		result := &SearchResponse{Answers: answers, Infoboxes: infoboxes}
+
+		s := &SearXNGSearcher{debug: false}
+
+		start := time.Now()
+
+		s.normalizeResponse(result, &SearchArgs{})
+
+		elapsed := time.Since(start)
+
+		if elapsed > timeBudget {
+			t.Fatalf("normalizeResponse took %v, want < %v (pathological input must stay bounded)", elapsed, timeBudget)
+		}
+
+		if len(result.Answers) > MaxAnswers {
+			t.Fatalf("len(Answers) = %d, want <= %d", len(result.Answers), MaxAnswers)
+		}
+
+		if len(result.Infoboxes) > MaxInfoboxes {
+			t.Fatalf("len(Infoboxes) = %d, want <= %d", len(result.Infoboxes), MaxInfoboxes)
 		}
 	})
 }

@@ -314,13 +314,15 @@ formatting truncation.
 
 ## Limits
 
-The server applies two size limits to keep responses manageable and to
-protect consumers from a misbehaving SearXNG upstream.
+The server applies a small set of size limits to keep responses manageable
+and to protect consumers from a misbehaving SearXNG upstream.
 
 | Limit | Value | Applies to | Behavior on overflow |
 |-------|-------|------------|----------------------|
 | Response body size | 2 MB (`MaxResponseBodySize`) | All modes (CLI, JSON, MCP) | The response is rejected with a `SearXNGError` whose message contains `"response body exceeded maximum size limit"`. This is a guardrail against a malformed or misconfigured upstream; a normal SearXNG JSON response is well under 2 MB. |
 | Per-result content | 4000 Unicode characters (`MaxContentRunes`) | CLI text mode only | `formatResults` truncates result summaries (`content` field) and infobox content to 4000 runes. JSON mode and MCP mode return the full normalized response without this formatting truncation. |
+| Answers count | 100 (`MaxAnswers`) | All modes (CLI, JSON, MCP) | `normalizeResponse` trims `Answers` to the first 100 entries before answer/infobox deduplication and logs a warning. Bounds the O(n*m) dedup work even when a compact JSON body fits many entries below the body cap. See `docs/SEARXNG_ANSWER_DEDUP.md` for details. |
+| Infoboxes count | 100 (`MaxInfoboxes`) | All modes (CLI, JSON, MCP) | `normalizeResponse` trims `Infoboxes` to the first 100 entries before answer/infobox deduplication and logs a warning. Same rationale as `MaxAnswers`. |
 
 The response-body-size cap is checked before the JSON is parsed, so the
 result is a hard error rather than a partial response. MCP consumers receive
