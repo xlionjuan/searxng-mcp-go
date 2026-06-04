@@ -23,13 +23,13 @@ The server now detects MCP stdin mode by inspecting stdin for a valid MCP `initi
 
 In MCP stdin mode, configuration comes from environment variables and MCP input, not from standalone CLI search flags. The supported environment variables are:
 
-|| Environment Variable | Purpose                      |
-||----------------------|------------------------------|
-|| `SEARXNG_URL`        | SearXNG server URL           |
-|| `DEBUG`              | Set to `1` for debug logging |
-|| `SEARXNG_TIMEOUT`    | Sets the search timeout (default 8s) |
-|| `SEARXNG_MAX_RETRIES` | Sets the max retry count (default 5) |
-|| `SEARXNG_ALLOW_GET_FALLBACK` | Set to `1` to opt in to POST→GET fallback |
+| Environment Variable | Purpose |
+|----------------------|---------|
+| `SEARXNG_URL` | SearXNG server URL |
+| `DEBUG` | Set to `1` for debug logging |
+| `SEARXNG_TIMEOUT` | Sets the search timeout (default 8s) |
+| `SEARXNG_MAX_RETRIES` | Sets the max retry count (default 5) |
+| `SEARXNG_ALLOW_GET_FALLBACK` | Set to `1` to opt in to POST→GET fallback |
 
 `--help` and `--version` trigger CLI mode for informational output. Like every
 other CLI flag, they are not accepted in MCP stdin mode.
