@@ -516,6 +516,32 @@ func TestGetConfig(t *testing.T) {
 		}
 	})
 
+	t.Run("GET fallback env parsed", func(t *testing.T) {
+		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "1")
+
+		cfg, err := getConfig(CLIFlags{})
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
+
+		if !cfg.AllowGETFallback {
+			t.Fatal("AllowGETFallback = false, want true")
+		}
+	})
+
+	t.Run("GET fallback env zero disables", func(t *testing.T) {
+		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "0")
+
+		cfg, err := getConfig(CLIFlags{})
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
+
+		if cfg.AllowGETFallback {
+			t.Fatal("AllowGETFallback = true, want false")
+		}
+	})
+
 	t.Run("cli flags override env", func(t *testing.T) {
 		t.Setenv("SEARXNG_TIMEOUT", "30s")
 		t.Setenv("SEARXNG_MAX_RETRIES", "9")
@@ -547,6 +573,7 @@ func TestGetConfig(t *testing.T) {
 	t.Run("invalid env values fall back to defaults", func(t *testing.T) {
 		t.Setenv("SEARXNG_TIMEOUT", "not-a-duration")
 		t.Setenv("SEARXNG_MAX_RETRIES", "-1")
+		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "true")
 
 		cfg, err := getConfig(CLIFlags{})
 		if err != nil {
@@ -559,6 +586,10 @@ func TestGetConfig(t *testing.T) {
 
 		if cfg.MaxRetries != searxng.DefaultMaxRetries {
 			t.Fatalf("MaxRetries = %d, want default %d", cfg.MaxRetries, searxng.DefaultMaxRetries)
+		}
+
+		if cfg.AllowGETFallback {
+			t.Fatal("AllowGETFallback = true, want false for invalid env value")
 		}
 	})
 

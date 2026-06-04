@@ -347,6 +347,19 @@ func getConfig(flags CLIFlags) (*searxng.Config, error) {
 		}
 	}
 
+	// Apply SEARXNG_ALLOW_GET_FALLBACK env var. This is intentionally
+	// opt-in because GET puts search parameters in the request URL.
+	if allowGETFallback := os.Getenv("SEARXNG_ALLOW_GET_FALLBACK"); allowGETFallback != "" {
+		switch allowGETFallback {
+		case "1":
+			cfg.AllowGETFallback = true
+		case "0":
+			cfg.AllowGETFallback = false
+		default:
+			slog.Warn("invalid SEARXNG_ALLOW_GET_FALLBACK, ignoring", "value", allowGETFallback)
+		}
+	}
+
 	// CLI flag overrides take precedence over env vars (and defaults).
 	if flags.TimeoutSet {
 		cfg.Timeout = flags.Timeout

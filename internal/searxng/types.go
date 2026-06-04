@@ -24,22 +24,24 @@ var (
 
 // Config controls SearXNG client behavior.
 type Config struct {
-	SearXNGURL    string
-	Timeout       time.Duration
-	HTTPClient    *http.Client // Optional custom HTTP client. When set, Timeout is ignored.
-	MaxRetries    int
-	RetryDelay    time.Duration
-	MaxRetryDelay time.Duration
+	SearXNGURL       string
+	Timeout          time.Duration
+	HTTPClient       *http.Client // Optional custom HTTP client. When set, Timeout is ignored.
+	MaxRetries       int
+	RetryDelay       time.Duration
+	MaxRetryDelay    time.Duration
+	AllowGETFallback bool
 }
 
 // DefaultConfig returns a Config populated with default timeout and retry settings.
 func DefaultConfig() *Config {
 	return &Config{
-		SearXNGURL:    "",
-		Timeout:       DefaultTimeout,
-		MaxRetries:    DefaultMaxRetries,
-		RetryDelay:    DefaultRetryDelay,
-		MaxRetryDelay: DefaultMaxRetryDelay,
+		SearXNGURL:       "",
+		Timeout:          DefaultTimeout,
+		MaxRetries:       DefaultMaxRetries,
+		RetryDelay:       DefaultRetryDelay,
+		MaxRetryDelay:    DefaultMaxRetryDelay,
+		AllowGETFallback: false,
 	}
 }
 

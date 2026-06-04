@@ -38,7 +38,9 @@ Our local test server explicitly disables `link_token` (see `docs/agents/test-se
 
 ## MCP Server Implementation
 
-Our HTTP headers are set via `setBrowserHeaders()` in `internal/searxng/request.go`. Both POST and GET fallback share the same function to emulate browser-like headers and pass the limiter filters.
+Our HTTP headers are set via `setBrowserHeaders()` in
+`internal/searxng/request.go`. POST requests and the opt-in GET fallback share
+the same function to emulate browser-like headers and pass the limiter filters.
 
 ### Browser-mimicry headers we set
 

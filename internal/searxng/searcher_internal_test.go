@@ -1,7 +1,9 @@
 package searxng
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"net/http"
 	"strings"
 	"testing"
@@ -190,5 +192,77 @@ func TestLogDebugMethods(t *testing.T) {
 		s := &SearXNGSearcher{debug: true}
 		// Should not panic
 		s.logDebugResponse(nil, nil)
+	})
+}
+
+func TestAllowGETFallbackLogsWarnings(t *testing.T) {
+	var buf bytes.Buffer
+
+	old := slog.Default()
+
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(old)
+
+	t.Run("startup warning", func(t *testing.T) {
+		buf.Reset()
+
+		searcher, err := NewSearXNGSearcher(&Config{
+			SearXNGURL:       "https://search.example.com",
+			AllowGETFallback: true,
+		}, false)
+		if err != nil {
+			t.Fatalf("NewSearXNGSearcher() error = %v, want nil", err)
+		}
+
+		_ = searcher.Close()
+
+		logOutput := buf.String()
+		if !strings.Contains(logOutput, "GET fallback is enabled") {
+			t.Fatalf("log output = %q, want startup warning", logOutput)
+		}
+	})
+
+	t.Run("per-use warning", func(t *testing.T) {
+		buf.Reset()
+
+		origResp := &http.Response{
+			StatusCode: http.StatusMethodNotAllowed,
+			Header:     http.Header{"Content-Type": []string{"text/html"}},
+			Body:       http.NoBody,
+		}
+
+		postReq, err := http.NewRequestWithContext(
+			context.Background(),
+			http.MethodPost,
+			"https://search.example.com/search",
+			strings.NewReader("q=test&format=json"),
+		)
+		if err != nil {
+			t.Fatalf("NewRequestWithContext() error = %v, want nil", err)
+		}
+
+		s := &SearXNGSearcher{
+			client: &http.Client{
+				Transport: roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+					return makeJSONResponse(minimalJSONBody), nil
+				}),
+			},
+		}
+
+		resp, err := s.executeGETfallback(context.Background(), origResp, postReq, "q=test&format=json")
+		if err != nil {
+			t.Fatalf("executeGETfallback() error = %v, want nil", err)
+		}
+
+		closeBody(resp)
+
+		logOutput := buf.String()
+		if !strings.Contains(logOutput, "GET fallback used after POST search was rejected") {
+			t.Fatalf("log output = %q, want per-use warning", logOutput)
+		}
+
+		if strings.Contains(logOutput, "q=test") {
+			t.Fatalf("log output leaked query: %q", logOutput)
+		}
 	})
 }

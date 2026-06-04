@@ -8,16 +8,20 @@ import (
 )
 
 var (
-	errBadRequest          = errors.New("bad request: the query parameters may be invalid")
-	errUnauthorized        = errors.New("unauthorized: authentication is required")
-	errForbidden           = errors.New("forbidden: access denied")
-	errNotFound            = errors.New("not found: the search endpoint could not be found")
-	errRateLimited         = errors.New("rate limited: too many requests, please wait before making more searches")
-	errInternalServerError = errors.New("internal server error: the search engine encountered an internal error")
-	errBadGateway          = errors.New("bad gateway: received an invalid response from an upstream server")
-	errServiceUnavailable  = errors.New("service unavailable: the search engine is temporarily unavailable")
-	errGatewayTimeout      = errors.New("gateway timeout: timed out waiting for an upstream server")
-	errUnexpectedStatus    = errors.New("unexpected status code received")
+	errBadRequest           = errors.New("bad request: the query parameters may be invalid")
+	errUnauthorized         = errors.New("unauthorized: authentication is required")
+	errForbidden            = errors.New("forbidden: access denied")
+	errNotFound             = errors.New("not found: the search endpoint could not be found")
+	errRateLimited          = errors.New("rate limited: too many requests, please wait before making more searches")
+	errInternalServerError  = errors.New("internal server error: the search engine encountered an internal error")
+	errBadGateway           = errors.New("bad gateway: received an invalid response from an upstream server")
+	errServiceUnavailable   = errors.New("service unavailable: the search engine is temporarily unavailable")
+	errGatewayTimeout       = errors.New("gateway timeout: timed out waiting for an upstream server")
+	errSearchMethodRejected = errors.New(
+		"search method rejected: SearXNG rejected the search request; " +
+			"check reverse proxy method handling or set SEARXNG_ALLOW_GET_FALLBACK=1 to opt in to GET fallback",
+	)
+	errUnexpectedStatus = errors.New("unexpected status code received")
 )
 
 // ValidationError represents a user-provided parameter validation failure.
@@ -156,6 +160,8 @@ func HTTPStatusError(statusCode int, contentType string, body []byte) error {
 		err = errServiceUnavailable
 	case http.StatusGatewayTimeout:
 		err = errGatewayTimeout
+	case http.StatusMethodNotAllowed, http.StatusNotImplemented:
+		err = errSearchMethodRejected
 	default:
 		err = errUnexpectedStatus
 	}

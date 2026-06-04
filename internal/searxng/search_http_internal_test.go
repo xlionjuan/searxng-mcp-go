@@ -460,6 +460,7 @@ func TestSearch_GETFallbackFlow(t *testing.T) {
 			// GET fallback succeeds
 			return makeJSONResponse(minimalJSONBody), nil
 		}), 0)
+		s.allowGETFallback = true
 
 		result, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
 		if err != nil {

@@ -79,8 +79,8 @@ func (s *SearXNGSearcher) buildSearchRequest(ctx context.Context, args *SearchAr
 	}
 
 	// Clone the immutable endpoint; this is a shallow copy of the *url.URL
-	// struct so per-request mutation of RawQuery (via the GET fallback) does
-	// not leak back into the precomputed value.
+	// struct so per-request mutation of RawQuery (via the opt-in GET fallback)
+	// does not leak back into the precomputed value.
 	searchURL := *s.searchEndpoint
 
 	postBodyStr := params.Encode()

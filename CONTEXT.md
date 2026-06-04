@@ -9,7 +9,7 @@ A Model Context Protocol (MCP) server and CLI tool that proxies web search reque
 **SearXNGSearcher**: The HTTP client that holds a base URL and an `*http.Client` and communicates with a SearXNG instance to execute search queries.
 _Avoid_: Searcher (ambiguous — appears only in docstrings, not as a separate exported type)
 
-**Config**: The connection parameters for a SearXNG instance — a base URL, a timeout duration, retry configuration (MaxRetries, RetryDelay, MaxRetryDelay), and an optional custom HTTP client.
+**Config**: The connection parameters for a SearXNG instance — a base URL, a timeout duration, retry configuration (MaxRetries, RetryDelay, MaxRetryDelay), an optional custom HTTP client, and the opt-in GET Fallback flag.
 
 **SearchArgs**: All input parameters for a search operation — the search query, language code, SafeSearch level, time range, categories, engines, page number, and result limit.
 _Avoid_: SearchParams
@@ -60,7 +60,7 @@ _Avoid_: Dedup (internal function name; prefer the full term in docs)
 **setBrowserHeaders**: The function that applies Chrome-like HTTP headers (User-Agent, Accept, Sec-* family, Priority) to every search request to bypass SearXNG's limiter / bot-detection mechanism.
 _Avoid_: BotHeaders, StealthHeaders
 
-**GET Fallback**: The automatic retry mechanism that re-issues a failed POST search as a GET request when the SearXNG instance returns HTTP 405 (Method Not Allowed) or 501 (Not Implemented).
+**GET Fallback**: The opt-in compatibility mechanism that re-issues a failed POST search as a GET request when the SearXNG instance returns HTTP 405 (Method Not Allowed) or 501 (Not Implemented). It is disabled by default and enabled only with `SEARXNG_ALLOW_GET_FALLBACK=1` because GET sends search parameters in the URL.
 _Avoid_: POSTtoGETFallback (internal test function name)
 
 **Private Host Detection**: The RFC-grounded classification that suppresses the HTTP warning when the configured SearXNG URL points to a private/internal destination. A host is "private" iff the literal name is `localhost` or ends in `.localhost` (RFC 6761 §6.3, Special-Use Domain Names), or the literal address falls inside one of the published private/loopback/link-local/ULA/CGNAT/multicast/broadcast ranges enumerated in `docs/adr/003-http-warning-for-non-private-hosts.md`. No DNS resolution is performed, and the contract intentionally accepts that names like `printer.local` or `nas.lan` will now trigger the warning because no cited RFC reserves those suffixes for "private network" use.
@@ -77,19 +77,19 @@ _Avoid_: POSTtoGETFallback (internal test function name)
 - **SearchResponse** contains zero or more **SearchResult**s, **Answer**s, **Infobox**es, **Suggestion**s, and **UnresponsiveEngines** entries.
 - **Answer**s are **Deduplicate**d against **Infobox** content to remove overlapping DuckDuckGo Wikipedia summaries.
 - **setBrowserHeaders** is applied by **SearXNGSearcher** to every HTTP request made during search execution.
-- **SearXNGSearcher** falls back to a **GET Fallback** when the SearXNG instance rejects the initial POST with 405 or 501.
+- **SearXNGSearcher** falls back to a **GET Fallback** only when the SearXNG instance rejects the initial POST with 405 or 501 and **Config** enables `AllowGETFallback`.
 - **CLI Mode** and **MCP Mode** are the two mutually exclusive operation modes — the program runs CLI mode when any arguments are present, MCP mode otherwise.
 - **Debug Mode** gates the exposure of **UnresponsiveEngines** in JSON output and enables verbose HTTP logging.
 - **CLIFlags** maps to **SearchArgs** fields plus mode-selection flags (--json, --help, --version, --debug, --searxng-url).
 - **ValidationError** is returned by `ValidateSearchArgs`, which pre-checks all **SearchArgs** before any HTTP request.
 - **SearXNGError** wraps HTTP-level failures from the SearXNG service; **HTMLResponseError** is a specific case returned when HTML is received instead of JSON.
-- **Config** reads the SearXNG URL from **CLIFlags** or the `SEARXNG_URL` environment variable, returning an error (`SEARXNG_URL is required`) if neither is set.
+- **Config** reads the SearXNG URL from **CLIFlags** or the `SEARXNG_URL` environment variable, returning an error (`SEARXNG_URL is required`) if neither is set. It also reads `SEARXNG_ALLOW_GET_FALLBACK=1` as an explicit opt-in for **GET Fallback**.
 
 ## Example dialogue
 
 > **Dev:** "Why did the CLI mode search return HTML instead of JSON?"
 >
-> **Domain expert:** "That's an **HTMLResponseError** — the SearXNG instance at that **Config** URL doesn't have `format=json` enabled. Check the server's settings. The **SearXNGSearcher** tries a **POST** first, and only falls back to a **GET** if it gets a 405 **GET Fallback**, but if the response comes back as HTML, it's not a method issue — it's the SearXNG config."
+> **Domain expert:** "That's an **HTMLResponseError** — the SearXNG instance at that **Config** URL doesn't have `format=json` enabled. Check the server's settings. The **SearXNGSearcher** tries a **POST** first. If POST is rejected with 405 or 501, fix the reverse proxy or explicitly enable **GET Fallback** with `SEARXNG_ALLOW_GET_FALLBACK=1`; an HTML response is not a method issue — it's the SearXNG config."
 >
 > **Dev:** "And I see duplicate answers in the output for DuckDuckGo queries. What's that about?"
 >

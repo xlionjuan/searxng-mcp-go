@@ -111,16 +111,18 @@ The server exposes a single **`search`** tool. For full parameter details, respo
 | `SEARXNG_URL` | **Yes** | — | SearXNG instance URL |
 | `SEARXNG_TIMEOUT` | No | `8s` | HTTP client timeout (e.g., `8s`) |
 | `SEARXNG_MAX_RETRIES` | No | `5` | Max retries after initial search attempt |
+| `SEARXNG_ALLOW_GET_FALLBACK` | No | `0` | Set to `1` to opt in to POST→GET fallback when POST `/search` returns 405/501. This sends search parameters in the URL and may expose queries in upstream logs. |
 | `DEBUG` | No | — | Set to `1` to log search queries and HTTP request/response details in plain text. The server emits a warning to stderr on startup; most MCP clients do not surface it. Avoid using it with sensitive queries. |
 
 **Priority:** CLI flag > environment variable > hardcoded default.
 
-> **Invalid values:** If `SEARXNG_TIMEOUT` or `SEARXNG_MAX_RETRIES` is set
-> to a value the server cannot parse (or, for `SEARXNG_MAX_RETRIES`, to a
-> negative number), the server logs a warning to stderr and falls back to
-> the built-in default. It does not exit. For strict validation, use the
-> `--timeout` and `--max-retries` CLI flags, which are validated on the
-> command line and exit with a non-zero status on invalid input.
+> **Invalid values:** If `SEARXNG_TIMEOUT`, `SEARXNG_MAX_RETRIES`, or
+> `SEARXNG_ALLOW_GET_FALLBACK` is set to a value the server cannot parse
+> (or, for `SEARXNG_MAX_RETRIES`, to a negative number), the server logs a
+> warning to stderr and falls back to the built-in default. It does not exit.
+> For strict validation of timeout and retry values, use the `--timeout` and
+> `--max-retries` CLI flags, which are validated on the command line and exit
+> with a non-zero status on invalid input.
 
 ## Troubleshooting
 
@@ -129,6 +131,7 @@ The server exposes a single **`search`** tool. For full parameter details, respo
 | MCP client cannot start the server | Binary not found in PATH. Use `which searxng-mcp-go` and set `command` to the absolute path in your client config. |
 | `SEARXNG_URL` missing | The server has no default SearXNG instance. Set `SEARXNG_URL` or pass `--searxng-url`. |
 | Connection refused / timeout | SearXNG instance not reachable. Check the URL and network connectivity. `SEARXNG_TIMEOUT` controls the timeout. |
+| `405 Method Not Allowed` or `501 Not Implemented` from search | The SearXNG endpoint or reverse proxy rejected POST `/search`. Fix the proxy to allow POST. As a compatibility escape hatch, set `SEARXNG_ALLOW_GET_FALLBACK=1`, but only if you accept that search parameters may appear in URLs and upstream logs. |
 | HTML returned instead of JSON | SearXNG JSON API not enabled. Ensure `search.formats` includes `json` in your SearXNG `settings.yml`. |
 | Empty or invalid query | Queries must be non-empty strings. For the full per-parameter rules (`time_range`, `categories`, `engines`, `language`, `pageno`, `limit`), see [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md). |
 

@@ -5,6 +5,16 @@ import (
 	"time"
 )
 
+func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg := DefaultConfig()
+
+	if cfg.AllowGETFallback {
+		t.Fatal("AllowGETFallback = true, want false by default")
+	}
+}
+
 // --- Config.Validate tests ---
 
 func TestConfigValidate(t *testing.T) {
@@ -14,11 +24,12 @@ func TestConfigValidate(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
-			SearXNGURL:    "https://search.example.com",
-			Timeout:       5 * time.Second,
-			MaxRetries:    3,
-			RetryDelay:    1 * time.Second,
-			MaxRetryDelay: 30 * time.Second,
+			SearXNGURL:       "https://search.example.com",
+			Timeout:          5 * time.Second,
+			MaxRetries:       3,
+			RetryDelay:       1 * time.Second,
+			MaxRetryDelay:    30 * time.Second,
+			AllowGETFallback: true,
 		}
 
 		err := cfg.Validate()
@@ -92,11 +103,12 @@ func TestConfigNormalize(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{
-			SearXNGURL:    "https://search.example.com",
-			Timeout:       5 * time.Second,
-			MaxRetries:    3,
-			RetryDelay:    1 * time.Second,
-			MaxRetryDelay: 30 * time.Second,
+			SearXNGURL:       "https://search.example.com",
+			Timeout:          5 * time.Second,
+			MaxRetries:       3,
+			RetryDelay:       1 * time.Second,
+			MaxRetryDelay:    30 * time.Second,
+			AllowGETFallback: true,
 		}
 
 		normalized := cfg.Normalize()
@@ -111,6 +123,10 @@ func TestConfigNormalize(t *testing.T) {
 
 		if normalized.MaxRetryDelay != 30*time.Second {
 			t.Fatalf("MaxRetryDelay = %v, want 30s", normalized.MaxRetryDelay)
+		}
+
+		if !normalized.AllowGETFallback {
+			t.Fatal("AllowGETFallback = false, want true")
 		}
 	})
 
