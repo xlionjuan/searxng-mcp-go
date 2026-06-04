@@ -1,14 +1,110 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"searxng-mcp-go/internal/searxng"
 )
 
 const noResultsFound = "No results found."
+
+// sanitizeTerminalControl replaces C0 control bytes, DEL, and C1 control
+// codepoints (other than the common whitespace \t, \n, \r) with visible
+// "\xNN" escape sequences. This neutralizes ANSI / OSC / DCS terminal
+// control sequences from upstream search content that could otherwise
+// alter terminal display state or trigger side effects such as OSC 52
+// clipboard writes. All other codepoints, including CJK and emoji, are
+// preserved unchanged.
+//
+// The sanitizer is scoped to CLI text formatting; JSON output is emitted
+// through encoding/json, which already escapes control bytes, and MCP
+// responses reuse that JSON path. Keeping the sanitizer at the format
+// layer preserves the structured data model and avoids changing
+// JSON-mode behavior.
+func sanitizeTerminalControl(s string) string {
+	if !hasUnsafeControlBytes(s) {
+		return s
+	}
+
+	const rewriteReserve = 4
+
+	var buf strings.Builder
+
+	buf.Grow(len(s) + rewriteReserve)
+
+	for i := 0; i < len(s); {
+		b := s[i]
+		if b < utf8.RuneSelf {
+			switch {
+			case b == '\t' || b == '\n' || b == '\r':
+				buf.WriteByte(b)
+			case b < 0x20 || b == 0x7F:
+				fmt.Fprintf(&buf, `\x%02x`, b)
+			default:
+				buf.WriteByte(b)
+			}
+
+			i++
+
+			continue
+		}
+
+		r, size := utf8.DecodeRuneInString(s[i:])
+		if r == utf8.RuneError && size == 1 {
+			fmt.Fprintf(&buf, `\x%02x`, b)
+
+			i++
+
+			continue
+		}
+
+		if r >= 0x80 && r <= 0x9F {
+			fmt.Fprintf(&buf, `\x%02x`, r)
+		} else {
+			buf.WriteRune(r)
+		}
+
+		i += size
+	}
+
+	return buf.String()
+}
+
+// hasUnsafeControlBytes reports whether s contains any byte or codepoint
+// that sanitizeTerminalControl would rewrite. It is a fast-path scan that
+// lets the common (clean) case return the original string without
+// allocating a new buffer.
+func hasUnsafeControlBytes(s string) bool {
+	for i := 0; i < len(s); {
+		b := s[i]
+		if b < utf8.RuneSelf {
+			if (b < 0x20 && b != '\t' && b != '\n' && b != '\r') || b == 0x7F {
+				return true
+			}
+
+			i++
+
+			continue
+		}
+
+		r, size := utf8.DecodeRuneInString(s[i:])
+		if r == utf8.RuneError && size == 1 {
+			return true
+		}
+
+		if r >= 0x80 && r <= 0x9F {
+			return true
+		}
+
+		i += size
+	}
+
+	return false
+}
 
 // ============================================================================
 // Formatting
@@ -45,12 +141,12 @@ func writeAnswers(buf *strings.Builder, answers []searxng.Answer) {
 		buf.WriteByte('[')
 		buf.WriteString(strconv.Itoa(i + 1))
 		buf.WriteString("] ")
-		buf.WriteString(ans.Answer)
+		buf.WriteString(sanitizeTerminalControl(ans.Answer))
 		buf.WriteByte('\n')
 
 		if ans.Engine != "" {
 			buf.WriteString("    Engine: ")
-			buf.WriteString(ans.Engine)
+			buf.WriteString(sanitizeTerminalControl(ans.Engine))
 			buf.WriteByte('\n')
 		}
 	}
@@ -70,12 +166,13 @@ func writeInfoboxes(buf *strings.Builder, infoboxes []searxng.Infobox) {
 		buf.WriteByte('[')
 		buf.WriteString(strconv.Itoa(idx + 1))
 		buf.WriteString("] ")
-		buf.WriteString(searxng.UnescapeIfNeeded(ib.Infobox))
+		buf.WriteString(sanitizeTerminalControl(searxng.UnescapeIfNeeded(ib.Infobox)))
 		buf.WriteByte('\n')
 
 		if ib.Content != "" {
 			content := searxng.UnescapeIfNeeded(ib.Content)
 			content = truncateRunes(content, searxng.MaxContentRunes)
+			content = sanitizeTerminalControl(content)
 
 			buf.WriteString("    ")
 			buf.WriteString(content)
@@ -87,9 +184,9 @@ func writeInfoboxes(buf *strings.Builder, infoboxes []searxng.Infobox) {
 
 			for _, attr := range ib.Attributes {
 				buf.WriteString("      - ")
-				buf.WriteString(attr.Label)
+				buf.WriteString(sanitizeTerminalControl(attr.Label))
 				buf.WriteString(": ")
-				buf.WriteString(attr.Value)
+				buf.WriteString(sanitizeTerminalControl(attr.Value))
 				buf.WriteByte('\n')
 			}
 		}
@@ -99,9 +196,9 @@ func writeInfoboxes(buf *strings.Builder, infoboxes []searxng.Infobox) {
 
 			for _, u := range ib.URLs {
 				buf.WriteString("      - ")
-				buf.WriteString(u.Title)
+				buf.WriteString(sanitizeTerminalControl(u.Title))
 				buf.WriteString(": ")
-				buf.WriteString(u.URL)
+				buf.WriteString(sanitizeTerminalControl(u.URL))
 				buf.WriteByte('\n')
 			}
 		}
@@ -174,7 +271,7 @@ func formatResults(resp *searxng.SearchResponse) string {
 		buf.WriteString("Found ")
 		buf.WriteString(strconv.Itoa(total))
 		buf.WriteString(" results for '")
-		buf.WriteString(searxng.UnescapeIfNeeded(resp.Query))
+		buf.WriteString(sanitizeTerminalControl(searxng.UnescapeIfNeeded(resp.Query)))
 		buf.WriteString("':\n\n")
 
 		for idx, res := range resp.Results {
@@ -182,15 +279,16 @@ func formatResults(resp *searxng.SearchResponse) string {
 
 			buf.WriteString(strconv.Itoa(idx + 1))
 			buf.WriteString(". ")
-			buf.WriteString(title)
+			buf.WriteString(sanitizeTerminalControl(title))
 			buf.WriteByte('\n')
 			buf.WriteString("   URL: ")
-			buf.WriteString(res.URL)
+			buf.WriteString(sanitizeTerminalControl(res.URL))
 			buf.WriteByte('\n')
 
 			if res.Content != "" {
 				content := searxng.UnescapeIfNeeded(res.Content)
 				content = truncateRunes(content, searxng.MaxContentRunes)
+				content = sanitizeTerminalControl(content)
 
 				buf.WriteString("   Summary: ")
 				buf.WriteString(content)
@@ -199,12 +297,12 @@ func formatResults(resp *searxng.SearchResponse) string {
 
 			if res.PublishedDate != nil && *res.PublishedDate != "" {
 				buf.WriteString("   Published date: ")
-				buf.WriteString(*res.PublishedDate)
+				buf.WriteString(sanitizeTerminalControl(*res.PublishedDate))
 				buf.WriteByte('\n')
 			}
 
 			buf.WriteString("   Engine: ")
-			buf.WriteString(res.Engine)
+			buf.WriteString(sanitizeTerminalControl(res.Engine))
 			buf.WriteString("\n\n")
 		}
 	}
@@ -215,7 +313,7 @@ func formatResults(resp *searxng.SearchResponse) string {
 
 		for _, sug := range resp.Suggestions {
 			buf.WriteString("  - ")
-			buf.WriteString(sug)
+			buf.WriteString(sanitizeTerminalControl(sug))
 			buf.WriteByte('\n')
 		}
 	}
