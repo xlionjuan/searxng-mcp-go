@@ -24,18 +24,31 @@ instead of implying that a PR exists.
 
 ## Git Identity
 
-Do not change git author or committer identity as part of normal PR work. In
-particular, do not run:
+Use the git author and committer identity that already exists in the execution
+environment. It is safe to inspect it with `git config --get user.name` and
+`git config --get user.email`, but do not change it as part of normal PR work.
+In particular, do not run:
 
 - `git config user.name ...`
 - `git config user.email ...`
 - `git config --global user.name ...`
 - `git config --global user.email ...`
+- `git -c user.name=... -c user.email=... commit`
+- `git commit --author=...`
+
+Do not set `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`,
+`GIT_COMMITTER_EMAIL`, or `EMAIL` to influence commits. A generic instruction
+such as "use the default git identity", "recreate the commit", or "fix the
+author" means to use the currently configured identity with a plain
+`git commit ...`; it is not permission to hard-code values such as
+`opencode-agent`, `opencode@anomaly.co`, or guessed `*@users.noreply.github.com`
+addresses.
 
 If a commit fails because git does not know the author identity, stop and report
 the error instead of inventing an identity. If the user explicitly asks you to
 investigate missing git identity behavior, use an isolated temporary repository;
-do not change global config or this repo's local config.
+do not change global config, this repo's local config, or the commit environment
+for this project.
 
 When a PR adds or changes a GitHub Actions workflow or agent workflow that can
 commit, verify the exact author and committer identity used by the workflow or
