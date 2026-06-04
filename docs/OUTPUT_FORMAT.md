@@ -312,6 +312,44 @@ formatting truncation.
 
 ---
 
+## CLI Terminal Control Sanitization
+
+CLI text mode neutralizes terminal control sequences in upstream search
+content before writing to stdout. This defends against a malicious or
+compromised SearXNG instance that returns ANSI / OSC / DCS bytes in
+result titles, summaries, suggestions, query echo, infobox titles,
+attributes, or URLs.
+
+`formatResults` runs every user-controlled text field through
+`sanitizeTerminalControl` (in `format.go`), which rewrites the
+following byte and codepoint classes:
+
+| Class | Bytes / codepoints | Treatment |
+|-------|--------------------|-----------|
+| C0 controls | `0x00`–`0x1F` except `\t`, `\n` | replaced with `\xNN` |
+| DEL | `0x7F` | replaced with `\x7f` |
+| C1 controls | `U+0080`–`U+009F` | replaced with `\xNN` |
+| Invalid UTF-8 bytes | any byte that fails `utf8.DecodeRuneInString` | replaced with `\xNN` |
+| Whitespace | `\t`, `\n` | preserved (used for layout) |
+| All other codepoints | printable ASCII, Latin diacritics, CJK, emoji | preserved unchanged |
+
+The sanitizer visibly encodes control bytes rather than silently
+stripping them, so a downstream operator reviewing a captured transcript
+can still see the original payload (e.g. `\x1b[31mred`) instead of a
+mystery gap. Unicode is preserved: CJK characters, emoji, and accented
+Latin all round-trip byte-for-byte.
+
+JSON mode and MCP mode are not affected by this text-mode sanitizer:
+they continue to return the full normalized response. Go's
+`encoding/json` escapes JSON control characters such as C0 controls, but
+does not rewrite every terminal-significant Unicode codepoint such as
+C1 controls; consumers should treat returned strings as untrusted data,
+not terminal-ready text. Tests covering ANSI, OSC 52 clipboard payloads,
+HTML-entity-encoded ESC, C1 controls, carriage returns, and Unicode
+preservation live in `format_sanitize_test.go` and `format_test.go`.
+
+---
+
 ## Limits
 
 The server applies a small set of size limits to keep responses manageable
