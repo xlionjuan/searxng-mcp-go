@@ -282,6 +282,106 @@ func TestEnforceSearchRedirectPolicy(t *testing.T) {
 			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for case-variant host with port", err)
 		}
 	})
+
+	t.Run("block https to http scheme downgrade on same host", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "http://search.example.com/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://search.example.com/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err == nil {
+			t.Fatal("enforceSearchRedirectPolicy() = nil, want error")
+		}
+
+		if !errors.Is(err, errRedirectSchemeDowngrade) {
+			t.Fatalf("error = %v, want errRedirectSchemeDowngrade", err)
+		}
+
+		if !strings.Contains(err.Error(), "https -> http") {
+			t.Fatalf("error = %q, want it to describe the https -> http downgrade", err.Error())
+		}
+	})
+
+	t.Run("block https to http scheme downgrade with case-variant scheme", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "HTTP://search.example.com/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "HTTPS://search.example.com/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err == nil {
+			t.Fatal("enforceSearchRedirectPolicy() = nil, want error")
+		}
+
+		if !errors.Is(err, errRedirectSchemeDowngrade) {
+			t.Fatalf("error = %v, want errRedirectSchemeDowngrade", err)
+		}
+	})
+
+	t.Run("block https to http scheme downgrade with port", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "http://search.example.com:8443/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://search.example.com:8443/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err == nil {
+			t.Fatal("enforceSearchRedirectPolicy() = nil, want error")
+		}
+
+		if !errors.Is(err, errRedirectSchemeDowngrade) {
+			t.Fatalf("error = %v, want errRedirectSchemeDowngrade", err)
+		}
+	})
+
+	t.Run("allow http to https scheme upgrade on same host", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "https://search.example.com/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "http://search.example.com/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for http -> https upgrade", err)
+		}
+	})
+
+	t.Run("allow http to http same host redirect", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "http://search.example.com/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "http://search.example.com/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for http -> http same host", err)
+		}
+	})
+
+	t.Run("allow https to https same host redirect", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "https://search.example.com/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://search.example.com/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for https -> https same host", err)
+		}
+	})
 }
 
 func mustParseURL(t *testing.T, raw string) *url.URL {

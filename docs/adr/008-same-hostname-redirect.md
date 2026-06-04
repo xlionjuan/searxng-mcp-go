@@ -9,20 +9,24 @@ The HTTP client's `CheckRedirect` currently uses `isPrivateHost()` to block redi
 
 A simpler alternative was proposed: **only follow redirects that stay on the same hostname.**
 
+A subsequent security review (issue #97) observed that the original implementation also allowed a same-host scheme downgrade from `https://` to `http://`. That preserved compatibility with mixed reverse-proxy deployments, but it weakened the expectation that configuring an HTTPS SearXNG URL keeps subsequent request and response traffic on TLS. The review recommended deciding whether same-host redirects must preserve scheme.
+
 ## Decision
 
-**Redirects are only allowed within the same hostname.** If a SearXNG instance at `search.example.com` redirects to `search.example.com/some-path`, it is followed. If it redirects to any other host (including `127.0.0.1`, `192.168.x.x`, `localhost`, or any other domain), the redirect is rejected.
+**Redirects are only allowed within the same hostname and must preserve or upgrade the original scheme.** If a SearXNG instance at `https://search.example.com/search` redirects to `https://search.example.com/some-path`, it is followed. If it redirects to any other host (including `127.0.0.1`, `192.168.x.x`, `localhost`, or any other domain), the redirect is rejected. If a same-host redirect changes the scheme from `https://` to `http://`, the redirect is also rejected. A same-host upgrade from `http://` to `https://` is allowed because it strengthens, rather than weakens, transport security.
 
 ## Rationale
 
 1. **Eliminates the SSRF attack surface entirely** — no private IP detection, no DNS resolution, no normalization edge cases.
 2. **No longer uses `isPrivateHost()` for redirect decisions** — redirect safety is determined by hostname comparison rather than private IP blocklists.
 3. **SearXNG instances do not need cross-host redirects** — if an instance redirects to a different host, it is either misconfigured or malicious; neither case should be followed.
-4. **Trivially testable** — the security test becomes: "redirect to different host → rejected."
+4. **Trivially testable** — the security test becomes: "redirect to different host → rejected" and "https → http on the same host → rejected".
+5. **Preserves the operator's TLS choice** — if an HTTPS SearXNG URL is configured, the client will not silently fall back to cleartext for the redirect target or the eventual response, so query traffic stays on TLS end-to-end.
 
 ## Consequences
 
-- `CheckRedirect` is replaced with a simple hostname comparison.
+- `CheckRedirect` is replaced with a hostname-and-scheme comparison.
 - `isPrivateHost()` is no longer used for redirect decisions, but is retained for the HTTP warning that fires when a non-private SearXNG URL uses `http://` instead of `https://`.
 - The `getDefaultHTTPClient` TLS tests remain unchanged.
-- If a legitimate SearXNG deployment requires cross-host redirects (unlikely), this decision should be revisited.
+- Mixed-environment SearXNG deployments that intentionally terminate TLS at the proxy and then redirect to a cleartext backend on the same host will no longer be reached via that downgrade. Operators in that situation should either keep the redirect on `https://` or point the SearXNG base URL at the cleartext endpoint directly (and rely on the existing `http://` non-private-host warning for visibility).
+- If a legitimate SearXNG deployment requires cross-host redirects (unlikely), or an `https` → `http` downgrade is genuinely required, this decision should be revisited.
