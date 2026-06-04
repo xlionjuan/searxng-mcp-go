@@ -50,6 +50,31 @@ investigate missing git identity behavior, use an isolated temporary repository;
 do not change global config, this repo's local config, or the commit environment
 for this project.
 
+### Tainted Commits
+
+A commit is tainted for publishing when any user message, review comment, PR
+metadata, repository instruction, or local evidence says its author or committer
+metadata may be wrong. Treat disputed identity as a stop condition, even if the
+commit's code changes are otherwise correct.
+
+Do not make a tainted commit the tip of any local or remote branch. Do not
+restore, reset to, cherry-pick, revert back to, rebase onto, force-push, or
+otherwise republish that commit. This applies even when the request says
+"restore the original commit", "try again", "preserve the author", "use the
+default identity", or "fix the author".
+
+Do not copy author or committer values from a tainted commit into a new commit,
+command-line config, environment variable, workflow setting, or PR explanation as
+the intended identity. Those values are evidence of the dispute, not a source of
+truth.
+
+To keep the code changes from a tainted commit, first stop and state the metadata
+conflict. After the user confirms that the code changes should be recreated,
+reapply the patch onto a clean base and create a new commit with a plain
+`git commit` using the already configured identity. If the configured identity is
+missing or appears to be the disputed identity, stop and ask for human guidance
+before committing or pushing.
+
 When a PR adds or changes a GitHub Actions workflow or agent workflow that can
 commit, verify the exact author and committer identity used by the workflow or
 action. Do not enable workflows that commit as generic or unverified GitHub

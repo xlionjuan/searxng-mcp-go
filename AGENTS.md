@@ -185,36 +185,18 @@ exception live in `docs/MCP_TESTING.md`; do not duplicate them here.
 
 ## Git Identity
 
-- Use the existing git author and committer identity as-is. If inspection is
-  needed, read it with `git config --get user.name` and
-  `git config --get user.email`; do not change it.
-- Do not run `git config user.name`, `git config user.email`,
-  `git config --global user.name`, or `git config --global user.email` in this
-  repo unless the user explicitly asks for that exact operation.
-- Do not override author or committer identity through temporary command-line
-  config, environment variables, or commit options during normal work. This
-  includes `git -c user.name=... -c user.email=... commit`,
-  `git commit --author=...`, `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`,
-  `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`, and `EMAIL`.
-- A generic request such as "use the default git identity", "recreate the
-  commit", or "fix the author" is not permission to invent or hard-code identity
-  values. Use the already configured identity with a plain `git commit ...`
-  command.
-- In OpenCode/GitHub Actions agent runs, assume the workflow has already
-  configured the intended git identity. Do not pass hard-coded identities such as
-  `opencode-agent`, `opencode@anomaly.co`, or guessed `*@users.noreply.github.com`
-  values to commit commands.
-- If `git commit` fails because author identity is missing, stop and report the
-  failure. Do not invent or set a fallback identity.
-- Do not use generic or unverified GitHub noreply identities such as
-  `<tool>@users.noreply.github.com` for commits. Never derive a commit email from
-  a tool name, action name, repository name, or package name unless that exact
-  identity is verified.
-- When editing GitHub Actions or agent workflows that can commit, verify the
-  exact commit author and committer identity from workflow/action documentation
-  or source before enabling the workflow.
-- If testing Git behavior around missing identity, use an isolated temporary
-  repository and do not change global or repo-local config for this project.
+- Use the existing git author and committer identity as-is. Inspect only with
+  `git config --get user.name` and `git config --get user.email`.
+- Do not set, override, derive, copy, or hard-code author/committer identity via
+  `git config`, `git -c`, `git commit --author`, `GIT_AUTHOR_*`,
+  `GIT_COMMITTER_*`, `EMAIL`, or commit metadata from another commit.
+- If git identity is missing, disputed, alleged to be wrong, or appears to be a
+  guessed bot/tool identity, stop and report the conflict. Do not guess,
+  preserve, repair, or force-push through it.
+- A commit with known or alleged wrong author/committer metadata is tainted for
+  publishing: do not make it the tip of any branch.
+- For PR work, commit rewrites, force-pushes, or agent workflow changes, read
+  `docs/agents/pull-requests.md#git-identity` before acting.
 
 ## Agent Workflows
 
