@@ -29,6 +29,7 @@ In MCP stdin mode, configuration comes from environment variables and MCP input,
 || `DEBUG`              | Set to `1` for debug logging |
 || `SEARXNG_TIMEOUT`    | Sets the search timeout (default 8s) |
 || `SEARXNG_MAX_RETRIES` | Sets the max retry count (default 5) |
+|| `SEARXNG_ALLOW_GET_FALLBACK` | Set to `1` to opt in to POST→GET fallback |
 
 `--help` and `--version` trigger CLI mode for informational output. Like every
 other CLI flag, they are not accepted in MCP stdin mode.

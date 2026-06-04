@@ -55,17 +55,30 @@ The default retry count is 5 retries after the initial search attempt. Set `SEAR
 
 The default timeout for search requests is 8 seconds. Set `SEARXNG_TIMEOUT` to a Go duration such as `8s`; in CLI mode, `--timeout` overrides the environment variable.
 
+### POST to GET Fallback
+
+Search requests use POST by default. If POST `/search` returns
+`405 Method Not Allowed` or `501 Not Implemented`, the server returns an
+actionable error by default instead of silently retrying with GET.
+
+Set `SEARXNG_ALLOW_GET_FALLBACK=1` only when you need compatibility with a
+deployment that rejects POST and you accept the risk: GET sends search
+parameters in the URL, so queries may be recorded by SearXNG, reverse proxies,
+CDNs, or access logs. When enabled, the server logs a warning on startup and
+again whenever the fallback is used.
+
 ### Invalid Environment Variable Values
 
-`SEARXNG_TIMEOUT` and `SEARXNG_MAX_RETRIES` accept a fixed format (a Go
-duration and a non-negative integer, respectively). When a value is set
-to something the server cannot parse — for example
-`SEARXNG_TIMEOUT=abc` or `SEARXNG_MAX_RETRIES=-1` — the server writes a
-warning line to stderr that names the offending variable and value, and
-then silently falls back to the built-in default. The process
-**continues running** and does not exit. In MCP stdio mode, most MCP
-clients do not surface the stderr stream, so end users typically do
-not see the warning at all.
+`SEARXNG_TIMEOUT`, `SEARXNG_MAX_RETRIES`, and
+`SEARXNG_ALLOW_GET_FALLBACK` accept fixed formats (a Go duration, a
+non-negative integer, and `0`/`1`, respectively). When a value is set to
+something the server cannot parse — for example `SEARXNG_TIMEOUT=abc`,
+`SEARXNG_MAX_RETRIES=-1`, or `SEARXNG_ALLOW_GET_FALLBACK=true` — the server
+writes a warning line to stderr that names the offending variable and value,
+and then silently falls back to the built-in default. The process
+**continues running** and does not exit. In MCP stdio mode, most MCP clients do
+not surface the stderr stream, so end users typically do not see the warning at
+all.
 
 If you need strict validation (for example in CI), prefer the
 `--timeout` and `--max-retries` CLI flags instead of the environment
@@ -86,10 +99,6 @@ where they are rejected:
   search request is issued.
 
 > **Note:** If you provide a custom `HTTPClient` (for example, when using the library programmatically), the `Timeout` setting is ignored and the provided client is used as-is. Either set `Timeout` or supply a custom `HTTPClient`, not both.
-
-### POST→GET Fallback
-
-When a POST request receives `405 Method Not Allowed` or `501 Not Implemented`, the server automatically retries the `/search` request with GET, ensuring compatibility with SearXNG deployments that do not support POST search requests.
 
 ---
 
@@ -123,6 +132,9 @@ which searxng-mcp-go
   }
 }
 ```
+
+Add `"SEARXNG_ALLOW_GET_FALLBACK": "1"` only as a temporary compatibility
+escape hatch for a deployment that rejects POST `/search`.
 
 #### Debug Mode (opt-in, do not enable by default)
 

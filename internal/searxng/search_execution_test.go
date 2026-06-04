@@ -258,24 +258,18 @@ func TestDoSearchAttempt(t *testing.T) {
 		}
 	})
 
-	t.Run("POST returns 405 triggers GET fallback", func(t *testing.T) {
+	t.Run("POST returns 405 does not trigger GET fallback by default", func(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
 		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			callCount++
 
-			if callCount == 1 {
-				// First call (POST) returns 405
-				return &http.Response{
-					StatusCode: http.StatusMethodNotAllowed,
-					Header:     http.Header{"Content-Type": []string{"text/html"}},
-					Body:       io.NopCloser(strings.NewReader("")),
-				}, nil
-			}
-
-			// Second call (GET fallback) returns OK
-			return makeJSONResponse(minimalJSONBody), nil
+			return &http.Response{
+				StatusCode: http.StatusMethodNotAllowed,
+				Header:     http.Header{"Content-Type": []string{"text/html"}},
+				Body:       io.NopCloser(strings.NewReader("")),
+			}, nil
 		}), 0)
 
 		resp, bodyStr, err := s.doSearchAttempt(context.Background(), &SearchArgs{Query: "test"})
@@ -291,12 +285,12 @@ func TestDoSearchAttempt(t *testing.T) {
 
 		defer closeBody(resp)
 
-		if callCount != 2 {
-			t.Fatalf("RoundTrip callCount = %d, want 2 (POST + GET fallback)", callCount)
+		if callCount != 1 {
+			t.Fatalf("RoundTrip callCount = %d, want 1 (POST only)", callCount)
 		}
 
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("StatusCode = %d, want 200", resp.StatusCode)
+		if resp.StatusCode != http.StatusMethodNotAllowed {
+			t.Fatalf("StatusCode = %d, want 405", resp.StatusCode)
 		}
 
 		if bodyStr == "" {
@@ -304,43 +298,98 @@ func TestDoSearchAttempt(t *testing.T) {
 		}
 	})
 
-	t.Run("POST returns 501 triggers GET fallback", func(t *testing.T) {
+	t.Run("POST method rejection triggers GET fallback when enabled", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name   string
+			status int
+		}{
+			{name: "405", status: http.StatusMethodNotAllowed},
+			{name: "501", status: http.StatusNotImplemented},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+
+				callCount := 0
+				s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+					callCount++
+
+					if callCount == 1 {
+						return &http.Response{
+							StatusCode: tt.status,
+							Header:     http.Header{"Content-Type": []string{"text/html"}},
+							Body:       io.NopCloser(strings.NewReader("")),
+						}, nil
+					}
+
+					return makeJSONResponse(minimalJSONBody), nil
+				}), 0)
+				s.allowGETFallback = true
+
+				resp, bodyStr, err := s.doSearchAttempt(context.Background(), &SearchArgs{Query: "test"})
+				if err != nil {
+					t.Fatalf("doSearchAttempt() error = %v, want nil", err)
+				}
+
+				if resp == nil {
+					t.Fatal("doSearchAttempt() resp = nil, want non-nil")
+
+					return
+				}
+
+				defer closeBody(resp)
+
+				if callCount != 2 {
+					t.Fatalf("RoundTrip callCount = %d, want 2 (POST + GET fallback)", callCount)
+				}
+
+				if bodyStr == "" {
+					t.Fatal("bodyStr = empty, want non-empty query string")
+				}
+			})
+		}
+	})
+
+	t.Run("GET fallback transport error redacts query", func(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 			callCount++
 
-			if callCount == 1 {
+			if req.Method == http.MethodPost {
 				return &http.Response{
-					StatusCode: http.StatusNotImplemented,
+					StatusCode: http.StatusMethodNotAllowed,
 					Header:     http.Header{"Content-Type": []string{"text/html"}},
 					Body:       io.NopCloser(strings.NewReader("")),
 				}, nil
 			}
 
-			return makeJSONResponse(minimalJSONBody), nil
+			return nil, errRetryTestConnectionReset
 		}), 0)
+		s.allowGETFallback = true
 
-		resp, bodyStr, err := s.doSearchAttempt(context.Background(), &SearchArgs{Query: "test"})
-		if err != nil {
-			t.Fatalf("doSearchAttempt() error = %v, want nil", err)
+		resp, _, err := s.doSearchAttempt(context.Background(), &SearchArgs{Query: "sensitive search"})
+		closeBody(resp)
+
+		if err == nil {
+			t.Fatal("doSearchAttempt() error = nil, want GET fallback error")
 		}
 
-		if resp == nil {
-			t.Fatal("doSearchAttempt() resp = nil, want non-nil")
-
-			return
+		errText := err.Error()
+		if strings.Contains(errText, "sensitive search") || strings.Contains(errText, "q=sensitive") {
+			t.Fatalf("error leaked query: %v", err)
 		}
 
-		defer closeBody(resp)
+		if !strings.Contains(errText, "GET fallback was used") {
+			t.Fatalf("error = %q, want GET fallback warning context", errText)
+		}
 
 		if callCount != 2 {
 			t.Fatalf("RoundTrip callCount = %d, want 2 (POST + GET fallback)", callCount)
-		}
-
-		if bodyStr == "" {
-			t.Fatal("bodyStr = empty, want non-empty query string")
 		}
 	})
 

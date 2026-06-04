@@ -17,16 +17,21 @@ var (
 	errSearchRequestFailed      = errors.New("failed to execute search request")
 	errErrorBodyTooLarge        = errors.New("error response body exceeded maximum size limit")
 	errEmptyResponse            = errors.New("empty response from SearXNG")
+	errGETFallbackUsed          = errors.New("GET fallback was used; search query parameters may have been sent in the request URL")
 )
+
+const getFallbackLogRisk = "Search query parameters may be sent in upstream URLs and recorded by " +
+	"SearXNG, proxy, CDN, or access logs"
 
 // SearXNGSearcher performs web searches via a SearXNG instance.
 type SearXNGSearcher struct {
-	client         *http.Client // Configurable HTTP client
-	searchEndpoint *url.URL     // Precomputed /search endpoint URL; cloned per request
-	debug          bool         // When true, enables verbose HTTP request/response logging
-	maxRetries     int
-	retryStrategy  *exponentialBackoffStrategy
-	ownsTransport  bool // true if the searcher created its own transport (safe to close)
+	client           *http.Client // Configurable HTTP client
+	searchEndpoint   *url.URL     // Precomputed /search endpoint URL; cloned per request
+	debug            bool         // When true, enables verbose HTTP request/response logging
+	maxRetries       int
+	retryStrategy    *exponentialBackoffStrategy
+	ownsTransport    bool // true if the searcher created its own transport (safe to close)
+	allowGETFallback bool
 }
 
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
@@ -65,6 +70,10 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 			"Search results could be intercepted and modified by a MITM attacker")
 	}
 
+	if cfg.AllowGETFallback {
+		slog.Warn("GET fallback is enabled. " + getFallbackLogRisk)
+	}
+
 	client := cfg.HTTPClient
 
 	var ownsTransport bool
@@ -96,12 +105,13 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	}
 
 	return &SearXNGSearcher{
-		client:         client,
-		searchEndpoint: searchEndpoint,
-		debug:          debug,
-		maxRetries:     cfg.MaxRetries,
-		retryStrategy:  newExponentialBackoffStrategy(cfg.MaxRetries, cfg.RetryDelay, cfg.MaxRetryDelay),
-		ownsTransport:  ownsTransport,
+		client:           client,
+		searchEndpoint:   searchEndpoint,
+		debug:            debug,
+		maxRetries:       cfg.MaxRetries,
+		retryStrategy:    newExponentialBackoffStrategy(cfg.MaxRetries, cfg.RetryDelay, cfg.MaxRetryDelay),
+		ownsTransport:    ownsTransport,
+		allowGETFallback: cfg.AllowGETFallback,
 	}, nil
 }
 
@@ -216,7 +226,8 @@ func (s *SearXNGSearcher) doSearchAttempt(ctx context.Context, args *SearchArgs)
 
 	s.logDebugResponse(resp, err)
 
-	if err == nil && resp != nil && (resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
+	if err == nil && resp != nil && s.allowGETFallback &&
+		(resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
 		resp, err = s.executeGETfallback(ctx, resp, postReq, postBodyStr)
 	}
 
@@ -290,6 +301,11 @@ func (s *SearXNGSearcher) executeGETfallback(
 	postReq *http.Request,
 	postBodyStr string,
 ) (*http.Response, error) {
+	slog.Warn(
+		"GET fallback used after POST search was rejected. "+getFallbackLogRisk,
+		"status", resp.StatusCode,
+	)
+
 	if s.debug {
 		slog.Debug("Redirecting to GET fallback", "status", resp.StatusCode, "reason", "POST not supported by server")
 	}
@@ -310,9 +326,45 @@ func (s *SearXNGSearcher) executeGETfallback(
 
 	//nolint:gosec // The client redirect policy blocks fallback redirects to a different host.
 	getResp, err := s.client.Do(getReq)
+	if err != nil {
+		err = fmt.Errorf("%w: %w", errGETFallbackUsed, redactSearchURLParamsFromError(err))
+	}
+
 	s.logDebugResponse(getResp, err)
 
 	return getResp, err
+}
+
+func redactSearchURLParamsFromError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) {
+		return err
+	}
+
+	redacted := *urlErr
+	redacted.URL = redactSearchURLParams(urlErr.URL)
+
+	return &redacted
+}
+
+func redactSearchURLParams(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+
+	query := parsed.Query()
+	if _, ok := query["q"]; ok {
+		query.Set("q", "[REDACTED]")
+	}
+
+	parsed.RawQuery = query.Encode()
+
+	return parsed.String()
 }
 
 func (s *SearXNGSearcher) handleNonOKResponse(resp *http.Response) error {

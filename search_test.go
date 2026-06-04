@@ -444,7 +444,62 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name+" default disabled", func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				postReq *http.Request
+				getReq  *http.Request
+			)
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost {
+					postReq = r
+
+					w.WriteHeader(tt.statusCode)
+
+					return
+				}
+
+				if r.Method == http.MethodGet {
+					getReq = r
+				}
+
+				w.WriteHeader(http.StatusInternalServerError)
+			}))
+			defer server.Close()
+
+			cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+			args := &searxng.SearchArgs{Query: "sensitive search", Language: "en", SafeSearch: 1}
+
+			_, err := testPerformSearch(t.Context(), t, cfg, args)
+			if err == nil {
+				t.Fatal("expected error when GET fallback is disabled")
+			}
+
+			if postReq == nil {
+				t.Fatal("POST request was never made")
+			}
+
+			if getReq != nil {
+				t.Fatal("GET fallback was called even though it is disabled")
+			}
+
+			if postReq.URL.RawQuery != "" {
+				t.Error("POST request had query params in URI - query should only be in body")
+			}
+
+			errText := err.Error()
+			if strings.Contains(errText, "sensitive search") || strings.Contains(errText, "q=sensitive") {
+				t.Fatalf("error leaked query: %v", err)
+			}
+
+			if !strings.Contains(errText, "SEARXNG_ALLOW_GET_FALLBACK=1") {
+				t.Fatalf("error = %q, want opt-in guidance", errText)
+			}
+		})
+
+		t.Run(tt.name+" opt-in enabled", func(t *testing.T) {
 			t.Parallel()
 
 			var (
@@ -478,7 +533,7 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 			}))
 			defer server.Close()
 
-			cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+			cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second, AllowGETFallback: true}
 			args := &searxng.SearchArgs{Query: "test search", Language: "en", SafeSearch: 1}
 
 			result, err := testPerformSearch(t.Context(), t, cfg, args)
@@ -758,7 +813,7 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 		}))
 		defer server.Close()
 
-		cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
+		cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second, AllowGETFallback: true}
 
 		_, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
 		if err != nil {

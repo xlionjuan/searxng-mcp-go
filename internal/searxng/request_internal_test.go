@@ -331,8 +331,8 @@ func TestComputeSearchEndpoint_ParseError(t *testing.T) {
 
 // TestBuildSearchRequest_DoesNotMutatePrecomputedURL verifies that the
 // per-request URL returned by buildSearchRequest is a clone, so mutating it
-// (as the GET fallback does when it sets RawQuery) does not leak back into
-// s.searchEndpoint.
+// (as the opt-in GET fallback does when it sets RawQuery) does not leak back
+// into s.searchEndpoint.
 func TestBuildSearchRequest_DoesNotMutatePrecomputedURL(t *testing.T) {
 	t.Parallel()
 
@@ -346,7 +346,7 @@ func TestBuildSearchRequest_DoesNotMutatePrecomputedURL(t *testing.T) {
 			t.Fatalf("buildSearchRequest() error = %v", err)
 		}
 
-		// Simulate the GET fallback path mutating the per-request URL.
+		// Simulate the opt-in GET fallback path mutating the per-request URL.
 		req.URL.RawQuery = "q=test&format=json"
 		req.URL.Path = "/mutated"
 	}
