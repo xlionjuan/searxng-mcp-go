@@ -29,6 +29,22 @@ const MaxErrorBodySize = 100 * 1024
 // MaxResponseBodySize is the maximum successful search response body size.
 const MaxResponseBodySize = 2 * 1024 * 1024
 
+// MaxAnswers caps the number of answers retained after JSON unmarshalling.
+//
+// The answer/infobox deduplication pass runs in O(len(answers)*len(infoboxes))
+// and, for each answer, scans every infobox twice with strings.Contains.
+// Real SearXNG responses contain at most a handful of each, so a generous cap
+// keeps deduplication work bounded and prevents an adversarial or
+// mis-configured upstream from forcing O(n*m) substring scans inside the
+// MaxResponseBodySize envelope. Truncation is performed before
+// deduplication and a warning is logged when it triggers.
+const MaxAnswers = 100
+
+// MaxInfoboxes caps the number of infoboxes retained after JSON
+// unmarshalling. See MaxAnswers for the rationale; the cap exists to bound
+// the answer/infobox deduplication work the same way.
+const MaxInfoboxes = 100
+
 // MaxErrorDisplayChars caps the size of error body previews retained on
 // SearXNGError.ResponseBody (and surfaced in debug logs and error messages).
 //

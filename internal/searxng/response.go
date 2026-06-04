@@ -263,6 +263,25 @@ func (s *SearXNGSearcher) normalizeResponse(result *SearchResponse, args *Search
 		result.NumberOfResults = len(result.Results)
 	}
 
+	// Cap answers and infoboxes before deduplication. The dedup pass is
+	// O(n*m) substring work; a configured upstream that returns a body
+	// below MaxResponseBodySize could still pack tens of thousands of
+	// compact entries into these arrays, forcing very large CPU work
+	// before result limiting. See MaxAnswers / MaxInfoboxes for details.
+	if len(result.Answers) > MaxAnswers {
+		slog.Warn("truncating answers before deduplication",
+			"count", len(result.Answers),
+			"max", MaxAnswers)
+		result.Answers = result.Answers[:MaxAnswers]
+	}
+
+	if len(result.Infoboxes) > MaxInfoboxes {
+		slog.Warn("truncating infoboxes before deduplication",
+			"count", len(result.Infoboxes),
+			"max", MaxInfoboxes)
+		result.Infoboxes = result.Infoboxes[:MaxInfoboxes]
+	}
+
 	// Derive display text for typed answers (translation, weather) that may
 	// omit the legacy "answer" string.
 	for i := range result.Answers {
