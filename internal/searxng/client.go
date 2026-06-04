@@ -19,13 +19,14 @@ var (
 )
 
 var (
-	errRedirectDifferentHost = errors.New("redirect to different host blocked")
-	errTooManyRedirects      = errors.New("stopped after 10 redirects")
-	errBaseURLEmpty          = errors.New("baseurl cannot be empty")
-	errInvalidURL            = errors.New("invalid URL")
-	errUnsupportedURLScheme  = errors.New("url must use http or https scheme")
-	errURLMissingHost        = errors.New("url must include a host (e.g., search.example.com)")
-	errURLHasUserInfo        = errors.New("url must not contain userinfo (user:password@host)")
+	errRedirectDifferentHost   = errors.New("redirect to different host blocked")
+	errRedirectSchemeDowngrade = errors.New("redirect from https to http blocked")
+	errTooManyRedirects        = errors.New("stopped after 10 redirects")
+	errBaseURLEmpty            = errors.New("baseurl cannot be empty")
+	errInvalidURL              = errors.New("invalid URL")
+	errUnsupportedURLScheme    = errors.New("url must use http or https scheme")
+	errURLMissingHost          = errors.New("url must include a host (e.g., search.example.com)")
+	errURLHasUserInfo          = errors.New("url must not contain userinfo (user:password@host)")
 )
 
 const (
@@ -65,14 +66,26 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 }
 
 func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
-	// Note: This policy intentionally allows scheme downgrade (https → http)
-	// for compatibility with mixed-environment SearXNG instances that may run
-	// behind reverse proxies without TLS termination. A scheme-equality check
-	// can be added here if the threat model evolves to require it.
+	// Note: This policy preserves the original scheme for same-host redirects.
+	// An https → http downgrade is rejected so that configuring an HTTPS
+	// SearXNG URL keeps subsequent request and response traffic on TLS.
+	// An http → https upgrade is allowed because it strengthens, rather
+	// than weakens, transport security.
 	if req.URL != nil && len(via) > 0 {
-		prevHost := via[len(via)-1].URL.Host
-		if !strings.EqualFold(req.URL.Host, prevHost) {
-			return fmt.Errorf("%w: %s -> %s", errRedirectDifferentHost, prevHost, req.URL.Host)
+		prev := via[len(via)-1]
+		if prev.URL != nil {
+			prevHost := prev.URL.Host
+			if !strings.EqualFold(req.URL.Host, prevHost) {
+				return fmt.Errorf("%w: %s -> %s", errRedirectDifferentHost, prevHost, req.URL.Host)
+			}
+
+			prevScheme := strings.ToLower(prev.URL.Scheme)
+
+			nextScheme := strings.ToLower(req.URL.Scheme)
+
+			if prevScheme == "https" && nextScheme == "http" {
+				return fmt.Errorf("%w: %s -> %s", errRedirectSchemeDowngrade, prev.URL.Scheme, req.URL.Scheme)
+			}
 		}
 	}
 
