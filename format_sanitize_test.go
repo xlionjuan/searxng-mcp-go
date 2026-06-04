@@ -27,10 +27,10 @@ func TestSanitizeTerminalControl(t *testing.T) {
 		{name: "emoji preserved", input: "🔥 rocket 🎉", want: "🔥 rocket 🎉"},
 		{name: "mixed unicode", input: "café naïve 你好", want: "café naïve 你好"},
 		{name: "tabs and newlines preserved", input: "line1\nline2\tcol", want: "line1\nline2\tcol"},
-		{name: "carriage return preserved", input: "line1\r\nline2", want: "line1\r\nline2"},
+		{name: "carriage return rewritten", input: "line1\r\nline2", want: `line1\x0d` + "\nline2"},
 		{name: "punctuation preserved", input: "Hello, World! 123 ?.;:", want: "Hello, World! 123 ?.;:"},
 
-		// --- single-byte C0 controls (other than \t \n \r) ---
+		// --- single-byte C0 controls (other than \t \n) ---
 		{name: "NUL byte", input: "before\x00after", want: `before\x00after`},
 		{name: "BEL", input: "before\x07after", want: `before\x07after`},
 		{name: "BS backspace", input: "ab\x08cd", want: `ab\x08cd`},
@@ -107,7 +107,7 @@ func TestSanitizeTerminalControl_NoTerminalControlBytes(t *testing.T) {
 		"",
 		"plain text",
 		"日本語 中文 emoji 🔥",
-		"tabs\tand\nnewlines\rok",
+		"tabs\tand\nnewlines ok",
 		"normal punctuation: !@#$%^&*()_+-=[]{}|;':\",./<>?",
 		strings.Repeat("hello world 你好 ", 50),
 	}
@@ -145,7 +145,7 @@ func TestSanitizeTerminalControl_NeverEmitsLiteralControlBytes(t *testing.T) {
 		out := sanitizeTerminalControl(input)
 
 		for _, b := range []byte(out) {
-			if b < 0x20 && b != '\t' && b != '\n' && b != '\r' {
+			if b < 0x20 && b != '\t' && b != '\n' {
 				t.Errorf("sanitizeTerminalControl(%q) leaked control byte 0x%02x in output %q", input, b, out)
 			}
 

@@ -253,14 +253,13 @@ func TestFormatResults_DebugLogsUnresponsiveEngines(t *testing.T) {
 // upstream-supplied fields before writing to stdout. This is a defense
 // against a malicious or compromised SearXNG instance that returns
 // ANSI / OSC sequences in result text, query echo, suggestions, or any
-// other field. JSON output is intentionally not covered here because
-// encoding/json already escapes control bytes; this test only locks the
-// CLI text path.
+// other field. JSON output is intentionally not covered here because this
+// test only locks the CLI text path.
 func TestFormatResults_NeutralizesTerminalControl(t *testing.T) {
 	t.Parallel()
 
 	resp := &searxng.SearchResponse{
-		Query: "evil\x1b[31mred\x1b[0m query",
+		Query: "evil\x1b[31mred\x1b[0m\rquery",
 		Answers: []searxng.Answer{
 			{
 				Answer: "ans\x1b]52;c;SGVsbG8=\x07here",
@@ -269,7 +268,7 @@ func TestFormatResults_NeutralizesTerminalControl(t *testing.T) {
 		},
 		Infoboxes: []searxng.Infobox{
 			{
-				Infobox: "ib\x1b[31mtitle\x1b[0m",
+				Infobox: "ib\x1b[31mtitle\x1b[0m\r",
 				Content: "ib content with \x1b[2J\x1b[H CSI",
 				Attributes: []searxng.InfoboxAttribute{
 					{Label: "label\x07", Value: "value\x1b]0;evil\x07"},
@@ -281,7 +280,7 @@ func TestFormatResults_NeutralizesTerminalControl(t *testing.T) {
 		},
 		Results: []searxng.SearchResult{
 			{
-				Title:         "title\x1b[31mRED\x1b[0m",
+				Title:         "title\x1b[31mRED\x1b[0m\rspoof",
 				URL:           "https://example.com/\x1b]52;c;SGVsbG8=\x07",
 				Content:       "content with \x1bP+q\x1b\\ DCS and \u0085 NEL",
 				Engine:        "engine\x07",
@@ -290,7 +289,7 @@ func TestFormatResults_NeutralizesTerminalControl(t *testing.T) {
 		},
 		NumberOfResults: 1,
 		Suggestions: []string{
-			"sug\x1b[31mGESTION\x1b[0m",
+			"sug\x1b[31mGESTION\x1b[0m\rspoof",
 			"clean suggestion",
 		},
 	}
@@ -301,7 +300,7 @@ func TestFormatResults_NeutralizesTerminalControl(t *testing.T) {
 	// survive in the output.
 	for _, b := range []byte(out) {
 		switch {
-		case b == '\t', b == '\n', b == '\r':
+		case b == '\t', b == '\n':
 			// allowed layout whitespace
 		case b < 0x20:
 			t.Errorf("formatResults leaked C0 control byte 0x%02x in output:\n%s", b, out)
@@ -365,7 +364,7 @@ func TestFormatResults_HtmlEntityEscapedControlIsNeutralized(t *testing.T) {
 
 	for _, b := range []byte(out) {
 		switch {
-		case b == '\t', b == '\n', b == '\r':
+		case b == '\t', b == '\n':
 		case b < 0x20:
 			t.Errorf("formatResults leaked control byte 0x%02x after HTML entity decode:\n%s", b, out)
 		case b == 0x7F:

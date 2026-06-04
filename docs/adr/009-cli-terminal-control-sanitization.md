@@ -17,16 +17,17 @@ The vulnerability was filed as a low-severity security finding
 (CAND-33fe0b85-RUNTIME-001) with proof-of-concept ESC bytes at byte
 offsets 221, 293, and 301 of formatted output.
 
-The affected surface is the **terminal** — JSON output goes through
-`encoding/json`, which already escapes control bytes, and MCP responses
-reuse the same JSON path. The data model returned to MCP consumers does
-not need to change.
+The affected surface is **CLI text mode terminal rendering**. JSON output
+goes through `encoding/json` and MCP responses reuse the same JSON path.
+The data model returned to JSON and MCP consumers does not need to
+change, but consumers should still treat returned strings as untrusted
+data rather than terminal-ready text.
 
 ## Decision
 
 `formatResults` will run every user-controlled text field through a new
 `sanitizeTerminalControl` helper in `format.go` that rewrites C0
-controls (other than `\t`, `\n`, `\r`), DEL, and C1 controls
+controls (other than `\t`, `\n`), DEL, and C1 controls
 (U+0080..U+009F) into visible `\xNN` escape sequences. All other
 codepoints — including CJK, emoji, and accented Latin — are preserved
 unchanged. Invalid UTF-8 bytes are also rewritten byte-by-byte.
@@ -42,8 +43,7 @@ the JSON path are untouched.
    actually writes to a terminal.
 2. **Visible encoding > silent stripping.** A user reviewing a captured
    transcript can still see `\x1b[31mred` rather than a silent gap; the
-   upstream payload survives in a safe form. JSON encoding already
-   uses this same visible-escape convention.
+   upstream payload survives in a safe form.
 3. **Preserves ordinary Unicode.** CJK, emoji, and Latin diacritics
    round-trip byte-for-byte. The only codepoints rewritten are those
    that can act as terminal control sequences.
@@ -63,8 +63,9 @@ the JSON path are untouched.
 - Golden capture (`golden_capture_test.go`) is unaffected because the
   golden fixture contains no control bytes.
 - New unit tests in `format_sanitize_test.go` cover ANSI, OSC 52, DCS,
-  CSI, C0, C1, DEL, invalid UTF-8, HTML-entity-decoded ESC, and
-  Unicode preservation. New `formatResults`-level tests in
+  CSI, C0, C1, DEL, carriage returns, invalid UTF-8,
+  HTML-entity-decoded ESC, and Unicode preservation. New
+  `formatResults`-level tests in
   `format_test.go` lock end-to-end behavior for results, infoboxes,
   answers, suggestions, and query echo.
 - `docs/OUTPUT_FORMAT.md` documents the sanitizer and the JSON / MCP

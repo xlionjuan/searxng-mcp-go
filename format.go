@@ -13,7 +13,7 @@ import (
 const noResultsFound = "No results found."
 
 // sanitizeTerminalControl replaces C0 control bytes, DEL, and C1 control
-// codepoints (other than the common whitespace \t, \n, \r) with visible
+// codepoints (other than the common whitespace \t and \n) with visible
 // "\xNN" escape sequences. This neutralizes ANSI / OSC / DCS terminal
 // control sequences from upstream search content that could otherwise
 // alter terminal display state or trigger side effects such as OSC 52
@@ -40,7 +40,7 @@ func sanitizeTerminalControl(s string) string {
 		b := s[i]
 		if b < utf8.RuneSelf {
 			switch {
-			case b == '\t' || b == '\n' || b == '\r':
+			case b == '\t' || b == '\n':
 				buf.WriteByte(b)
 			case b < 0x20 || b == 0x7F:
 				fmt.Fprintf(&buf, `\x%02x`, b)
@@ -82,7 +82,7 @@ func hasUnsafeControlBytes(s string) bool {
 	for i := 0; i < len(s); {
 		b := s[i]
 		if b < utf8.RuneSelf {
-			if (b < 0x20 && b != '\t' && b != '\n' && b != '\r') || b == 0x7F {
+			if (b < 0x20 && b != '\t' && b != '\n') || b == 0x7F {
 				return true
 			}
 
