@@ -120,9 +120,10 @@ The server exposes a single **`search`** tool. For full parameter details, respo
 > `SEARXNG_ALLOW_GET_FALLBACK` is set to a value the server cannot parse
 > (or, for `SEARXNG_MAX_RETRIES`, to a negative number), the server logs a
 > warning to stderr and falls back to the built-in default. It does not exit.
-> For strict validation of timeout and retry values, use the `--timeout` and
-> `--max-retries` CLI flags, which are validated on the command line and exit
-> with a non-zero status on invalid input.
+> For strict validation of timeout, retry, and GET fallback values, use the
+> `--timeout`, `--max-retries`, and `--allow-get-fallback` CLI flags, which
+> are validated on the command line and exit with a non-zero status on
+> invalid input.
 
 ## Troubleshooting
 
