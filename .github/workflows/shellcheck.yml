@@ -1,0 +1,32 @@
+name: Shellcheck
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'searxng-server-test/*.sh'
+  pull_request:
+    paths:
+      - 'searxng-server-test/*.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck-and-pid-helper:
+    name: Shellcheck & PID Helper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          submodules: false
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Run shellcheck on test-server scripts
+        run: shellcheck --severity=error searxng-server-test/*.sh
+      - name: Install just
+        uses: taiki-e/install-action@25435dc8dd3baed7417e0c96d3fe89013a5b2e09 # v2.81.3
+        with:
+          tool: just@1.51.0
+          fallback: none
+      - name: Run PID helper tests
+        run: just test-server-pid-helper

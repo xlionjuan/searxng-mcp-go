@@ -37,27 +37,4 @@ jobs:
       - name: Check formatting (gofumpt / goimports / gci)
         run: golangci-lint fmt --diff
 
-  shellcheck:
-    name: Shellcheck (test-server scripts)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
-      - name: Install shellcheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
-
-      - name: Run shellcheck on test-server scripts
-        run: shellcheck --severity=error searxng-server-test/*.sh
-
-  test-server-pid-helper:
-    name: Test Server PID Helper
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-
-      - name: Install just
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
-
-      - name: Run PID helper tests
-        run: just test-server-pid-helper
