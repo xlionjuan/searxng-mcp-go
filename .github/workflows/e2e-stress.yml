@@ -35,6 +35,10 @@ jobs:
         working-directory: searxng-server-test
         run: bash 01-start-bg.sh
 
+      - name: Install just
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+
       - name: Build binary
         run: go build -o searxng-mcp-go .
 
