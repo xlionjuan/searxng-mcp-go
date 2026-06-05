@@ -87,6 +87,33 @@ echo "  Enabled yahoo and bing engines ✓"
 sed -i '/^  - name: ddg definitions$/{n;n;n;n;s/disabled: true/disabled: false/}' "$SETTINGS_FILE"
 echo "  Enabled ddg definitions engine ✓"
 
+# Post-edit validation
+echo ""
+echo "--- Validating settings.yml ---"
+
+# Check secret_key replaced
+if grep -q "ultrasecretkey" "$SETTINGS_FILE"; then
+    echo "Error: secret_key not replaced" >&2
+    exit 1
+fi
+echo "  secret_key validated ✓"
+
+# Check JSON format enabled
+if ! grep -A 10 "formats:" "$SETTINGS_FILE" | grep -q "json"; then
+    echo "Error: JSON format not enabled" >&2
+    exit 1
+fi
+echo "  JSON format validated ✓"
+
+# Check engines enabled
+for engine in "yahoo" "bing" "ddg definitions"; do
+    if ! grep -A 5 "name: $engine" "$SETTINGS_FILE" | grep -q "disabled: false"; then
+        echo "Error: $engine not enabled" >&2
+        exit 1
+    fi
+    echo "  $engine engine validated ✓"
+done
+
 echo ""
 echo "=== Setup complete ==="
 echo ""
