@@ -22,7 +22,7 @@ Query: `apple inc` — this query triggers Infoboxes, Results, and Suggestions s
 $ ./searxng-mcp-go "apple inc"
 
 === Web Search Results ===
-Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.
+Warning: Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.
 
 === Infoboxes ===
 
@@ -128,7 +128,7 @@ Query: `golang tutorial` — this query returns no Answers or Infoboxes.
 $ ./searxng-mcp-go "golang tutorial"
 
 === Web Search Results ===
-Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.
+Warning: Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.
 
 === Results ===
 
