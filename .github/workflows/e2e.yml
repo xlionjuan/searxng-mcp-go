@@ -42,6 +42,12 @@ jobs:
         working-directory: searxng-server-test
         run: bash 01-start-bg.sh
 
+      - name: Install just
+        uses: taiki-e/install-action@25435dc8dd3baed7417e0c96d3fe89013a5b2e09 # v2.81.3
+        with:
+          tool: just@1.51.0
+          fallback: none
+
       - name: Build binary
         run: go build -o searxng-mcp-go .
 
@@ -80,9 +86,4 @@ jobs:
       - name: Cleanup
         if: always()
         working-directory: searxng-server-test
-        run: |
-          if [ -f .bg-pid ]; then
-            kill "$(cat .bg-pid)" 2>/dev/null || true
-            rm -f .bg-pid
-            echo "SearXNG stopped"
-          fi
+        run: just test-server-stop
