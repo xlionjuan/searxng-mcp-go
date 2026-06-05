@@ -26,6 +26,24 @@ jobs:
         with:
           go-version: "1.26.4"
 
+      - name: Verify go.mod/go.sum tidy
+        run: |
+          cp go.mod go.mod.bak
+          cp go.sum go.sum.bak
+          go mod tidy
+          if ! diff -u go.mod.bak go.mod || ! diff -u go.sum.bak go.sum; then
+            echo "go.mod or go.sum modified by go mod tidy - commit changes first"
+            exit 1
+          fi
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Run linter
+        uses: golangci/golangci-lint-action@4afd733a84b1a4307dc169d9b7425dc0d6c6b30e # v7.2.0
+        with:
+          version: v2.1.6
+
       - name: Import GPG Key
         shell: bash
         run: |
