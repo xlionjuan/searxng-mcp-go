@@ -36,5 +36,3 @@ jobs:
 
       - name: Check formatting (gofumpt / goimports / gci)
         run: golangci-lint fmt --diff
-
-
