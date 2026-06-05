@@ -39,25 +39,50 @@ func TestCLIHelpTimeoutDefaultDerivesFromConstant(t *testing.T) {
 	}
 }
 
-// TestCLIHelpMaxRetriesDefaultDerivesFromConstant guards issue #24: the
-// CLI help text for --max-retries must show searxng.DefaultMaxRetries,
+// TestCLIHelpRetryDelayDefaultDerivesFromConstant guards issue #24: the CLI
+// help text for --retry-delay must show searxng.DefaultRetryDelay,
 // not a hardcoded literal.
 //
 // Not t.Parallel(): see TestCLIHelpTimeoutDefaultDerivesFromConstant.
-func TestCLIHelpMaxRetriesDefaultDerivesFromConstant(t *testing.T) {
+func TestCLIHelpRetryDelayDefaultDerivesFromConstant(t *testing.T) {
 	output := captureStdout(t, func() {
 		printCLIHelp()
 	})
 
-	wantSubstr := "[default: " + strconv.Itoa(searxng.DefaultMaxRetries) + "]"
+	wantSubstr := "[default: " + searxng.DefaultRetryDelay.String() + "]"
 	if !strings.Contains(output, wantSubstr) {
-		t.Errorf("CLI help missing %q (searxng.DefaultMaxRetries = %d)",
-			wantSubstr, searxng.DefaultMaxRetries)
+		t.Errorf("CLI help missing %q (searxng.DefaultRetryDelay = %v)",
+			wantSubstr, searxng.DefaultRetryDelay)
 	}
 
-	if searxng.DefaultMaxRetries != 5 && strings.Contains(output, "[default: 5]") {
-		t.Errorf("CLI help shows hardcoded \"[default: 5]\" but searxng.DefaultMaxRetries = %d",
-			searxng.DefaultMaxRetries)
+	// Sanity check: a stale hardcoded "1s" should not appear unless the
+	// constant actually equals 1s. This catches drift in the opposite
+	// direction (hardcoded literal present alongside the derived form).
+	if searxng.DefaultRetryDelay.String() != "1s" && strings.Contains(output, "[default: 1s]") {
+		t.Errorf("CLI help shows hardcoded \"[default: 1s]\" but searxng.DefaultRetryDelay = %v",
+			searxng.DefaultRetryDelay)
+	}
+}
+
+// TestCLIHelpMaxRetryDelayDefaultDerivesFromConstant guards issue #24: the CLI
+// help text for --max-retry-delay must show searxng.DefaultMaxRetryDelay,
+// not a hardcoded literal.
+//
+// Not t.Parallel(): see TestCLIHelpTimeoutDefaultDerivesFromConstant.
+func TestCLIHelpMaxRetryDelayDefaultDerivesFromConstant(t *testing.T) {
+	output := captureStdout(t, func() {
+		printCLIHelp()
+	})
+
+	wantSubstr := "[default: " + searxng.DefaultMaxRetryDelay.String() + "]"
+	if !strings.Contains(output, wantSubstr) {
+		t.Errorf("CLI help missing %q (searxng.DefaultMaxRetryDelay = %v)",
+			wantSubstr, searxng.DefaultMaxRetryDelay)
+	}
+
+	if searxng.DefaultMaxRetryDelay.String() != "30s" && strings.Contains(output, "[default: 30s]") {
+		t.Errorf("CLI help shows hardcoded \"[default: 30s]\" but searxng.DefaultMaxRetryDelay = %v",
+			searxng.DefaultMaxRetryDelay)
 	}
 }
 
@@ -83,9 +108,14 @@ func TestCLIHelpNoStaleDefaultLiterals(t *testing.T) {
 		t.Errorf("CLI help contains stale \"[default: 8s]\" marker")
 	}
 
-	if searxng.DefaultMaxRetries != 5 &&
-		strings.Contains(output, "[default: 5]") {
-		t.Errorf("CLI help contains stale \"[default: 5]\" marker")
+	if searxng.DefaultRetryDelay.String() != "1s" &&
+		strings.Contains(output, "[default: 1s]") {
+		t.Errorf("CLI help contains stale \"[default: 1s]\" marker")
+	}
+
+	if searxng.DefaultMaxRetryDelay.String() != "30s" &&
+		strings.Contains(output, "[default: 30s]") {
+		t.Errorf("CLI help contains stale \"[default: 30s]\" marker")
 	}
 }
 

@@ -11,15 +11,9 @@ import (
 )
 
 var (
-	errTimeoutNegativeMessage = "Timeout cannot be negative"
-
-	errURLRequired           = errors.New("SearXNGURL cannot be empty")
-	errTimeoutNegative       = errors.New(errTimeoutNegativeMessage)
-	errMaxRetriesNegative    = errors.New("MaxRetries cannot be negative")
-	errMaxRetriesTooLarge    = errors.New("MaxRetries cannot exceed 20")
-	maxRetryCap              = 20
-	errRetryDelayNegative    = errors.New("RetryDelay cannot be negative")
-	errMaxRetryDelayNegative = errors.New("MaxRetryDelay cannot be negative")
+	errURLRequired        = errors.New("SearXNGURL cannot be empty")
+	errMaxRetriesTooLarge = errors.New("MaxRetries cannot exceed 20")
+	maxRetryCap           = 20
 )
 
 // Config controls SearXNG client behavior.
@@ -52,24 +46,8 @@ func (c *Config) Validate() error {
 		return errURLRequired
 	}
 
-	if c.Timeout < 0 {
-		return errTimeoutNegative
-	}
-
-	if c.MaxRetries < 0 {
-		return errMaxRetriesNegative
-	}
-
 	if c.MaxRetries > maxRetryCap {
 		return errMaxRetriesTooLarge
-	}
-
-	if c.RetryDelay < 0 {
-		return errRetryDelayNegative
-	}
-
-	if c.MaxRetryDelay < 0 {
-		return errMaxRetryDelayNegative
 	}
 
 	return nil

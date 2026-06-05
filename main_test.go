@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -545,11 +544,14 @@ func TestGetConfig(t *testing.T) {
 	t.Run("cli flags override env", func(t *testing.T) {
 		t.Setenv("SEARXNG_TIMEOUT", "30s")
 		t.Setenv("SEARXNG_MAX_RETRIES", "9")
+		t.Setenv("SEARXNG_RETRY_DELAY", "5s")
+		t.Setenv("SEARXNG_MAX_RETRY_DELAY", "60s")
 
 		_, flags, _, err := parseArgs([]string{
 			"--searxng-url", "https://flag.example.com",
 			"--timeout", "1500ms",
-			"--max-retries", "4",
+			"--retry-delay", "2s",
+			"--max-retry-delay", "45s",
 			"test query",
 		})
 		if err != nil {
@@ -565,14 +567,24 @@ func TestGetConfig(t *testing.T) {
 			t.Fatalf("Timeout = %v, want 1500ms", cfg.Timeout)
 		}
 
-		if cfg.MaxRetries != 4 {
-			t.Fatalf("MaxRetries = %d, want 4", cfg.MaxRetries)
+		if cfg.MaxRetries != 9 {
+			t.Fatalf("MaxRetries = %d, want 9 (from env)", cfg.MaxRetries)
+		}
+
+		if cfg.RetryDelay != 2*time.Second {
+			t.Fatalf("RetryDelay = %v, want 2s", cfg.RetryDelay)
+		}
+
+		if cfg.MaxRetryDelay != 45*time.Second {
+			t.Fatalf("MaxRetryDelay = %v, want 45s", cfg.MaxRetryDelay)
 		}
 	})
 
 	t.Run("invalid env values fall back to defaults", func(t *testing.T) {
 		t.Setenv("SEARXNG_TIMEOUT", "not-a-duration")
 		t.Setenv("SEARXNG_MAX_RETRIES", "-1")
+		t.Setenv("SEARXNG_RETRY_DELAY", "not-a-duration")
+		t.Setenv("SEARXNG_MAX_RETRY_DELAY", "not-a-duration")
 		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "true")
 
 		cfg, err := getConfig(CLIFlags{})
@@ -588,17 +600,25 @@ func TestGetConfig(t *testing.T) {
 			t.Fatalf("MaxRetries = %d, want default %d", cfg.MaxRetries, searxng.DefaultMaxRetries)
 		}
 
+		if cfg.RetryDelay != searxng.DefaultRetryDelay {
+			t.Fatalf("RetryDelay = %v, want default %v", cfg.RetryDelay, searxng.DefaultRetryDelay)
+		}
+
+		if cfg.MaxRetryDelay != searxng.DefaultMaxRetryDelay {
+			t.Fatalf("MaxRetryDelay = %v, want default %v", cfg.MaxRetryDelay, searxng.DefaultMaxRetryDelay)
+		}
+
 		if cfg.AllowGETFallback {
 			t.Fatal("AllowGETFallback = true, want false for invalid env value")
 		}
 	})
 
-	t.Run("max retries zero flag disables retries", func(t *testing.T) {
-		t.Setenv("SEARXNG_MAX_RETRIES", "7")
+	t.Run("retry delay zero flag overrides env", func(t *testing.T) {
+		t.Setenv("SEARXNG_RETRY_DELAY", "5s")
 
 		_, flags, _, err := parseArgs([]string{
 			"--searxng-url", "https://flag.example.com",
-			"--max-retries", "0",
+			"--retry-delay", "0",
 			"test query",
 		})
 		if err != nil {
@@ -610,8 +630,30 @@ func TestGetConfig(t *testing.T) {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
 
-		if cfg.MaxRetries != 0 {
-			t.Fatalf("MaxRetries = %d, want 0", cfg.MaxRetries)
+		if cfg.RetryDelay != 0 {
+			t.Fatalf("RetryDelay = %v, want 0", cfg.RetryDelay)
+		}
+	})
+
+	t.Run("max retry delay zero flag overrides env", func(t *testing.T) {
+		t.Setenv("SEARXNG_MAX_RETRY_DELAY", "60s")
+
+		_, flags, _, err := parseArgs([]string{
+			"--searxng-url", "https://flag.example.com",
+			"--max-retry-delay", "0",
+			"test query",
+		})
+		if err != nil {
+			t.Fatalf("parseArgs() error = %v, want nil", err)
+		}
+
+		cfg, err := getConfig(flags)
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
+
+		if cfg.MaxRetryDelay != 0 {
+			t.Fatalf("MaxRetryDelay = %v, want 0", cfg.MaxRetryDelay)
 		}
 	})
 
@@ -654,7 +696,7 @@ func TestGetConfig(t *testing.T) {
 // TestRegisterFlagsDefaultPinning guards against the bug reported in
 // xlionjuan/searxng-mcp-go issue: the Go flag package reports the literal
 // flag default (flag.Lookup(...).DefValue), not the effective default. If
-// the flag default diverges from searxng.DefaultTimeout / DefaultMaxRetries,
+// the flag default diverges from searxng.DefaultTimeout / DefaultRetryDelay / DefaultMaxRetryDelay,
 // programmatic introspection of the FlagSet contradicts the help text and
 // any consumer relying on DefValue will see a stale value.
 func TestRegisterFlagsDefaultPinning(t *testing.T) {
@@ -671,13 +713,22 @@ func TestRegisterFlagsDefaultPinning(t *testing.T) {
 		t.Errorf("timeout DefValue = %q, want %q (effective default)", got, want)
 	}
 
-	maxRetriesFlag := fs.Lookup("max-retries")
-	if maxRetriesFlag == nil {
-		t.Fatal("max-retries flag not registered")
+	retryDelayFlag := fs.Lookup("retry-delay")
+	if retryDelayFlag == nil {
+		t.Fatal("retry-delay flag not registered")
 	}
 
-	if got, want := maxRetriesFlag.DefValue, strconv.Itoa(searxng.DefaultMaxRetries); got != want {
-		t.Errorf("max-retries DefValue = %q, want %q (effective default)", got, want)
+	if got, want := retryDelayFlag.DefValue, searxng.DefaultRetryDelay.String(); got != want {
+		t.Errorf("retry-delay DefValue = %q, want %q (effective default)", got, want)
+	}
+
+	maxRetryDelayFlag := fs.Lookup("max-retry-delay")
+	if maxRetryDelayFlag == nil {
+		t.Fatal("max-retry-delay flag not registered")
+	}
+
+	if got, want := maxRetryDelayFlag.DefValue, searxng.DefaultMaxRetryDelay.String(); got != want {
+		t.Errorf("max-retry-delay DefValue = %q, want %q (effective default)", got, want)
 	}
 }
 

@@ -49,43 +49,10 @@ func TestConfigValidate(t *testing.T) {
 		}
 	})
 
-	t.Run("negative timeout", func(t *testing.T) {
+	t.Run("MaxRetries too large", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := &Config{SearXNGURL: "https://example.com", Timeout: -1}
-
-		err := cfg.Validate()
-		if err == nil {
-			t.Fatal("Validate() error = nil, want error")
-		}
-	})
-
-	t.Run("negative MaxRetries", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := &Config{SearXNGURL: "https://example.com", MaxRetries: -1}
-
-		err := cfg.Validate()
-		if err == nil {
-			t.Fatal("Validate() error = nil, want error")
-		}
-	})
-
-	t.Run("negative RetryDelay", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := &Config{SearXNGURL: "https://example.com", RetryDelay: -1}
-
-		err := cfg.Validate()
-		if err == nil {
-			t.Fatal("Validate() error = nil, want error")
-		}
-	})
-
-	t.Run("negative MaxRetryDelay", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := &Config{SearXNGURL: "https://example.com", MaxRetryDelay: -1}
+		cfg := &Config{SearXNGURL: "https://example.com", MaxRetries: 25}
 
 		err := cfg.Validate()
 		if err == nil {

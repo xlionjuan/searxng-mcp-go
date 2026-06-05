@@ -38,33 +38,36 @@ const (
 
 // CLIFlags holds parsed CLI flag values.
 type CLIFlags struct {
-	Query         string
-	JSON          bool
-	Help          bool
-	Version       bool
-	SearXNGURL    string
-	Language      string
-	SafeSearch    int
-	TimeRange     string
-	Categories    string
-	Engines       string
-	Pageno        *int
-	Limit         *int
-	Debug         bool
-	Timeout       time.Duration
-	TimeoutSet    bool
-	MaxRetries    int
-	MaxRetriesSet bool
+	Query            string
+	JSON             bool
+	Help             bool
+	Version          bool
+	SearXNGURL       string
+	Language         string
+	SafeSearch       int
+	TimeRange        string
+	Categories       string
+	Engines          string
+	Pageno           *int
+	Limit            *int
+	Debug            bool
+	Timeout          time.Duration
+	TimeoutSet       bool
+	RetryDelay       time.Duration
+	RetryDelaySet    bool
+	MaxRetryDelay    time.Duration
+	MaxRetryDelaySet bool
 }
 
 type registeredFlags struct {
-	jsonOut    *bool
-	help       *bool
-	version    *bool
-	searxngURL *string
-	debug      *bool
-	timeout    *time.Duration
-	maxRetries *int
+	jsonOut       *bool
+	help          *bool
+	version       *bool
+	searxngURL    *string
+	debug         *bool
+	timeout       *time.Duration
+	retryDelay    *time.Duration
+	maxRetryDelay *time.Duration
 	// Search parameters are registered generically from the shared
 	// searxng.SearchParams table and stored in searchFlags. Each value is
 	// either *string or *int matching the ParamDef.GoType.
@@ -92,10 +95,11 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 	// "omitted = backend default/page 1" contract). Limit always has an effective
 	// default so response truncation is consistent with the documented CLI default.
 	var (
-		pagenoPtr     *int
-		limitPtr      *int
-		timeoutSet    bool
-		maxRetriesSet bool
+		pagenoPtr        *int
+		limitPtr         *int
+		timeoutSet       bool
+		retryDelaySet    bool
+		maxRetryDelaySet bool
 	)
 
 	fs.Visit(func(f *flag.Flag) {
@@ -115,8 +119,12 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 			timeoutSet = true
 		}
 
-		if f.Name == "max-retries" {
-			maxRetriesSet = true
+		if f.Name == "retry-delay" {
+			retryDelaySet = true
+		}
+
+		if f.Name == "max-retry-delay" {
+			maxRetryDelaySet = true
 		}
 	})
 
@@ -156,23 +164,25 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 	}
 
 	flags := CLIFlags{
-		Query:         *queryPtr,
-		JSON:          *registered.jsonOut,
-		Help:          *registered.help,
-		Version:       *registered.version,
-		SearXNGURL:    *registered.searxngURL,
-		Language:      *languagePtr,
-		SafeSearch:    *safeSearchPtr,
-		TimeRange:     *timeRangePtr,
-		Categories:    *categoriesPtr,
-		Engines:       *enginesPtr,
-		Pageno:        pagenoPtr,
-		Limit:         limitPtr,
-		Debug:         *registered.debug,
-		Timeout:       *registered.timeout,
-		TimeoutSet:    timeoutSet,
-		MaxRetries:    *registered.maxRetries,
-		MaxRetriesSet: maxRetriesSet,
+		Query:            *queryPtr,
+		JSON:             *registered.jsonOut,
+		Help:             *registered.help,
+		Version:          *registered.version,
+		SearXNGURL:       *registered.searxngURL,
+		Language:         *languagePtr,
+		SafeSearch:       *safeSearchPtr,
+		TimeRange:        *timeRangePtr,
+		Categories:       *categoriesPtr,
+		Engines:          *enginesPtr,
+		Pageno:           pagenoPtr,
+		Limit:            limitPtr,
+		Debug:            *registered.debug,
+		Timeout:          *registered.timeout,
+		TimeoutSet:       timeoutSet,
+		RetryDelay:       *registered.retryDelay,
+		RetryDelaySet:    retryDelaySet,
+		MaxRetryDelay:    *registered.maxRetryDelay,
+		MaxRetryDelaySet: maxRetryDelaySet,
 	}
 
 	isCLIMode := len(args) > 0 || flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
@@ -189,17 +199,22 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 		jsonOut:    fs.Bool("json", false, "Output results as JSON (CLI mode)"),
 		help:       fs.Bool("help", false, "Show this help message"),
 		version:    fs.Bool("version", false, "Show version information"),
-		searxngURL: fs.String("searxng-url", "", "SearXNG URL (can also be set via SEARXNG_URL env var)"),
+		searxngURL: fs.String("searxng-url", "", "SearXNG instance URL (can also be set via SEARXNG_URL env var)"),
 		debug:      fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)"),
 		timeout: fs.Duration(
 			"timeout",
 			searxng.DefaultTimeout,
 			"HTTP client timeout (e.g., 8s); overrides SEARXNG_TIMEOUT env var",
 		),
-		maxRetries: fs.Int(
-			"max-retries",
-			searxng.DefaultMaxRetries,
-			"Max retries after initial search attempt; overrides SEARXNG_MAX_RETRIES env var",
+		retryDelay: fs.Duration(
+			"retry-delay",
+			searxng.DefaultRetryDelay,
+			"Base delay for exponential backoff (e.g., 1s); overrides SEARXNG_RETRY_DELAY env var",
+		),
+		maxRetryDelay: fs.Duration(
+			"max-retry-delay",
+			searxng.DefaultMaxRetryDelay,
+			"Maximum delay for exponential backoff (e.g., 30s); overrides SEARXNG_MAX_RETRY_DELAY env var",
 		),
 		searchFlags: make(map[string]any),
 	}
@@ -347,6 +362,26 @@ func getConfig(flags CLIFlags) (*searxng.Config, error) {
 		}
 	}
 
+	// Apply SEARXNG_RETRY_DELAY env var (parsed as Go duration, e.g. "1s")
+	if retryDelayStr := os.Getenv("SEARXNG_RETRY_DELAY"); retryDelayStr != "" {
+		d, err := time.ParseDuration(retryDelayStr)
+		if err != nil {
+			slog.Warn("invalid SEARXNG_RETRY_DELAY, ignoring", "value", retryDelayStr, "error", err)
+		} else {
+			cfg.RetryDelay = d
+		}
+	}
+
+	// Apply SEARXNG_MAX_RETRY_DELAY env var (parsed as Go duration, e.g. "30s")
+	if maxRetryDelayStr := os.Getenv("SEARXNG_MAX_RETRY_DELAY"); maxRetryDelayStr != "" {
+		d, err := time.ParseDuration(maxRetryDelayStr)
+		if err != nil {
+			slog.Warn("invalid SEARXNG_MAX_RETRY_DELAY, ignoring", "value", maxRetryDelayStr, "error", err)
+		} else {
+			cfg.MaxRetryDelay = d
+		}
+	}
+
 	// Apply SEARXNG_ALLOW_GET_FALLBACK env var. This is intentionally
 	// opt-in because GET puts search parameters in the request URL.
 	if allowGETFallback := os.Getenv("SEARXNG_ALLOW_GET_FALLBACK"); allowGETFallback != "" {
@@ -365,8 +400,12 @@ func getConfig(flags CLIFlags) (*searxng.Config, error) {
 		cfg.Timeout = flags.Timeout
 	}
 
-	if flags.MaxRetriesSet {
-		cfg.MaxRetries = flags.MaxRetries
+	if flags.RetryDelaySet {
+		cfg.RetryDelay = flags.RetryDelay
+	}
+
+	if flags.MaxRetryDelaySet {
+		cfg.MaxRetryDelay = flags.MaxRetryDelay
 	}
 
 	// Validate the constructed config for early error detection.
