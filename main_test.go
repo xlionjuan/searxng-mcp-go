@@ -545,11 +545,13 @@ func TestGetConfig(t *testing.T) {
 	t.Run("cli flags override env", func(t *testing.T) {
 		t.Setenv("SEARXNG_TIMEOUT", "30s")
 		t.Setenv("SEARXNG_MAX_RETRIES", "9")
+		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "0")
 
 		_, flags, _, err := parseArgs([]string{
 			"--searxng-url", "https://flag.example.com",
 			"--timeout", "1500ms",
 			"--max-retries", "4",
+			"--allow-get-fallback",
 			"test query",
 		})
 		if err != nil {
@@ -567,6 +569,10 @@ func TestGetConfig(t *testing.T) {
 
 		if cfg.MaxRetries != 4 {
 			t.Fatalf("MaxRetries = %d, want 4", cfg.MaxRetries)
+		}
+
+		if !cfg.AllowGETFallback {
+			t.Fatal("AllowGETFallback = false, want true (CLI flag overrides env var)")
 		}
 	})
 

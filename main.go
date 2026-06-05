@@ -38,33 +38,36 @@ const (
 
 // CLIFlags holds parsed CLI flag values.
 type CLIFlags struct {
-	Query         string
-	JSON          bool
-	Help          bool
-	Version       bool
-	SearXNGURL    string
-	Language      string
-	SafeSearch    int
-	TimeRange     string
-	Categories    string
-	Engines       string
-	Pageno        *int
-	Limit         *int
-	Debug         bool
-	Timeout       time.Duration
-	TimeoutSet    bool
-	MaxRetries    int
-	MaxRetriesSet bool
+	Query               string
+	JSON                bool
+	Help                bool
+	Version             bool
+	SearXNGURL          string
+	Language            string
+	SafeSearch          int
+	TimeRange           string
+	Categories          string
+	Engines             string
+	Pageno              *int
+	Limit               *int
+	Debug               bool
+	Timeout             time.Duration
+	TimeoutSet          bool
+	MaxRetries          int
+	MaxRetriesSet       bool
+	AllowGETFallback    bool
+	AllowGETFallbackSet bool
 }
 
 type registeredFlags struct {
-	jsonOut    *bool
-	help       *bool
-	version    *bool
-	searxngURL *string
-	debug      *bool
-	timeout    *time.Duration
-	maxRetries *int
+	jsonOut          *bool
+	help             *bool
+	version          *bool
+	searxngURL       *string
+	debug            *bool
+	timeout          *time.Duration
+	maxRetries       *int
+	allowGetFallback *bool
 	// Search parameters are registered generically from the shared
 	// searxng.SearchParams table and stored in searchFlags. Each value is
 	// either *string or *int matching the ParamDef.GoType.
@@ -92,10 +95,11 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 	// "omitted = backend default/page 1" contract). Limit always has an effective
 	// default so response truncation is consistent with the documented CLI default.
 	var (
-		pagenoPtr     *int
-		limitPtr      *int
-		timeoutSet    bool
-		maxRetriesSet bool
+		pagenoPtr           *int
+		limitPtr            *int
+		timeoutSet          bool
+		maxRetriesSet       bool
+		allowGetFallbackSet bool
 	)
 
 	fs.Visit(func(f *flag.Flag) {
@@ -117,6 +121,10 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 
 		if f.Name == "max-retries" {
 			maxRetriesSet = true
+		}
+
+		if f.Name == "allow-get-fallback" {
+			allowGetFallbackSet = true
 		}
 	})
 
@@ -156,23 +164,25 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 	}
 
 	flags := CLIFlags{
-		Query:         *queryPtr,
-		JSON:          *registered.jsonOut,
-		Help:          *registered.help,
-		Version:       *registered.version,
-		SearXNGURL:    *registered.searxngURL,
-		Language:      *languagePtr,
-		SafeSearch:    *safeSearchPtr,
-		TimeRange:     *timeRangePtr,
-		Categories:    *categoriesPtr,
-		Engines:       *enginesPtr,
-		Pageno:        pagenoPtr,
-		Limit:         limitPtr,
-		Debug:         *registered.debug,
-		Timeout:       *registered.timeout,
-		TimeoutSet:    timeoutSet,
-		MaxRetries:    *registered.maxRetries,
-		MaxRetriesSet: maxRetriesSet,
+		Query:               *queryPtr,
+		JSON:                *registered.jsonOut,
+		Help:                *registered.help,
+		Version:             *registered.version,
+		SearXNGURL:          *registered.searxngURL,
+		Language:            *languagePtr,
+		SafeSearch:          *safeSearchPtr,
+		TimeRange:           *timeRangePtr,
+		Categories:          *categoriesPtr,
+		Engines:             *enginesPtr,
+		Pageno:              pagenoPtr,
+		Limit:               limitPtr,
+		Debug:               *registered.debug,
+		Timeout:             *registered.timeout,
+		TimeoutSet:          timeoutSet,
+		MaxRetries:          *registered.maxRetries,
+		MaxRetriesSet:       maxRetriesSet,
+		AllowGETFallback:    *registered.allowGetFallback,
+		AllowGETFallbackSet: allowGetFallbackSet,
 	}
 
 	isCLIMode := len(args) > 0 || flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
@@ -200,6 +210,11 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 			"max-retries",
 			searxng.DefaultMaxRetries,
 			"Max retries after initial search attempt; overrides SEARXNG_MAX_RETRIES env var",
+		),
+		allowGetFallback: fs.Bool(
+			"allow-get-fallback",
+			false,
+			"Enable POST→GET fallback for 405/501 (CLI mode); overrides SEARXNG_ALLOW_GET_FALLBACK env var",
 		),
 		searchFlags: make(map[string]any),
 	}
@@ -369,6 +384,10 @@ func getConfig(flags CLIFlags) (*searxng.Config, error) {
 
 	if flags.MaxRetriesSet {
 		cfg.MaxRetries = flags.MaxRetries
+	}
+
+	if flags.AllowGETFallbackSet {
+		cfg.AllowGETFallback = flags.AllowGETFallback
 	}
 
 	// Validate the constructed config for early error detection.

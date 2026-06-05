@@ -65,7 +65,8 @@ Set `SEARXNG_ALLOW_GET_FALLBACK=1` only when you need compatibility with a
 deployment that rejects POST and you accept the risk: GET sends search
 parameters in the URL, so queries may be recorded by SearXNG, reverse proxies,
 CDNs, or access logs. When enabled, the server logs a warning on startup and
-again whenever the fallback is used.
+again whenever the fallback is used. In CLI mode, `--allow-get-fallback`
+overrides the environment variable.
 
 ### Invalid Environment Variable Values
 
@@ -158,6 +159,9 @@ searxng-mcp-go "query" --debug
 
 # HTTP timeout and retry tuning via flags
 searxng-mcp-go "query" --timeout=8s --max-retries=5
+
+# GET fallback opt-in via flag
+searxng-mcp-go "query" --allow-get-fallback
 ```
 
 ---
