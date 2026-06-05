@@ -53,10 +53,9 @@ cover:
 cover-text:
     go tool cover -func={{ coverfile }}
 
-# Format code (gofumpt + goimports)
+# Format code (matches CI: golangci-lint fmt with gci, gofmt, gofumpt, goimports)
 fmt:
-    gofumpt -w .
-    goimports -w .
+    golangci-lint fmt
 
 # Run go vet
 vet:

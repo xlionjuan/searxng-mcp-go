@@ -46,9 +46,4 @@ jobs:
       - name: Cleanup
         if: always()
         working-directory: searxng-server-test
-        run: |
-          if [ -f .bg-pid ]; then
-            kill "$(cat .bg-pid)" 2>/dev/null || true
-            rm -f .bg-pid
-            echo "SearXNG stopped"
-          fi
+        run: just test-server-stop
