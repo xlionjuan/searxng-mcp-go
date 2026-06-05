@@ -16,6 +16,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"searxng-mcp-go/internal/searxng"
+	"searxng-mcp-go/testhelpers"
 )
 
 func TestMCPStdioE2E(t *testing.T) {
@@ -23,62 +24,38 @@ func TestMCPStdioE2E(t *testing.T) {
 	if searxngURL == "" {
 		t.Skip("SEARXNG_URL not set")
 	}
-	var warnings []string
+
+	warnings := testhelpers.NewWarningSummary(t, "")
 
 	ctx, cancel := context.WithTimeout(t.Context(), 180*time.Second)
 	defer cancel()
 
 	binaryPath := os.Getenv("E2E_MCP_BINARY")
-	if binaryPath == "" {
-		binaryPath = buildE2EMCPBinary(ctx, t)
+
+	cfg := testhelpers.E2EMCPConfig{
+		BinaryPath:     binaryPath,
+		SearXNGURL:     searxngURL,
+		SessionTimeout: 180 * time.Second,
+		ClientName:     "searxng-mcp-go-e2e-test",
+		Version:        version,
 	}
-	t.Logf("using MCP binary: %s", binaryPath)
+	sess, cleanup := testhelpers.ConnectMCPSession(ctx, t, cfg)
+	defer cleanup()
 
-	var stderr bytes.Buffer
+	session := sess.Session
+	stderr := sess.Stderr
 
-	cmd := exec.CommandContext(ctx, binaryPath)
-	cmd.Env = e2eMCPEnv(searxngURL)
-	cmd.Stderr = &stderr
-
-	var session *mcp.ClientSession
-	t.Cleanup(func() {
-		if session != nil {
-			if closeErr := session.Close(); closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
-				t.Logf("close MCP session: %v\nstderr:\n%s", closeErr, stderr.String())
-			}
-		}
-
-		if cmd.Process != nil && cmd.ProcessState == nil {
-			_ = cmd.Process.Kill()
-			_, _ = cmd.Process.Wait()
-		}
-	})
-
-	client := mcp.NewClient(&mcp.Implementation{
-		Name:    "searxng-mcp-go-e2e-test",
-		Version: version,
-	}, nil)
-
-	var err error
-	session, err = client.Connect(ctx, &mcp.CommandTransport{Command: cmd}, nil)
-	if err != nil {
-		t.Fatalf("connect MCP stdio session failed: %v\nstderr:\n%s", err, stderr.String())
-	}
-	t.Log("MCP stdio session connected")
-
-	searchTool := findSearchTool(ctx, t, session, &stderr)
+	searchTool := findSearchTool(ctx, t, session, stderr)
 	t.Logf("found tool: %s", searchTool.Name)
 
 	t.Run("basic search", func(t *testing.T) {
 		response := requireSearchResponse(ctx, t, session, map[string]any{
 			"query": "framework computer inc",
 			"limit": 3,
-		}, &stderr, "basic search")
+		}, stderr, "basic search")
 
 		if len(response.Results) == 0 {
-			warning := "basic search results length = 0"
-			warnings = append(warnings, warning)
-			t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
+			warnings.Add("basic search results length = 0")
 		}
 		if strings.TrimSpace(response.Query) == "" {
 			t.Fatalf("basic search query is empty\nresponse: %#v\nstderr:\n%s", response, stderr.String())
@@ -89,7 +66,7 @@ func TestMCPStdioE2E(t *testing.T) {
 		response := requireSearchResponse(ctx, t, session, map[string]any{
 			"query": "sha512 hello",
 			"limit": 1,
-		}, &stderr, "answer response")
+		}, stderr, "answer response")
 
 		if len(response.Answers) == 0 {
 			t.Fatalf("answer response answers length = 0\nresponse: %#v\nstderr:\n%s", response, stderr.String())
@@ -100,7 +77,7 @@ func TestMCPStdioE2E(t *testing.T) {
 		response := requireSearchResponse(ctx, t, session, map[string]any{
 			"query": "apple inc",
 			"limit": 3,
-		}, &stderr, "infobox response")
+		}, stderr, "infobox response")
 
 		if len(response.Infoboxes) == 0 {
 			t.Fatalf("infobox response infoboxes length = 0\nresponse: %#v\nstderr:\n%s", response, stderr.String())
@@ -532,20 +509,21 @@ func requireSearchToolSchema(t *testing.T, tool *mcp.Tool, stderr *bytes.Buffer)
 
 	limit := requireProperty(t, props, "limit", stderr)
 	requirePropertyType(t, limit, "integer", stderr)
-	requireNumber(t, limit, "minimum", 1, stderr)
-	requireNumber(t, limit, "maximum", 20, stderr)
+	requireNumber(t, limit, "minimum", searxng.MinResultLimit, stderr)
+	requireNumber(t, limit, "maximum", searxng.MaxResultLimit, stderr)
 
 	safesearch := requireProperty(t, props, "safesearch", stderr)
 	requirePropertyType(t, safesearch, "integer", stderr)
-	requireNumber(t, safesearch, "minimum", 0, stderr)
-	requireNumber(t, safesearch, "maximum", 2, stderr)
+	requireNumber(t, safesearch, "minimum", searxng.MinSafeSearch, stderr)
+	requireNumber(t, safesearch, "maximum", searxng.MaxSafeSearch, stderr)
 
 	pageno := requireProperty(t, props, "pageno", stderr)
 	requirePropertyUnionType(t, pageno, []string{"null", "integer"}, stderr)
-	requireNumber(t, pageno, "minimum", 1, stderr)
+	requireNumber(t, pageno, "minimum", searxng.MinPageno, stderr)
 
 	timeRange := requireProperty(t, props, "time_range", stderr)
-	requireStringEnum(t, timeRange, "enum", []string{"", "day", "month", "year"}, stderr)
+	wantTimeRangeEnum := append([]string{""}, searxng.ValidTimeRanges()...)
+	requireStringEnum(t, timeRange, "enum", wantTimeRangeEnum, stderr)
 }
 
 func requireSchemaMap(t *testing.T, schema any, stderr *bytes.Buffer) map[string]any {

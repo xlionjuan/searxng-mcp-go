@@ -26,22 +26,15 @@ func readSampleResponse(tb testing.TB) []byte {
 
 // makeSearchResults generates n SearchResult entries with API dates for benchmarking.
 func makeSearchResults(n int) []searxng.SearchResult {
+	fixtures := searxng.DefaultBenchmarkFixtures()
 	results := make([]searxng.SearchResult, n)
-	contents := []string{
-		"Posted 3 hours ago by community",
-		"Published yesterday by maintainers",
-		"2 days ago we added new features",
-		"5 days ago this was released",
-		"Random content without any date information",
-		"Last week there was an announcement",
-	}
+	date := "2024-01-15"
 
 	for i := range n {
-		date := "2024-01-15"
 		results[i] = searxng.SearchResult{
 			Title:         fmt.Sprintf("Search Result Title %d", i),
 			URL:           fmt.Sprintf("https://example.com/result/%d", i),
-			Content:       fmt.Sprintf("This is the content for result number %d. %s", i, contents[i%len(contents)]),
+			Content:       fmt.Sprintf("This is the content for result number %d. %s", i, fixtures.Contents[i%len(fixtures.Contents)]),
 			Engine:        []string{"google", "bing", "duckduckgo"}[i%3],
 			PublishedDate: &date,
 		}
@@ -52,32 +45,15 @@ func makeSearchResults(n int) []searxng.SearchResult {
 
 // makeLargeSearchResponse creates a SearchResponse with n results for benchmarking.
 func makeLargeSearchResponse(n int) *searxng.SearchResponse {
-	answers := []searxng.Answer{
-		{Answer: "42", Engine: "calculator"},
-		{Answer: "192.168.1.1", Engine: "ip_plugin"},
-	}
-	infoboxes := []searxng.Infobox{
-		{
-			Infobox: "Test Topic",
-			Content: strings.Repeat("Go is a programming language. ", 20),
-			Attributes: []searxng.InfoboxAttribute{
-				{Label: "Type", Value: "Language"},
-				{Label: "Year", Value: "2009"},
-			},
-			URLs: []searxng.InfoboxURL{
-				{Title: "Official", URL: "https://go.dev"},
-			},
-		},
-	}
-	suggestions := []string{"golang tutorial", "golang concurrency", "golang vs rust"}
+	fixtures := searxng.DefaultBenchmarkFixtures()
 
 	return &searxng.SearchResponse{
 		Query:           "golang programming",
 		NumberOfResults: n,
-		Answers:         answers,
-		Infoboxes:       infoboxes,
+		Answers:         fixtures.Answers,
+		Infoboxes:       fixtures.Infoboxes,
 		Results:         makeSearchResults(n),
-		Suggestions:     suggestions,
+		Suggestions:     fixtures.Suggestions,
 	}
 }
 
