@@ -178,6 +178,7 @@ Typed-answer example (query `translate hello to french`):
 ```json
 {
   "query": "translate hello to french",
+  "warning": "Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.",
   "answers": [
     {
       "answer": "bonjour",
@@ -204,6 +205,7 @@ Typed-weather-answer example (query `weather Berlin`):
 ```json
 {
   "query": "weather Berlin",
+  "warning": "Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.",
   "answers": [
     {
       "engine": "open-meteo",

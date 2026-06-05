@@ -1,4 +1,4 @@
-# ADR-009: Neutralize Terminal Control Sequences in CLI Text Output
+# ADR-010: Neutralize Terminal Control Sequences in CLI Text Output
 
 **Status:** Accepted
 **Date:** 2026-06-04

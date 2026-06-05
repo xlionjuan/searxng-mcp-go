@@ -331,7 +331,7 @@ type Answer struct {
 
 type SearchResponse struct {
     Query               string         `json:"query"`
-    Warning             string         `json:"warning,omitempty"`
+    Warning             string         `json:"warning"`
     Answers             []Answer       `json:"answers,omitempty"`
     NumberOfResults     int            `json:"number_of_results"`
     Infoboxes           []Infobox      `json:"infoboxes,omitempty"`
