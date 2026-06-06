@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 // ---------------------------------------------------------------------------
@@ -441,7 +442,7 @@ func TestDoSearchAttempt(t *testing.T) {
 			},
 			searchEndpoint: endpoint,
 			debug:          true,
-			maxRetries:     0,
+			retryStrategy:  newExponentialBackoffStrategy(0, time.Microsecond, time.Microsecond),
 		}
 
 		resp, bodyStr, err := s.doSearchAttempt(context.Background(), &SearchArgs{Query: "test"})

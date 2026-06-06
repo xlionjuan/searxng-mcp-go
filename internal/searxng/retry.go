@@ -23,6 +23,10 @@ type exponentialBackoffStrategy struct {
 	maxRetryDelay time.Duration
 }
 
+func (s *exponentialBackoffStrategy) MaxRetries() int {
+	return s.maxRetries
+}
+
 func newExponentialBackoffStrategy(maxRetries int, retryDelay, maxRetryDelay time.Duration) *exponentialBackoffStrategy {
 	return &exponentialBackoffStrategy{
 		maxRetries:    maxRetries,

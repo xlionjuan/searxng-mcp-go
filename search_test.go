@@ -25,13 +25,8 @@ func TestSearch_Success(t *testing.T) {
 		NumberOfResults: 2,
 		Query:           "test",
 	}
-	body := mustMarshalJSON(t, searchResp)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
-	}))
+	server := newJSONTestServer(t, searchResp)
 	defer server.Close()
 
 	cfg := &searxng.Config{
@@ -61,28 +56,26 @@ func TestSearch_Success(t *testing.T) {
 func TestSearch_PreservesUnresponsiveEngines(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(mustMarshalJSON(t, searxng.SearchResponse{
-			Query:           "test",
-			NumberOfResults: 1,
-			Results: []searxng.SearchResult{
-				{
-					Title:   "Result 1",
-					URL:     "https://example.com/1",
-					Content: "Content 1",
-					Engine:  "google",
-				},
+	searchResp := searxng.SearchResponse{
+		Query:           "test",
+		NumberOfResults: 1,
+		Results: []searxng.SearchResult{
+			{
+				Title:   "Result 1",
+				URL:     "https://example.com/1",
+				Content: "Content 1",
+				Engine:  "google",
 			},
-			Suggestions: []string{},
-			UnresponsiveEngines: [][]string{
-				{"brave", `Suspended:" too many "requests`},
-				{"startpage", `Suspended:" "CAPTCHA`},
-			},
-			Debug: true,
-		}))
-	}))
+		},
+		Suggestions: []string{},
+		UnresponsiveEngines: [][]string{
+			{"brave", `Suspended:" too many "requests`},
+			{"startpage", `Suspended:" "CAPTCHA`},
+		},
+		Debug: true,
+	}
+
+	server := newJSONTestServer(t, searchResp)
 	defer server.Close()
 
 	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}
@@ -359,13 +352,8 @@ func TestSearch_NumberOfResultsZeroWithResults(t *testing.T) {
 		NumberOfResults: 0, // API returns 0 but has results
 		Query:           "test",
 	}
-	body := mustMarshalJSON(t, searchResp)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
-	}))
+	server := newJSONTestServer(t, searchResp)
 	defer server.Close()
 
 	cfg := &searxng.Config{

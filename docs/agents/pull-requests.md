@@ -163,6 +163,39 @@ Common checks:
 E2E tests require a SearXNG test server and `SEARXNG_URL`; see
 `docs/agents/test-server.md` for setup details.
 
+## Reviewing Existing PRs
+
+When asked to review or follow up on a PR that the agent did not create or
+modify, do not re-run the local test suite by default. CI is the source of
+truth for the existing change.
+
+Start by checking CI status before doing any local work:
+
+- `gh pr view <number> --json statusCheckRollup,reviewDecision`
+- `gh pr checks <number>`
+- `gh run view <run-id> --log-failed` to read a failing job's log
+
+Default policy:
+
+- If CI is green on the latest commit, trust it. Do not re-run `go test ./...`,
+  `golangci-lint run ./...`, or any other verification locally — the
+  verification has already been done. Skipping the rerun is the correct
+  behavior, not a shortcut.
+- If CI is red or pending, prefer reading the CI log with `gh` over re-running
+  locally. Re-run locally only when the log is not enough to diagnose the
+  failure, the failure looks environment-specific, or the user explicitly
+  asks for a local reproduction.
+- Re-run local tests if the agent is about to make code changes on the PR,
+  because the new code needs verification before pushing. The "Verification"
+  section above covers that case.
+
+Record the CI evidence in the PR comment or body the agent posts — for example
+"CI: green on `abcdef` (test, lint)" or a short summary of the failing job
+plus a link to the run — so reviewers do not have to re-check CI themselves.
+
+This rule does not apply to PRs the agent is creating or updating with new
+commits; the "Verification" section above governs those.
+
 ## PR Title Policy
 
 PR titles are persistent repository records, not agent progress messages.

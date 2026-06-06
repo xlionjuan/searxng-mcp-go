@@ -1,0 +1,743 @@
+{
+  "query": "golang programming",
+  "results": [
+    {
+      "title": "Search Result Title 0",
+      "url": "https://example.com/result/0",
+      "content": "This is the content for result number 0. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 1",
+      "url": "https://example.com/result/1",
+      "content": "This is the content for result number 1. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 2",
+      "url": "https://example.com/result/2",
+      "content": "This is the content for result number 2. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 3",
+      "url": "https://example.com/result/3",
+      "content": "This is the content for result number 3. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 4",
+      "url": "https://example.com/result/4",
+      "content": "This is the content for result number 4. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 5",
+      "url": "https://example.com/result/5",
+      "content": "This is the content for result number 5. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 6",
+      "url": "https://example.com/result/6",
+      "content": "This is the content for result number 6. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 7",
+      "url": "https://example.com/result/7",
+      "content": "This is the content for result number 7. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 8",
+      "url": "https://example.com/result/8",
+      "content": "This is the content for result number 8. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 9",
+      "url": "https://example.com/result/9",
+      "content": "This is the content for result number 9. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 10",
+      "url": "https://example.com/result/10",
+      "content": "This is the content for result number 10. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 11",
+      "url": "https://example.com/result/11",
+      "content": "This is the content for result number 11. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 12",
+      "url": "https://example.com/result/12",
+      "content": "This is the content for result number 12. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 13",
+      "url": "https://example.com/result/13",
+      "content": "This is the content for result number 13. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 14",
+      "url": "https://example.com/result/14",
+      "content": "This is the content for result number 14. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 15",
+      "url": "https://example.com/result/15",
+      "content": "This is the content for result number 15. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 16",
+      "url": "https://example.com/result/16",
+      "content": "This is the content for result number 16. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 17",
+      "url": "https://example.com/result/17",
+      "content": "This is the content for result number 17. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 18",
+      "url": "https://example.com/result/18",
+      "content": "This is the content for result number 18. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 19",
+      "url": "https://example.com/result/19",
+      "content": "This is the content for result number 19. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 20",
+      "url": "https://example.com/result/20",
+      "content": "This is the content for result number 20. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 21",
+      "url": "https://example.com/result/21",
+      "content": "This is the content for result number 21. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 22",
+      "url": "https://example.com/result/22",
+      "content": "This is the content for result number 22. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 23",
+      "url": "https://example.com/result/23",
+      "content": "This is the content for result number 23. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 24",
+      "url": "https://example.com/result/24",
+      "content": "This is the content for result number 24. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 25",
+      "url": "https://example.com/result/25",
+      "content": "This is the content for result number 25. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 26",
+      "url": "https://example.com/result/26",
+      "content": "This is the content for result number 26. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 27",
+      "url": "https://example.com/result/27",
+      "content": "This is the content for result number 27. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 28",
+      "url": "https://example.com/result/28",
+      "content": "This is the content for result number 28. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 29",
+      "url": "https://example.com/result/29",
+      "content": "This is the content for result number 29. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 30",
+      "url": "https://example.com/result/30",
+      "content": "This is the content for result number 30. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 31",
+      "url": "https://example.com/result/31",
+      "content": "This is the content for result number 31. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 32",
+      "url": "https://example.com/result/32",
+      "content": "This is the content for result number 32. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 33",
+      "url": "https://example.com/result/33",
+      "content": "This is the content for result number 33. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 34",
+      "url": "https://example.com/result/34",
+      "content": "This is the content for result number 34. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 35",
+      "url": "https://example.com/result/35",
+      "content": "This is the content for result number 35. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 36",
+      "url": "https://example.com/result/36",
+      "content": "This is the content for result number 36. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 37",
+      "url": "https://example.com/result/37",
+      "content": "This is the content for result number 37. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 38",
+      "url": "https://example.com/result/38",
+      "content": "This is the content for result number 38. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 39",
+      "url": "https://example.com/result/39",
+      "content": "This is the content for result number 39. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 40",
+      "url": "https://example.com/result/40",
+      "content": "This is the content for result number 40. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 41",
+      "url": "https://example.com/result/41",
+      "content": "This is the content for result number 41. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 42",
+      "url": "https://example.com/result/42",
+      "content": "This is the content for result number 42. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 43",
+      "url": "https://example.com/result/43",
+      "content": "This is the content for result number 43. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 44",
+      "url": "https://example.com/result/44",
+      "content": "This is the content for result number 44. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 45",
+      "url": "https://example.com/result/45",
+      "content": "This is the content for result number 45. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 46",
+      "url": "https://example.com/result/46",
+      "content": "This is the content for result number 46. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 47",
+      "url": "https://example.com/result/47",
+      "content": "This is the content for result number 47. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 48",
+      "url": "https://example.com/result/48",
+      "content": "This is the content for result number 48. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 49",
+      "url": "https://example.com/result/49",
+      "content": "This is the content for result number 49. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 50",
+      "url": "https://example.com/result/50",
+      "content": "This is the content for result number 50. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 51",
+      "url": "https://example.com/result/51",
+      "content": "This is the content for result number 51. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 52",
+      "url": "https://example.com/result/52",
+      "content": "This is the content for result number 52. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 53",
+      "url": "https://example.com/result/53",
+      "content": "This is the content for result number 53. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 54",
+      "url": "https://example.com/result/54",
+      "content": "This is the content for result number 54. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 55",
+      "url": "https://example.com/result/55",
+      "content": "This is the content for result number 55. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 56",
+      "url": "https://example.com/result/56",
+      "content": "This is the content for result number 56. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 57",
+      "url": "https://example.com/result/57",
+      "content": "This is the content for result number 57. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 58",
+      "url": "https://example.com/result/58",
+      "content": "This is the content for result number 58. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 59",
+      "url": "https://example.com/result/59",
+      "content": "This is the content for result number 59. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 60",
+      "url": "https://example.com/result/60",
+      "content": "This is the content for result number 60. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 61",
+      "url": "https://example.com/result/61",
+      "content": "This is the content for result number 61. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 62",
+      "url": "https://example.com/result/62",
+      "content": "This is the content for result number 62. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 63",
+      "url": "https://example.com/result/63",
+      "content": "This is the content for result number 63. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 64",
+      "url": "https://example.com/result/64",
+      "content": "This is the content for result number 64. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 65",
+      "url": "https://example.com/result/65",
+      "content": "This is the content for result number 65. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 66",
+      "url": "https://example.com/result/66",
+      "content": "This is the content for result number 66. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 67",
+      "url": "https://example.com/result/67",
+      "content": "This is the content for result number 67. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 68",
+      "url": "https://example.com/result/68",
+      "content": "This is the content for result number 68. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 69",
+      "url": "https://example.com/result/69",
+      "content": "This is the content for result number 69. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 70",
+      "url": "https://example.com/result/70",
+      "content": "This is the content for result number 70. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 71",
+      "url": "https://example.com/result/71",
+      "content": "This is the content for result number 71. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 72",
+      "url": "https://example.com/result/72",
+      "content": "This is the content for result number 72. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 73",
+      "url": "https://example.com/result/73",
+      "content": "This is the content for result number 73. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 74",
+      "url": "https://example.com/result/74",
+      "content": "This is the content for result number 74. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 75",
+      "url": "https://example.com/result/75",
+      "content": "This is the content for result number 75. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 76",
+      "url": "https://example.com/result/76",
+      "content": "This is the content for result number 76. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 77",
+      "url": "https://example.com/result/77",
+      "content": "This is the content for result number 77. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 78",
+      "url": "https://example.com/result/78",
+      "content": "This is the content for result number 78. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 79",
+      "url": "https://example.com/result/79",
+      "content": "This is the content for result number 79. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 80",
+      "url": "https://example.com/result/80",
+      "content": "This is the content for result number 80. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 81",
+      "url": "https://example.com/result/81",
+      "content": "This is the content for result number 81. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 82",
+      "url": "https://example.com/result/82",
+      "content": "This is the content for result number 82. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 83",
+      "url": "https://example.com/result/83",
+      "content": "This is the content for result number 83. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 84",
+      "url": "https://example.com/result/84",
+      "content": "This is the content for result number 84. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 85",
+      "url": "https://example.com/result/85",
+      "content": "This is the content for result number 85. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 86",
+      "url": "https://example.com/result/86",
+      "content": "This is the content for result number 86. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 87",
+      "url": "https://example.com/result/87",
+      "content": "This is the content for result number 87. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 88",
+      "url": "https://example.com/result/88",
+      "content": "This is the content for result number 88. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 89",
+      "url": "https://example.com/result/89",
+      "content": "This is the content for result number 89. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 90",
+      "url": "https://example.com/result/90",
+      "content": "This is the content for result number 90. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 91",
+      "url": "https://example.com/result/91",
+      "content": "This is the content for result number 91. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 92",
+      "url": "https://example.com/result/92",
+      "content": "This is the content for result number 92. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 93",
+      "url": "https://example.com/result/93",
+      "content": "This is the content for result number 93. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 94",
+      "url": "https://example.com/result/94",
+      "content": "This is the content for result number 94. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 95",
+      "url": "https://example.com/result/95",
+      "content": "This is the content for result number 95. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 96",
+      "url": "https://example.com/result/96",
+      "content": "This is the content for result number 96. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 97",
+      "url": "https://example.com/result/97",
+      "content": "This is the content for result number 97. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 98",
+      "url": "https://example.com/result/98",
+      "content": "This is the content for result number 98. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 99",
+      "url": "https://example.com/result/99",
+      "content": "This is the content for result number 99. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    }
+  ],
+  "answers": [
+    {
+      "answer": "42",
+      "engine": "calculator"
+    },
+    {
+      "answer": "192.168.1.1",
+      "engine": "ip_plugin"
+    }
+  ],
+  "infoboxes": [
+    {
+      "infobox": "Test Topic",
+      "content": "Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. ",
+      "attributes": [
+        {
+          "label": "Type",
+          "value": "Language"
+        },
+        {
+          "label": "Year",
+          "value": "2009"
+        }
+      ],
+      "urls": [
+        {
+          "title": "Official",
+          "url": "https://go.dev"
+        }
+      ]
+    }
+  ],
+  "suggestions": [
+    "golang tutorial",
+    "golang concurrency",
+    "golang vs rust"
+  ],
+  "number_of_results": 100
+}

@@ -80,9 +80,6 @@ func (c *Config) Validate() error {
 // MaxRetryDelay is clamped to be at least RetryDelay.
 func (c *Config) Normalize() *Config {
 	cfg := *c // Copy
-	if cfg.MaxRetries < 0 {
-		cfg.MaxRetries = 0
-	}
 
 	if cfg.RetryDelay <= 0 {
 		cfg.RetryDelay = DefaultRetryDelay
