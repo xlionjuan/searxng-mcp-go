@@ -2,17 +2,23 @@ package searxng
 
 import "strings"
 
+const dedupPrefixRunes = 200
+
 // deduplicateAnswers filters out answers whose text is a prefix (substring)
-// of any infobox content.
+// of any infobox content. For each answer, the exact-case match runs first;
+// the lowercase index is built lazily on the first miss and reused for
+// subsequent answers that also miss the exact-case check.
 func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 	if len(answers) == 0 || len(infoboxes) == 0 {
 		return answers
 	}
 
-	infoboxTexts, lowerInfoboxTexts := collectInfoboxText(infoboxes)
+	infoboxTexts := collectInfoboxText(infoboxes)
 	if len(infoboxTexts) == 0 {
 		return answers
 	}
+
+	var lowerInfoboxTexts []string
 
 	filtered := make([]Answer, 0, len(answers))
 	for _, ans := range answers {
@@ -20,7 +26,15 @@ func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 			continue
 		}
 
-		if answerPrefixMatch(ans.Answer, infoboxTexts, lowerInfoboxTexts) {
+		if answerPrefixMatch(ans.Answer, infoboxTexts, false) {
+			continue
+		}
+
+		if lowerInfoboxTexts == nil {
+			lowerInfoboxTexts = buildLowerInfoboxTexts(infoboxTexts)
+		}
+
+		if answerPrefixMatch(ans.Answer, lowerInfoboxTexts, true) {
 			continue
 		}
 
@@ -30,39 +44,44 @@ func deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer {
 	return filtered
 }
 
-func collectInfoboxText(infoboxes []Infobox) ([]string, []string) {
+func collectInfoboxText(infoboxes []Infobox) []string {
 	infoboxTexts := make([]string, 0, len(infoboxes))
-	lowerInfoboxTexts := make([]string, 0, len(infoboxes))
-
 	for _, ib := range infoboxes {
 		if ib.Content != "" {
 			infoboxTexts = append(infoboxTexts, ib.Content)
-			lowerInfoboxTexts = append(lowerInfoboxTexts, strings.ToLower(ib.Content))
 		}
 	}
 
-	return infoboxTexts, lowerInfoboxTexts
+	return infoboxTexts
 }
 
-func answerPrefixMatch(answer string, infoboxTexts []string, lowerInfoboxTexts []string) bool {
-	const prefixLen = 200
-
-	prefix := strings.TrimSuffix(answer, " More at Wikipedia")
-	prefix = TruncateRunes(prefix, prefixLen)
-
+func buildLowerInfoboxTexts(infoboxTexts []string) []string {
+	lower := make([]string, 0, len(infoboxTexts))
 	for _, text := range infoboxTexts {
-		if strings.Contains(text, prefix) {
-			return true
-		}
+		lower = append(lower, strings.ToLower(text))
 	}
 
-	lowerAnswer := strings.ToLower(answer)
-	lowerAnswer = strings.TrimSuffix(lowerAnswer, " more at wikipedia")
+	return lower
+}
 
-	lowerPrefix := TruncateRunes(lowerAnswer, prefixLen)
+// answerPrefixMatch reports whether the answer (or its lowercased form when
+// lower is true), with the " More at Wikipedia" suffix stripped and
+// truncated to dedupPrefixRunes characters, is a substring of any element
+// of haystack.
+func answerPrefixMatch(answer string, haystack []string, lower bool) bool {
+	needle := answer
+	suffix := " More at Wikipedia"
 
-	for _, text := range lowerInfoboxTexts {
-		if strings.Contains(text, lowerPrefix) {
+	if lower {
+		needle = strings.ToLower(needle)
+		suffix = " more at wikipedia"
+	}
+
+	needle = strings.TrimSuffix(needle, suffix)
+	needle = TruncateRunes(needle, dedupPrefixRunes)
+
+	for _, text := range haystack {
+		if strings.Contains(text, needle) {
 			return true
 		}
 	}
