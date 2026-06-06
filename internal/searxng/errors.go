@@ -30,6 +30,8 @@ type ValidationError struct {
 	Message string // Message describes the validation failure
 }
 
+var _ error = (*ValidationError)(nil)
+
 // NewValidationError creates a new ValidationError.
 func NewValidationError(field, message string) *ValidationError {
 	return &ValidationError{Field: field, Message: message}
@@ -108,6 +110,8 @@ type SearXNGError struct {
 	UnderlyingErr   error  // The original error that caused this
 }
 
+var _ error = (*SearXNGError)(nil)
+
 // NewSearXNGError creates a new SearXNGError.
 func NewSearXNGError(statusCode int, contentType, body string, err error) *SearXNGError {
 	return &SearXNGError{
@@ -174,6 +178,8 @@ type HTMLResponseError struct {
 	Body          string // Truncated HTML body
 	UnderlyingErr error  // The underlying network error if any
 }
+
+var _ error = (*HTMLResponseError)(nil)
 
 func (e *HTMLResponseError) Error() string {
 	return "searxng returned html instead of json - json output may not be enabled on the server"
