@@ -112,6 +112,8 @@ func TestConcurrentContextCancellation(t *testing.T) {
 		mu               sync.Mutex
 	)
 
+	var wg sync.WaitGroup
+
 	for range numGoroutines {
 		wg.Go(func() {
 			ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
@@ -186,6 +188,8 @@ func TestChannelDeadlockDetection(t *testing.T) {
 
 	const numGoroutines = 50
 
+	var wg sync.WaitGroup
+
 	// Launch many concurrent searches
 	for range numGoroutines {
 		wg.Go(func() {
@@ -254,6 +258,8 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 
 	var errorCount int64
 
+	var wg sync.WaitGroup
+
 	for i := range numGoroutines {
 		wg.Go(func() {
 			searcher := searchers[i%len(searchers)]
@@ -320,6 +326,8 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 		Timeout:    30 * time.Second,
 		HTTPClient: client,
 	}
+
+	var wg sync.WaitGroup
 
 	for range numGoroutines {
 		wg.Go(func() {
@@ -445,6 +453,8 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 		validationErrors int64
 		searchErrors     int64
 	)
+
+	var wg sync.WaitGroup
 
 	// Concurrent validation calls
 	for range numGoroutines {
