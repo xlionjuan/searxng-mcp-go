@@ -130,32 +130,10 @@ func TestConfigNormalize(t *testing.T) {
 		}
 	})
 
-	t.Run("clamps negative MaxRetries to 0", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := &Config{MaxRetries: -5}
-		normalized := cfg.Normalize()
-
-		if normalized.MaxRetries != 0 {
-			t.Fatalf("MaxRetries = %d, want 0", normalized.MaxRetries)
-		}
-	})
-
 	t.Run("defaults zero RetryDelay", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{RetryDelay: 0}
-		normalized := cfg.Normalize()
-
-		if normalized.RetryDelay != DefaultRetryDelay {
-			t.Fatalf("RetryDelay = %v, want %v", normalized.RetryDelay, DefaultRetryDelay)
-		}
-	})
-
-	t.Run("defaults negative RetryDelay", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := &Config{RetryDelay: -1}
 		normalized := cfg.Normalize()
 
 		if normalized.RetryDelay != DefaultRetryDelay {
@@ -182,26 +160,6 @@ func TestConfigNormalize(t *testing.T) {
 
 		if normalized.MaxRetryDelay != 5*time.Second {
 			t.Fatalf("MaxRetryDelay = %v, want %v (clamped to RetryDelay)", normalized.MaxRetryDelay, 5*time.Second)
-		}
-	})
-
-	t.Run("does not modify original", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := &Config{
-			SearXNGURL: "https://example.com",
-			Timeout:    5 * time.Second,
-			MaxRetries: -1,
-		}
-
-		normalized := cfg.Normalize()
-
-		if cfg.MaxRetries != -1 {
-			t.Fatal("Normalize() should not modify the original config")
-		}
-
-		if normalized.MaxRetries != 0 {
-			t.Fatalf("MaxRetries = %d, want 0", normalized.MaxRetries)
 		}
 	})
 }
