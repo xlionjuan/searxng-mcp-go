@@ -129,7 +129,9 @@ Do not silently bypass these accepted decisions:
 - ADR-006: expose `unresponsive_engines` only in debug mode
 - ADR-007: no DNS rebinding protection unless the ADR is revisited
 - ADR-008: redirects are same-hostname-only
+- ADR-009: GET fallback is disabled by default and must be explicitly opted in
 - ADR-010: neutralize terminal control sequences in CLI text output
+- ADR-011: share `TruncateRunes`; `MaxContentRunes` is CLI-only
 
 ## Verification
 
