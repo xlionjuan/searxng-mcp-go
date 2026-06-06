@@ -35,6 +35,7 @@ func NewValidationError(field, message string) *ValidationError {
 	return &ValidationError{Field: field, Message: message}
 }
 
+// Error implements the error interface for ValidationError.
 func (e *ValidationError) Error() string {
 	return fmt.Sprintf("validation error on %q: %s", e.Field, e.Message)
 }
@@ -109,6 +110,7 @@ type SearXNGError struct {
 }
 
 // NewSearXNGError creates a new SearXNGError.
+// The body string is truncated to MaxErrorDisplayChars runes.
 func NewSearXNGError(statusCode int, contentType, body string, err error) *SearXNGError {
 	return &SearXNGError{
 		StatusCode:      statusCode,
@@ -118,6 +120,7 @@ func NewSearXNGError(statusCode int, contentType, body string, err error) *SearX
 	}
 }
 
+// Error implements the error interface for SearXNGError.
 func (e *SearXNGError) Error() string {
 	if e.UnderlyingErr != nil {
 		if e.RespContentType != "" {
@@ -169,16 +172,18 @@ func HTTPStatusError(statusCode int, contentType string, body []byte) error {
 	return NewSearXNGError(statusCode, contentType, bodyStr, err)
 }
 
-// HTMLResponseError creates a specialized error for HTML responses (JSON not enabled).
+// HTMLResponseError is a specialized error returned when SearXNG returns HTML instead of JSON.
 type HTMLResponseError struct {
 	Body          string // Truncated HTML body
 	UnderlyingErr error  // The underlying network error if any
 }
 
+// Error implements the error interface for HTMLResponseError.
 func (e *HTMLResponseError) Error() string {
 	return "searxng returned html instead of json - json output may not be enabled on the server"
 }
 
+// Unwrap returns the underlying error for errors.Is/errors.As support.
 func (e *HTMLResponseError) Unwrap() error {
 	return e.UnderlyingErr
 }

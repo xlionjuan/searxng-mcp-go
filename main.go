@@ -1,3 +1,5 @@
+// Package main implements a SearXNG MCP server and CLI tool
+// that provides web search capabilities via the SearXNG meta-search engine.
 package main
 
 import (
