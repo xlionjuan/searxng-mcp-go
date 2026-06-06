@@ -7,10 +7,11 @@ import (
 	"testing"
 )
 
-func readSampleResponse(tb testing.TB) []byte {
+// readJSONFixture reads a JSON fixture from testdata/ and fails the test on error.
+func readJSONFixture(tb testing.TB, name string) []byte {
 	tb.Helper()
 
-	data, err := os.ReadFile("../../testdata/sample_response.json")
+	data, err := os.ReadFile("../../testdata/" + name) //nolint:gosec // test fixture, fixed path base
 	if err != nil {
 		tb.Fatal(err)
 	}
@@ -18,18 +19,21 @@ func readSampleResponse(tb testing.TB) []byte {
 	return data
 }
 
+func readSampleResponse(tb testing.TB) []byte {
+	tb.Helper()
+
+	return readJSONFixture(tb, "sample_response.json")
+}
+
 // loadSearchResponse loads a SearchResponse from a JSON fixture in testdata/.
 func loadSearchResponse(tb testing.TB, fixture string) *SearchResponse {
 	tb.Helper()
 
-	data, err := os.ReadFile("../../testdata/" + fixture) //nolint:gosec // test fixture, fixed path base
-	if err != nil {
-		tb.Fatal(err)
-	}
+	data := readJSONFixture(tb, fixture)
 
 	var resp SearchResponse
 
-	err = json.Unmarshal(data, &resp)
+	err := json.Unmarshal(data, &resp)
 	if err != nil {
 		tb.Fatal(err)
 	}
@@ -57,10 +61,7 @@ func BenchmarkJSONUnmarshal(b *testing.B) {
 }
 
 func BenchmarkJSONUnmarshalLarge(b *testing.B) {
-	data, err := os.ReadFile("../../testdata/large_response_100.json")
-	if err != nil {
-		b.Fatal(err)
-	}
+	data := readJSONFixture(b, "large_response_100.json")
 
 	b.ReportAllocs()
 
