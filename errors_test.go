@@ -14,8 +14,6 @@ var (
 	errConnectionRefusedTest = errors.New("connection refused")
 )
 
-const testHelloBody = "hello"
-
 func TestHTTPStatusError(t *testing.T) {
 	t.Parallel()
 

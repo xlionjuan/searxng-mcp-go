@@ -69,7 +69,7 @@ _Avoid_: POSTtoGETFallback (internal test function name)
 
 ### Constants
 
-**MaxContentRunes**: The truncation limit of 4000 Unicode runes applied to content fields in infobox summaries and result excerpts to keep output within LLM context-window budgets.
+**MaxContentRunes**: The truncation limit of 4000 Unicode runes applied by the **CLI text formatter** (`formatResults` in `format.go`) to the `content` field of search results and infoboxes. It is purely a **rendering budget for terminal output** — JSON mode and MCP mode return the full un-truncated normalized response, so downstream JSON/MCP consumers always see the complete upstream text. The rune-safe truncation itself is shared with the searxng deduplication prefix match through the `searxng.TruncateRunes` helper in `internal/searxng/truncate.go`. See `docs/adr/011-max-content-runes-cli-only.md` for the scope decision.
 
 ## Relationships
 

@@ -110,25 +110,6 @@ func hasUnsafeControlBytes(s string) bool {
 // Formatting
 // ============================================================================
 
-// truncateRunes truncates s to at most limit runes in a single pass.
-// It returns the original string unchanged if already within the limit.
-func truncateRunes(str string, limit int) string {
-	if limit <= 0 || str == "" {
-		return ""
-	}
-
-	runeCount := 0
-	for i := range str {
-		if runeCount == limit {
-			return str[:i]
-		}
-
-		runeCount++
-	}
-
-	return str
-}
-
 // writeAnswers writes formatted direct answers to b.
 func writeAnswers(buf *strings.Builder, answers []searxng.Answer) {
 	if len(answers) == 0 {
@@ -171,7 +152,7 @@ func writeInfoboxes(buf *strings.Builder, infoboxes []searxng.Infobox) {
 
 		if ib.Content != "" {
 			content := searxng.UnescapeIfNeeded(ib.Content)
-			content = truncateRunes(content, searxng.MaxContentRunes)
+			content = searxng.TruncateRunes(content, searxng.MaxContentRunes)
 			content = sanitizeTerminalControl(content)
 
 			buf.WriteString("    ")
@@ -287,7 +268,7 @@ func formatResults(resp *searxng.SearchResponse) string {
 
 			if res.Content != "" {
 				content := searxng.UnescapeIfNeeded(res.Content)
-				content = truncateRunes(content, searxng.MaxContentRunes)
+				content = searxng.TruncateRunes(content, searxng.MaxContentRunes)
 				content = sanitizeTerminalControl(content)
 
 				buf.WriteString("   Summary: ")
