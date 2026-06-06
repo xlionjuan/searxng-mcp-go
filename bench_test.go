@@ -1,4 +1,3 @@
-// Package main implements a SearXNG MCP server providing web search via the Model Context Protocol.
 package main
 
 import (
