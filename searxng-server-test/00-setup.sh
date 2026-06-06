@@ -59,33 +59,8 @@ echo ""
 echo "--- Configuring settings.yml ---"
 cp "${SEARXNG_DIR}/searx/settings.yml" "$SETTINGS_FILE"
 
-# Generate random secret key
-SECRET_KEY=$(openssl rand -hex 16 2>/dev/null || python3 -c "import secrets; print(secrets.token_hex(16))")
-sed -i "s/ultrasecretkey/${SECRET_KEY}/g" "$SETTINGS_FILE"
-echo "  Generated secret_key ✓"
-
-# Enable JSON format
-if grep -q "formats:" "$SETTINGS_FILE"; then
-    if ! grep -q "\- json" "$SETTINGS_FILE"; then
-        sed -i '/formats:/,/^[^ ]/{
-            s/- html$/- html\n    - json/
-        }' "$SETTINGS_FILE"
-        echo "  Enabled JSON format ✓"
-    else
-        echo "  JSON format already enabled"
-    fi
-else
-    echo "  Warning: could not find formats section"
-fi
-
-# Enable yahoo and bing for more reliable E2E test results
-sed -i '/^  - name: yahoo$/{n;n;n;s/disabled: true/disabled: false/}' "$SETTINGS_FILE"
-sed -i '/^  - name: bing$/{n;n;n;s/disabled: true/disabled: false/}' "$SETTINGS_FILE"
-echo "  Enabled yahoo and bing engines ✓"
-
-# Enable ddg definitions for infobox content
-sed -i '/^  - name: ddg definitions$/{n;n;n;n;s/disabled: true/disabled: false/}' "$SETTINGS_FILE"
-echo "  Enabled ddg definitions engine ✓"
+# Apply structured settings with Python (replaces fragile sed line-number operations)
+uv run python3 "${SCRIPT_DIR}/apply-settings.py" "$SETTINGS_FILE"
 
 echo ""
 echo "=== Setup complete ==="
