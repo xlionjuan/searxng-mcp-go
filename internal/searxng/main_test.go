@@ -1,4 +1,4 @@
-package searxng
+package searxng //nolint:testpackage // TestMain must be in internal package to cover all test goroutines
 
 import (
 	"testing"
