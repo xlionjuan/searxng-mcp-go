@@ -50,7 +50,7 @@ func TestMCPStress_Concurrent(t *testing.T) {
 	cmd.Env = e2eMCPEnv(searxngURL)
 	cmd.Stderr = &stderr
 
-	session := connectMCPSession(ctx, t, cmd, &stderr)
+	session := newMCPSession(ctx, t, cmd, &stderr, "searxng-mcp-go-stress-test")
 	defer func() {
 		if closeErr := session.Close(); closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
 			t.Logf("close MCP session: %v", closeErr)
@@ -142,7 +142,7 @@ func TestMCPStress_SequentialSessions(t *testing.T) {
 			cmd.Env = e2eMCPEnv(searxngURL)
 			cmd.Stderr = &stderr
 
-			session := connectMCPSession(subCtx, t, cmd, &stderr)
+			session := newMCPSession(subCtx, t, cmd, &stderr, "searxng-mcp-go-stress-test")
 			defer func() {
 				if closeErr := session.Close(); closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
 					t.Logf("session %d close: %v", i, closeErr)
@@ -183,7 +183,7 @@ func TestMCPStress_RapidFire(t *testing.T) {
 	cmd.Env = e2eMCPEnv(searxngURL)
 	cmd.Stderr = &stderr
 
-	session := connectMCPSession(ctx, t, cmd, &stderr)
+	session := newMCPSession(ctx, t, cmd, &stderr, "searxng-mcp-go-stress-test")
 	defer func() {
 		if closeErr := session.Close(); closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
 			t.Logf("close MCP session: %v", closeErr)
@@ -275,7 +275,7 @@ func TestMCPStress_Stability(t *testing.T) {
 	cmd.Env = e2eMCPEnv(searxngURL)
 	cmd.Stderr = &stderr
 
-	session := connectMCPSession(ctx, t, cmd, &stderr)
+	session := newMCPSession(ctx, t, cmd, &stderr, "searxng-mcp-go-stress-test")
 	defer func() {
 		if closeErr := session.Close(); closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
 			t.Logf("close MCP session: %v", closeErr)
@@ -345,7 +345,7 @@ func TestMCPStress_Randomized(t *testing.T) {
 	cmd.Env = e2eMCPEnv(searxngURL)
 	cmd.Stderr = &stderr
 
-	session := connectMCPSession(ctx, t, cmd, &stderr)
+	session := newMCPSession(ctx, t, cmd, &stderr, "searxng-mcp-go-stress-test")
 	defer func() {
 		if closeErr := session.Close(); closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
 			t.Logf("close MCP session: %v", closeErr)
@@ -450,21 +450,4 @@ func resolveRandomSeed(t *testing.T) int64 {
 	}
 
 	return time.Now().UnixNano()
-}
-
-// connectMCPSession builds the MCP client and connects to a stdio-based MCP server.
-func connectMCPSession(ctx context.Context, t *testing.T, cmd *exec.Cmd, stderr *bytes.Buffer) *mcp.ClientSession {
-	t.Helper()
-
-	client := mcp.NewClient(&mcp.Implementation{
-		Name:    "searxng-mcp-go-stress-test",
-		Version: version,
-	}, nil)
-
-	session, err := client.Connect(ctx, &mcp.CommandTransport{Command: cmd}, nil)
-	if err != nil {
-		t.Fatalf("connect MCP stdio session failed: %v\nstderr:\n%s", err, stderr.String())
-	}
-
-	return session
 }

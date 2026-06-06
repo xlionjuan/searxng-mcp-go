@@ -15,8 +15,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
-
 	"searxng-mcp-go/internal/searxng"
 )
 
@@ -25,50 +23,14 @@ func TestMCPFunctional(t *testing.T) {
 	if searxngURL == "" {
 		t.Skip("SEARXNG_URL not set")
 	}
-	var warnings []string
+	var warnings e2eWarnings
 
 	ctx, cancel := context.WithTimeout(t.Context(), 180*time.Second)
 	defer cancel()
 
-	binaryPath := os.Getenv("E2E_MCP_BINARY")
-	if binaryPath == "" {
-		binaryPath = buildE2EMCPBinary(ctx, t)
-	}
-	t.Logf("using MCP binary: %s", binaryPath)
+	session, stderr, _ := startMCPSession(ctx, t, searxngURL)
 
-	var stderr bytes.Buffer
-
-	cmd := exec.CommandContext(ctx, binaryPath)
-	cmd.Env = e2eMCPEnv(searxngURL)
-	cmd.Stderr = &stderr
-
-	var session *mcp.ClientSession
-	t.Cleanup(func() {
-		if session != nil {
-			if closeErr := session.Close(); closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
-				t.Logf("close MCP session: %v\nstderr:\n%s", closeErr, stderr.String())
-			}
-		}
-
-		if cmd.Process != nil && cmd.ProcessState == nil {
-			_ = cmd.Process.Kill()
-			_, _ = cmd.Process.Wait()
-		}
-	})
-
-	client := mcp.NewClient(&mcp.Implementation{
-		Name:    "searxng-mcp-go-e2e-test",
-		Version: version,
-	}, nil)
-
-	var err error
-	session, err = client.Connect(ctx, &mcp.CommandTransport{Command: cmd}, nil)
-	if err != nil {
-		t.Fatalf("connect MCP stdio session failed: %v\nstderr:\n%s", err, stderr.String())
-	}
-	t.Log("MCP stdio session connected")
-
-	_ = findSearchTool(ctx, t, session, &stderr)
+	_ = findSearchTool(ctx, t, session, stderr)
 	t.Log("search tool found")
 
 	t.Run("all safesearch levels", func(t *testing.T) {
@@ -79,11 +41,11 @@ func TestMCPFunctional(t *testing.T) {
 					"query":      "framework computer inc",
 					"safesearch": safesearch,
 					"limit":      3,
-				}, &stderr, "all safesearch levels")
+				}, stderr, "all safesearch levels")
 
 				if len(response.Results) == 0 {
 					warning := "safesearch=" + strconv.Itoa(safesearch) + " results length = 0"
-					warnings = append(warnings, warning)
+					warnings.Add("%s", warning)
 					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 				}
 
@@ -111,14 +73,14 @@ func TestMCPFunctional(t *testing.T) {
 				if timeRange != "" {
 					args["time_range"] = timeRange
 				}
-				response := requireSearchResponse(ctx, t, session, args, &stderr, "all time ranges")
+				response := requireSearchResponse(ctx, t, session, args, stderr, "all time ranges")
 
 				if len(response.Results) == 0 {
 					if timeRange != "" {
 						t.Logf("time_range=%q results length = 0 (persistent, expected)\nresponse: %#v\nstderr:\n%s", timeRange, response, stderr.String())
 					} else {
 						warning := "time_range=\"all\" results length = 0"
-						warnings = append(warnings, warning)
+						warnings.Add("%s", warning)
 						t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 					}
 				} else {
@@ -143,11 +105,11 @@ func TestMCPFunctional(t *testing.T) {
 					"query":      "framework computer inc",
 					"categories": category,
 					"limit":      3,
-				}, &stderr, "all categories")
+				}, stderr, "all categories")
 
 				if len(response.Results) == 0 {
 					warning := "categories=" + strconv.Quote(category) + " results length = 0"
-					warnings = append(warnings, warning)
+					warnings.Add("%s", warning)
 					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 				}
 
@@ -168,7 +130,7 @@ func TestMCPFunctional(t *testing.T) {
 					"query":   "framework computer inc",
 					"engines": engine,
 					"limit":   3,
-				}, &stderr, "all engines")
+				}, stderr, "all engines")
 
 				// Allow empty results — some engines may not return results
 				// for certain queries due to rate limiting or content gaps,
@@ -191,11 +153,11 @@ func TestMCPFunctional(t *testing.T) {
 					"query":  "framework computer inc",
 					"pageno": pageno,
 					"limit":  3,
-				}, &stderr, "paginations")
+				}, stderr, "paginations")
 
 				if len(response.Results) == 0 {
 					warning := "pageno=" + strconv.Itoa(pageno) + " results length = 0"
-					warnings = append(warnings, warning)
+					warnings.Add("%s", warning)
 					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 				}
 
@@ -215,11 +177,11 @@ func TestMCPFunctional(t *testing.T) {
 				response := requireSearchResponse(ctx, t, session, map[string]any{
 					"query": "framework computer inc",
 					"limit": limit,
-				}, &stderr, "limit boundaries")
+				}, stderr, "limit boundaries")
 
 				if len(response.Results) == 0 {
 					warning := "limit=" + strconv.Itoa(limit) + " got 0 results, want 1.." + strconv.Itoa(limit)
-					warnings = append(warnings, warning)
+					warnings.Add("%s", warning)
 					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 				}
 				if len(response.Results) > limit {
@@ -241,11 +203,11 @@ func TestMCPFunctional(t *testing.T) {
 				"language":   "en",
 				"categories": "general",
 				"limit":      3,
-			}, &stderr, "parameter combinations language+categories")
+			}, stderr, "parameter combinations language+categories")
 
 			if len(response.Results) == 0 {
 				warning := "language+categories results length = 0"
-				warnings = append(warnings, warning)
+				warnings.Add("%s", warning)
 				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 			}
 
@@ -262,7 +224,7 @@ func TestMCPFunctional(t *testing.T) {
 				"engines":    "bing",
 				"time_range": "month",
 				"limit":      3,
-			}, &stderr, "parameter combinations engines+time_range")
+			}, stderr, "parameter combinations engines+time_range")
 
 			// Allow empty results — specific engine + time range combinations
 			// may return no results.
@@ -279,7 +241,7 @@ func TestMCPFunctional(t *testing.T) {
 				"query":  "framework computer inc",
 				"pageno": 2,
 				"limit":  5,
-			}, &stderr, "parameter combinations pageno+limit")
+			}, stderr, "parameter combinations pageno+limit")
 
 			if len(response.Results) == 0 {
 				t.Logf("pageno+limit results length = 0 (persistent, expected)\nresponse: %#v\nstderr:\n%s", response, stderr.String())
@@ -301,14 +263,14 @@ func TestMCPFunctional(t *testing.T) {
 			response := requireSearchResponse(ctx, t, session, map[string]any{
 				"query": "你好世界",
 				"limit": 3,
-			}, &stderr, "unicode chinese query")
+			}, stderr, "unicode chinese query")
 
 			if !strings.Contains(response.Query, "你好") {
 				t.Fatalf("chinese query not preserved in response: query=%q\nstderr:\n%s", response.Query, stderr.String())
 			}
 			if len(response.Results) == 0 {
 				warning := "chinese query results length = 0"
-				warnings = append(warnings, warning)
+				warnings.Add("%s", warning)
 				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 			}
 		})
@@ -317,14 +279,14 @@ func TestMCPFunctional(t *testing.T) {
 			response := requireSearchResponse(ctx, t, session, map[string]any{
 				"query": "こんにちは",
 				"limit": 3,
-			}, &stderr, "unicode japanese query")
+			}, stderr, "unicode japanese query")
 
 			if !strings.Contains(response.Query, "こんにちは") {
 				t.Fatalf("japanese query not preserved in response: query=%q\nstderr:\n%s", response.Query, stderr.String())
 			}
 			if len(response.Results) == 0 {
 				warning := "japanese query results length = 0"
-				warnings = append(warnings, warning)
+				warnings.Add("%s", warning)
 				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 			}
 		})
@@ -333,11 +295,11 @@ func TestMCPFunctional(t *testing.T) {
 			response := requireSearchResponse(ctx, t, session, map[string]any{
 				"query": "🔍",
 				"limit": 3,
-			}, &stderr, "unicode emoji query")
+			}, stderr, "unicode emoji query")
 
 			if len(response.Results) == 0 {
 				warning := "emoji query results length = 0"
-				warnings = append(warnings, warning)
+				warnings.Add("%s", warning)
 				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 			}
 		})
@@ -347,11 +309,11 @@ func TestMCPFunctional(t *testing.T) {
 		response := requireSearchResponse(ctx, t, session, map[string]any{
 			"query": "framework computer inc",
 			"limit": 10,
-		}, &stderr, "response structure")
+		}, stderr, "response structure")
 
 		if len(response.Results) == 0 {
 			warning := "response structure results length = 0"
-			warnings = append(warnings, warning)
+			warnings.Add("%s", warning)
 			t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 		}
 
@@ -371,12 +333,7 @@ func TestMCPFunctional(t *testing.T) {
 		}
 	})
 
-	if len(warnings) > 0 {
-		t.Logf("--- WARNING SUMMARY ---")
-		for _, warning := range warnings {
-			t.Logf("  WARN: %s", warning)
-		}
-	}
+	warnings.Report(t)
 	t.Log("MCP functional tests completed")
 }
 
@@ -404,7 +361,7 @@ func TestCLISmoke(t *testing.T) {
 	if searxngURL == "" {
 		t.Skip("SEARXNG_URL not set")
 	}
-	var warnings []string
+	var warnings e2eWarnings
 
 	ctx, cancel := context.WithTimeout(t.Context(), 600*time.Second)
 	defer cancel()
@@ -468,22 +425,19 @@ func TestCLISmoke(t *testing.T) {
 	assertResultsNotEmpty := func(t *testing.T, name string, response searxng.SearchResponse) {
 		t.Helper()
 		if len(response.Results) == 0 {
-			warning := name + " results length = 0"
-			warnings = append(warnings, warning)
-			t.Logf("%s\nresponse: %#v", warning, response)
+			warnings.Add("%s results length = 0", name)
+			t.Logf("%s results length = 0\nresponse: %#v", name, response)
 
 			return
 		}
 		for i, result := range response.Results {
 			if strings.TrimSpace(result.Title) == "" {
-				warning := name + " result[" + strconv.Itoa(i) + "] title is empty"
-				warnings = append(warnings, warning)
-				t.Logf("%s\nresponse: %#v", warning, response)
+				warnings.Add("%s result[%d] title is empty", name, i)
+				t.Logf("%s result[%d] title is empty\nresponse: %#v", name, i, response)
 			}
 			if strings.TrimSpace(result.URL) == "" {
-				warning := name + " result[" + strconv.Itoa(i) + "] URL is empty"
-				warnings = append(warnings, warning)
-				t.Logf("%s\nresponse: %#v", warning, response)
+				warnings.Add("%s result[%d] URL is empty", name, i)
+				t.Logf("%s result[%d] URL is empty\nresponse: %#v", name, i, response)
 			}
 		}
 	}
@@ -499,9 +453,8 @@ func TestCLISmoke(t *testing.T) {
 	assertAnswerMatches := func(t *testing.T, name string, response searxng.SearchResponse, pattern *regexp.Regexp) {
 		t.Helper()
 		if len(response.Answers) == 0 {
-			warning := name + " answers length = 0"
-			warnings = append(warnings, warning)
-			t.Logf("%s\nresponse: %#v", warning, response)
+			warnings.Add("%s answers length = 0", name)
+			t.Logf("%s answers length = 0\nresponse: %#v", name, response)
 
 			return
 		}
@@ -546,9 +499,8 @@ func TestCLISmoke(t *testing.T) {
 		response := runCLI(t, "infobox json", "apple inc")
 
 		if len(response.Infoboxes) == 0 {
-			warning := "infobox json infoboxes length = 0"
-			warnings = append(warnings, warning)
-			t.Logf("%s\nresponse: %#v", warning, response)
+			warnings.Add("infobox json infoboxes length = 0")
+			t.Logf("infobox json infoboxes length = 0\nresponse: %#v", response)
 		} else {
 			for i, ib := range response.Infoboxes {
 				if strings.TrimSpace(ib.Infobox) == "" && strings.TrimSpace(ib.Content) == "" {
@@ -664,12 +616,7 @@ func TestCLISmoke(t *testing.T) {
 		assertAnswerMatches(t, "average answer", response, regexp.MustCompile(`avg.*= 3`))
 	})
 
-	if len(warnings) > 0 {
-		t.Logf("--- WARNING SUMMARY ---")
-		for _, warning := range warnings {
-			t.Logf("  WARN: %s", warning)
-		}
-	}
+	warnings.Report(t)
 	t.Log("CLI smoke tests completed")
 }
 
