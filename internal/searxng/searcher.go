@@ -28,7 +28,6 @@ type SearXNGSearcher struct {
 	client           *http.Client // Configurable HTTP client
 	searchEndpoint   *url.URL     // Precomputed /search endpoint URL; cloned per request
 	debug            bool         // When true, enables verbose HTTP request/response logging
-	maxRetries       int
 	retryStrategy    *exponentialBackoffStrategy
 	ownsTransport    bool // true if the searcher created its own transport (safe to close)
 	allowGETFallback bool
@@ -108,7 +107,6 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		client:           client,
 		searchEndpoint:   searchEndpoint,
 		debug:            debug,
-		maxRetries:       cfg.MaxRetries,
 		retryStrategy:    newExponentialBackoffStrategy(cfg.MaxRetries, cfg.RetryDelay, cfg.MaxRetryDelay),
 		ownsTransport:    ownsTransport,
 		allowGETFallback: cfg.AllowGETFallback,
@@ -137,14 +135,16 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 
 	var lastErr error
 
-	for attempt := 0; attempt <= s.maxRetries; attempt++ {
+	maxRetries := s.retryStrategy.MaxRetries()
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
 		resp, _, err := s.doSearchAttempt(ctx, args)
 
 		shouldRetry, delay := s.retryStrategy.ShouldRetry(ctx, attempt, resp, err)
 
 		if shouldRetry {
 			// Retry with backoff
-			s.logDebugRetry(attempt, s.maxRetries+1, delay, err)
+			s.logDebugRetry(attempt, maxRetries+1, delay, err)
 			lastErr = err
 
 			if resp != nil {
@@ -174,10 +174,10 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 		}
 
 		// Retry empty responses if retries remain
-		if attempt < s.maxRetries && s.isEmptyResponse(result) {
+		if attempt < maxRetries && s.isEmptyResponse(result) {
 			shouldRetry, delay = s.retryStrategy.ShouldRetry(ctx, attempt, resp, errEmptyResponse)
 			if shouldRetry {
-				s.logDebugRetry(attempt, s.maxRetries+1, delay, nil)
+				s.logDebugRetry(attempt, maxRetries+1, delay, nil)
 
 				lastErr = errEmptyResponse
 

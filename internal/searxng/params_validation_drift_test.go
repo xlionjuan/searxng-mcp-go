@@ -1,6 +1,7 @@
 package searxng //nolint:testpackage // white-box tests need access to unexported types/functions
 
 import (
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -330,5 +331,53 @@ func verifyTimeRangeAccepts(t *testing.T, value string) {
 	err := validateTimeRange(value)
 	if err != nil {
 		t.Errorf("validateTimeRange(%q) = %v, want nil", value, err)
+	}
+}
+
+// TestSearchArgsFieldsMatchSearchParams is the drift guard that ensures every
+// ParamDef in SearchParams has a matching json-tagged field in SearchArgs,
+// and vice versa. If a new parameter is added to SearchParams without adding
+// a corresponding field to SearchArgs (or if a SearchArgs field is renamed
+// without updating SearchParams), this test fails.
+func TestSearchArgsFieldsMatchSearchParams(t *testing.T) {
+	t.Parallel()
+
+	// Build set of json tag names from SearchArgs struct fields.
+	argsType := reflect.TypeFor[SearchArgs]()
+	argsFieldTags := make(map[string]bool)
+
+	for field := range argsType.Fields() {
+		tag := field.Tag.Get("json")
+		if tag == "" {
+			continue
+		}
+
+		// Strip omitempty etc. — take only the name before comma.
+		if idx := strings.Index(tag, ","); idx >= 0 {
+			tag = tag[:idx]
+		}
+
+		argsFieldTags[tag] = true
+	}
+
+	// Build set of param names from SearchParams.
+	paramNames := make(map[string]bool)
+
+	for _, p := range SearchParams {
+		paramNames[p.Name] = true
+	}
+
+	// Every SearchParams name must have a matching SearchArgs json tag.
+	for _, p := range SearchParams {
+		if !argsFieldTags[p.Name] {
+			t.Errorf("SearchParams has %q but SearchArgs has no json tag %q", p.Name, p.Name)
+		}
+	}
+
+	// Every SearchArgs json tag must have a matching SearchParams entry.
+	for tag := range argsFieldTags {
+		if !paramNames[tag] {
+			t.Errorf("SearchArgs has json tag %q but SearchParams has no entry for it", tag)
+		}
 	}
 }
