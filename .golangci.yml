@@ -35,14 +35,14 @@ linters:
             - pkg: "net/http"
               desc: "Use internal client wrapper instead"
     dupl:
-      threshold: 150
+      threshold: 100
     gocognit:
       min-complexity: 20
     goconst:
       min-len: 3
       min-occurrences: 3
     gocyclo:
-      min-complexity: 15
+      min-complexity: 13
     govet:
       enable:
         - shadow
@@ -59,6 +59,11 @@ linters:
       statements: 60
     varnamelen:
       min-name-length: 2
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    errcheck:
+      check-type-assertions: true
   exclusions:
     generated: lax
     paths:
@@ -107,24 +112,9 @@ linters:
         paths:
           - ".*_test\\.go$"
         text: ".*"
-      - linters: [gocognit]
-        paths:
-          - ".*_test\\.go$"
-        text: ".*"
-      - linters: [gocyclo]
-        paths:
-          - ".*_test\\.go$"
-        text: ".*"
-      - linters: [cyclop]
-        paths:
-          - ".*_test\\.go$"
-        text: ".*"
-      - linters: [maintidx]
-        paths:
-          - ".*_test\\.go$"
-        text: ".*"
+
 issues:
-  max-issues-per-linter: 50
+  max-issues-per-linter: 0
   max-same-issues: 10
 formatters:
   enable:
@@ -139,6 +129,7 @@ formatters:
         - default
         - prefix(searxng-mcp-go)
     gofumpt:
+      extra-rules: true
       module-path: searxng-mcp-go
   exclusions:
     generated: lax
