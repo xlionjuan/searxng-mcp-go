@@ -52,7 +52,6 @@ func TestMCPErrors_Startup(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			subCtx, subCancel := context.WithTimeout(ctx, 10*time.Second)
 			defer subCancel()
@@ -198,7 +197,6 @@ func TestMCPErrors_InvalidInputs(t *testing.T) {
 	)
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.Name, func(t *testing.T) {
 			result := callSearchTool(ctx, t, session, tt.Arguments, stderr)
 			if !result.IsError {
@@ -248,7 +246,6 @@ func TestMCPErrors_IncorrectParams(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			result := callSearchTool(ctx, t, session, tt.arguments, stderr)
 			if !result.IsError {

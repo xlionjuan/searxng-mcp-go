@@ -16,7 +16,7 @@ var (
 func TestRetryableError(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	if !isRetryableError(ctx, errRetryTestConnectionReset) {
 		t.Fatal("plain network error should be retryable")
 	}
@@ -25,7 +25,7 @@ func TestRetryableError(t *testing.T) {
 		t.Fatal("SearXNGError should not be retryable")
 	}
 
-	canceledCtx, cancel := context.WithCancel(context.Background())
+	canceledCtx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	if isRetryableError(canceledCtx, errRetryTestConnectionReset) {
@@ -37,7 +37,7 @@ func TestShouldRetryHonorsCanceledContext(t *testing.T) {
 	t.Parallel()
 
 	strategy := newExponentialBackoffStrategy(1, time.Millisecond, time.Millisecond)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	shouldRetry, delay := strategy.ShouldRetry(ctx, 0, nil, errRetryTestConnectionReset)
@@ -74,7 +74,7 @@ func TestShouldRetry_AttemptLimit(t *testing.T) {
 		t.Parallel()
 
 		strategy := newExponentialBackoffStrategy(2, time.Millisecond, time.Millisecond)
-		ctx := context.Background()
+		ctx := t.Context()
 
 		// attempt=2 means we've already used up both retries (attempt 0 and 1)
 		shouldRetry, _ := strategy.ShouldRetry(ctx, 2, nil, errRetryTestConnectionReset)
@@ -87,7 +87,7 @@ func TestShouldRetry_AttemptLimit(t *testing.T) {
 		t.Parallel()
 
 		strategy := newExponentialBackoffStrategy(2, time.Millisecond, time.Millisecond)
-		ctx := context.Background()
+		ctx := t.Context()
 
 		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, nil, errRetryTestConnectionReset)
 		if !shouldRetry {
@@ -99,7 +99,7 @@ func TestShouldRetry_AttemptLimit(t *testing.T) {
 		t.Parallel()
 
 		strategy := newExponentialBackoffStrategy(2, time.Millisecond, time.Millisecond)
-		ctx := context.Background()
+		ctx := t.Context()
 
 		shouldRetry, _ := strategy.ShouldRetry(ctx, 2, nil, errRetryTestConnectionReset)
 		if shouldRetry {
@@ -115,7 +115,7 @@ func TestShouldRetry_ErrorTypes(t *testing.T) {
 		t.Parallel()
 
 		strategy := newExponentialBackoffStrategy(2, time.Millisecond, time.Millisecond)
-		ctx := context.Background()
+		ctx := t.Context()
 
 		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, nil, nil)
 		if shouldRetry {
@@ -127,7 +127,7 @@ func TestShouldRetry_ErrorTypes(t *testing.T) {
 		t.Parallel()
 
 		strategy := newExponentialBackoffStrategy(2, time.Millisecond, time.Millisecond)
-		ctx := context.Background()
+		ctx := t.Context()
 
 		err := NewSearXNGError(http.StatusBadRequest, "text/plain", "bad request", errRetryTestRequestCreationFailure)
 
@@ -142,7 +142,7 @@ func TestShouldRetry_StatusCodes(t *testing.T) {
 	t.Parallel()
 
 	strategy := newExponentialBackoffStrategy(2, time.Millisecond, time.Millisecond)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("retryable status code 429", func(t *testing.T) {
 		t.Parallel()
@@ -262,7 +262,7 @@ func TestRetryWait(t *testing.T) {
 		t.Parallel()
 
 		start := time.Now()
-		err := retryWait(context.Background(), 5*time.Millisecond)
+		err := retryWait(t.Context(), 5*time.Millisecond)
 		duration := time.Since(start)
 
 		if err != nil {
@@ -277,7 +277,7 @@ func TestRetryWait(t *testing.T) {
 	t.Run("canceled context returns error", func(t *testing.T) {
 		t.Parallel()
 
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 
 		err := retryWait(ctx, time.Second)

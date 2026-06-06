@@ -690,7 +690,7 @@ func TestSearch_EmptySearchResponseRetryCanceled(t *testing.T) {
 		MaxRetryDelay: 500 * time.Millisecond,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	done := make(chan struct{})

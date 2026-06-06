@@ -1,7 +1,6 @@
 package searxng
 
 import (
-	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -13,7 +12,7 @@ import (
 func TestSetBrowserHeaders(t *testing.T) {
 	t.Parallel()
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://search.example.com/search", nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://search.example.com/search", nil)
 	if err != nil {
 		t.Fatalf("NewRequest() error = %v", err)
 	}
@@ -64,7 +63,7 @@ func TestBuildSearchRequest_BasicParams(t *testing.T) {
 		Pageno:     &pageno,
 	}
 
-	req, bodyStr, err := searcher.buildSearchRequest(context.Background(), args)
+	req, bodyStr, err := searcher.buildSearchRequest(t.Context(), args)
 	if err != nil {
 		t.Fatalf("buildSearchRequest() error = %v", err)
 	}
@@ -131,7 +130,7 @@ func TestBuildSearchRequest_MinimalParams(t *testing.T) {
 		Query: "hello",
 	}
 
-	req, bodyStr, err := searcher.buildSearchRequest(context.Background(), args)
+	req, bodyStr, err := searcher.buildSearchRequest(t.Context(), args)
 	if err != nil {
 		t.Fatalf("buildSearchRequest() error = %v", err)
 	}
@@ -206,7 +205,7 @@ func TestBuildSearchRequest_URLPathHandling(t *testing.T) {
 
 			searcher := newRequestTestSearcher(t, tt.baseURL)
 
-			req, _, err := searcher.buildSearchRequest(context.Background(), &SearchArgs{Query: "test"})
+			req, _, err := searcher.buildSearchRequest(t.Context(), &SearchArgs{Query: "test"})
 			if err != nil {
 				t.Fatalf("buildSearchRequest() error = %v", err)
 			}
@@ -227,7 +226,7 @@ func TestBuildSearchRequest_WithNilPageno(t *testing.T) {
 		Query: "test",
 	}
 
-	_, bodyStr, err := searcher.buildSearchRequest(context.Background(), args)
+	_, bodyStr, err := searcher.buildSearchRequest(t.Context(), args)
 	if err != nil {
 		t.Fatalf("buildSearchRequest() error = %v", err)
 	}
@@ -249,7 +248,7 @@ func TestBuildSearchRequest_ErrorCases(t *testing.T) {
 		// must surface this as an error rather than panic.
 		searcher := &SearXNGSearcher{}
 
-		_, _, err := searcher.buildSearchRequest(context.Background(), &SearchArgs{Query: "test"})
+		_, _, err := searcher.buildSearchRequest(t.Context(), &SearchArgs{Query: "test"})
 		if err == nil {
 			t.Fatal("buildSearchRequest() error = nil, want error")
 		}
@@ -268,7 +267,7 @@ func TestBuildSearchRequest_TimeoutConfig(t *testing.T) {
 
 	args := &SearchArgs{Query: "test"}
 
-	req, _, err := searcher.buildSearchRequest(context.Background(), args)
+	req, _, err := searcher.buildSearchRequest(t.Context(), args)
 	if err != nil {
 		t.Fatalf("buildSearchRequest() error = %v", err)
 	}
@@ -341,7 +340,7 @@ func TestBuildSearchRequest_DoesNotMutatePrecomputedURL(t *testing.T) {
 	originalURL := searcher.searchEndpoint.String()
 
 	for range 5 {
-		req, _, err := searcher.buildSearchRequest(context.Background(), &SearchArgs{Query: "test"})
+		req, _, err := searcher.buildSearchRequest(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("buildSearchRequest() error = %v", err)
 		}

@@ -25,7 +25,7 @@ func TestSearch_ValidationError(t *testing.T) {
 			return nil, errTransportNotExpected
 		}), 0)
 
-		_, err := s.Search(context.Background(), nil)
+		_, err := s.Search(t.Context(), nil)
 		if err == nil {
 			t.Fatal("Search() error = nil, want validation error")
 		}
@@ -38,7 +38,7 @@ func TestSearch_ValidationError(t *testing.T) {
 			return nil, errTransportNotExpected
 		}), 0)
 
-		_, err := s.Search(context.Background(), &SearchArgs{Query: ""})
+		_, err := s.Search(t.Context(), &SearchArgs{Query: ""})
 		if err == nil {
 			t.Fatal("Search() error = nil, want validation error")
 		}
@@ -60,7 +60,7 @@ func TestSearch_Success(t *testing.T) {
 			return makeJSONResponse(minimalJSONBody), nil
 		}), 0)
 
-		result, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("Search() error = %v, want nil", err)
 		}
@@ -86,7 +86,7 @@ func TestSearch_Success(t *testing.T) {
 			return makeJSONResponse(makeSearchResponseJSON(3)), nil
 		}), 0)
 
-		result, err := s.Search(context.Background(), &SearchArgs{
+		result, err := s.Search(t.Context(), &SearchArgs{
 			Query:      "golang testing",
 			Language:   "en",
 			SafeSearch: 1,
@@ -123,7 +123,7 @@ func TestSearch_SuccessWithResults(t *testing.T) {
 			return makeJSONResponse(makeSearchResponseJSON(5)), nil
 		}), 0)
 
-		result, err := s.Search(context.Background(), &SearchArgs{
+		result, err := s.Search(t.Context(), &SearchArgs{
 			Query: "test results",
 			Limit: &limit,
 		})
@@ -160,7 +160,7 @@ func TestSearch_RetryOnError(t *testing.T) {
 			return makeJSONResponse(makeSearchResponseJSON(1)), nil
 		}), 2)
 
-		result, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("Search() error = %v, want nil", err)
 		}
@@ -187,7 +187,7 @@ func TestSearch_RetryOnError(t *testing.T) {
 			return nil, errRetryTestConnectionReset
 		}), maxRetries)
 
-		_, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err == nil {
 			t.Fatal("Search() error = nil, want error after exhausting retries")
 		}
@@ -208,7 +208,7 @@ func TestSearch_RetryOnError(t *testing.T) {
 			return nil, errRetryTestConnectionReset
 		}), 5)
 
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		cancel() // Already canceled
 
 		_, err := s.Search(ctx, &SearchArgs{Query: "test"})
@@ -243,7 +243,7 @@ func TestSearch_RetryOnStatusCode(t *testing.T) {
 			return makeJSONResponse(makeSearchResponseJSON(1)), nil
 		}), 2)
 
-		result, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("Search() error = %v, want nil", err)
 		}
@@ -273,7 +273,7 @@ func TestSearch_RetryOnStatusCode(t *testing.T) {
 			}, nil
 		}), 2)
 
-		_, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err == nil {
 			t.Fatal("Search() error = nil, want error for 404")
 		}
@@ -303,7 +303,7 @@ func TestSearch_RetryOnEmptyResponse(t *testing.T) {
 			return makeJSONResponse(makeSearchResponseJSON(1)), nil
 		}), 2)
 
-		result, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("Search() error = %v, want nil", err)
 		}
@@ -330,7 +330,7 @@ func TestSearch_RetryOnEmptyResponse(t *testing.T) {
 			return makeJSONResponse(`{"query":"test","results":[],"suggestions":[],"answers":[],"infoboxes":[]}`), nil
 		}), 0)
 
-		result, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("Search() error = %v, want nil", err)
 		}
@@ -361,7 +361,7 @@ func TestSearch_NonOKStatus(t *testing.T) {
 			}, nil
 		}), 2)
 
-		_, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err == nil {
 			t.Fatal("Search() error = nil, want error for 400")
 		}
@@ -387,7 +387,7 @@ func TestSearch_NonOKStatus(t *testing.T) {
 			}, nil
 		}), 0)
 
-		_, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err == nil {
 			t.Fatal("Search() error = nil, want HTMLResponseError")
 		}
@@ -421,7 +421,7 @@ func TestSearch_DebugMode(t *testing.T) {
 			retryStrategy:  newExponentialBackoffStrategy(0, time.Microsecond, time.Microsecond),
 		}
 
-		result, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("Search() error = %v, want nil", err)
 		}
@@ -461,7 +461,7 @@ func TestSearch_GETFallbackFlow(t *testing.T) {
 		}), 0)
 		s.allowGETFallback = true
 
-		result, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("Search() error = %v, want nil", err)
 		}
@@ -496,7 +496,7 @@ func TestSearch_RetryWithEmptyResponseFallback(t *testing.T) {
 			return makeJSONResponse(`{"query":"test","results":[],"suggestions":[],"answers":[],"infoboxes":[]}`), nil
 		}), 2)
 
-		result, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("Search() error = %v, want nil", err)
 		}
@@ -533,7 +533,7 @@ func TestSearch_BodyTooLarge(t *testing.T) {
 			}, nil
 		}), 0)
 
-		_, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err == nil {
 			t.Fatal("Search() error = nil, want error for oversized body")
 		}
@@ -561,7 +561,7 @@ func TestSearch_SearXNGErrorIsRetryable(t *testing.T) {
 			}, nil
 		}), 2)
 
-		_, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err == nil {
 			t.Fatal("Search() error = nil, want error")
 		}
@@ -585,7 +585,7 @@ func TestSearch_EmptyResponseRetryDoesNotSpin(t *testing.T) {
 			return makeJSONResponse(`{"query":"test","results":[],"suggestions":[],"answers":[],"infoboxes":[]}`), nil
 		}), 0)
 
-		result, err := s.Search(context.Background(), &SearchArgs{Query: "test"})
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("Search() error = %v, want nil", err)
 		}

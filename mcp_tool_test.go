@@ -91,7 +91,7 @@ func setupMCPSession(t *testing.T, handler http.HandlerFunc) (*mcp.ClientSession
 
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
 
-	serverSession, err := server.Connect(context.Background(), serverTransport, nil)
+	serverSession, err := server.Connect(t.Context(), serverTransport, nil)
 	if err != nil {
 		cleanupSearcher()
 		t.Fatalf("server connect failed: %v", err)
@@ -102,7 +102,7 @@ func setupMCPSession(t *testing.T, handler http.HandlerFunc) (*mcp.ClientSession
 		Version: "1.0",
 	}, nil)
 
-	clientSession, err := client.Connect(context.Background(), clientTransport, nil)
+	clientSession, err := client.Connect(t.Context(), clientTransport, nil)
 	if err != nil {
 		cleanupSearcher()
 		t.Fatalf("client connect failed: %v", err)
@@ -172,7 +172,7 @@ func TestMCP_Initialize(t *testing.T) {
 	session, cleanup := setupMCPSession(t, mockSearXNGHandler(t))
 	defer cleanup()
 
-	tools, err := session.ListTools(context.Background(), nil)
+	tools, err := session.ListTools(t.Context(), nil)
 	if err != nil {
 		t.Fatalf("list tools failed (session not initialized?): %v", err)
 	}
@@ -186,7 +186,7 @@ func TestMCP_ToolsList(t *testing.T) {
 	session, cleanup := setupMCPSession(t, mockSearXNGHandler(t))
 	defer cleanup()
 
-	tools, err := session.ListTools(context.Background(), nil)
+	tools, err := session.ListTools(t.Context(), nil)
 	if err != nil {
 		t.Fatalf("list tools failed: %v", err)
 	}
@@ -250,7 +250,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 
-				result, _, err := handler(context.Background(), nil, tt.args)
+				result, _, err := handler(t.Context(), nil, tt.args)
 				if err != nil {
 					t.Fatalf("call tool failed: %v", err)
 				}
@@ -293,7 +293,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 			},
 		})
 
-		result, _, err := handler(context.Background(), nil, searxng.SearchArgs{Query: "golang"})
+		result, _, err := handler(t.Context(), nil, searxng.SearchArgs{Query: "golang"})
 		if err != nil {
 			t.Fatalf("call tool failed: %v", err)
 		}
@@ -344,7 +344,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 			},
 		})
 
-		_, _, err := handler(context.Background(), nil, searxng.SearchArgs{Query: "golang"})
+		_, _, err := handler(t.Context(), nil, searxng.SearchArgs{Query: "golang"})
 		if err != nil {
 			t.Fatalf("call tool failed: %v", err)
 		}
@@ -377,7 +377,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 
 		pageno := 3
 
-		result, _, err := handler(context.Background(), nil, searxng.SearchArgs{
+		result, _, err := handler(t.Context(), nil, searxng.SearchArgs{
 			Query:      "golang",
 			Language:   "en",
 			SafeSearch: 2,
@@ -440,7 +440,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 			},
 		})
 
-		result, _, err := handler(context.Background(), nil, searxng.SearchArgs{Query: "test"})
+		result, _, err := handler(t.Context(), nil, searxng.SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("call tool failed: %v", err)
 		}

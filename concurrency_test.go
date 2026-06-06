@@ -57,24 +57,19 @@ func TestConcurrentSearches(t *testing.T) {
 	)
 
 	var wg sync.WaitGroup
-	wg.Add(numGoroutines)
 
-	for i := range numGoroutines {
-		go func(_ int) {
-			defer wg.Done()
-
+	for range numGoroutines {
+		wg.Go(func() {
 			for range queriesPerGoroutine {
 				query := "query"
 				args := &searxng.SearchArgs{Query: query}
 
-				ctx := context.Background()
-
-				_, err := searcher.Search(ctx, args)
+				_, err := searcher.Search(t.Context(), args)
 				if err != nil {
 					t.Errorf("Search error for %s: %v", query, err)
 				}
 			}
-		}(i)
+		})
 	}
 
 	wg.Wait()
@@ -109,9 +104,6 @@ func TestConcurrentContextCancellation(t *testing.T) {
 
 	const numGoroutines = 10
 
-	var wg sync.WaitGroup
-	wg.Add(numGoroutines)
-
 	var (
 		successCount     int64
 		errorCount       int64
@@ -120,11 +112,9 @@ func TestConcurrentContextCancellation(t *testing.T) {
 		mu               sync.Mutex
 	)
 
-	for i := range numGoroutines {
-		go func(_ int) {
-			defer wg.Done()
-
-			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	for range numGoroutines {
+		wg.Go(func() {
+			ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 			defer cancel()
 
 			_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
@@ -146,7 +136,7 @@ func TestConcurrentContextCancellation(t *testing.T) {
 			}
 
 			atomic.AddInt64(&successCount, 1)
-		}(i)
+		})
 	}
 
 	wg.Wait()
@@ -194,20 +184,13 @@ func TestChannelDeadlockDetection(t *testing.T) {
 		Timeout:    30 * time.Second,
 	}
 
-	var wg sync.WaitGroup
-
 	const numGoroutines = 50
 
 	// Launch many concurrent searches
-	wg.Add(numGoroutines)
-
-	for i := range numGoroutines {
-		go func(_ int) {
-			defer wg.Done()
-
-			ctx := context.Background()
-			_, _ = testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
-		}(i)
+	for range numGoroutines {
+		wg.Go(func() {
+			_, _ = testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
+		})
 	}
 
 	// Wait with timeout to detect deadlock
@@ -267,27 +250,20 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 		searchers[i] = searcher
 	}
 
-	var wg sync.WaitGroup
-
 	const numGoroutines = 50
 
 	var errorCount int64
 
-	wg.Add(numGoroutines)
-
 	for i := range numGoroutines {
-		go func(id int) {
-			defer wg.Done()
+		wg.Go(func() {
+			searcher := searchers[i%len(searchers)]
 
-			searcher := searchers[id%len(searchers)]
-			ctx := context.Background()
-
-			_, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "race_test"})
+			_, err := searcher.Search(t.Context(), &searxng.SearchArgs{Query: "race_test"})
 			if err != nil {
 				atomic.AddInt64(&errorCount, 1)
 				t.Errorf("Search error: %v", err)
 			}
-		}(i)
+		})
 	}
 
 	wg.Wait()
@@ -320,7 +296,7 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 
 	var closeOnce sync.Once
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	// Use a custom RoundTripper that blocks until context cancellation,
 	// simulating a slow SearXNG that gets interrupted. This ensures
@@ -345,14 +321,8 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 		HTTPClient: client,
 	}
 
-	var wg sync.WaitGroup
-
-	wg.Add(numGoroutines)
-
-	for i := range numGoroutines {
-		go func(_ int) {
-			defer wg.Done()
-
+	for range numGoroutines {
+		wg.Go(func() {
 			atomic.AddInt64(&sentCount, 1)
 
 			_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
@@ -369,7 +339,7 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 			}
 
 			atomic.AddInt64(&successCount, 1)
-		}(i)
+		})
 	}
 
 	<-allRequestsEntered
@@ -437,7 +407,7 @@ func TestContextDeadlineExceededDuringSearch(t *testing.T) {
 		HTTPClient: client,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 
 	_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
@@ -469,8 +439,6 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 
 	searcher, _ := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}, false)
 
-	var wg sync.WaitGroup
-
 	const numGoroutines = 50
 
 	var (
@@ -478,13 +446,9 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 		searchErrors     int64
 	)
 
-	wg.Add(numGoroutines * 2)
-
 	// Concurrent validation calls
-	for i := range numGoroutines {
-		go func(_ int) {
-			defer wg.Done()
-
+	for range numGoroutines {
+		wg.Go(func() {
 			args := &searxng.SearchArgs{
 				Query:      "test",
 				Language:   "en",
@@ -496,22 +460,18 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 				atomic.AddInt64(&validationErrors, 1)
 				t.Errorf("unexpected validation error: %v", err)
 			}
-		}(i)
+		})
 	}
 
 	// Concurrent search calls
-	for i := range numGoroutines {
-		go func(_ int) {
-			defer wg.Done()
-
-			ctx := context.Background()
-
-			_, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "test"})
+	for range numGoroutines {
+		wg.Go(func() {
+			_, err := searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
 			if err != nil {
 				atomic.AddInt64(&searchErrors, 1)
 				t.Errorf("search error: %v", err)
 			}
-		}(i)
+		})
 	}
 
 	wg.Wait()
@@ -561,7 +521,7 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 	done := make(chan error, 1)
 
 	go func() {
-		_, err = searcher.Search(context.Background(), &searxng.SearchArgs{Query: "test"})
+		_, err = searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
 		done <- err
 	}()
 
