@@ -144,8 +144,6 @@ func findSearchTool(ctx context.Context, t *testing.T, session *mcp.ClientSessio
 	}
 
 	t.Fatalf("tools/list did not include search tool; got %#v\nstderr:\n%s", tools.Tools, stderr.String())
-
-	return nil
 }
 
 // callSearchTool calls the search tool with the given arguments.
