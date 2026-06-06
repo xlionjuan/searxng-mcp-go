@@ -2,6 +2,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
+// readSampleResponse loads the sample SearXNG JSON response for benchmarks.
 func readSampleResponse(tb testing.TB) []byte {
 	tb.Helper()
 
@@ -24,61 +26,23 @@ func readSampleResponse(tb testing.TB) []byte {
 	return data
 }
 
-// makeSearchResults generates n SearchResult entries with API dates for benchmarking.
-func makeSearchResults(n int) []searxng.SearchResult {
-	results := make([]searxng.SearchResult, n)
-	contents := []string{
-		"Posted 3 hours ago by community",
-		"Published yesterday by maintainers",
-		"2 days ago we added new features",
-		"5 days ago this was released",
-		"Random content without any date information",
-		"Last week there was an announcement",
+// loadSearchResponse loads a SearchResponse from a JSON fixture in testdata/.
+func loadSearchResponse(tb testing.TB, fixture string) *searxng.SearchResponse {
+	tb.Helper()
+
+	data, err := os.ReadFile("testdata/" + fixture) //nolint:gosec // test fixture, fixed path base
+	if err != nil {
+		tb.Fatal(err)
 	}
 
-	for i := range n {
-		date := "2024-01-15"
-		results[i] = searxng.SearchResult{
-			Title:         fmt.Sprintf("Search Result Title %d", i),
-			URL:           fmt.Sprintf("https://example.com/result/%d", i),
-			Content:       fmt.Sprintf("This is the content for result number %d. %s", i, contents[i%len(contents)]),
-			Engine:        []string{"google", "bing", "duckduckgo"}[i%3],
-			PublishedDate: &date,
-		}
+	var resp searxng.SearchResponse
+
+	err = json.Unmarshal(data, &resp)
+	if err != nil {
+		tb.Fatal(err)
 	}
 
-	return results
-}
-
-// makeLargeSearchResponse creates a SearchResponse with n results for benchmarking.
-func makeLargeSearchResponse(n int) *searxng.SearchResponse {
-	answers := []searxng.Answer{
-		{Answer: "42", Engine: "calculator"},
-		{Answer: "192.168.1.1", Engine: "ip_plugin"},
-	}
-	infoboxes := []searxng.Infobox{
-		{
-			Infobox: "Test Topic",
-			Content: strings.Repeat("Go is a programming language. ", 20),
-			Attributes: []searxng.InfoboxAttribute{
-				{Label: "Type", Value: "Language"},
-				{Label: "Year", Value: "2009"},
-			},
-			URLs: []searxng.InfoboxURL{
-				{Title: "Official", URL: "https://go.dev"},
-			},
-		},
-	}
-	suggestions := []string{"golang tutorial", "golang concurrency", "golang vs rust"}
-
-	return &searxng.SearchResponse{
-		Query:           "golang programming",
-		NumberOfResults: n,
-		Answers:         answers,
-		Infoboxes:       infoboxes,
-		Results:         makeSearchResults(n),
-		Suggestions:     suggestions,
-	}
+	return &resp
 }
 
 // ============================================================================
@@ -86,7 +50,7 @@ func makeLargeSearchResponse(n int) *searxng.SearchResponse {
 // ============================================================================
 
 func BenchmarkFormatResults(b *testing.B) {
-	resp := makeLargeSearchResponse(10)
+	resp := loadSearchResponse(b, "large_response_10.json")
 
 	b.ReportAllocs()
 
@@ -127,7 +91,7 @@ func BenchmarkSearch(b *testing.B) {
 }
 
 func BenchmarkFormatResultsLarge(b *testing.B) {
-	resp := makeLargeSearchResponse(100)
+	resp := loadSearchResponse(b, "large_response_100.json")
 
 	b.ReportAllocs()
 

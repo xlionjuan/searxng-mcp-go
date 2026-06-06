@@ -773,7 +773,7 @@ func TestRunCLIMode_Success(t *testing.T) {
 					_, _ = w.Write([]byte(tt.rawResp))
 				}))
 			} else {
-				server = newTestSearchServer(t, tt.resp)
+				server = newJSONTestServer(t, tt.resp)
 			}
 			defer server.Close()
 
@@ -809,21 +809,6 @@ func TestRunCLIMode_MultiplePositionalArgsError(t *testing.T) {
 	if !strings.Contains(err.Error(), "use quotes") {
 		t.Fatalf("error %q does not contain %q", err.Error(), "use quotes")
 	}
-}
-
-func newTestSearchServer(t *testing.T, resp searxng.SearchResponse) *httptest.Server {
-	t.Helper()
-
-	body, err := json.Marshal(resp)
-	if err != nil {
-		t.Fatalf("failed to marshal response: %v", err)
-	}
-
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
-	}))
 }
 
 func TestRunCLIMode_ValidationErrors(t *testing.T) {

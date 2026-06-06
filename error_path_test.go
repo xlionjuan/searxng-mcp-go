@@ -100,11 +100,7 @@ func TestSearch_ConnectionRefused(t *testing.T) {
 
 // TestSearch_EmptyResponse tests handling of empty response body.
 func TestSearch_EmptyResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		// Write empty body
-	}))
+	server := newJSONRawTestServer(t, nil)
 	defer server.Close()
 
 	cfg := &searxng.Config{
@@ -128,11 +124,7 @@ func TestSearch_EmptyResponse(t *testing.T) {
 
 // TestSearch_EmptyBodyWith200 tests empty JSON object response.
 func TestSearch_EmptyJSONObject(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("{}"))
-	}))
+	server := newJSONRawTestServer(t, []byte("{}"))
 	defer server.Close()
 
 	cfg := &searxng.Config{

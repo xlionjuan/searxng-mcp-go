@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"searxng-mcp-go/internal/searxng"
@@ -49,4 +50,26 @@ func mustMarshalJSON(tb testing.TB, v any) []byte {
 	}
 
 	return body
+}
+
+// newJSONTestServer creates an httptest.Server that responds with the JSON
+// encoding of resp on all requests, using the application/json content type.
+func newJSONTestServer(tb testing.TB, resp searxng.SearchResponse) *httptest.Server {
+	tb.Helper()
+
+	body := mustMarshalJSON(tb, resp)
+
+	return newJSONRawTestServer(tb, body)
+}
+
+// newJSONRawTestServer creates an httptest.Server that responds with body on all
+// requests, using the application/json content type.
+func newJSONRawTestServer(tb testing.TB, body []byte) *httptest.Server {
+	tb.Helper()
+
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}))
 }
