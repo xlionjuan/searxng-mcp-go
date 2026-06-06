@@ -226,8 +226,9 @@ func (s *SearXNGSearcher) doSearchAttempt(ctx context.Context, args *SearchArgs)
 
 	s.logDebugResponse(resp, err)
 
-	if err == nil && resp != nil && s.allowGETFallback &&
-		(resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented) {
+	shouldFallbackToGET := err == nil && resp != nil && s.allowGETFallback &&
+		(resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented)
+	if shouldFallbackToGET {
 		resp, err = s.executeGETfallback(ctx, resp, postReq, postBodyStr)
 	}
 

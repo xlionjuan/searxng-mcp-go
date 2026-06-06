@@ -10,8 +10,9 @@ import (
 	"time"
 )
 
+const errTimeoutNegativeMessage = "Timeout cannot be negative"
+
 var (
-	errTimeoutNegativeMessage = "Timeout cannot be negative"
 
 	errURLRequired           = errors.New("SearXNGURL cannot be empty")
 	errTimeoutNegative       = errors.New(errTimeoutNegativeMessage)

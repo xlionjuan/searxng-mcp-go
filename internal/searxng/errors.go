@@ -92,13 +92,6 @@ func truncateBytesToValidUTF8(data []byte, maxBytes int) []byte {
 	return data
 }
 
-// isValidationError checks if an error is a ValidationError.
-func isValidationError(err error) bool {
-	var ve *ValidationError
-
-	return errors.As(err, &ve)
-}
-
 // SearXNGError represents an error that occurred during communication with
 // the SearXNG service.
 type SearXNGError struct {
