@@ -35,7 +35,7 @@ func TestMCPFunctional(t *testing.T) {
 
 	t.Run("all safesearch levels", func(t *testing.T) {
 		for _, safesearch := range []int{0, 1, 2} {
-		t.Run(strconv.Itoa(safesearch), func(t *testing.T) {
+			t.Run(strconv.Itoa(safesearch), func(t *testing.T) {
 				response := requireSearchResponse(ctx, t, session, map[string]any{
 					"query":      "framework computer inc",
 					"safesearch": safesearch,
