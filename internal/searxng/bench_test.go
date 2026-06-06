@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 )
 
-func readSampleResponse(tb testing.TB) []byte {
+// readJSONFixture reads a JSON fixture from testdata/ and fails the test on error.
+func readJSONFixture(tb testing.TB, name string) []byte {
 	tb.Helper()
 
-	data, err := os.ReadFile("../../testdata/sample_response.json")
+	data, err := os.ReadFile("../../testdata/" + name) //nolint:gosec // test fixture, fixed path base
 	if err != nil {
 		tb.Fatal(err)
 	}
@@ -19,61 +19,26 @@ func readSampleResponse(tb testing.TB) []byte {
 	return data
 }
 
-// makeSearchResults generates n SearchResult entries with API dates for benchmarking.
-func makeSearchResults(n int) []SearchResult {
-	results := make([]SearchResult, n)
-	contents := []string{
-		"Posted 3 hours ago by community",
-		"Published yesterday by maintainers",
-		"2 days ago we added new features",
-		"5 days ago this was released",
-		"Random content without any date information",
-		"Last week there was an announcement",
-	}
+func readSampleResponse(tb testing.TB) []byte {
+	tb.Helper()
 
-	for i := range n {
-		date := "2024-01-15"
-		results[i] = SearchResult{
-			Title:         fmt.Sprintf("Search Result Title %d", i),
-			URL:           fmt.Sprintf("https://example.com/result/%d", i),
-			Content:       fmt.Sprintf("This is the content for result number %d. %s", i, contents[i%len(contents)]),
-			Engine:        []string{"google", "bing", "duckduckgo"}[i%3],
-			PublishedDate: &date,
-		}
-	}
-
-	return results
+	return readJSONFixture(tb, "sample_response.json")
 }
 
-// makeLargeSearchResponse creates a SearchResponse with n results for benchmarking.
-func makeLargeSearchResponse(n int) *SearchResponse {
-	answers := []Answer{
-		{Answer: "42", Engine: "calculator"},
-		{Answer: "192.168.1.1", Engine: "ip_plugin"},
-	}
-	infoboxes := []Infobox{
-		{
-			Infobox: "Test Topic",
-			Content: strings.Repeat("Go is a programming language. ", 20),
-			Attributes: []InfoboxAttribute{
-				{Label: "Type", Value: "Language"},
-				{Label: "Year", Value: "2009"},
-			},
-			URLs: []InfoboxURL{
-				{Title: "Official", URL: "https://go.dev"},
-			},
-		},
-	}
-	suggestions := []string{"golang tutorial", "golang concurrency", "golang vs rust"}
+// loadSearchResponse loads a SearchResponse from a JSON fixture in testdata/.
+func loadSearchResponse(tb testing.TB, fixture string) *SearchResponse {
+	tb.Helper()
 
-	return &SearchResponse{
-		Query:           "golang programming",
-		NumberOfResults: n,
-		Answers:         answers,
-		Infoboxes:       infoboxes,
-		Results:         makeSearchResults(n),
-		Suggestions:     suggestions,
+	data := readJSONFixture(tb, fixture)
+
+	var resp SearchResponse
+
+	err := json.Unmarshal(data, &resp)
+	if err != nil {
+		tb.Fatal(err)
 	}
+
+	return &resp
 }
 
 // ============================================================================
@@ -96,13 +61,7 @@ func BenchmarkJSONUnmarshal(b *testing.B) {
 }
 
 func BenchmarkJSONUnmarshalLarge(b *testing.B) {
-	// Create a large JSON payload (100 results)
-	largeResp := makeLargeSearchResponse(100)
-
-	data, err := json.Marshal(largeResp)
-	if err != nil {
-		b.Fatal(err)
-	}
+	data := readJSONFixture(b, "large_response_100.json")
 
 	b.ReportAllocs()
 
@@ -121,7 +80,7 @@ func BenchmarkJSONUnmarshalLarge(b *testing.B) {
 // ============================================================================
 
 func BenchmarkMarshalJSON(b *testing.B) {
-	resp := makeLargeSearchResponse(10)
+	resp := loadSearchResponse(b, "large_response_10.json")
 
 	b.ReportAllocs()
 
@@ -134,7 +93,7 @@ func BenchmarkMarshalJSON(b *testing.B) {
 }
 
 func BenchmarkMarshalJSONLarge(b *testing.B) {
-	resp := makeLargeSearchResponse(100)
+	resp := loadSearchResponse(b, "large_response_100.json")
 
 	b.ReportAllocs()
 
@@ -148,14 +107,16 @@ func BenchmarkMarshalJSONLarge(b *testing.B) {
 
 // Standard json.Marshal for comparison.
 func BenchmarkStdMarshalJSON(b *testing.B) {
+	resp := loadSearchResponse(b, "large_response_10.json")
+
 	type stdSearchResponse SearchResponse
 
-	resp := stdSearchResponse(*makeLargeSearchResponse(10))
+	stdResp := stdSearchResponse(*resp)
 
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, err := json.Marshal(resp)
+		_, err := json.Marshal(stdResp)
 		if err != nil {
 			b.Fatal(err)
 		}

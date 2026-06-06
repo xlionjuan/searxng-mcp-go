@@ -186,13 +186,7 @@ func TestChannelDeadlockDetection(t *testing.T) {
 		NumberOfResults: 0,
 		Query:           "test",
 	}
-	body := mustMarshalJSON(t, searchResp)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
-	}))
+	server := newJSONTestServer(t, searchResp)
 	defer server.Close()
 
 	cfg := &searxng.Config{
@@ -470,13 +464,7 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 		NumberOfResults: 0,
 		Query:           "test",
 	}
-	body := mustMarshalJSON(t, searchResp)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
-	}))
+	server := newJSONTestServer(t, searchResp)
 	defer server.Close()
 
 	searcher, _ := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}, false)

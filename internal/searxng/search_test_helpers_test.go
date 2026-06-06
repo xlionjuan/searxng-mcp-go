@@ -62,7 +62,6 @@ func newTestSearcher(t *testing.T, rt roundTripperFunc, maxRetries int) *SearXNG
 		},
 		searchEndpoint: endpoint,
 		debug:          false,
-		maxRetries:     maxRetries,
 		retryStrategy:  newExponentialBackoffStrategy(maxRetries, time.Microsecond, time.Microsecond),
 		ownsTransport:  true,
 	}

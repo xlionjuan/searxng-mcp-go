@@ -418,7 +418,6 @@ func TestSearch_DebugMode(t *testing.T) {
 			},
 			searchEndpoint: endpoint,
 			debug:          true,
-			maxRetries:     0,
 			retryStrategy:  newExponentialBackoffStrategy(0, time.Microsecond, time.Microsecond),
 		}
 
