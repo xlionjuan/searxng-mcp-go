@@ -338,11 +338,12 @@ func getConfig(flags CLIFlags) (*searxng.Config, error) {
 	// Apply SEARXNG_TIMEOUT env var (parsed as Go duration, e.g. "8s")
 	if timeoutStr := os.Getenv("SEARXNG_TIMEOUT"); timeoutStr != "" {
 		d, err := time.ParseDuration(timeoutStr)
-		if err != nil {
+		switch {
+		case err != nil:
 			slog.Warn("invalid SEARXNG_TIMEOUT, ignoring", "value", timeoutStr, "error", err)
-		} else if d <= 0 {
+		case d <= 0:
 			slog.Warn("invalid SEARXNG_TIMEOUT, ignoring", "value", timeoutStr, "reason", "non-positive duration")
-		} else {
+		default:
 			cfg.Timeout = d
 		}
 	}
