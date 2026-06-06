@@ -1,0 +1,113 @@
+{
+  "query": "golang programming",
+  "results": [
+    {
+      "title": "Search Result Title 0",
+      "url": "https://example.com/result/0",
+      "content": "This is the content for result number 0. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 1",
+      "url": "https://example.com/result/1",
+      "content": "This is the content for result number 1. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 2",
+      "url": "https://example.com/result/2",
+      "content": "This is the content for result number 2. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 3",
+      "url": "https://example.com/result/3",
+      "content": "This is the content for result number 3. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 4",
+      "url": "https://example.com/result/4",
+      "content": "This is the content for result number 4. Random content without any date information",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 5",
+      "url": "https://example.com/result/5",
+      "content": "This is the content for result number 5. Last week there was an announcement",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 6",
+      "url": "https://example.com/result/6",
+      "content": "This is the content for result number 6. Posted 3 hours ago by community",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 7",
+      "url": "https://example.com/result/7",
+      "content": "This is the content for result number 7. Published yesterday by maintainers",
+      "engine": "bing",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 8",
+      "url": "https://example.com/result/8",
+      "content": "This is the content for result number 8. 2 days ago we added new features",
+      "engine": "duckduckgo",
+      "publishedDate": "2024-01-15"
+    },
+    {
+      "title": "Search Result Title 9",
+      "url": "https://example.com/result/9",
+      "content": "This is the content for result number 9. 5 days ago this was released",
+      "engine": "google",
+      "publishedDate": "2024-01-15"
+    }
+  ],
+  "answers": [
+    {
+      "answer": "42",
+      "engine": "calculator"
+    },
+    {
+      "answer": "192.168.1.1",
+      "engine": "ip_plugin"
+    }
+  ],
+  "infoboxes": [
+    {
+      "infobox": "Test Topic",
+      "content": "Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. Go is a programming language. ",
+      "attributes": [
+        {
+          "label": "Type",
+          "value": "Language"
+        },
+        {
+          "label": "Year",
+          "value": "2009"
+        }
+      ],
+      "urls": [
+        {
+          "title": "Official",
+          "url": "https://go.dev"
+        }
+      ]
+    }
+  ],
+  "suggestions": [
+    "golang tutorial",
+    "golang concurrency",
+    "golang vs rust"
+  ],
+  "number_of_results": 10
+}
