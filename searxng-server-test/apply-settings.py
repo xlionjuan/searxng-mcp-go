@@ -39,7 +39,10 @@ def get_settings_path() -> Path:
     env_path = os.environ.get("SETTINGS_FILE")
     if env_path:
         return Path(env_path)
-    print("Error: settings file path required (CLI arg or SETTINGS_FILE env)", file=sys.stderr)
+    print(
+        "Error: settings file path required (CLI arg or SETTINGS_FILE env)",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 
@@ -132,8 +135,8 @@ def main() -> None:
     data = load_settings(path)
 
     # 1. Set secret key
-    secret_key = set_secret_key(data)
-    print(f"  Generated secret_key ✓")
+    set_secret_key(data)
+    print("  Generated secret_key ✓")
 
     # 2. Enable JSON format
     added = ensure_json_format(data)
