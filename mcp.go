@@ -155,7 +155,7 @@ func isValidMCPInitializeMessage(line []byte) bool {
 // blocks until a signal (SIGINT/SIGTERM) is received or the server exits.
 // It returns an error on failure so that main can handle exit codes and
 // deferred cleanup (searcher.Close) runs correctly.
-func runMCPMode(debug bool, flags CLIFlags, stdin io.Reader) error {
+func runMCPMode(debug bool, flags *CLIFlags, stdin io.Reader) error {
 	cfg, err := getConfig(flags)
 	if err != nil {
 		return fmt.Errorf("configuration error: %w", err)

@@ -470,7 +470,7 @@ func TestGetConfig(t *testing.T) {
 	t.Setenv("SEARXNG_URL", "https://env.example.com")
 
 	t.Run("flag overrides env", func(t *testing.T) {
-		cfg, err := getConfig(CLIFlags{SearXNGURL: "https://flag.example.com"})
+		cfg, err := getConfig(&CLIFlags{SearXNGURL: "https://flag.example.com"})
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -481,7 +481,7 @@ func TestGetConfig(t *testing.T) {
 	})
 
 	t.Run("env used when flag empty", func(t *testing.T) {
-		cfg, err := getConfig(CLIFlags{})
+		cfg, err := getConfig(&CLIFlags{})
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -494,7 +494,7 @@ func TestGetConfig(t *testing.T) {
 	t.Run("timeout env parsed", func(t *testing.T) {
 		t.Setenv("SEARXNG_TIMEOUT", "250ms")
 
-		cfg, err := getConfig(CLIFlags{})
+		cfg, err := getConfig(&CLIFlags{})
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -507,7 +507,7 @@ func TestGetConfig(t *testing.T) {
 	t.Run("max retries env parsed", func(t *testing.T) {
 		t.Setenv("SEARXNG_MAX_RETRIES", "3")
 
-		cfg, err := getConfig(CLIFlags{})
+		cfg, err := getConfig(&CLIFlags{})
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -520,7 +520,7 @@ func TestGetConfig(t *testing.T) {
 	t.Run("GET fallback env parsed", func(t *testing.T) {
 		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "1")
 
-		cfg, err := getConfig(CLIFlags{})
+		cfg, err := getConfig(&CLIFlags{})
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -533,7 +533,7 @@ func TestGetConfig(t *testing.T) {
 	t.Run("GET fallback env zero disables", func(t *testing.T) {
 		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "0")
 
-		cfg, err := getConfig(CLIFlags{})
+		cfg, err := getConfig(&CLIFlags{})
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -631,7 +631,7 @@ func TestGetConfig(t *testing.T) {
 		t.Setenv("SEARXNG_MAX_RETRIES", "-1")
 		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "true")
 
-		cfg, err := getConfig(CLIFlags{})
+		cfg, err := getConfig(&CLIFlags{})
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -696,7 +696,7 @@ func TestGetConfig(t *testing.T) {
 	t.Run("error when neither set", func(t *testing.T) {
 		t.Setenv("SEARXNG_URL", "")
 
-		_, err := getConfig(CLIFlags{})
+		_, err := getConfig(&CLIFlags{})
 		if err == nil {
 			t.Fatal("getConfig() error = nil, want error")
 		}
@@ -748,7 +748,7 @@ func TestRunCLIMode_Success(t *testing.T) {
 		name       string
 		resp       searxng.SearchResponse
 		rawResp    string
-		flags      CLIFlags
+		flags      *CLIFlags
 		positional []string
 		debug      bool
 		check      func(t *testing.T, output string)
@@ -756,7 +756,7 @@ func TestRunCLIMode_Success(t *testing.T) {
 		{
 			name:  "text output",
 			resp:  successResp,
-			flags: CLIFlags{Query: "golang", Pageno: nil},
+			flags: &CLIFlags{Query: "golang", Pageno: nil},
 			check: func(t *testing.T, output string) {
 				t.Helper()
 
@@ -768,7 +768,7 @@ func TestRunCLIMode_Success(t *testing.T) {
 		{
 			name:  "json output",
 			resp:  successResp,
-			flags: CLIFlags{Query: "golang", JSON: true, Pageno: nil},
+			flags: &CLIFlags{Query: "golang", JSON: true, Pageno: nil},
 			check: func(t *testing.T, output string) {
 				t.Helper()
 
@@ -790,7 +790,7 @@ func TestRunCLIMode_Success(t *testing.T) {
 				`"results":[{"title":"Go","url":"https://go.dev","content":"Go language","engine":"google"}],` +
 				`"suggestions":[],` +
 				`"unresponsive_engines":[["brave","Suspended:\" too many \"requests"]]}`,
-			flags: CLIFlags{Query: "golang", JSON: true, Pageno: nil},
+			flags: &CLIFlags{Query: "golang", JSON: true, Pageno: nil},
 			debug: true,
 			check: func(t *testing.T, output string) {
 				t.Helper()
@@ -807,7 +807,7 @@ func TestRunCLIMode_Success(t *testing.T) {
 				NumberOfResults: 1,
 				Results:         []searxng.SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
 			},
-			flags:      CLIFlags{Query: "flag query", Pageno: nil},
+			flags:      &CLIFlags{Query: "flag query", Pageno: nil},
 			positional: []string{"positional query"},
 			check: func(t *testing.T, output string) {
 				t.Helper()
@@ -833,13 +833,13 @@ func TestRunCLIMode_Success(t *testing.T) {
 			}
 			defer server.Close()
 
-			flags := tt.flags
+			flags := *tt.flags
 			flags.SearXNGURL = server.URL
 
 			var err error
 
 			output := captureStdout(t, func() {
-				err = runCLIMode(tt.debug, flags, tt.positional)
+				err = runCLIMode(tt.debug, &flags, tt.positional)
 			})
 			if err != nil {
 				t.Fatalf("runCLIMode() error = %v", err)
@@ -853,7 +853,7 @@ func TestRunCLIMode_Success(t *testing.T) {
 func TestRunCLIMode_MultiplePositionalArgsError(t *testing.T) {
 	t.Parallel()
 
-	err := runCLIMode(false, CLIFlags{Pageno: nil}, []string{"golang", "programming"})
+	err := runCLIMode(false, &CLIFlags{Pageno: nil}, []string{"golang", "programming"})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -872,42 +872,42 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		flags     CLIFlags
+		flags     *CLIFlags
 		query     []string
 		wantErr   bool
 		errSubstr string
 	}{
 		{
 			name:      "missing query",
-			flags:     CLIFlags{Language: "", SafeSearch: 0, Pageno: nil},
+			flags:     &CLIFlags{Language: "", SafeSearch: 0, Pageno: nil},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "search query is required",
 		},
 		{
 			name:      "safesearch out of range",
-			flags:     CLIFlags{Query: "test", SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: -1, Pageno: nil},
+			flags:     &CLIFlags{Query: "test", SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: -1, Pageno: nil},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
 		},
 		{
 			name:      "invalid time_range",
-			flags:     CLIFlags{Query: "test", SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: 0, TimeRange: "invalid", Pageno: nil},
+			flags:     &CLIFlags{Query: "test", SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: 0, TimeRange: "invalid", Pageno: nil},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
 		},
 		{
 			name:      "pageno zero",
-			flags:     CLIFlags{Query: "test", SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: 0, Pageno: new(0)},
+			flags:     &CLIFlags{Query: "test", SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: 0, Pageno: new(0)},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
 		},
 		{
 			name:      "query too long",
-			flags:     CLIFlags{Query: strings.Repeat("a", 501), SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: 0, Pageno: nil},
+			flags:     &CLIFlags{Query: strings.Repeat("a", 501), SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: 0, Pageno: nil},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
@@ -935,7 +935,7 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 }
 
 func TestRunCLIMode_HelpFlag(t *testing.T) {
-	flags := CLIFlags{Help: true, Language: "", SafeSearch: 0, Pageno: nil}
+	flags := &CLIFlags{Help: true, Language: "", SafeSearch: 0, Pageno: nil}
 
 	output := captureStdout(t, func() {
 		err := runCLIMode(false, flags, []string{})
@@ -954,7 +954,7 @@ func TestRunCLIMode_HelpFlag(t *testing.T) {
 }
 
 func TestRunCLIMode_VersionFlag(t *testing.T) {
-	flags := CLIFlags{Version: true, Language: "", SafeSearch: 0, Pageno: nil}
+	flags := &CLIFlags{Version: true, Language: "", SafeSearch: 0, Pageno: nil}
 
 	output := captureStdout(t, func() {
 		err := runCLIMode(false, flags, []string{})
@@ -975,7 +975,7 @@ func TestRunCLIMode_VersionFlag(t *testing.T) {
 func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
 	t.Parallel()
 
-	flags := CLIFlags{Query: "test", SearXNGURL: "http://localhost:99999", Language: "", SafeSearch: 0, Pageno: nil}
+	flags := &CLIFlags{Query: "test", SearXNGURL: "http://localhost:99999", Language: "", SafeSearch: 0, Pageno: nil}
 
 	err := runCLIMode(false, flags, []string{})
 	if err == nil {
@@ -992,31 +992,31 @@ func TestRunCLIMode_FlagOnlyInvocations(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		flags     CLIFlags
+		flags     *CLIFlags
 		wantErr   bool
 		errSubstr string
 	}{
 		{
 			name:      "language flag only - no query",
-			flags:     CLIFlags{Language: "ja", SafeSearch: 0, Pageno: nil},
+			flags:     &CLIFlags{Language: "ja", SafeSearch: 0, Pageno: nil},
 			wantErr:   true,
 			errSubstr: "search query is required",
 		},
 		{
 			name:      "searxng-url flag only - no query",
-			flags:     CLIFlags{SearXNGURL: "https://example.com", Language: "", SafeSearch: 0, Pageno: nil},
+			flags:     &CLIFlags{SearXNGURL: "https://example.com", Language: "", SafeSearch: 0, Pageno: nil},
 			wantErr:   true,
 			errSubstr: "search query is required",
 		},
 		{
 			name:      "multiple flags only - no query",
-			flags:     CLIFlags{Language: "", SafeSearch: 1, Pageno: nil},
+			flags:     &CLIFlags{Language: "", SafeSearch: 1, Pageno: nil},
 			wantErr:   true,
 			errSubstr: "search query is required",
 		},
 		{
 			name:      "all optional flags without query",
-			flags:     CLIFlags{Language: "zh-tw", SafeSearch: 2, TimeRange: "month", Categories: "general", Engines: "google", Pageno: nil},
+			flags:     &CLIFlags{Language: "zh-tw", SafeSearch: 2, TimeRange: "month", Categories: "general", Engines: "google", Pageno: nil},
 			wantErr:   true,
 			errSubstr: "search query is required",
 		},
