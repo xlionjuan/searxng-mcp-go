@@ -340,6 +340,8 @@ func getConfig(flags CLIFlags) (*searxng.Config, error) {
 		d, err := time.ParseDuration(timeoutStr)
 		if err != nil {
 			slog.Warn("invalid SEARXNG_TIMEOUT, ignoring", "value", timeoutStr, "error", err)
+		} else if d <= 0 {
+			slog.Warn("invalid SEARXNG_TIMEOUT, ignoring", "value", timeoutStr, "reason", "non-positive duration")
 		} else {
 			cfg.Timeout = d
 		}
