@@ -182,6 +182,11 @@ exception live in `docs/MCP_TESTING.md`; do not duplicate them here.
   include `/pull/new/...` links, duplicated closing keywords, or pasted chat
   transcripts.
 - See `docs/agents/pull-requests.md` for the full PR checklist.
+- When reviewing an existing PR whose CI is already green, do not re-run the
+  local test suite; read CI status with `gh pr checks` / `gh run view` first.
+  Re-run locally only if the agent is pushing new commits or CI is red and
+  the log is not enough to diagnose. See
+  `docs/agents/pull-requests.md#reviewing-existing-prs`.
 
 ## Git Identity
 
