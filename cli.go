@@ -51,6 +51,9 @@ OPTIONS:
                      Can also be set via SEARXNG_TIMEOUT environment variable
   --max-retries N    Max retries after initial search attempt [default: %d]
                      Can also be set via SEARXNG_MAX_RETRIES environment variable
+  --allow-get-fallback
+                     Enable POST→GET fallback for 405/501 responses (CLI mode)
+                     Can also be set via SEARXNG_ALLOW_GET_FALLBACK environment variable
   --help             Show this help message
   --version          Show version information
 

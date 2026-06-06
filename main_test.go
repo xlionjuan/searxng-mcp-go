@@ -44,6 +44,7 @@ func TestPrintCLIHelp(t *testing.T) {
 		"--pageno",
 		"--limit",
 		"--debug",
+		"--allow-get-fallback",
 		"--help",
 		"--version",
 		"ARGUMENTS:",
@@ -545,11 +546,13 @@ func TestGetConfig(t *testing.T) {
 	t.Run("cli flags override env", func(t *testing.T) {
 		t.Setenv("SEARXNG_TIMEOUT", "30s")
 		t.Setenv("SEARXNG_MAX_RETRIES", "9")
+		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "0")
 
 		_, flags, _, err := parseArgs([]string{
 			"--searxng-url", "https://flag.example.com",
 			"--timeout", "1500ms",
 			"--max-retries", "4",
+			"--allow-get-fallback",
 			"test query",
 		})
 		if err != nil {
@@ -567,6 +570,59 @@ func TestGetConfig(t *testing.T) {
 
 		if cfg.MaxRetries != 4 {
 			t.Fatalf("MaxRetries = %d, want 4", cfg.MaxRetries)
+		}
+
+		if !cfg.AllowGETFallback {
+			t.Fatal("AllowGETFallback = false, want true (CLI flag overrides env var)")
+		}
+	})
+
+	t.Run("--allow-get-fallback flag without env enables fallback", func(t *testing.T) {
+		_, flags, _, err := parseArgs([]string{
+			"--searxng-url", "https://flag.example.com",
+			"--allow-get-fallback",
+			"test query",
+		})
+		if err != nil {
+			t.Fatalf("parseArgs() error = %v, want nil", err)
+		}
+
+		if !flags.AllowGETFallback {
+			t.Fatal("flags.AllowGETFallback = false, want true")
+		}
+
+		cfg, err := getConfig(flags)
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
+
+		if !cfg.AllowGETFallback {
+			t.Fatal("cfg.AllowGETFallback = false, want true (CLI flag alone enables fallback)")
+		}
+	})
+
+	t.Run("--allow-get-fallback absent preserves env value", func(t *testing.T) {
+		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "1")
+
+		_, flags, _, err := parseArgs([]string{
+			"--searxng-url", "https://flag.example.com",
+			"test query",
+		})
+		if err != nil {
+			t.Fatalf("parseArgs() error = %v, want nil", err)
+		}
+
+		if flags.AllowGETFallback {
+			t.Fatal("flags.AllowGETFallback = true, want false (flag not passed)")
+		}
+
+		cfg, err := getConfig(flags)
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
+
+		if !cfg.AllowGETFallback {
+			t.Fatal("cfg.AllowGETFallback = false, want true (env=1, no flag)")
 		}
 	})
 
