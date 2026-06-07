@@ -17,6 +17,7 @@ go.work
 
 # Dependency directories
 vendor/
+__pycache__/
 
 # IDE
 .idea/
