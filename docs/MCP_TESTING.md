@@ -24,13 +24,12 @@ The `modelcontextprotocol/go-sdk` provides `NewInMemoryTransports()` specificall
 
 ```go
 import (
-    "context"
     "testing"
     "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func setupTest(t *testing.T) (*mcp.ClientSession, *mcp.ServerSession, func()) {
-    ctx := context.Background()
+    ctx := t.Context()
 
     // 1. Create server
     server := mcp.NewServer(&mcp.Implementation{
@@ -73,7 +72,7 @@ func setupTest(t *testing.T) (*mcp.ClientSession, *mcp.ServerSession, func()) {
 func TestSearchTool(t *testing.T) {
     clientSession, _, cleanup := setupTest(t)
     defer cleanup()
-    ctx := context.Background()
+    ctx := t.Context()
 
     // List tools
     tools, err := clientSession.ListTools(ctx, nil)
@@ -107,7 +106,7 @@ func TestSearchValidation(t *testing.T) {
     defer cleanup()
 
     // Empty query should return error
-    result, err := clientSession.CallTool(context.Background(), &mcp.CallToolParams{
+    result, err := clientSession.CallTool(t.Context(), &mcp.CallToolParams{
         Name:      "search",
         Arguments: map[string]any{"query": ""},
     })
