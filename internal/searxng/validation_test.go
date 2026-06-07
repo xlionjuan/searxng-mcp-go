@@ -265,7 +265,10 @@ func TestSearXNGErrorAndHTMLResponseError(t *testing.T) {
 	}
 
 	htmlErr := &HTMLResponseError{Body: "<html></html>", UnderlyingErr: underlying}
-	if got, want := htmlErr.Error(), "searxng returned html instead of json - json output may not be enabled on the server"; got != want {
+	want := "searxng returned html instead of json" +
+		" - json output may not be enabled on the server"
+
+	if got := htmlErr.Error(); got != want {
 		t.Fatalf("HTMLResponseError.Error() = %q, want %q", got, want)
 	}
 

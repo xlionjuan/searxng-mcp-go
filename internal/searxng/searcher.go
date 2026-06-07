@@ -13,12 +13,14 @@ import (
 
 var (
 	errSearcherConfigRequired   = errors.New("newSearXNGSearcher: config cannot be nil")
-	errSearcherURLParseInternal = errors.New("newSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error)")
-	errRequestCreateFailed      = errors.New("failed to create request")
-	errSearchRequestFailed      = errors.New("failed to execute search request")
-	errErrorBodyTooLarge        = errors.New("error response body exceeded maximum size limit")
-	errEmptyResponse            = errors.New("empty response from SearXNG")
-	errGETFallbackUsed          = errors.New("GET fallback was used; search query parameters may have been sent in the request URL")
+	errSearcherURLParseInternal = errors.New(
+		"newSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error)")
+	errRequestCreateFailed = errors.New("failed to create request")
+	errSearchRequestFailed = errors.New("failed to execute search request")
+	errErrorBodyTooLarge   = errors.New("error response body exceeded maximum size limit")
+	errEmptyResponse       = errors.New("empty response from SearXNG")
+	errGETFallbackUsed     = errors.New(
+		"GET fallback was used; search query parameters may have been sent in the request URL")
 )
 
 const getFallbackLogRisk = "Search query parameters may be sent in upstream URLs and recorded by " +
@@ -39,6 +41,8 @@ type SearXNGSearcher struct {
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
 // Returns an error if cfg is nil, cfg.Validate fails, the base URL is empty
 // or invalid, or endpoint construction fails internally.
+//
+//nolint:nestif // config-driven client setup branches on existing client, custom timeout, and redirect-wrapping
 func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	if cfg == nil {
 		return nil, errSearcherConfigRequired

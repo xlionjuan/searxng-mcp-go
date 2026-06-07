@@ -411,7 +411,8 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 
 		customClient := &http.Client{Timeout: 30 * time.Second}
 
-		searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: "https://example.com", HTTPClient: customClient}, false)
+		searcher, err := searxng.NewSearXNGSearcher(
+			&searxng.Config{SearXNGURL: "https://example.com", HTTPClient: customClient}, false)
 		if err != nil {
 			t.Fatal(err)
 		}

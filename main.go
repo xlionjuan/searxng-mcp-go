@@ -24,8 +24,9 @@ var (
 
 var (
 	errArgumentParseFailed = errors.New("failed to parse arguments")
-	errSearXNGURLRequired  = errors.New("SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
-	errUnexpectedFlagType  = errors.New("registered search flag has unexpected type")
+	errSearXNGURLRequired  = errors.New(
+		"SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
+	errUnexpectedFlagType = errors.New("registered search flag has unexpected type")
 )
 
 // Process exit codes. CLI failures exit with exitCodeCLIError; MCP mode
@@ -197,7 +198,8 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 		help:       fs.Bool("help", false, "Show this help message"),
 		version:    fs.Bool("version", false, "Show version information"),
 		searxngURL: fs.String("searxng-url", "", "SearXNG URL (can also be set via SEARXNG_URL env var)"),
-		debug:      fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)"),
+		debug: fs.Bool("debug", false,
+			"Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)"),
 		timeout: fs.Duration(
 			"timeout",
 			searxng.DefaultTimeout,

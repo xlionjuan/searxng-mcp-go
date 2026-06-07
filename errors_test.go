@@ -75,7 +75,9 @@ func TestHTTPStatusError_HTMLBodyNotInErrorMessage(t *testing.T) {
 	}
 
 	errMsg := err.Error()
-	if strings.Contains(errMsg, "<!DOCTYPE") || strings.Contains(errMsg, "<html>") || strings.Contains(errMsg, "Internal Server Error") {
+	if strings.Contains(errMsg, "<!DOCTYPE") ||
+		strings.Contains(errMsg, "<html>") ||
+		strings.Contains(errMsg, "Internal Server Error") {
 		t.Errorf("error message should not contain HTML body content, got: %s", errMsg)
 	}
 
@@ -129,7 +131,9 @@ func TestHTMLResponseError_HTMLBodyNotInMessage(t *testing.T) {
 	err := &searxng.HTMLResponseError{Body: htmlBody, UnderlyingErr: nil}
 
 	errMsg := err.Error()
-	if strings.Contains(errMsg, "<!DOCTYPE") || strings.Contains(errMsg, "<html>") || strings.Contains(errMsg, "JSON not enabled") {
+	if strings.Contains(errMsg, "<!DOCTYPE") ||
+		strings.Contains(errMsg, "<html>") ||
+		strings.Contains(errMsg, "JSON not enabled") {
 		t.Errorf("HTMLResponseError.Error() should not contain HTML body, got: %s", errMsg)
 	}
 }

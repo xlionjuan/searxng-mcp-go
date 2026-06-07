@@ -49,7 +49,11 @@ func TestSanitizeTerminalControl(t *testing.T) {
 		{name: "ESC at start", input: "\x1b[31mred", want: `\x1b[31mred`},
 		{name: "ANSI SGR (red)", input: "\x1b[31mhello\x1b[0m", want: `\x1b[31mhello\x1b[0m`},
 		{name: "ANSI cursor movement", input: "\x1b[2Ahome", want: `\x1b[2Ahome`},
-		{name: "OSC 52 clipboard write attempt", input: "evil\x1b]52;c;SGVsbG8=\x07text", want: `evil\x1b]52;c;SGVsbG8=\x07text`},
+		{
+			name:  "OSC 52 clipboard write attempt",
+			input: "evil\x1b]52;c;SGVsbG8=\x07text",
+			want:  `evil\x1b]52;c;SGVsbG8=\x07text`,
+		},
 		{name: "OSC title set", input: "\x1b]0;new title\x07", want: `\x1b]0;new title\x07`},
 		{name: "DCS device control", input: "\x1bP1;2;3abc\x1b\\", want: `\x1bP1;2;3abc\x1b\`},
 		{name: "CSI question mark", input: "\x1b[?25h", want: `\x1b[?25h`},
@@ -72,7 +76,11 @@ func TestSanitizeTerminalControl(t *testing.T) {
 		{name: "leading ESC", input: "\x1b", want: `\x1b`},
 		{name: "trailing ESC", input: "tail\x1b", want: `tail\x1b`},
 		{name: "only control bytes", input: "\x01\x02\x03", want: `\x01\x02\x03`},
-		{name: "ESC + ANSI + text + BEL", input: "prefix\x1b[1;32mGREEN\x1b[0m suffix\x07", want: `prefix\x1b[1;32mGREEN\x1b[0m suffix\x07`},
+		{
+			name:  "ESC + ANSI + text + BEL",
+			input: "prefix\x1b[1;32mGREEN\x1b[0m suffix\x07",
+			want:  `prefix\x1b[1;32mGREEN\x1b[0m suffix\x07`,
+		},
 
 		// --- invalid UTF-8 bytes ---
 		{name: "invalid UTF-8 byte 0x80 alone", input: "a\x80b", want: `a\x80b`},

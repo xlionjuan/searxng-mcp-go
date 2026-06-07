@@ -18,7 +18,7 @@ func FuzzValidateSearchArgs(f *testing.F) {
 	f.Add("golang search", "en", int64(0), "", "", "", int64(1))                                  // valid minimal
 	f.Add("test", "", int64(0), "", "", "", int64(1))                                             // valid no language
 	f.Add("", "", int64(0), "", "", "", int64(1))                                                 // empty query → invalid
-	f.Add("test", "auto", int64(0), "", "", "", int64(1))                                         // auto language → normalized
+	f.Add("test", "auto", int64(0), "", "", "", int64(1))                                         // auto lang → normalized
 	f.Add("test", "INVALID_LANG!", int64(0), "", "", "", int64(1))                                // invalid language
 	f.Add("test", "en", int64(2), "month", "general,news", "google,bing", int64(1))               // all valid
 	f.Add("test\nquery", "en", int64(0), "", "", "", int64(1))                                    // control char in query

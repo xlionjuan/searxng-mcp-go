@@ -288,12 +288,32 @@ func TestComputeSearchEndpoint(t *testing.T) {
 		baseURL string
 		want    string
 	}{
-		{name: "path ends with /search", baseURL: "https://search.example.com/search", want: "https://search.example.com/search"},
-		{name: "path ends with slash", baseURL: "https://search.example.com/searxng/", want: "https://search.example.com/searxng/search"},
-		{name: "no trailing slash", baseURL: "https://search.example.com/searxng", want: "https://search.example.com/searxng/search"},
+		{
+			name:    "path ends with /search",
+			baseURL: "https://search.example.com/search",
+			want:    "https://search.example.com/search",
+		},
+		{
+			name:    "path ends with slash",
+			baseURL: "https://search.example.com/searxng/",
+			want:    "https://search.example.com/searxng/search",
+		},
+		{
+			name:    "no trailing slash",
+			baseURL: "https://search.example.com/searxng",
+			want:    "https://search.example.com/searxng/search",
+		},
 		{name: "root path", baseURL: "https://search.example.com", want: "https://search.example.com/search"},
-		{name: "root path with trailing slash", baseURL: "https://search.example.com/", want: "https://search.example.com/search"},
-		{name: "drops trailing query", baseURL: "https://search.example.com/?foo=bar", want: "https://search.example.com/search"},
+		{
+			name:    "root path with trailing slash",
+			baseURL: "https://search.example.com/",
+			want:    "https://search.example.com/search",
+		},
+		{
+			name:    "drops trailing query",
+			baseURL: "https://search.example.com/?foo=bar",
+			want:    "https://search.example.com/search",
+		},
 	}
 
 	for _, tt := range tests {

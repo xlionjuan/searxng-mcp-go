@@ -124,7 +124,9 @@ func NewSearXNGError(statusCode int, contentType, body string, err error) *SearX
 func (e *SearXNGError) Error() string {
 	if e.UnderlyingErr != nil {
 		if e.RespContentType != "" {
-			return fmt.Sprintf("searxng error (status %d) - content-type %s: %v", e.StatusCode, e.RespContentType, e.UnderlyingErr)
+			return fmt.Sprintf(
+				"searxng error (status %d) - content-type %s: %v",
+				e.StatusCode, e.RespContentType, e.UnderlyingErr)
 		}
 
 		return fmt.Sprintf("searxng error (status %d): %v", e.StatusCode, e.UnderlyingErr)

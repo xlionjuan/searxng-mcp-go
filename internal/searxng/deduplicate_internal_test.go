@@ -61,7 +61,11 @@ func TestDeduplicateAnswers_RemovesPrefixMatch(t *testing.T) {
 		{Answer: "Apple Inc. is an American multinational technology company", Engine: "duckduckgo"},
 	}
 	infoboxes := []Infobox{
-		{Infobox: "Apple Inc.", Content: "Apple Inc. is an American multinational technology company headquartered in Cupertino, California."},
+		{
+			Infobox: "Apple Inc.",
+			Content: "Apple Inc. is an American multinational" +
+				" technology company headquartered in Cupertino, California.",
+		},
 	}
 
 	result := deduplicateAnswers(answers, infoboxes)
@@ -164,7 +168,9 @@ func TestDeduplicateAnswers_DDGSuffixMoreAtWikipedia(t *testing.T) {
 
 	result := deduplicateAnswers(answers, infoboxes)
 	if len(result) != 0 {
-		t.Errorf("expected 0 (DDG answer with 'More at Wikipedia' suffix should be deduplicated), got %d: %+v", len(result), result)
+		t.Errorf(
+			"DDG answer with 'More at Wikipedia' suffix "+
+				"should be deduplicated, got %d: %+v", len(result), result)
 	}
 }
 

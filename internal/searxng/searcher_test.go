@@ -52,8 +52,16 @@ func TestNewSearXNGSearcherSuccess(t *testing.T) {
 	}{
 		{name: "valid https URL", baseURL: "https://search.example.com", wantURL: "https://search.example.com/search"},
 		{name: "valid http URL with private host", baseURL: "http://127.0.0.1:8080", wantURL: "http://127.0.0.1:8080/search"},
-		{name: "URL with path", baseURL: "https://search.example.com/searxng", wantURL: "https://search.example.com/searxng/search"},
-		{name: "URL with /search path", baseURL: "https://search.example.com/search", wantURL: "https://search.example.com/search"},
+		{
+			name:    "URL with path",
+			baseURL: "https://search.example.com/searxng",
+			wantURL: "https://search.example.com/searxng/search",
+		},
+		{
+			name:    "URL with /search path",
+			baseURL: "https://search.example.com/search",
+			wantURL: "https://search.example.com/search",
+		},
 	}
 
 	for _, tt := range tests {

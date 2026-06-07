@@ -54,7 +54,8 @@ func newTestSearcher(t *testing.T, handler http.HandlerFunc) (*searxng.SearXNGSe
 
 	mockServer := httptest.NewServer(handler)
 
-	searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: mockServer.URL, Timeout: 30 * time.Second}, false)
+	searcher, err := searxng.NewSearXNGSearcher(
+		&searxng.Config{SearXNGURL: mockServer.URL, Timeout: 30 * time.Second}, false)
 	if err != nil {
 		mockServer.Close()
 		t.Fatalf("failed to create searcher: %v", err)
@@ -224,7 +225,7 @@ func TestMCP_ToolsList(t *testing.T) {
 	}
 }
 
-//nolint:gocognit,gocyclo,cyclop,maintidx // comprehensive table-driven test covering search tool handler creation and input validation
+//nolint:gocognit,gocyclo,cyclop,maintidx // table-driven test covering search tool handler creation
 func TestNewSearchToolHandler(t *testing.T) {
 	t.Parallel()
 
@@ -465,9 +466,11 @@ func TestMCP_DebugGatesUnresponsiveEngines(t *testing.T) {
 	t.Parallel()
 
 	sr := searxng.SearchResponse{
-		Query:               "golang",
-		NumberOfResults:     1,
-		Results:             []searxng.SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
+		Query:           "golang",
+		NumberOfResults: 1,
+		Results: []searxng.SearchResult{
+			{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"},
+		},
 		Suggestions:         []string{},
 		UnresponsiveEngines: [][]string{{"brave", `Suspended: " too many "requests"`}},
 	}

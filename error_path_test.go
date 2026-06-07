@@ -189,12 +189,15 @@ func TestSearch_UnexpectedContentType(t *testing.T) {
 		t.Fatalf("RespContentType = %q, want %q", searxngErr.RespContentType, "text/plain")
 	}
 
-	if searxngErr.UnderlyingErr == nil || searxngErr.UnderlyingErr.Error() != "unexpected content type: expected application/json" {
+	expectedErr := "unexpected content type: expected application/json"
+	if searxngErr.UnderlyingErr == nil || searxngErr.UnderlyingErr.Error() != expectedErr {
 		t.Fatalf("UnderlyingErr = %v, want unexpected content type error", searxngErr.UnderlyingErr)
 	}
 
-	if got, want := err.Error(),
-		"searxng error (status 200) - content-type text/plain: unexpected content type: expected application/json"; got != want {
+	want := "searxng error (status 200)" +
+		" - content-type text/plain:" +
+		" unexpected content type: expected application/json"
+	if got, want2 := err.Error(), want; got != want2 {
 		t.Fatalf("error = %q, want %q", got, want)
 	}
 }
@@ -320,7 +323,9 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 
 			defer func() { _ = conn.Close() }()
 
-			header := fmt.Sprintf("HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n", len(body))
+			header := fmt.Sprintf(
+				"HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n",
+				len(body))
 			_, _ = conn.Write([]byte(header))
 			_, _ = conn.Write([]byte(body))
 		}))
@@ -802,9 +807,12 @@ func TestSearch_ConnectionResetMidResponse(t *testing.T) {
 
 		defer func() { _ = conn.Close() }()
 
-		_, _ = conn.Write([]byte(
-			"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 128\r\n\r\n{\"query\":\"test\",\"results\":[\"",
-		))
+		body := "HTTP/1.1 200 OK\r\n" +
+			"Content-Type: application/json\r\n" +
+			"Content-Length: 128\r\n" +
+			"\r\n" +
+			"{\"query\":\"test\",\"results\":[\""
+		_, _ = conn.Write([]byte(body))
 	}))
 	defer server.Close()
 

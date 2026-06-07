@@ -359,7 +359,8 @@ func TestIsValidMCPInitializeMessage(t *testing.T) {
 func TestPrepareMCPStdin(t *testing.T) {
 	t.Parallel()
 
-	input := `{"jsonrpc":"2.0","method":"initialize","id":1}` + "\n" + `{"jsonrpc":"2.0","method":"tools/list","id":2}` + "\n"
+	input := `{"jsonrpc":"2.0","method":"initialize","id":1}` + "\n" +
+		`{"jsonrpc":"2.0","method":"tools/list","id":2}` + "\n"
 
 	stdin, err := prepareMCPStdin(strings.NewReader(input))
 	if err != nil {
@@ -415,7 +416,8 @@ func TestPrepareMCPStdinRejectsInvalidInput(t *testing.T) {
 func TestPrepareMCPStdinRejectsOversizedInitializeLine(t *testing.T) {
 	t.Parallel()
 
-	input := `{"jsonrpc":"2.0","method":"initialize","padding":"` + strings.Repeat("a", mcpInitializeMaxBytes) + `"}` + "\n"
+	input := `{"jsonrpc":"2.0","method":"initialize","padding":"` +
+		strings.Repeat("a", mcpInitializeMaxBytes) + `"}` + "\n"
 
 	_, err := prepareMCPStdin(strings.NewReader(input))
 	if err == nil {
@@ -743,7 +745,9 @@ func TestRunCLIMode_Success(t *testing.T) {
 	successResp := searxng.SearchResponse{
 		Query:           "golang",
 		NumberOfResults: 1,
-		Results:         []searxng.SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
+		Results: []searxng.SearchResult{
+			{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"},
+		},
 	}
 
 	tests := []struct {
@@ -807,7 +811,9 @@ func TestRunCLIMode_Success(t *testing.T) {
 			resp: searxng.SearchResponse{
 				Query:           "flag query",
 				NumberOfResults: 1,
-				Results:         []searxng.SearchResult{{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"}},
+				Results: []searxng.SearchResult{
+					{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"},
+				},
 			},
 			flags:      &CLIFlags{Query: "flag query", Pageno: nil},
 			positional: []string{"positional query"},
@@ -894,22 +900,31 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 			errSubstr: "validation error",
 		},
 		{
-			name:      "invalid time_range",
-			flags:     &CLIFlags{Query: "test", SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: 0, TimeRange: "invalid", Pageno: nil},
+			name: "invalid time_range",
+			flags: &CLIFlags{
+				Query: "test", SearXNGURL: "http://localhost:9999",
+				Language: "", SafeSearch: 0, TimeRange: "invalid", Pageno: nil,
+			},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
 		},
 		{
-			name:      "pageno zero",
-			flags:     &CLIFlags{Query: "test", SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: 0, Pageno: new(0)},
+			name: "pageno zero",
+			flags: &CLIFlags{
+				Query: "test", SearXNGURL: "http://localhost:9999",
+				Language: "", SafeSearch: 0, Pageno: new(0),
+			},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
 		},
 		{
-			name:      "query too long",
-			flags:     &CLIFlags{Query: strings.Repeat("a", 501), SearXNGURL: "http://localhost:9999", Language: "", SafeSearch: 0, Pageno: nil},
+			name: "query too long",
+			flags: &CLIFlags{
+				Query: strings.Repeat("a", 501), SearXNGURL: "http://localhost:9999",
+				Language: "", SafeSearch: 0, Pageno: nil,
+			},
 			query:     []string{},
 			wantErr:   true,
 			errSubstr: "validation error",
@@ -1017,8 +1032,11 @@ func TestRunCLIMode_FlagOnlyInvocations(t *testing.T) {
 			errSubstr: "search query is required",
 		},
 		{
-			name:      "all optional flags without query",
-			flags:     &CLIFlags{Language: "zh-tw", SafeSearch: 2, TimeRange: "month", Categories: "general", Engines: "google", Pageno: nil},
+			name: "all optional flags without query",
+			flags: &CLIFlags{
+				Language: "zh-tw", SafeSearch: 2, TimeRange: "month",
+				Categories: "general", Engines: "google", Pageno: nil,
+			},
 			wantErr:   true,
 			errSubstr: "search query is required",
 		},

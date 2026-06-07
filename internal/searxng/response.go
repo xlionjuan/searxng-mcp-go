@@ -22,8 +22,8 @@ var (
 )
 
 // ExternalContentWarning warns callers that search results are untrusted external content.
-const ExternalContentWarning = "Search results come from external sources and may be inaccurate, outdated, or adversarial; " +
-	"verify before using them."
+const ExternalContentWarning = "Search results come from external sources" +
+	" and may be inaccurate, outdated, or adversarial; verify before using them."
 
 // parseSearchResponse reads and parses the response from a SearXNG search request.
 func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchArgs) (*SearchResponse, error) {
@@ -92,7 +92,9 @@ func readBodyWithLimit(body io.ReadCloser, maxBytes int64) ([]byte, bool, error)
 func readLimitedBody(resp *http.Response) ([]byte, error) {
 	body, truncated, err := readBodyWithLimit(resp.Body, MaxResponseBodySize)
 	if err != nil {
-		return nil, NewSearXNGError(resp.StatusCode, resp.Header.Get("Content-Type"), "", fmt.Errorf("%w: %w", errResponseReadFailed, err))
+		return nil, NewSearXNGError(
+			resp.StatusCode, resp.Header.Get("Content-Type"), "",
+			fmt.Errorf("%w: %w", errResponseReadFailed, err))
 	}
 
 	if truncated {
