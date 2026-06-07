@@ -353,7 +353,7 @@ func TestMCPStress_Randomized(t *testing.T) {
 	seed := resolveRandomSeed(t)
 	t.Logf("randomized seed: %d (set E2E_RANDOM_SEED to replay)", seed)
 
-	rng := rand.New(rand.NewPCG(seed, seed))
+	rng := rand.New(rand.NewPCG(uint64(seed), uint64(seed)))
 	numSearches := 10
 	searchArgs := make([]map[string]any, numSearches)
 	searchQueries := make([]string, numSearches)
