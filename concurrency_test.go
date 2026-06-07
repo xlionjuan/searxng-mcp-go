@@ -500,7 +500,6 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 
 	started := make(chan struct{})
 	release := make(chan struct{})
-	defer close(release)
 	searchResp := searxng.SearchResponse{
 		Results:         []searxng.SearchResult{},
 		NumberOfResults: 0,
@@ -523,6 +522,7 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 		_, _ = w.Write(body)
 	}))
 	defer server.Close()
+	defer close(release)
 
 	searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}, false)
 	if err != nil {
