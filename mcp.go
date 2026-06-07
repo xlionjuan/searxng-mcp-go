@@ -211,6 +211,8 @@ type searcher interface {
 	Search(ctx context.Context, args *searxng.SearchArgs) (*searxng.SearchResponse, error)
 }
 
+var _ searcher = (*searxng.SearXNGSearcher)(nil)
+
 // NewSearchToolHandler creates an MCP tool handler function that performs SearXNG searches.
 // It returns a function suitable for use as an mcp.ToolHandler, which validates the search
 // arguments, executes the search, and returns the formatted results.
