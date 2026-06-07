@@ -6,7 +6,6 @@ linters:
   default: all
   disable:
     - gochecknoglobals
-    - godox
     - gomodguard
     - nestif
     - wrapcheck
@@ -35,7 +34,7 @@ linters:
     gocognit:
       min-complexity: 20
     goconst:
-      min-len: 3
+      min-len: 2
       min-occurrences: 3
     gocyclo:
       min-complexity: 13
@@ -43,16 +42,16 @@ linters:
       enable:
         - shadow
     interfacebloat:
-      max: 10
+      max: 8
     lll:
-      line-length: 140
+      line-length: 120
     misspell:
       locale: US
     nakedret:
-      max-func-lines: 5
+      max-func-lines: 3
     funlen:
-      lines: 100
-      statements: 60
+      lines: 80
+      statements: 40
     varnamelen:
       min-name-length: 2
     nolintlint:
