@@ -57,6 +57,7 @@ linters:
       min-name-length: 2
     nolintlint:
       require-specific: true
+      require-explanation: true
     errcheck:
       check-type-assertions: true
   exclusions:
@@ -79,23 +80,7 @@ linters:
         paths:
           - ".*_test\\.go$"
         text: ".*"
-      - linters: [gocognit]
-        paths:
-          - ".*_test\\.go$"
-        text: ".*"
-      - linters: [gocyclo]
-        paths:
-          - ".*_test\\.go$"
-        text: ".*"
-      - linters: [cyclop]
-        paths:
-          - ".*_test\\.go$"
-        text: ".*"
       - linters: [dupl]
-        paths:
-          - ".*_test\\.go$"
-        text: ".*"
-      - linters: [maintidx]
         paths:
           - ".*_test\\.go$"
         text: ".*"
