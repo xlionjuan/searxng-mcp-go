@@ -179,7 +179,7 @@ func isPrivateHost(host string) bool {
 	return isPrivateIPv6(ip)
 }
 
-//nolint:gocognit,gocyclo,cyclop // comprehensive CIDR range checks for all private IPv4 blocks
+//nolint:gocognit,gocyclo,cyclop // exhaustive CIDR ranges are clearer as explicit blocks than a data-driven loop
 func isPrivateIPv4(ip4 net.IP) bool {
 	// 0.0.0.0/8 (current network)
 	if ip4[0] == 0 {
