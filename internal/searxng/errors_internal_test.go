@@ -214,6 +214,13 @@ func TestBuildErrorPreview(t *testing.T) {
 	})
 }
 
+// isValidationError checks if an error is a ValidationError.
+func isValidationError(err error) bool {
+	var ve *ValidationError
+
+	return errors.As(err, &ve)
+}
+
 // --- Private isValidationError tests ---
 
 func TestIsValidationError(t *testing.T) {
