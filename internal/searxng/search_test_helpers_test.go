@@ -1,7 +1,6 @@
 package searxng //nolint:testpackage // white-box access to internal types for shared test helpers
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -66,7 +65,8 @@ func newTestSearcher(t *testing.T, rt roundTripperFunc, maxRetries int) *SearXNG
 		retryStrategy:  newExponentialBackoffStrategy(maxRetries, time.Microsecond, time.Microsecond),
 		ownsTransport:  true,
 	}
-	s.baseCtx, s.cancel = context.WithCancel(context.Background())
+	s.done = make(chan struct{})
+
 	return s
 }
 

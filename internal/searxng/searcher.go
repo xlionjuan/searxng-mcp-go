@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -28,8 +29,8 @@ type SearXNGSearcher struct {
 	client           *http.Client // Configurable HTTP client
 	searchEndpoint   *url.URL     // Precomputed /search endpoint URL; cloned per request
 	debug            bool         // When true, enables verbose HTTP request/response logging
-	baseCtx          context.Context
-	cancel           context.CancelFunc
+	done             chan struct{}
+	closeOnce        sync.Once
 	retryStrategy    *exponentialBackoffStrategy
 	ownsTransport    bool // true if the searcher created its own transport (safe to close)
 	allowGETFallback bool
@@ -115,7 +116,8 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		ownsTransport:    ownsTransport,
 		allowGETFallback: cfg.AllowGETFallback,
 	}
-	s.baseCtx, s.cancel = context.WithCancel(context.Background())
+	s.done = make(chan struct{})
+
 	return s, nil
 }
 
@@ -123,9 +125,11 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 // Close is safe to call on searchers that use a shared default client —
 // it will skip closing idle connections on transports it does not own.
 func (s *SearXNGSearcher) Close() error {
-	if s.cancel != nil {
-		s.cancel()
-	}
+	s.closeOnce.Do(func() {
+		if s.done != nil {
+			close(s.done)
+		}
+	})
 
 	if s.ownsTransport && s.client != nil && s.client.Transport != nil {
 		if transport, ok := s.client.Transport.(*http.Transport); ok {
@@ -150,8 +154,13 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 	defer searchCancel()
 
 	// When searcher is closed (Close() called), cancel this search
-	unlink := context.AfterFunc(s.baseCtx, searchCancel)
-	defer unlink()
+	go func() {
+		select {
+		case <-s.done:
+			searchCancel()
+		case <-searchCtx.Done():
+		}
+	}()
 
 	var lastErr error
 

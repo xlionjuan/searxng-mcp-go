@@ -500,6 +500,7 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 
 	started := make(chan struct{})
 	release := make(chan struct{})
+	defer close(release)
 	searchResp := searxng.SearchResponse{
 		Results:         []searxng.SearchResult{},
 		NumberOfResults: 0,
@@ -553,6 +554,4 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("Timed out waiting for Search() to return after Close()")
 	}
-
-	close(release)
 }
