@@ -62,6 +62,7 @@ func newTestSearcher(t *testing.T, rt testhelper.RoundTripperFunc, maxRetries in
 		ownsTransport:  true,
 	}
 	s.baseCtx, s.cancel = context.WithCancel(context.Background())
+
 	return s
 }
 

@@ -25,10 +25,10 @@ const getFallbackLogRisk = "Search query parameters may be sent in upstream URLs
 
 // SearXNGSearcher performs web searches via a SearXNG instance.
 type SearXNGSearcher struct {
-	client           *http.Client // Configurable HTTP client
-	searchEndpoint   *url.URL     // Precomputed /search endpoint URL; cloned per request
-	debug            bool         // When true, enables verbose HTTP request/response logging
-	baseCtx          context.Context
+	client           *http.Client    // Configurable HTTP client
+	searchEndpoint   *url.URL        // Precomputed /search endpoint URL; cloned per request
+	debug            bool            // When true, enables verbose HTTP request/response logging
+	baseCtx          context.Context //nolint:containedctx
 	cancel           context.CancelFunc
 	retryStrategy    *exponentialBackoffStrategy
 	ownsTransport    bool // true if the searcher created its own transport (safe to close)
@@ -116,6 +116,7 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		allowGETFallback: cfg.AllowGETFallback,
 	}
 	s.baseCtx, s.cancel = context.WithCancel(context.Background())
+
 	return s, nil
 }
 
@@ -150,7 +151,7 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 	defer searchCancel()
 
 	// When searcher is closed (Close() called), cancel this search
-	unlink := context.AfterFunc(s.baseCtx, searchCancel)
+	unlink := context.AfterFunc(s.baseCtx, searchCancel) //nolint:contextcheck
 	defer unlink()
 
 	var lastErr error
