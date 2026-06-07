@@ -40,6 +40,12 @@ echo "--- Creating venv at ${VENV_DIR} ---"
 uv venv "$VENV_DIR" --python python3
 source "${VENV_DIR}/bin/activate"
 
+# Install locked helper-script dependencies before adding the larger SearXNG
+# runtime set. --inexact avoids pruning anything if this setup is reused.
+echo ""
+echo "--- Installing setup helper dependencies ---"
+uv sync --locked --project "$SCRIPT_DIR" --inexact --no-install-project
+
 # Install dependencies (official order: pip, setuptools, wheel, then deps, then searxng)
 echo ""
 echo "--- Installing SearXNG dependencies ---"
@@ -59,8 +65,8 @@ echo ""
 echo "--- Configuring settings.yml ---"
 cp "${SEARXNG_DIR}/searx/settings.yml" "$SETTINGS_FILE"
 
-# Apply structured settings with Python (replaces fragile sed line-number operations)
-uv run python3 "${SCRIPT_DIR}/apply-settings.py" "$SETTINGS_FILE"
+# Apply structured settings with locked Python script dependencies.
+uv run --locked --project "$SCRIPT_DIR" --no-sync python3 "${SCRIPT_DIR}/apply-settings.py" "$SETTINGS_FILE"
 
 echo ""
 echo "=== Setup complete ==="
