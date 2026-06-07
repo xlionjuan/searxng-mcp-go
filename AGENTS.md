@@ -8,6 +8,7 @@ configured SearXNG instance.
 
 - Entry points: `main.go`, `cli.go`, `mcp.go`, `format.go`
 - Core package: `internal/searxng/`
+- Shared test helpers: `internal/testhelper/`
 - Unit and integration tests: root `*_test.go` plus `internal/searxng/*_test.go`
 - E2E and stress tests: `e2e_*_test.go`, build tags `e2e` and `stress`
 - Golden regression test: `golden_capture_test.go` is a byte-for-byte lock on

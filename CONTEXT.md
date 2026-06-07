@@ -6,7 +6,7 @@ A Model Context Protocol (MCP) server and CLI tool that proxies web search reque
 
 ### Core Types
 
-**SearXNGSearcher**: The HTTP client that holds a base URL and an `*http.Client` and communicates with a SearXNG instance to execute search queries.
+**SearXNGSearcher**: The HTTP client that holds a base URL and an `*http.Client` and communicates with a SearXNG instance to execute search queries. Its `Close()` method releases owned idle HTTP connections and cancels in-flight `Search()` calls; see ADR-012.
 _Avoid_: Searcher (ambiguous — appears only in docstrings, not as a separate exported type)
 
 **Config**: The connection parameters for a SearXNG instance — a base URL, a timeout duration, retry configuration (MaxRetries, RetryDelay, MaxRetryDelay), an optional custom HTTP client, and the opt-in GET Fallback flag.
@@ -78,6 +78,7 @@ _Avoid_: POSTtoGETFallback (internal test function name)
 - **Answer**s are **Deduplicate**d against **Infobox** content to remove overlapping DuckDuckGo Wikipedia summaries.
 - **setBrowserHeaders** is applied by **SearXNGSearcher** to every HTTP request made during search execution.
 - **SearXNGSearcher** falls back to a **GET Fallback** only when the SearXNG instance rejects the initial POST with 405 or 501 and **Config** enables `AllowGETFallback`.
+- **SearXNGSearcher.Close** cancels active **SearchArgs** executions through an internal shutdown signal, so shutdown can return in-flight searches with `context.Canceled` instead of waiting for upstream completion.
 - **CLI Mode** and **MCP Mode** are the two mutually exclusive operation modes — the program runs CLI mode when any arguments are present, MCP mode otherwise.
 - **Debug Mode** gates the exposure of **UnresponsiveEngines** in JSON output and enables verbose HTTP logging.
 - **CLIFlags** maps to **SearchArgs** fields plus mode-selection flags (--json, --help, --version, --debug, --searxng-url).

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"searxng-mcp-go/internal/searxng"
+	"searxng-mcp-go/internal/testhelper"
 )
 
 // --- Concurrent Search Stress Tests ---
@@ -87,7 +88,7 @@ func TestConcurrentContextCancellation(t *testing.T) {
 	canceledCount := int64(0)
 
 	client := &http.Client{
-		Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		Transport: testhelper.RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
 			atomic.AddInt64(&requestCount, 1)
 			<-r.Context().Done()
 			atomic.AddInt64(&canceledCount, 1)
@@ -308,7 +309,7 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 	// simulating a slow SearXNG that gets interrupted. This ensures
 	// the HTTP client returns context.Canceled (not an HTTP-level error).
 	client := &http.Client{
-		Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		Transport: testhelper.RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
 			if atomic.AddInt64(&requestCount, 1) == numGoroutines {
 				closeOnce.Do(func() {
 					close(allRequestsEntered)
@@ -402,7 +403,7 @@ func TestContextDeadlineExceededDuringSearch(t *testing.T) {
 	// Use a custom RoundTripper that blocks until context cancellation,
 	// avoiding httptest.Server.Close() blocking on active connections.
 	client := &http.Client{
-		Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		Transport: testhelper.RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
 			<-r.Context().Done()
 
 			return nil, r.Context().Err()
@@ -522,6 +523,7 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 		_, _ = w.Write(body)
 	}))
 	defer server.Close()
+	defer close(release)
 
 	searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}, false)
 	if err != nil {
@@ -531,7 +533,7 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 	done := make(chan error, 1)
 
 	go func() {
-		_, err = searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
+		_, err := searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
 		done <- err
 	}()
 
@@ -542,10 +544,15 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 		t.Fatalf("Close() returned error: %v", err)
 	}
 
-	close(release)
-
-	err = <-done
-	if err != nil {
-		t.Fatalf("Search() returned error: %v", err)
+	select {
+	case err = <-done:
+		if err == nil {
+			t.Fatal("Search() expected error after Close(), got nil")
+		}
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("Search() error = %v, want context.Canceled", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Timed out waiting for Search() to return after Close()")
 	}
 }

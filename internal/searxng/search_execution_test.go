@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"searxng-mcp-go/internal/testhelper"
 )
 
 // ---------------------------------------------------------------------------
@@ -23,7 +25,7 @@ func TestExecuteGETfallback(t *testing.T) {
 
 		s := &SearXNGSearcher{
 			client: &http.Client{
-				Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+				Transport: testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
 					gotMethod = req.Method
 					gotURL = req.URL.String()
 
@@ -79,7 +81,7 @@ func TestExecuteGETfallback(t *testing.T) {
 
 		s := &SearXNGSearcher{
 			client: &http.Client{
-				Transport: roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+				Transport: testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusOK,
 						Header:     http.Header{"Content-Type": []string{"application/json"}},
@@ -124,7 +126,7 @@ func TestExecuteGETfallback(t *testing.T) {
 
 		s := &SearXNGSearcher{
 			client: &http.Client{
-				Transport: roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+				Transport: testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusNotFound,
 						Header:     http.Header{"Content-Type": []string{"text/plain"}},
@@ -175,7 +177,7 @@ func TestExecuteGETfallback(t *testing.T) {
 
 		s := &SearXNGSearcher{
 			client: &http.Client{
-				Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+				Transport: testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
 					capturedURL = req.URL.String()
 
 					return makeJSONResponse(minimalJSONBody), nil
@@ -230,7 +232,7 @@ func TestDoSearchAttempt(t *testing.T) {
 
 		var gotMethod string
 
-		s := newTestSearcher(t, roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
 			gotMethod = req.Method
 
 			return makeJSONResponse(minimalJSONBody), nil
@@ -262,7 +264,7 @@ func TestDoSearchAttempt(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			callCount++
 
 			return &http.Response{
@@ -314,7 +316,7 @@ func TestDoSearchAttempt(t *testing.T) {
 				t.Parallel()
 
 				callCount := 0
-				s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+				s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 					callCount++
 
 					if callCount == 1 {
@@ -357,7 +359,7 @@ func TestDoSearchAttempt(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
-		s := newTestSearcher(t, roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
 			callCount++
 
 			if req.Method == http.MethodPost {
@@ -402,7 +404,7 @@ func TestDoSearchAttempt(t *testing.T) {
 		// without invoking the transport.
 		s := &SearXNGSearcher{
 			client: &http.Client{
-				Transport: roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+				Transport: testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 					return nil, errTransportNotExpected
 				}),
 			},
@@ -435,7 +437,7 @@ func TestDoSearchAttempt(t *testing.T) {
 
 		s := &SearXNGSearcher{
 			client: &http.Client{
-				Transport: roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+				Transport: testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 					return makeJSONResponse(minimalJSONBody), nil
 				}),
 			},

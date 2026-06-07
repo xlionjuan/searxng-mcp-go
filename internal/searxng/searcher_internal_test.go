@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"searxng-mcp-go/internal/testhelper"
 )
 
 // --- isEmptyResponse tests ---
@@ -242,7 +244,7 @@ func TestAllowGETFallbackLogsWarnings(t *testing.T) {
 
 		s := &SearXNGSearcher{
 			client: &http.Client{
-				Transport: roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+				Transport: testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 					return makeJSONResponse(minimalJSONBody), nil
 				}),
 			},
