@@ -8,15 +8,14 @@ import (
 	"time"
 )
 
-// It handles retryable errors, retryable HTTP status codes, and caps the
-// backoff to a maximum delay with jitter.
-
 // jitterHalfDivisor is the divisor used to compute half the delay for jitter range.
 const (
 	jitterHalfDivisor      = 2
 	retryBackoffMultiplier = 2
 )
 
+// exponentialBackoffStrategy handles retryable errors, retryable HTTP status codes,
+// and caps the backoff to a maximum delay with jitter.
 type exponentialBackoffStrategy struct {
 	maxRetries    int
 	retryDelay    time.Duration

@@ -37,6 +37,7 @@ func NewValidationError(field, message string) *ValidationError {
 	return &ValidationError{Field: field, Message: message}
 }
 
+// Error implements the error interface for ValidationError.
 func (e *ValidationError) Error() string {
 	return fmt.Sprintf("validation error on %q: %s", e.Field, e.Message)
 }
@@ -106,6 +107,10 @@ type SearXNGError struct {
 var _ error = (*SearXNGError)(nil)
 
 // NewSearXNGError creates a new SearXNGError.
+// The body string is truncated to at most MaxErrorDisplayChars bytes,
+// walking back to a valid UTF-8 rune boundary so multi-byte sequences
+// are never split. Despite the "Chars" suffix, MaxErrorDisplayChars is
+// a byte ceiling, not a rune/character count; see its doc comment.
 func NewSearXNGError(statusCode int, contentType, body string, err error) *SearXNGError {
 	return &SearXNGError{
 		StatusCode:      statusCode,
@@ -115,6 +120,7 @@ func NewSearXNGError(statusCode int, contentType, body string, err error) *SearX
 	}
 }
 
+// Error implements the error interface for SearXNGError.
 func (e *SearXNGError) Error() string {
 	if e.UnderlyingErr != nil {
 		if e.RespContentType != "" {
@@ -166,7 +172,7 @@ func HTTPStatusError(statusCode int, contentType string, body []byte) error {
 	return NewSearXNGError(statusCode, contentType, bodyStr, err)
 }
 
-// HTMLResponseError creates a specialized error for HTML responses (JSON not enabled).
+// HTMLResponseError is a specialized error returned when SearXNG returns HTML instead of JSON.
 type HTMLResponseError struct {
 	Body          string // Truncated HTML body
 	UnderlyingErr error  // The underlying network error if any
@@ -174,10 +180,12 @@ type HTMLResponseError struct {
 
 var _ error = (*HTMLResponseError)(nil)
 
+// Error implements the error interface for HTMLResponseError.
 func (e *HTMLResponseError) Error() string {
 	return "searxng returned html instead of json - json output may not be enabled on the server"
 }
 
+// Unwrap returns the underlying error for errors.Is/errors.As support.
 func (e *HTMLResponseError) Unwrap() error {
 	return e.UnderlyingErr
 }

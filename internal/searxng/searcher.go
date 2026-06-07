@@ -34,6 +34,8 @@ type SearXNGSearcher struct {
 }
 
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
+// Returns an error if cfg is nil, cfg.Validate fails, the base URL is empty
+// or invalid, or endpoint construction fails internally.
 func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	if cfg == nil {
 		return nil, errSearcherConfigRequired
@@ -127,6 +129,8 @@ func (s *SearXNGSearcher) Close() error {
 }
 
 // Search executes the search query against SearXNG with retry support.
+// Returns SearXNGError wrapping the last error if all retries are exhausted.
+// Returns ValidationError if args are invalid.
 func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	err := ValidateSearchArgs(args)
 	if err != nil {
