@@ -436,7 +436,7 @@ func captureStdout(t *testing.T, fn func()) string {
 	defer stdoutMu.Unlock()
 
 	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
+	r, w, _ := os.Pipe() //nolint:errcheck // test creates pipe; error is impossible in test
 	os.Stdout = w
 
 	defer func() {
@@ -445,7 +445,7 @@ func captureStdout(t *testing.T, fn func()) string {
 
 	func() {
 		defer func() {
-			_ = w.Close()
+			_ = w.Close() //nolint:errcheck // test cleanup; error is non-actionable
 		}()
 
 		fn()
@@ -834,7 +834,7 @@ func TestRunCLIMode_Success(t *testing.T) {
 				server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusOK)
-					_, _ = w.Write([]byte(tt.rawResp))
+					_, _ = w.Write([]byte(tt.rawResp)) //nolint:errcheck // test fixture write; failure does not affect test outcome
 				}))
 			} else {
 				server = newJSONTestServer(t, tt.resp)

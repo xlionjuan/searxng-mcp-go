@@ -85,7 +85,7 @@ func newRequestTestSearcher(t *testing.T, baseURL string) *SearXNGSearcher {
 // closeBody is a helper to close response bodies in tests.
 func closeBody(resp *http.Response) {
 	if resp != nil && resp.Body != nil {
-		_ = resp.Body.Close()
+		_ = resp.Body.Close() //nolint:errcheck // test cleanup; error is non-actionable
 	}
 }
 

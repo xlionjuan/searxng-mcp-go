@@ -30,7 +30,7 @@ type ValidationError struct {
 	Message string // Message describes the validation failure
 }
 
-var _ error = (*ValidationError)(nil)
+var _ error = (*ValidationError)(nil) //nolint:errcheck // compile-time interface assertion; not a function call
 
 // NewValidationError creates a new ValidationError.
 func NewValidationError(field, message string) *ValidationError {
@@ -104,7 +104,7 @@ type SearXNGError struct {
 	UnderlyingErr   error  // The original error that caused this
 }
 
-var _ error = (*SearXNGError)(nil)
+var _ error = (*SearXNGError)(nil) //nolint:errcheck // compile-time interface assertion; not a function call
 
 // NewSearXNGError creates a new SearXNGError.
 // The body string is truncated to at most MaxErrorDisplayChars bytes,
@@ -180,7 +180,7 @@ type HTMLResponseError struct {
 	UnderlyingErr error  // The underlying network error if any
 }
 
-var _ error = (*HTMLResponseError)(nil)
+var _ error = (*HTMLResponseError)(nil) //nolint:errcheck // compile-time interface assertion; not a function call
 
 // Error implements the error interface for HTMLResponseError.
 func (e *HTMLResponseError) Error() string {

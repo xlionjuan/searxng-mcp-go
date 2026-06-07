@@ -350,7 +350,7 @@ func (s *SearXNGSearcher) executeGETfallback(
 	getURL.RawQuery = postBodyStr
 
 	//nolint:gosec // GET fallback reuses the validated SearXNG base URL and only changes query parameters.
-	getReq, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, getURL.String(), nil)
+	getReq, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, getURL.String(), http.NoBody)
 	if reqErr != nil {
 		return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errRequestCreateFailed, reqErr))
 	}

@@ -225,6 +225,7 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 		case "string":
 			r.searchFlags[p.Name] = fs.String(p.Name, p.Default, p.Description)
 		case "int":
+			//nolint:errcheck // int defaults in SearchParams are produced via strconv.Itoa; error is impossible
 			defaultVal, _ := strconv.Atoi(p.Default)
 			r.searchFlags[p.Name] = fs.Int(p.Name, defaultVal, p.Description)
 		}

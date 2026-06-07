@@ -157,7 +157,7 @@ func TestSearch_UnexpectedContentType(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("plain text response"))
+		_, _ = w.Write([]byte("plain text response")) //nolint:errcheck // test fixture write best-effort
 	}))
 	defer server.Close()
 
@@ -268,7 +268,7 @@ func TestSearch_HTMLResponseError(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", tt.contentType)
 				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(tt.body))
+				_, _ = w.Write([]byte(tt.body)) //nolint:errcheck // test fixture write; failure does not affect test outcome
 			}))
 			defer server.Close()
 
@@ -321,13 +321,13 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 				return
 			}
 
-			defer func() { _ = conn.Close() }()
+			defer func() { _ = conn.Close() }() //nolint:errcheck // cleanup in defer; error is non-actionable
 
 			header := fmt.Sprintf(
 				"HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n",
 				len(body))
-			_, _ = conn.Write([]byte(header))
-			_, _ = conn.Write([]byte(body))
+			_, _ = conn.Write([]byte(header)) //nolint:errcheck // test fixture write; failure does not affect test outcome
+			_, _ = conn.Write([]byte(body))   //nolint:errcheck // test fixture write; failure does not affect test outcome
 		}))
 		defer server.Close()
 
@@ -382,11 +382,11 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 				return
 			}
 
-			defer func() { _ = conn.Close() }()
+			defer func() { _ = conn.Close() }() //nolint:errcheck // cleanup in defer; error is non-actionable
 
 			header := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n", len(body))
-			_, _ = conn.Write([]byte(header))
-			_, _ = conn.Write([]byte(body))
+			_, _ = conn.Write([]byte(header)) //nolint:errcheck // test fixture write; failure does not affect test outcome
+			_, _ = conn.Write([]byte(body))   //nolint:errcheck // test fixture write; failure does not affect test outcome
 		}))
 		defer server.Close()
 
@@ -425,7 +425,7 @@ func TestSearch_MalformedJSON_Truncated(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(truncatedJSON)
+		_, _ = w.Write(truncatedJSON) //nolint:errcheck // test fixture write; failure does not affect test outcome
 	}))
 	defer server.Close()
 
@@ -455,7 +455,7 @@ func TestSearch_WrongJSONType(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(wrongTypeJSON)
+		_, _ = w.Write(wrongTypeJSON) //nolint:errcheck // test fixture write; failure does not affect test outcome
 	}))
 	defer server.Close()
 
@@ -485,7 +485,7 @@ func TestSearch_TrailingGarbage(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(garbageJSON)
+		_, _ = w.Write(garbageJSON) //nolint:errcheck // test fixture write; failure does not affect test outcome
 	}))
 	defer server.Close()
 
@@ -641,7 +641,7 @@ func TestSearch_HTTPStatusErrors(t *testing.T) {
 		t.Run(http.StatusText(tc.statusCode), func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(tc.statusCode)
-				_, _ = w.Write([]byte(http.StatusText(tc.statusCode)))
+				_, _ = w.Write([]byte(http.StatusText(tc.statusCode))) //nolint:errcheck // test fixture write best-effort
 			}))
 			defer server.Close()
 
@@ -678,7 +678,7 @@ func TestSearch_RedirectStatus(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Location", "/search/redirected")
 		w.WriteHeader(http.StatusFound)
-		_, _ = w.Write([]byte("redirect"))
+		_, _ = w.Write([]byte("redirect")) //nolint:errcheck // test fixture write; failure does not affect test outcome
 	}))
 	defer server.Close()
 
@@ -733,6 +733,7 @@ func TestSearch_CustomHTTPClientSameHostRedirectAllowed(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/search/redirected" {
 			w.Header().Set("Content-Type", "application/json")
+			//nolint:errcheck // test fixture write best-effort
 			_, _ = w.Write([]byte(`{"query":"test","number_of_results":0,"results":[],"suggestions":[]}`))
 
 			return
@@ -805,14 +806,14 @@ func TestSearch_ConnectionResetMidResponse(t *testing.T) {
 			t.Fatalf("Hijack() failed: %v", err)
 		}
 
-		defer func() { _ = conn.Close() }()
+		defer func() { _ = conn.Close() }() //nolint:errcheck // cleanup in defer; error is non-actionable
 
 		body := "HTTP/1.1 200 OK\r\n" +
 			"Content-Type: application/json\r\n" +
 			"Content-Length: 128\r\n" +
 			"\r\n" +
 			"{\"query\":\"test\",\"results\":[\""
-		_, _ = conn.Write([]byte(body))
+		_, _ = conn.Write([]byte(body)) //nolint:errcheck // test fixture write; failure does not affect test outcome
 	}))
 	defer server.Close()
 

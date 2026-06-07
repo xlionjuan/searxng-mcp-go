@@ -134,6 +134,7 @@ func TestLogDebugMethods(t *testing.T) {
 
 		s := &SearXNGSearcher{debug: false}
 
+		//nolint:errcheck // test request with valid URL/method; error impossible
 		req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://example.com", strings.NewReader("body"))
 		// Should not panic
 		s.logDebugRequest(req, "test body")
@@ -146,6 +147,7 @@ func TestLogDebugMethods(t *testing.T) {
 
 		s := &SearXNGSearcher{debug: true}
 
+		//nolint:errcheck // test request with valid URL/method; error impossible
 		req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://example.com", strings.NewReader("body"))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "text/plain")
@@ -163,7 +165,8 @@ func TestLogDebugMethods(t *testing.T) {
 
 		s := &SearXNGSearcher{debug: true}
 
-		req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://example.com?q=test", nil)
+		//nolint:errcheck // test request with valid URL/method; error impossible
+		req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://example.com?q=test", http.NoBody)
 		req.Header.Set("Accept", "text/html")
 		// Should not panic
 		s.logDebugRequest(req, "")
@@ -174,7 +177,8 @@ func TestLogDebugMethods(t *testing.T) {
 
 		s := &SearXNGSearcher{debug: true}
 
-		req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://example.com", nil)
+		//nolint:errcheck // test request with valid URL/method; error impossible
+		req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://example.com", http.NoBody)
 		longBody := strings.Repeat("x", DebugBodyPreviewChars+100)
 		s.logDebugRequest(req, longBody)
 	})
@@ -215,7 +219,7 @@ func TestAllowGETFallbackLogsWarnings(t *testing.T) {
 			t.Fatalf("NewSearXNGSearcher() error = %v, want nil", err)
 		}
 
-		_ = searcher.Close()
+		_ = searcher.Close() //nolint:errcheck // test cleanup; error is non-actionable
 
 		logOutput := buf.String()
 		if !strings.Contains(logOutput, "GET fallback is enabled") {

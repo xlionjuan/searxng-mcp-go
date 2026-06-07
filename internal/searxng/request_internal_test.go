@@ -12,7 +12,7 @@ import (
 func TestSetBrowserHeaders(t *testing.T) {
 	t.Parallel()
 
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://search.example.com/search", nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://search.example.com/search", http.NoBody)
 	if err != nil {
 		t.Fatalf("NewRequest() error = %v", err)
 	}
