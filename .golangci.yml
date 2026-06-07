@@ -4,6 +4,8 @@ run:
   tests: true
 linters:
   default: all
+  enable:
+    - gomodguard_v2
   disable:
     - gochecknoglobals
     - gomodguard
@@ -35,22 +37,22 @@ linters:
       min-complexity: 20
     goconst:
       min-len: 2
-      min-occurrences: 3
+      min-occurrences: 2
     gocyclo:
       min-complexity: 13
     govet:
       enable:
         - shadow
     interfacebloat:
-      max: 8
+      max: 5
     lll:
       line-length: 120
     misspell:
       locale: US
     nakedret:
-      max-func-lines: 3
+      max-func-lines: 1
     funlen:
-      lines: 80
+      lines: 60
       statements: 40
     varnamelen:
       min-name-length: 2
@@ -114,7 +116,7 @@ linters:
 
 issues:
   max-issues-per-linter: 0
-  max-same-issues: 10
+  max-same-issues: 0
 formatters:
   enable:
     - gci
