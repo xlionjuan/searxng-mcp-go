@@ -78,7 +78,7 @@ type registeredFlags struct {
 // parseArgs parses command-line arguments and returns the mode, flags, and positional arguments.
 // Any supplied arguments route the process into CLI mode; otherwise the server runs in MCP mode.
 // Flags are accepted anywhere before or after positional args, matching the current CLI behavior.
-func parseArgs(args []string) (bool, CLIFlags, []string, error) {
+func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 	// Build the FlagSet first so we can use Lookup to determine whether a
 	// flag takes a value (via the IsBoolFlag interface) during the
 	// interleaved scan, avoiding the need to hard-code a parallel map.
@@ -87,7 +87,7 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 
 	err := fs.Parse(flagArgs)
 	if err != nil {
-		return false, CLIFlags{}, nil, fmt.Errorf("%w: %w", errArgumentParseFailed, err)
+		return false, nil, nil, fmt.Errorf("%w: %w", errArgumentParseFailed, err)
 	}
 
 	// Use flag.Visit to determine whether optional pointer flags were explicitly set.
@@ -131,32 +131,32 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 
 	queryPtr, err := searchFlagPtr[string](registered.searchFlags, "query")
 	if err != nil {
-		return false, CLIFlags{}, nil, err
+		return false, nil, nil, err
 	}
 
 	languagePtr, err := searchFlagPtr[string](registered.searchFlags, "language")
 	if err != nil {
-		return false, CLIFlags{}, nil, err
+		return false, nil, nil, err
 	}
 
 	safeSearchPtr, err := searchFlagPtr[int](registered.searchFlags, "safesearch")
 	if err != nil {
-		return false, CLIFlags{}, nil, err
+		return false, nil, nil, err
 	}
 
 	timeRangePtr, err := searchFlagPtr[string](registered.searchFlags, "time_range")
 	if err != nil {
-		return false, CLIFlags{}, nil, err
+		return false, nil, nil, err
 	}
 
 	categoriesPtr, err := searchFlagPtr[string](registered.searchFlags, "categories")
 	if err != nil {
-		return false, CLIFlags{}, nil, err
+		return false, nil, nil, err
 	}
 
 	enginesPtr, err := searchFlagPtr[string](registered.searchFlags, "engines")
 	if err != nil {
-		return false, CLIFlags{}, nil, err
+		return false, nil, nil, err
 	}
 
 	flags := CLIFlags{
@@ -182,7 +182,7 @@ func parseArgs(args []string) (bool, CLIFlags, []string, error) {
 
 	isCLIMode := len(args) > 0 || flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
 
-	return isCLIMode, flags, positionalArgs, nil
+	return isCLIMode, &flags, positionalArgs, nil
 }
 
 func registerFlags() (*flag.FlagSet, registeredFlags) {
@@ -323,7 +323,7 @@ func main() {
 	}
 }
 
-func getConfig(flags CLIFlags) (*searxng.Config, error) {
+func getConfig(flags *CLIFlags) (*searxng.Config, error) {
 	cfg := searxng.DefaultConfig()
 
 	searxngURL := flags.SearXNGURL
