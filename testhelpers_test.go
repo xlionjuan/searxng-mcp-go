@@ -10,12 +10,6 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
-type roundTripperFunc func(*http.Request) (*http.Response, error)
-
-func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return f(req)
-}
-
 // testPerformSearch is a test helper that creates a temporary SearXNGSearcher
 // from the provided Config and delegates to its Search method.
 // It is only available in tests.

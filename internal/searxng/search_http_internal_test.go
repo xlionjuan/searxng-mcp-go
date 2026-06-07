@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"searxng-mcp-go/internal/testhelper"
 )
 
 // ---------------------------------------------------------------------------
@@ -21,7 +23,7 @@ func TestSearch_ValidationError(t *testing.T) {
 		t.Parallel()
 
 		// Transport should never be called
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			return nil, errTransportNotExpected
 		}), 0)
 
@@ -34,7 +36,7 @@ func TestSearch_ValidationError(t *testing.T) {
 	t.Run("empty query returns validation error", func(t *testing.T) {
 		t.Parallel()
 
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			return nil, errTransportNotExpected
 		}), 0)
 
@@ -56,7 +58,7 @@ func TestSearch_Success(t *testing.T) {
 	t.Run("successful search returns result", func(t *testing.T) {
 		t.Parallel()
 
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			return makeJSONResponse(minimalJSONBody), nil
 		}), 0)
 
@@ -82,7 +84,7 @@ func TestSearch_Success(t *testing.T) {
 		limit := 5
 		pageno := 1
 
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			return makeJSONResponse(makeSearchResponseJSON(3)), nil
 		}), 0)
 
@@ -119,7 +121,7 @@ func TestSearch_SuccessWithResults(t *testing.T) {
 		t.Parallel()
 
 		limit := 2
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			return makeJSONResponse(makeSearchResponseJSON(5)), nil
 		}), 0)
 
@@ -150,7 +152,7 @@ func TestSearch_RetryOnError(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			callCount++
 
 			if callCount == 1 {
@@ -181,7 +183,7 @@ func TestSearch_RetryOnError(t *testing.T) {
 
 		callCount := 0
 		maxRetries := 2
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			callCount++
 
 			return nil, errRetryTestConnectionReset
@@ -202,7 +204,7 @@ func TestSearch_RetryOnError(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			callCount++
 
 			return nil, errRetryTestConnectionReset
@@ -229,7 +231,7 @@ func TestSearch_RetryOnStatusCode(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			callCount++
 
 			if callCount == 1 {
@@ -263,7 +265,7 @@ func TestSearch_RetryOnStatusCode(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			callCount++
 
 			return &http.Response{
@@ -291,7 +293,7 @@ func TestSearch_RetryOnEmptyResponse(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			callCount++
 
 			if callCount == 1 {
@@ -326,7 +328,7 @@ func TestSearch_RetryOnEmptyResponse(t *testing.T) {
 	t.Run("empty response with no retries left returns empty", func(t *testing.T) {
 		t.Parallel()
 
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			return makeJSONResponse(`{"query":"test","results":[],"suggestions":[],"answers":[],"infoboxes":[]}`), nil
 		}), 0)
 
@@ -353,7 +355,7 @@ func TestSearch_NonOKStatus(t *testing.T) {
 	t.Run("400 Bad Request returns error directly", func(t *testing.T) {
 		t.Parallel()
 
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			return &http.Response{
 				StatusCode: http.StatusBadRequest,
 				Header:     http.Header{"Content-Type": []string{"text/plain"}},
@@ -379,7 +381,7 @@ func TestSearch_NonOKStatus(t *testing.T) {
 	t.Run("HTML response returns HTMLResponseError", func(t *testing.T) {
 		t.Parallel()
 
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     http.Header{"Content-Type": []string{"text/html"}},
@@ -412,7 +414,7 @@ func TestSearch_DebugMode(t *testing.T) {
 
 		s := &SearXNGSearcher{
 			client: &http.Client{
-				Transport: roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+				Transport: testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 					return makeJSONResponse(minimalJSONBody), nil
 				}),
 			},
@@ -446,7 +448,7 @@ func TestSearch_GETFallbackFlow(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			callCount++
 
 			if callCount == 1 {
@@ -486,7 +488,7 @@ func TestSearch_RetryWithEmptyResponseFallback(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			callCount++
 
 			if callCount == 1 {
@@ -526,7 +528,7 @@ func TestSearch_BodyTooLarge(t *testing.T) {
 		t.Parallel()
 
 		largeBody := strings.Repeat("x", int(MaxResponseBodySize)+100)
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     http.Header{"Content-Type": []string{"application/json"}},
@@ -552,7 +554,7 @@ func TestSearch_SearXNGErrorIsRetryable(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			callCount++
 
 			return &http.Response{
@@ -580,7 +582,7 @@ func TestSearch_EmptyResponseRetryDoesNotSpin(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
-		s := newTestSearcher(t, roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			callCount++
 
 			return makeJSONResponse(`{"query":"test","results":[],"suggestions":[],"answers":[],"infoboxes":[]}`), nil

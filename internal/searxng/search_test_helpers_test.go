@@ -9,14 +9,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"searxng-mcp-go/internal/testhelper"
 )
-
-// roundTripperFunc adapts a function to the http.RoundTripper interface.
-type roundTripperFunc func(*http.Request) (*http.Response, error)
-
-func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return f(req)
-}
 
 // errTransportNotExpected is returned by mock transports that should not be called.
 var errTransportNotExpected = errors.New("transport should not be called in this test")
@@ -49,7 +44,7 @@ func makeSearchResponseJSON(results int) string {
 }
 
 // newTestSearcher creates a SearXNGSearcher with a mock RoundTripper for HTTP-level tests.
-func newTestSearcher(t *testing.T, rt roundTripperFunc, maxRetries int) *SearXNGSearcher {
+func newTestSearcher(t *testing.T, rt testhelper.RoundTripperFunc, maxRetries int) *SearXNGSearcher {
 	t.Helper()
 
 	endpoint, err := computeSearchEndpoint("https://search.example.com")
