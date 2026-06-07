@@ -178,7 +178,7 @@ func validateLanguage(args *SearchArgs) error {
 	return nil
 }
 
-func validatePagination(pageno *int, limit *int) error {
+func validatePagination(pageno, limit *int) error {
 	if pageno != nil && *pageno < MinPageno {
 		return NewValidationError("pageno", fmt.Sprintf("must be >= %d", MinPageno))
 	}

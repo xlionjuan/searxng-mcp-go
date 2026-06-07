@@ -30,6 +30,8 @@ type ValidationError struct {
 	Message string // Message describes the validation failure
 }
 
+var _ error = (*ValidationError)(nil)
+
 // NewValidationError creates a new ValidationError.
 func NewValidationError(field, message string) *ValidationError {
 	return &ValidationError{Field: field, Message: message}
@@ -93,13 +95,6 @@ func truncateBytesToValidUTF8(data []byte, maxBytes int) []byte {
 	return data
 }
 
-// isValidationError checks if an error is a ValidationError.
-func isValidationError(err error) bool {
-	var ve *ValidationError
-
-	return errors.As(err, &ve)
-}
-
 // SearXNGError represents an error that occurred during communication with
 // the SearXNG service.
 type SearXNGError struct {
@@ -108,6 +103,8 @@ type SearXNGError struct {
 	ResponseBody    string // Truncated response body for debugging
 	UnderlyingErr   error  // The original error that caused this
 }
+
+var _ error = (*SearXNGError)(nil)
 
 // NewSearXNGError creates a new SearXNGError.
 // The body string is truncated to at most MaxErrorDisplayChars bytes,
@@ -180,6 +177,8 @@ type HTMLResponseError struct {
 	Body          string // Truncated HTML body
 	UnderlyingErr error  // The underlying network error if any
 }
+
+var _ error = (*HTMLResponseError)(nil)
 
 // Error implements the error interface for HTMLResponseError.
 func (e *HTMLResponseError) Error() string {

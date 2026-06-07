@@ -74,7 +74,7 @@ func TestTruncateBody(t *testing.T) {
 			t.Errorf("truncateBody(你好世界, 5) returned %d bytes, want <= 5 bytes", len([]byte(got)))
 		}
 		// The first character "你" should be preserved if at least 3 bytes.
-		if !containsRune(got, '你') && len([]byte(got)) >= 3 {
+		if !strings.ContainsRune(got, '你') && len([]byte(got)) >= 3 {
 			t.Logf("truncateBody(你好世界, 5) = %q (bytes: %d) — incomplete UTF-8 may produce replacement chars", got, len([]byte(got)))
 		}
 	})
@@ -118,17 +118,6 @@ func TestTruncateBody(t *testing.T) {
 			t.Errorf("truncateBody(🔥🔥🔥, 5) returned %d bytes, want <= 5", len([]byte(got)))
 		}
 	})
-}
-
-// containsRune checks if a string contains a specific rune.
-func containsRune(s string, r rune) bool {
-	for _, c := range s {
-		if c == r {
-			return true
-		}
-	}
-
-	return false
 }
 
 // --- buildErrorPreview tests ---
@@ -212,6 +201,13 @@ func TestBuildErrorPreview(t *testing.T) {
 			t.Errorf("buildErrorPreview produced invalid UTF-8: %q (bytes: %d)", got, len(got))
 		}
 	})
+}
+
+// isValidationError checks if an error is a ValidationError.
+func isValidationError(err error) bool {
+	var ve *ValidationError
+
+	return errors.As(err, &ve)
 }
 
 // --- Private isValidationError tests ---

@@ -982,8 +982,8 @@ func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
 		t.Fatal("expected error for invalid URL, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "search error") && !strings.Contains(err.Error(), "invalid") {
-		t.Errorf("expected search error with 'invalid', got: %v", err)
+	if !strings.Contains(err.Error(), "search error") {
+		t.Fatalf("expected error containing 'search error', got: %v", err)
 	}
 }
 

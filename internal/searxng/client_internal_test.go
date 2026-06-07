@@ -27,7 +27,8 @@ func TestValidateBaseURL(t *testing.T) {
 		{name: "valid https", url: "https://search.example.com", wantErr: ""},
 		{name: "valid http", url: "http://127.0.0.1:8080", wantErr: ""},
 		{name: "valid with path", url: "https://example.com/searxng", wantErr: ""},
-		{name: "rejects userinfo", url: "https://user:***@example.com/search", wantErr: "url must not contain userinfo"}, //nolint:gosec
+		{name: "rejects userinfo", url: "https://user:***@example.com/search", //nolint:gosec // password in test URL
+			wantErr: "url must not contain userinfo"},
 	}
 
 	for _, tt := range tests {
