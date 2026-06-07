@@ -420,6 +420,7 @@ func TestSearch_DebugMode(t *testing.T) {
 			debug:          true,
 			retryStrategy:  newExponentialBackoffStrategy(0, time.Microsecond, time.Microsecond),
 		}
+		s.baseCtx, s.cancel = context.WithCancel(context.Background())
 
 		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {

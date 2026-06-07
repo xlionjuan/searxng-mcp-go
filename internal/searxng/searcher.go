@@ -28,6 +28,8 @@ type SearXNGSearcher struct {
 	client           *http.Client // Configurable HTTP client
 	searchEndpoint   *url.URL     // Precomputed /search endpoint URL; cloned per request
 	debug            bool         // When true, enables verbose HTTP request/response logging
+	baseCtx          context.Context
+	cancel           context.CancelFunc
 	retryStrategy    *exponentialBackoffStrategy
 	ownsTransport    bool // true if the searcher created its own transport (safe to close)
 	allowGETFallback bool
@@ -105,20 +107,26 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		}
 	}
 
-	return &SearXNGSearcher{
+	s := &SearXNGSearcher{
 		client:           client,
 		searchEndpoint:   searchEndpoint,
 		debug:            debug,
 		retryStrategy:    newExponentialBackoffStrategy(cfg.MaxRetries, cfg.RetryDelay, cfg.MaxRetryDelay),
 		ownsTransport:    ownsTransport,
 		allowGETFallback: cfg.AllowGETFallback,
-	}, nil
+	}
+	s.baseCtx, s.cancel = context.WithCancel(context.Background())
+	return s, nil
 }
 
-// Close releases resources held by the searcher.
+// Close releases resources held by the searcher and cancels in-flight searches.
 // Close is safe to call on searchers that use a shared default client —
 // it will skip closing idle connections on transports it does not own.
 func (s *SearXNGSearcher) Close() error {
+	if s.cancel != nil {
+		s.cancel()
+	}
+
 	if s.ownsTransport && s.client != nil && s.client.Transport != nil {
 		if transport, ok := s.client.Transport.(*http.Transport); ok {
 			transport.CloseIdleConnections()
@@ -137,14 +145,22 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 		return nil, err
 	}
 
+	// Tie search lifecycle to searcher close
+	searchCtx, searchCancel := context.WithCancel(ctx)
+	defer searchCancel()
+
+	// When searcher is closed (Close() called), cancel this search
+	unlink := context.AfterFunc(s.baseCtx, searchCancel)
+	defer unlink()
+
 	var lastErr error
 
 	maxRetries := s.retryStrategy.MaxRetries()
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
-		resp, _, err := s.doSearchAttempt(ctx, args)
+		resp, _, err := s.doSearchAttempt(searchCtx, args)
 
-		shouldRetry, delay := s.retryStrategy.ShouldRetry(ctx, attempt, resp, err)
+		shouldRetry, delay := s.retryStrategy.ShouldRetry(searchCtx, attempt, resp, err)
 
 		if shouldRetry {
 			// Retry with backoff
@@ -155,7 +171,7 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 				closeResponseBody(resp)
 			}
 
-			waitErr := retryWait(ctx, delay)
+			waitErr := retryWait(searchCtx, delay)
 			if waitErr != nil {
 				lastErr = waitErr
 
@@ -179,13 +195,13 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 
 		// Retry empty responses if retries remain
 		if attempt < maxRetries && s.isEmptyResponse(result) {
-			shouldRetry, delay = s.retryStrategy.ShouldRetry(ctx, attempt, resp, errEmptyResponse)
+			shouldRetry, delay = s.retryStrategy.ShouldRetry(searchCtx, attempt, resp, errEmptyResponse)
 			if shouldRetry {
 				s.logDebugRetry(attempt, maxRetries+1, delay, nil)
 
 				lastErr = errEmptyResponse
 
-				waitErr := retryWait(ctx, delay)
+				waitErr := retryWait(searchCtx, delay)
 				if waitErr != nil {
 					lastErr = waitErr
 

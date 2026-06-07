@@ -531,7 +531,7 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 	done := make(chan error, 1)
 
 	go func() {
-		_, err = searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
+		_, err := searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
 		done <- err
 	}()
 
@@ -542,10 +542,17 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 		t.Fatalf("Close() returned error: %v", err)
 	}
 
-	close(release)
-
-	err = <-done
-	if err != nil {
-		t.Fatalf("Search() returned error: %v", err)
+	select {
+	case err = <-done:
+		if err == nil {
+			t.Fatal("Search() expected error after Close(), got nil")
+		}
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("Search() error = %v, want context.Canceled", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Timed out waiting for Search() to return after Close()")
 	}
+
+	close(release)
 }

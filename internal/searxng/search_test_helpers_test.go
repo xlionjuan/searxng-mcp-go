@@ -1,6 +1,7 @@
 package searxng //nolint:testpackage // white-box access to internal types for shared test helpers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -56,7 +57,7 @@ func newTestSearcher(t *testing.T, rt roundTripperFunc, maxRetries int) *SearXNG
 		t.Fatalf("computeSearchEndpoint() error = %v", err)
 	}
 
-	return &SearXNGSearcher{
+	s := &SearXNGSearcher{
 		client: &http.Client{
 			Transport: rt,
 		},
@@ -65,6 +66,8 @@ func newTestSearcher(t *testing.T, rt roundTripperFunc, maxRetries int) *SearXNG
 		retryStrategy:  newExponentialBackoffStrategy(maxRetries, time.Microsecond, time.Microsecond),
 		ownsTransport:  true,
 	}
+	s.baseCtx, s.cancel = context.WithCancel(context.Background())
+	return s
 }
 
 // newRequestTestSearcher creates a SearXNGSearcher with a precomputed search
