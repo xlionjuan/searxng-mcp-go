@@ -14,6 +14,7 @@ var errNotValidationTestError = errors.New("not a validation error")
 
 // --- Private truncateBody tests ---
 
+//nolint:gocognit // table-driven test covering truncation edge cases
 func TestTruncateBody(t *testing.T) {
 	t.Parallel()
 
@@ -75,7 +76,10 @@ func TestTruncateBody(t *testing.T) {
 		}
 		// The first character "你" should be preserved if at least 3 bytes.
 		if !strings.ContainsRune(got, '你') && len([]byte(got)) >= 3 {
-			t.Logf("truncateBody(你好世界, 5) = %q (bytes: %d) — incomplete UTF-8 may produce replacement chars", got, len([]byte(got)))
+			t.Logf(
+				"truncateBody(你好世界, 5) = %q (bytes: %d)"+
+					" — incomplete UTF-8 may produce replacement chars",
+				got, len([]byte(got)))
 		}
 	})
 
@@ -247,6 +251,7 @@ func TestIsValidationError(t *testing.T) {
 
 // --- HTTPStatusError tests (from coverage test file) ---
 
+//nolint:gocyclo,gocognit,cyclop // table-driven test covering many HTTP status code scenarios
 func TestHTTPStatusError(t *testing.T) {
 	t.Parallel()
 

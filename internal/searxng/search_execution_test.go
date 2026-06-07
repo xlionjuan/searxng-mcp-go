@@ -15,6 +15,7 @@ import (
 // executeGETfallback tests
 // ---------------------------------------------------------------------------
 
+//nolint:gocognit,gocyclo,cyclop // table-driven test covering GET fallback and error scenarios
 func TestExecuteGETfallback(t *testing.T) {
 	t.Parallel()
 
@@ -224,6 +225,7 @@ func TestExecuteGETfallback(t *testing.T) {
 // doSearchAttempt tests
 // ---------------------------------------------------------------------------
 
+//nolint:gocognit,gocyclo,cyclop,maintidx // comprehensive test covering retry, fallback, and error scenarios
 func TestDoSearchAttempt(t *testing.T) {
 	t.Parallel()
 
@@ -469,6 +471,7 @@ func TestDoSearchAttempt(t *testing.T) {
 // finishResponse tests
 // ---------------------------------------------------------------------------
 
+//nolint:gocognit // table-driven test covering response finishing scenarios
 func TestFinishResponse(t *testing.T) {
 	t.Parallel()
 

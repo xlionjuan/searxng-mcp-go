@@ -211,6 +211,8 @@ func logUnresponsiveEngines(resp *searxng.SearchResponse) {
 }
 
 // formatResults formats search results as a readable string.
+//
+//nolint:gocyclo // category-conditional formatting; a dispatch table would add indirection for simple branching
 func formatResults(resp *searxng.SearchResponse) string {
 	logUnresponsiveEngines(resp)
 

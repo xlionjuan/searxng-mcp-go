@@ -12,6 +12,7 @@ import (
 
 // --- readBodyWithLimit tests ---
 
+//nolint:gocognit // table-driven test covering read limits and edge cases
 func TestReadBodyWithLimit(t *testing.T) {
 	t.Parallel()
 
@@ -156,16 +157,36 @@ func TestIsHTMLResponse(t *testing.T) {
 		{name: "content-type text/html; charset=utf-8", contentType: "text/html; charset=utf-8", body: "hello", want: true},
 		{name: "content-type TEXT/HTML (uppercase)", contentType: "TEXT/HTML", body: "hello", want: true},
 		{name: "content-type Text/Html (mixed case)", contentType: "Text/Html", body: "hello", want: true},
-		{name: "content-type text/html with extra params", contentType: "text/html; charset=utf-8; boundary=xyz", body: "hello", want: true},
+		{
+			name:        "content-type text/html with extra params",
+			contentType: "text/html; charset=utf-8; boundary=xyz",
+			body:        "hello",
+			want:        true,
+		},
 		{name: "body starts with <!DOCTYPE", contentType: "application/json", body: "<!DOCTYPE html>", want: true},
-		{name: "body starts with <!doctype (lowercase)", contentType: "application/json", body: "<!doctype html>", want: true},
-		{name: "body starts with <html", contentType: "application/json", body: "<html lang=\"en\">", want: true},
+		{
+			name:        "body starts with <!doctype (lowercase)",
+			contentType: "application/json",
+			body:        "<!doctype html>",
+			want:        true,
+		},
+		{name: "body starts with <html", contentType: "application/json", body: `<html lang="en">`, want: true},
 		{name: "body starts with <HTML (uppercase)", contentType: "application/json", body: "<HTML>", want: true},
-		{name: "body starts with <Html (mixed case)", contentType: "application/json", body: "<Html lang=\"en\">", want: true},
+		{
+			name:        "body starts with <Html (mixed case)",
+			contentType: "application/json",
+			body:        `<Html lang="en">`,
+			want:        true,
+		},
 		{name: "json response", contentType: "application/json", body: `{"key": "value"}`, want: false},
 		{name: "empty body", contentType: "application/json", body: "", want: false},
 		{name: "trimmed body with spaces then DOCTYPE", contentType: "text/plain", body: "  <!DOCTYPE html>", want: true},
-		{name: "trimmed body with spaces then lowercase doctype", contentType: "text/plain", body: "  <!doctype html>", want: true},
+		{
+			name:        "trimmed body with spaces then lowercase doctype",
+			contentType: "text/plain",
+			body:        "  <!doctype html>",
+			want:        true,
+		},
 		{name: "near-match text/htmlish with json body", contentType: "text/htmlish", body: `{"key": "value"}`, want: false},
 		{name: "malformed content-type with html body", contentType: "not a mime type", body: "<!DOCTYPE html>", want: true},
 		{name: "empty content-type with json body", contentType: "", body: `{"key": "value"}`, want: false},
@@ -262,13 +283,16 @@ func TestIsHTMLContentType(t *testing.T) {
 
 // --- decodeSearchResponse tests ---
 
+//nolint:gocognit,gocyclo,cyclop,maintidx // table-driven test covering many response decode scenarios
 func TestDecodeSearchResponse(t *testing.T) {
 	t.Parallel()
 
 	t.Run("valid JSON response", func(t *testing.T) {
 		t.Parallel()
 
-		body := `{"query": "test", "results": [{"title": "Result 1", "url": "https://example.com", "content": "Content", "engine": "google"}], ` +
+		body := `{"query": "test", "results": [` +
+			`{"title": "Result 1", "url": "https://example.com", ` +
+			`"content": "Content", "engine": "google"}], ` +
 			`"suggestions": []}`
 		resp := &http.Response{
 			StatusCode: http.StatusOK,
@@ -676,6 +700,7 @@ func TestEnsureAnswerFallback(t *testing.T) {
 
 // --- normalizeResponse tests ---
 
+//nolint:gocognit,gocyclo,cyclop,maintidx // table-driven test covering many normalize response scenarios
 func TestNormalizeResponse(t *testing.T) {
 	t.Parallel()
 

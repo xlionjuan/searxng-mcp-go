@@ -24,8 +24,9 @@ var (
 
 var (
 	errArgumentParseFailed = errors.New("failed to parse arguments")
-	errSearXNGURLRequired  = errors.New("SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
-	errUnexpectedFlagType  = errors.New("registered search flag has unexpected type")
+	errSearXNGURLRequired  = errors.New(
+		"SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
+	errUnexpectedFlagType = errors.New("registered search flag has unexpected type")
 )
 
 // Process exit codes. CLI failures exit with exitCodeCLIError; MCP mode
@@ -78,6 +79,8 @@ type registeredFlags struct {
 // parseArgs parses command-line arguments and returns the mode, flags, and positional arguments.
 // Any supplied arguments route the process into CLI mode; otherwise the server runs in MCP mode.
 // Flags are accepted anywhere before or after positional args, matching the current CLI behavior.
+//
+//nolint:gocognit,gocyclo,cyclop // interleaved positional/flag processing inherent to CLI; linear scan is standard
 func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 	// Build the FlagSet first so we can use Lookup to determine whether a
 	// flag takes a value (via the IsBoolFlag interface) during the
@@ -195,7 +198,8 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 		help:       fs.Bool("help", false, "Show this help message"),
 		version:    fs.Bool("version", false, "Show version information"),
 		searxngURL: fs.String("searxng-url", "", "SearXNG URL (can also be set via SEARXNG_URL env var)"),
-		debug:      fs.Bool("debug", false, "Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)"),
+		debug: fs.Bool("debug", false,
+			"Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)"),
 		timeout: fs.Duration(
 			"timeout",
 			searxng.DefaultTimeout,
@@ -323,6 +327,7 @@ func main() {
 	}
 }
 
+//nolint:gocyclo,cyclop // multi-source config with explicit precedence; each branch is a distinct concern
 func getConfig(flags *CLIFlags) (*searxng.Config, error) {
 	cfg := searxng.DefaultConfig()
 

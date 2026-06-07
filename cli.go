@@ -84,6 +84,8 @@ For more information, see: https://github.com/xlionjuan/searxng-mcp-go
 }
 
 // runCLIMode executes the CLI-mode search flow.
+//
+//nolint:gocyclo // CLI dispatch (help/debug/search/format) is inherently sequential; extracting adds layers
 func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 	if flags.Help {
 		printCLIHelp()

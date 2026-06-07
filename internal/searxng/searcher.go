@@ -13,12 +13,14 @@ import (
 
 var (
 	errSearcherConfigRequired   = errors.New("newSearXNGSearcher: config cannot be nil")
-	errSearcherURLParseInternal = errors.New("newSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error)")
-	errRequestCreateFailed      = errors.New("failed to create request")
-	errSearchRequestFailed      = errors.New("failed to execute search request")
-	errErrorBodyTooLarge        = errors.New("error response body exceeded maximum size limit")
-	errEmptyResponse            = errors.New("empty response from SearXNG")
-	errGETFallbackUsed          = errors.New("GET fallback was used; search query parameters may have been sent in the request URL")
+	errSearcherURLParseInternal = errors.New(
+		"newSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error)")
+	errRequestCreateFailed = errors.New("failed to create request")
+	errSearchRequestFailed = errors.New("failed to execute search request")
+	errErrorBodyTooLarge   = errors.New("error response body exceeded maximum size limit")
+	errEmptyResponse       = errors.New("empty response from SearXNG")
+	errGETFallbackUsed     = errors.New(
+		"GET fallback was used; search query parameters may have been sent in the request URL")
 )
 
 const getFallbackLogRisk = "Search query parameters may be sent in upstream URLs and recorded by " +
@@ -143,6 +145,8 @@ func (s *SearXNGSearcher) Close() error {
 // Search executes the search query against SearXNG with retry support.
 // Returns SearXNGError wrapping the last error if all retries are exhausted.
 // Returns ValidationError if args are invalid.
+//
+//nolint:gocognit,gocyclo // orchestrates distinct concerns; extracting adds indirection
 func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	err := ValidateSearchArgs(args)
 	if err != nil {

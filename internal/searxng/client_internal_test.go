@@ -190,6 +190,7 @@ func TestIsPrivateIPv6(t *testing.T) {
 
 // --- enforceSearchRedirectPolicy tests ---
 
+//nolint:gocognit,gocyclo,cyclop // table-driven test covers many redirect scenarios
 func TestEnforceSearchRedirectPolicy(t *testing.T) {
 	t.Parallel()
 

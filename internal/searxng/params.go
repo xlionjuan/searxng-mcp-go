@@ -126,10 +126,12 @@ var SearchParams = []ParamDef{
 	{
 		Name: "limit", GoType: "int", Default: strconv.Itoa(DefaultResultLimit),
 		Description: fmt.Sprintf("Maximum number of results to return (%d-%d)", MinResultLimit, MaxResultLimit),
-		CLIHelp:     fmt.Sprintf("Maximum number of results to return (%d-%d) [default: %d]", MinResultLimit, MaxResultLimit, DefaultResultLimit),
-		CLIType:     "N",
-		MCPType:     "integer",
-		Minimum:     &paramMinLimit,
-		Maximum:     &paramMaxLimit,
+		CLIHelp: fmt.Sprintf(
+			"Maximum number of results to return (%d-%d) [default: %d]",
+			MinResultLimit, MaxResultLimit, DefaultResultLimit),
+		CLIType: "N",
+		MCPType: "integer",
+		Minimum: &paramMinLimit,
+		Maximum: &paramMaxLimit,
 	},
 }

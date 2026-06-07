@@ -30,7 +30,9 @@ func TestFormatResultsGoldenOutput(t *testing.T) {
 		Infoboxes: []searxng.Infobox{
 			{
 				Infobox: "Go &amp; Golang",
-				Content: "Go is a statically typed, compiled programming language.\nIt was designed at Google.\nIt is syntactically similar to C.",
+				Content: "Go is a statically typed, compiled programming language.\n" +
+					"It was designed at Google.\n" +
+					"It is syntactically similar to C.",
 				Attributes: []searxng.InfoboxAttribute{
 					{Label: "Type", Value: "Statically typed"},
 					{Label: "Paradigm", Value: "Concurrent"},
