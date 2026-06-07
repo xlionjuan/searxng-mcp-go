@@ -294,6 +294,7 @@ func TestSearch_HTMLResponseError(t *testing.T) {
 	}
 }
 
+//nolint:gocognit,gocyclo // table-driven test covers many edge cases for body size limits
 func TestSearch_UnsupportedBodySizes(t *testing.T) {
 	t.Parallel()
 

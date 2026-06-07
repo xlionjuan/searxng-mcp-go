@@ -78,6 +78,8 @@ type registeredFlags struct {
 // parseArgs parses command-line arguments and returns the mode, flags, and positional arguments.
 // Any supplied arguments route the process into CLI mode; otherwise the server runs in MCP mode.
 // Flags are accepted anywhere before or after positional args, matching the current CLI behavior.
+//
+//nolint:gocognit,gocyclo,cyclop // complex flag parsing with interleaved positional and flag args
 func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 	// Build the FlagSet first so we can use Lookup to determine whether a
 	// flag takes a value (via the IsBoolFlag interface) during the
@@ -323,6 +325,7 @@ func main() {
 	}
 }
 
+//nolint:gocyclo,cyclop // config resolution with env vars, flags, and multiple fallbacks
 func getConfig(flags *CLIFlags) (*searxng.Config, error) {
 	cfg := searxng.DefaultConfig()
 

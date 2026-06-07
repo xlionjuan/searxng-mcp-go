@@ -143,6 +143,8 @@ func (s *SearXNGSearcher) Close() error {
 // Search executes the search query against SearXNG with retry support.
 // Returns SearXNGError wrapping the last error if all retries are exhausted.
 // Returns ValidationError if args are invalid.
+//
+//nolint:gocognit,gocyclo // Search has retry logic, error mapping, body truncation, and response cleanup
 func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	err := ValidateSearchArgs(args)
 	if err != nil {

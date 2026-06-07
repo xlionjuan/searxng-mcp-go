@@ -85,6 +85,7 @@ func TestNewSearXNGSearcherSuccess(t *testing.T) {
 	}
 }
 
+//nolint:gocyclo // table-driven test covering config and default config edge cases
 func TestConfigAndDefaultConfig(t *testing.T) {
 	t.Parallel()
 
@@ -137,6 +138,7 @@ func TestConfigAndDefaultConfig(t *testing.T) {
 	}
 }
 
+//nolint:gocognit,gocyclo,cyclop // table-driven test covering JSON marshal cases for SearchResponse
 func TestSearchResponseMarshalJSON(t *testing.T) {
 	t.Parallel()
 

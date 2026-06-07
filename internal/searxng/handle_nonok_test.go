@@ -12,6 +12,7 @@ import (
 // handleNonOKResponse tests
 // ---------------------------------------------------------------------------
 
+//nolint:gocognit,gocyclo,cyclop // table-driven test covering many non-OK response scenarios
 func TestHandleNonOKResponse(t *testing.T) {
 	t.Parallel()
 

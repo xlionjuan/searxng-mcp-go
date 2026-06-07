@@ -91,6 +91,7 @@ func TestParseArgs_InvalidFlags(t *testing.T) {
 	}
 }
 
+//nolint:gocognit,gocyclo,cyclop,maintidx // comprehensive table-driven test covering all CLI flag parsing scenarios
 func TestParseArgs(t *testing.T) {
 	t.Parallel()
 
@@ -466,6 +467,7 @@ func captureStdout(t *testing.T, fn func()) string {
 // t.Parallel() without coordinating at the call site.
 var stdoutMu sync.Mutex
 
+//nolint:gocognit,gocyclo,cyclop,maintidx // comprehensive table-driven test covering all config resolution scenarios
 func TestGetConfig(t *testing.T) {
 	t.Setenv("SEARXNG_URL", "https://env.example.com")
 

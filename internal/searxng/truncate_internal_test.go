@@ -2,11 +2,14 @@ package searxng
 
 import "testing"
 
-// TestTruncateRunes covers the rune-safe truncation helper that is shared
+// truncateRunes truncates a string to no more than n bytes, ensuring no
+// multi-byte UTF-8 rune is split. It lives in the searxng package as glue
 // between the searxng deduplication pass and the root CLI text formatter.
 // The cases lock the documented contract: never split a multi-byte UTF-8
 // rune, return "" for non-positive limits, and return the original string
 // unchanged when the input already fits within the limit.
+//
+//nolint:gocognit,gocyclo,cyclop // table-driven test covering truncation edge cases for multi-byte runes
 func TestTruncateRunes(t *testing.T) {
 	t.Parallel()
 

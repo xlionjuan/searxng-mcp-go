@@ -12,6 +12,7 @@ import (
 
 // --- readBodyWithLimit tests ---
 
+//nolint:gocognit // table-driven test covering read limits and edge cases
 func TestReadBodyWithLimit(t *testing.T) {
 	t.Parallel()
 
@@ -262,6 +263,7 @@ func TestIsHTMLContentType(t *testing.T) {
 
 // --- decodeSearchResponse tests ---
 
+//nolint:gocognit,gocyclo,cyclop,maintidx // table-driven test covering many response decode scenarios
 func TestDecodeSearchResponse(t *testing.T) {
 	t.Parallel()
 
@@ -676,6 +678,7 @@ func TestEnsureAnswerFallback(t *testing.T) {
 
 // --- normalizeResponse tests ---
 
+//nolint:gocognit,gocyclo,cyclop,maintidx // table-driven test covering many normalize response scenarios
 func TestNormalizeResponse(t *testing.T) {
 	t.Parallel()
 

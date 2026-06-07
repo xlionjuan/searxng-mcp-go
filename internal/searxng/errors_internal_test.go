@@ -14,6 +14,7 @@ var errNotValidationTestError = errors.New("not a validation error")
 
 // --- Private truncateBody tests ---
 
+//nolint:gocognit // table-driven test covering truncation edge cases
 func TestTruncateBody(t *testing.T) {
 	t.Parallel()
 
@@ -247,6 +248,7 @@ func TestIsValidationError(t *testing.T) {
 
 // --- HTTPStatusError tests (from coverage test file) ---
 
+//nolint:gocyclo,gocognit,cyclop // table-driven test covering many HTTP status code scenarios
 func TestHTTPStatusError(t *testing.T) {
 	t.Parallel()
 

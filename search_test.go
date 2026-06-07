@@ -95,6 +95,7 @@ func TestSearch_PreservesUnresponsiveEngines(t *testing.T) {
 	}
 }
 
+//nolint:gocognit // table-driven test covering all search request parameter combinations
 func TestSearch_RequestParameters(t *testing.T) {
 	t.Parallel()
 
@@ -420,6 +421,7 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 	})
 }
 
+//nolint:gocognit,gocyclo,cyclop // table-driven test covering POST-to-GET fallback with various HTTP responses
 func TestSearch_POSTtoGETFallback(t *testing.T) {
 	t.Parallel()
 
@@ -728,6 +730,7 @@ func TestSearch_EmptySearchResponseRetryCanceled(t *testing.T) {
 	}
 }
 
+//nolint:gocognit,gocyclo // table-driven test covering browser header scenarios for search requests
 func TestSearch_BrowserHeaders(t *testing.T) {
 	t.Parallel()
 

@@ -224,6 +224,7 @@ func TestMCP_ToolsList(t *testing.T) {
 	}
 }
 
+//nolint:gocognit,gocyclo,cyclop,maintidx // comprehensive table-driven test covering search tool handler creation and input validation
 func TestNewSearchToolHandler(t *testing.T) {
 	t.Parallel()
 

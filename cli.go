@@ -84,6 +84,8 @@ For more information, see: https://github.com/xlionjuan/searxng-mcp-go
 }
 
 // runCLIMode executes the CLI-mode search flow.
+//
+//nolint:gocyclo // runCLIMode handles CLI mode execution with multiple branches for flags, search, and format
 func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 	if flags.Help {
 		printCLIHelp()

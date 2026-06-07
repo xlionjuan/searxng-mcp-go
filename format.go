@@ -211,6 +211,8 @@ func logUnresponsiveEngines(resp *searxng.SearchResponse) {
 }
 
 // formatResults formats search results as a readable string.
+//
+//nolint:gocyclo // formatResults iterates over multiple result categories with separate formatting
 func formatResults(resp *searxng.SearchResponse) string {
 	logUnresponsiveEngines(resp)
 

@@ -47,6 +47,7 @@ func TestSetBrowserHeaders(t *testing.T) {
 
 // --- buildSearchRequest tests ---
 
+//nolint:gocyclo // table-driven test covering build search request with many parameter combinations
 func TestBuildSearchRequest_BasicParams(t *testing.T) {
 	t.Parallel()
 
