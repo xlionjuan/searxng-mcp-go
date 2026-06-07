@@ -41,8 +41,6 @@ type SearXNGSearcher struct {
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
 // Returns an error if cfg is nil, cfg.Validate fails, the base URL is empty
 // or invalid, or endpoint construction fails internally.
-//
-//nolint:nestif // config-driven client setup branches on existing client, custom timeout, and redirect-wrapping
 func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	if cfg == nil {
 		return nil, errSearcherConfigRequired

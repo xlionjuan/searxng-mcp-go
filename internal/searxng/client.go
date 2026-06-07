@@ -64,7 +64,6 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 	}
 }
 
-//nolint:nestif // redirect policy validates host match, scheme downgrade, and via-count in separate nested blocks
 func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 	// Note: This policy preserves the original scheme for same-host redirects.
 	// An https → http downgrade is rejected so that configuring an HTTPS
