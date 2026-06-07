@@ -93,57 +93,81 @@ func TestNewSearXNGSearcherSuccess(t *testing.T) {
 	}
 }
 
-//nolint:gocyclo // table-driven test covering config and default config edge cases
+//nolint:gocognit,gocyclo // subtest-based config verification test
 func TestConfigAndDefaultConfig(t *testing.T) {
 	t.Parallel()
 
-	cfg := DefaultConfig()
-	if cfg == nil {
-		t.Fatal("DefaultConfig() = nil, want config")
+	t.Run("default fields are set correctly", func(t *testing.T) {
+		t.Parallel()
 
-		return
-	}
+		cfg := DefaultConfig()
+		if cfg == nil {
+			t.Fatal("DefaultConfig() = nil, want config")
 
-	if cfg.SearXNGURL != "" {
-		t.Fatalf("SearXNGURL = %q, want empty string", cfg.SearXNGURL)
-	}
+			return
+		}
 
-	if cfg.Timeout != 8*time.Second {
-		t.Fatalf("Timeout = %v, want 8s", cfg.Timeout)
-	}
+		if cfg.SearXNGURL != "" {
+			t.Fatalf("SearXNGURL = %q, want empty string", cfg.SearXNGURL)
+		}
 
-	if cfg.HTTPClient != nil {
-		t.Fatalf("HTTPClient = %v, want nil", cfg.HTTPClient)
-	}
+		if cfg.Timeout != 8*time.Second {
+			t.Fatalf("Timeout = %v, want 8s", cfg.Timeout)
+		}
 
-	if cfg.MaxRetries != DefaultMaxRetries {
-		t.Fatalf("MaxRetries = %d, want %d", cfg.MaxRetries, DefaultMaxRetries)
-	}
+		if cfg.HTTPClient != nil {
+			t.Fatalf("HTTPClient = %v, want nil", cfg.HTTPClient)
+		}
 
-	if cfg.RetryDelay != DefaultRetryDelay {
-		t.Fatalf("RetryDelay = %v, want %v", cfg.RetryDelay, DefaultRetryDelay)
-	}
+		if cfg.MaxRetries != DefaultMaxRetries {
+			t.Fatalf("MaxRetries = %d, want %d", cfg.MaxRetries, DefaultMaxRetries)
+		}
 
-	if cfg.MaxRetryDelay != DefaultMaxRetryDelay {
-		t.Fatalf("MaxRetryDelay = %v, want %v", cfg.MaxRetryDelay, DefaultMaxRetryDelay)
-	}
+		if cfg.RetryDelay != DefaultRetryDelay {
+			t.Fatalf("RetryDelay = %v, want %v", cfg.RetryDelay, DefaultRetryDelay)
+		}
 
-	client := &http.Client{Timeout: time.Second}
-	cfg.SearXNGURL = "https://example.com/search"
-	cfg.Timeout = 5 * time.Second
-	cfg.MaxRetries = 3
-	cfg.RetryDelay = 2 * time.Millisecond
-	cfg.MaxRetryDelay = 10 * time.Millisecond
+		if cfg.MaxRetryDelay != DefaultMaxRetryDelay {
+			t.Fatalf("MaxRetryDelay = %v, want %v", cfg.MaxRetryDelay, DefaultMaxRetryDelay)
+		}
+	})
 
-	cfg.HTTPClient = client
-	if cfg.SearXNGURL != "https://example.com/search" ||
-		cfg.Timeout != 5*time.Second ||
-		cfg.HTTPClient != client ||
-		cfg.MaxRetries != 3 ||
-		cfg.RetryDelay != 2*time.Millisecond ||
-		cfg.MaxRetryDelay != 10*time.Millisecond {
-		t.Fatal("Config fields are not writable")
-	}
+	t.Run("fields are writable", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := DefaultConfig()
+		client := &http.Client{Timeout: time.Second}
+		cfg.SearXNGURL = "https://example.com/search"
+		cfg.Timeout = 5 * time.Second
+		cfg.MaxRetries = 3
+		cfg.RetryDelay = 2 * time.Millisecond
+		cfg.MaxRetryDelay = 10 * time.Millisecond
+		cfg.HTTPClient = client
+
+		if cfg.SearXNGURL != "https://example.com/search" {
+			t.Fatal("Config fields are not writable")
+		}
+
+		if cfg.Timeout != 5*time.Second {
+			t.Fatal("Config fields are not writable")
+		}
+
+		if cfg.HTTPClient != client {
+			t.Fatal("Config fields are not writable")
+		}
+
+		if cfg.MaxRetries != 3 {
+			t.Fatal("Config fields are not writable")
+		}
+
+		if cfg.RetryDelay != 2*time.Millisecond {
+			t.Fatal("Config fields are not writable")
+		}
+
+		if cfg.MaxRetryDelay != 10*time.Millisecond {
+			t.Fatal("Config fields are not writable")
+		}
+	})
 }
 
 //nolint:gocognit,gocyclo,cyclop // table-driven test covering JSON marshal cases for SearchResponse

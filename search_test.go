@@ -731,7 +731,35 @@ func TestSearch_EmptySearchResponseRetryCanceled(t *testing.T) {
 	}
 }
 
-//nolint:gocognit,gocyclo // table-driven test covering browser header scenarios for search requests
+// assertBrowserHeaders checks that common browser-like headers are set on search requests.
+func assertBrowserHeaders(t *testing.T, headers http.Header, label string) {
+	t.Helper()
+
+	if headers.Get("User-Agent") == "" {
+		t.Errorf("User-Agent header should be set%s", label)
+	}
+
+	if headers.Get("Accept") == "" {
+		t.Errorf("Accept header should be set%s", label)
+	}
+
+	if !strings.Contains(headers.Get("Accept"), "text/html") {
+		t.Errorf("Accept header should contain text/html%s, got: %s", label, headers.Get("Accept"))
+	}
+
+	if headers.Get("Accept-Language") == "" {
+		t.Errorf("Accept-Language header should be set%s", label)
+	}
+
+	if headers.Get("Accept-Encoding") == "" {
+		t.Errorf("Accept-Encoding header should be set%s", label)
+	}
+
+	if headers.Get("Sec-Fetch-Mode") != "navigate" {
+		t.Errorf("Sec-Fetch-Mode should be navigate%s, got: %s", label, headers.Get("Sec-Fetch-Mode"))
+	}
+}
+
 func TestSearch_BrowserHeaders(t *testing.T) {
 	t.Parallel()
 
@@ -758,29 +786,7 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		if capturedHeaders.Get("User-Agent") == "" {
-			t.Error("User-Agent header should be set")
-		}
-
-		if capturedHeaders.Get("Accept") == "" {
-			t.Error("Accept header should be set")
-		}
-
-		if !strings.Contains(capturedHeaders.Get("Accept"), "text/html") {
-			t.Errorf("Accept header should contain text/html, got: %s", capturedHeaders.Get("Accept"))
-		}
-
-		if capturedHeaders.Get("Accept-Language") == "" {
-			t.Error("Accept-Language header should be set")
-		}
-
-		if capturedHeaders.Get("Accept-Encoding") == "" {
-			t.Error("Accept-Encoding header should be set")
-		}
-
-		if capturedHeaders.Get("Sec-Fetch-Mode") != "navigate" {
-			t.Errorf("Sec-Fetch-Mode should be navigate, got: %s", capturedHeaders.Get("Sec-Fetch-Mode"))
-		}
+		assertBrowserHeaders(t, capturedHeaders, "")
 	})
 
 	t.Run("GET fallback headers", func(t *testing.T) {
@@ -812,24 +818,6 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		if capturedHeaders.Get("User-Agent") == "" {
-			t.Error("User-Agent header should be set on GET fallback")
-		}
-
-		if capturedHeaders.Get("Accept") == "" {
-			t.Error("Accept header should be set on GET fallback")
-		}
-
-		if !strings.Contains(capturedHeaders.Get("Accept"), "text/html") {
-			t.Errorf("Accept header should contain text/html on GET fallback, got: %s", capturedHeaders.Get("Accept"))
-		}
-
-		if capturedHeaders.Get("Accept-Language") == "" {
-			t.Error("Accept-Language header should be set on GET fallback")
-		}
-
-		if capturedHeaders.Get("Sec-Fetch-Mode") != "navigate" {
-			t.Errorf("Sec-Fetch-Mode should be navigate on GET fallback, got: %s", capturedHeaders.Get("Sec-Fetch-Mode"))
-		}
+		assertBrowserHeaders(t, capturedHeaders, " on GET fallback")
 	})
 }

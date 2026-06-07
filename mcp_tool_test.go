@@ -225,7 +225,65 @@ func TestMCP_ToolsList(t *testing.T) {
 	}
 }
 
-//nolint:gocognit,gocyclo,cyclop,maintidx // table-driven test covering search tool handler creation
+// callToolHandler calls the tool handler and fails the test on call error.
+func callToolHandler(
+	t *testing.T,
+	handler func(context.Context, *mcp.CallToolRequest, searxng.SearchArgs) (*mcp.CallToolResult, any, error),
+	args searxng.SearchArgs,
+) *mcp.CallToolResult {
+	t.Helper()
+
+	result, _, err := handler(t.Context(), nil, args)
+	if err != nil {
+		t.Fatalf("call tool failed: %v", err)
+	}
+
+	return result
+}
+
+// assertTextContent extracts the single TextContent from a result, failing if absent.
+func assertTextContent(t *testing.T, result *mcp.CallToolResult) *mcp.TextContent {
+	t.Helper()
+
+	if len(result.Content) != 1 {
+		t.Fatalf("expected 1 content item, got %d", len(result.Content))
+	}
+
+	textContent, ok := result.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("expected *mcp.TextContent, got %T", result.Content[0])
+	}
+
+	return textContent
+}
+
+// assertIsError asserts that result.IsError is true.
+func assertIsError(t *testing.T, result *mcp.CallToolResult) {
+	t.Helper()
+
+	if !result.IsError {
+		t.Fatalf("expected IsError=true, got false with content: %v", result.Content)
+	}
+}
+
+// assertNotError asserts that result.IsError is false.
+func assertNotError(t *testing.T, result *mcp.CallToolResult) {
+	t.Helper()
+
+	if result.IsError {
+		t.Fatalf("expected IsError=false, got true with content: %v", result.Content)
+	}
+}
+
+// assertContains asserts that s contains substr.
+func assertContains(t *testing.T, s, substr string) {
+	t.Helper()
+
+	if !strings.Contains(s, substr) {
+		t.Fatalf("expected %q to contain %q", s, substr)
+	}
+}
+
 func TestNewSearchToolHandler(t *testing.T) {
 	t.Parallel()
 
@@ -237,201 +295,13 @@ func TestNewSearchToolHandler(t *testing.T) {
 		}
 	})
 
-	t.Run("validates input", func(t *testing.T) {
-		t.Parallel()
+	t.Run("validates input", testNewSearchToolHandlerValidatesInput)
 
-		handler := NewSearchToolHandler(&mockSearcher{})
+	t.Run("returns JSON result", testNewSearchToolHandlerReturnsJSON)
 
-		for _, tt := range []struct {
-			name string
-			args searxng.SearchArgs
-		}{
-			{name: "empty query", args: searxng.SearchArgs{Query: ""}},
-			{name: "whitespace query", args: searxng.SearchArgs{Query: "   "}},
-		} {
-			t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+	t.Run("applies default limit when omitted", testNewSearchToolHandlerDefaultLimit)
 
-				result, _, err := handler(t.Context(), nil, tt.args)
-				if err != nil {
-					t.Fatalf("call tool failed: %v", err)
-				}
-
-				if !result.IsError {
-					t.Fatalf("expected IsError=true, got false with content: %v", result.Content)
-				}
-
-				textContent, ok := result.Content[0].(*mcp.TextContent)
-				if !ok {
-					t.Fatalf("expected *mcp.TextContent, got %T", result.Content[0])
-				}
-
-				if !strings.Contains(textContent.Text, "Validation error") {
-					t.Fatalf("expected validation error, got: %s", textContent.Text)
-				}
-			})
-		}
-	})
-
-	t.Run("returns JSON result", func(t *testing.T) {
-		t.Parallel()
-
-		response := &searxng.SearchResponse{
-			Query:   "golang",
-			Answers: nil,
-			Results: []searxng.SearchResult{
-				{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"},
-			},
-			Infoboxes:           nil,
-			Suggestions:         []string{"golang tutorial"},
-			NumberOfResults:     1,
-			UnresponsiveEngines: nil,
-			Debug:               false,
-		}
-
-		handler := NewSearchToolHandler(&mockSearcher{
-			searchFunc: func(_ context.Context, _ *searxng.SearchArgs) (*searxng.SearchResponse, error) {
-				return response, nil
-			},
-		})
-
-		result, _, err := handler(t.Context(), nil, searxng.SearchArgs{Query: "golang"})
-		if err != nil {
-			t.Fatalf("call tool failed: %v", err)
-		}
-
-		if result.IsError {
-			t.Fatalf("expected IsError=false, got true with content: %v", result.Content)
-		}
-
-		if len(result.Content) != 1 {
-			t.Fatalf("expected 1 content item, got %d", len(result.Content))
-		}
-
-		textContent, ok := result.Content[0].(*mcp.TextContent)
-		if !ok {
-			t.Fatalf("expected *mcp.TextContent, got %T", result.Content[0])
-		}
-
-		var parsed searxng.SearchResponse
-
-		err = json.Unmarshal([]byte(textContent.Text), &parsed)
-		if err != nil {
-			t.Fatalf("expected valid JSON, got error: %v\nbody: %s", err, textContent.Text)
-		}
-
-		if parsed.Query != "golang" {
-			t.Fatalf("query = %q, want golang", parsed.Query)
-		}
-
-		if len(parsed.Results) != 1 || parsed.Results[0].Title != "Go" || parsed.Results[0].URL != "https://go.dev" {
-			t.Fatalf("unexpected results: %#v", parsed.Results)
-		}
-
-		if len(parsed.Suggestions) != 1 || parsed.Suggestions[0] != "golang tutorial" {
-			t.Fatalf("unexpected suggestions: %#v", parsed.Suggestions)
-		}
-	})
-
-	t.Run("applies default limit when omitted", func(t *testing.T) {
-		t.Parallel()
-
-		var captured *searxng.SearchArgs
-
-		handler := NewSearchToolHandler(&mockSearcher{
-			searchFunc: func(_ context.Context, args *searxng.SearchArgs) (*searxng.SearchResponse, error) {
-				captured = args
-
-				return &searxng.SearchResponse{Query: args.Query}, nil
-			},
-		})
-
-		_, _, err := handler(t.Context(), nil, searxng.SearchArgs{Query: "golang"})
-		if err != nil {
-			t.Fatalf("call tool failed: %v", err)
-		}
-
-		if captured == nil {
-			t.Fatal("expected searcher to be called")
-		}
-
-		if captured.Limit == nil {
-			t.Fatal("expected default limit to be applied, got nil")
-		}
-
-		if *captured.Limit != searxng.DefaultResultLimit {
-			t.Fatalf("captured limit = %d, want %d", *captured.Limit, searxng.DefaultResultLimit)
-		}
-	})
-
-	t.Run("forwards optional parameters", func(t *testing.T) {
-		t.Parallel()
-
-		var captured *searxng.SearchArgs
-
-		handler := NewSearchToolHandler(&mockSearcher{
-			searchFunc: func(_ context.Context, args *searxng.SearchArgs) (*searxng.SearchResponse, error) {
-				captured = args
-
-				return &searxng.SearchResponse{Query: args.Query}, nil
-			},
-		})
-
-		pageno := 3
-
-		result, _, err := handler(t.Context(), nil, searxng.SearchArgs{
-			Query:      "golang",
-			Language:   "en",
-			SafeSearch: 2,
-			TimeRange:  "year",
-			Categories: "general,news",
-			Engines:    "google,bing",
-			Pageno:     &pageno,
-		})
-		if err != nil {
-			t.Fatalf("call tool failed: %v", err)
-		}
-
-		if result.IsError {
-			t.Fatalf("expected IsError=false, got true with content: %v", result.Content)
-		}
-
-		if captured == nil {
-			t.Fatal("expected searcher to be called")
-		}
-
-		if got, want := captured.Query, "golang"; got != want {
-			t.Errorf("Query = %q, want %q", got, want)
-		}
-
-		if got, want := captured.Language, "en"; got != want {
-			t.Errorf("Language = %q, want %q", got, want)
-		}
-
-		if got, want := captured.SafeSearch, 2; got != want {
-			t.Errorf("SafeSearch = %d, want %d", got, want)
-		}
-
-		if got, want := captured.TimeRange, "year"; got != want {
-			t.Errorf("TimeRange = %q, want %q", got, want)
-		}
-
-		if got, want := captured.Categories, "general,news"; got != want {
-			t.Errorf("Categories = %q, want %q", got, want)
-		}
-
-		if got, want := captured.Engines, "google,bing"; got != want {
-			t.Errorf("Engines = %q, want %q", got, want)
-		}
-
-		if captured.Pageno == nil {
-			t.Fatal("expected Pageno to be forwarded, got nil")
-		}
-
-		if *captured.Pageno != 3 {
-			t.Errorf("Pageno = %d, want 3", *captured.Pageno)
-		}
-	})
+	t.Run("forwards optional parameters", testNewSearchToolHandlerForwardsParams)
 
 	t.Run("returns search errors", func(t *testing.T) {
 		t.Parallel()
@@ -442,24 +312,179 @@ func TestNewSearchToolHandler(t *testing.T) {
 			},
 		})
 
-		result, _, err := handler(t.Context(), nil, searxng.SearchArgs{Query: "test"})
-		if err != nil {
-			t.Fatalf("call tool failed: %v", err)
-		}
-
-		if !result.IsError {
-			t.Fatalf("expected IsError=true, got false with content: %v", result.Content)
-		}
-
-		textContent, ok := result.Content[0].(*mcp.TextContent)
-		if !ok {
-			t.Fatalf("expected *mcp.TextContent, got %T", result.Content[0])
-		}
-
-		if !strings.Contains(textContent.Text, "Search error") {
-			t.Fatalf("expected search error, got: %s", textContent.Text)
-		}
+		result := callToolHandler(t, handler, searxng.SearchArgs{Query: "test"})
+		assertIsError(t, result)
+		tc := assertTextContent(t, result)
+		assertContains(t, tc.Text, "Search error")
 	})
+}
+
+// testNewSearchToolHandlerValidatesInput is a subtest helper for input validation.
+func testNewSearchToolHandlerValidatesInput(t *testing.T) {
+	t.Helper()
+	t.Parallel()
+
+	handler := NewSearchToolHandler(&mockSearcher{})
+
+	for _, tt := range []struct {
+		name string
+		args searxng.SearchArgs
+	}{
+		{name: "empty query", args: searxng.SearchArgs{Query: ""}},
+		{name: "whitespace query", args: searxng.SearchArgs{Query: "   "}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := callToolHandler(t, handler, tt.args)
+			assertIsError(t, result)
+			tc := assertTextContent(t, result)
+			assertContains(t, tc.Text, "Validation error")
+		})
+	}
+}
+
+// testNewSearchToolHandlerReturnsJSON is a subtest helper for JSON result parsing.
+func testNewSearchToolHandlerReturnsJSON(t *testing.T) {
+	t.Helper()
+	t.Parallel()
+
+	response := &searxng.SearchResponse{
+		Query:   "golang",
+		Answers: nil,
+		Results: []searxng.SearchResult{
+			{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "google"},
+		},
+		Infoboxes:           nil,
+		Suggestions:         []string{"golang tutorial"},
+		NumberOfResults:     1,
+		UnresponsiveEngines: nil,
+		Debug:               false,
+	}
+
+	handler := NewSearchToolHandler(&mockSearcher{
+		searchFunc: func(_ context.Context, _ *searxng.SearchArgs) (*searxng.SearchResponse, error) {
+			return response, nil
+		},
+	})
+
+	result := callToolHandler(t, handler, searxng.SearchArgs{Query: "golang"})
+	assertNotError(t, result)
+	tc := assertTextContent(t, result)
+
+	var parsed searxng.SearchResponse
+
+	err := json.Unmarshal([]byte(tc.Text), &parsed)
+	if err != nil {
+		t.Fatalf("expected valid JSON, got error: %v\nbody: %s", err, tc.Text)
+	}
+
+	if parsed.Query != "golang" {
+		t.Fatalf("query = %q, want golang", parsed.Query)
+	}
+
+	if len(parsed.Results) != 1 || parsed.Results[0].Title != "Go" || parsed.Results[0].URL != "https://go.dev" {
+		t.Fatalf("unexpected results: %#v", parsed.Results)
+	}
+
+	if len(parsed.Suggestions) != 1 || parsed.Suggestions[0] != "golang tutorial" {
+		t.Fatalf("unexpected suggestions: %#v", parsed.Suggestions)
+	}
+}
+
+// testNewSearchToolHandlerDefaultLimit is a subtest helper for default limit assertions.
+func testNewSearchToolHandlerDefaultLimit(t *testing.T) {
+	t.Helper()
+	t.Parallel()
+
+	var captured *searxng.SearchArgs
+
+	handler := NewSearchToolHandler(&mockSearcher{
+		searchFunc: func(_ context.Context, args *searxng.SearchArgs) (*searxng.SearchResponse, error) {
+			captured = args
+
+			return &searxng.SearchResponse{Query: args.Query}, nil
+		},
+	})
+
+	_ = callToolHandler(t, handler, searxng.SearchArgs{Query: "golang"})
+
+	if captured == nil {
+		t.Fatal("expected searcher to be called")
+	}
+
+	if captured.Limit == nil {
+		t.Fatal("expected default limit to be applied, got nil")
+	}
+
+	if *captured.Limit != searxng.DefaultResultLimit {
+		t.Fatalf("captured limit = %d, want %d", *captured.Limit, searxng.DefaultResultLimit)
+	}
+}
+
+// testNewSearchToolHandlerForwardsParams is a subtest helper for optional param forwarding.
+func testNewSearchToolHandlerForwardsParams(t *testing.T) {
+	t.Helper()
+	t.Parallel()
+
+	var captured *searxng.SearchArgs
+
+	handler := NewSearchToolHandler(&mockSearcher{
+		searchFunc: func(_ context.Context, args *searxng.SearchArgs) (*searxng.SearchResponse, error) {
+			captured = args
+
+			return &searxng.SearchResponse{Query: args.Query}, nil
+		},
+	})
+
+	pageno := 3
+
+	result := callToolHandler(t, handler, searxng.SearchArgs{
+		Query:      "golang",
+		Language:   "en",
+		SafeSearch: 2,
+		TimeRange:  "year",
+		Categories: "general,news",
+		Engines:    "google,bing",
+		Pageno:     &pageno,
+	})
+	assertNotError(t, result)
+
+	if captured == nil {
+		t.Fatal("expected searcher to be called")
+	}
+
+	if got, want := captured.Query, "golang"; got != want {
+		t.Errorf("Query = %q, want %q", got, want)
+	}
+
+	if got, want := captured.Language, "en"; got != want {
+		t.Errorf("Language = %q, want %q", got, want)
+	}
+
+	if got, want := captured.SafeSearch, 2; got != want {
+		t.Errorf("SafeSearch = %d, want %d", got, want)
+	}
+
+	if got, want := captured.TimeRange, "year"; got != want {
+		t.Errorf("TimeRange = %q, want %q", got, want)
+	}
+
+	if got, want := captured.Categories, "general,news"; got != want {
+		t.Errorf("Categories = %q, want %q", got, want)
+	}
+
+	if got, want := captured.Engines, "google,bing"; got != want {
+		t.Errorf("Engines = %q, want %q", got, want)
+	}
+
+	if captured.Pageno == nil {
+		t.Fatal("expected Pageno to be forwarded, got nil")
+	}
+
+	if *captured.Pageno != 3 {
+		t.Errorf("Pageno = %d, want 3", *captured.Pageno)
+	}
 }
 
 func TestMCP_DebugGatesUnresponsiveEngines(t *testing.T) {

@@ -47,7 +47,7 @@ func TestSetBrowserHeaders(t *testing.T) {
 
 // --- buildSearchRequest tests ---
 
-//nolint:gocyclo // table-driven test covering build search request with many parameter combinations
+//nolint:gocyclo,gocognit // table-driven test with 11 independent assertion cases
 func TestBuildSearchRequest_BasicParams(t *testing.T) {
 	t.Parallel()
 
@@ -71,54 +71,126 @@ func TestBuildSearchRequest_BasicParams(t *testing.T) {
 
 	if req == nil {
 		t.Fatal("buildSearchRequest() req = nil")
-
-		return
 	}
 
-	if req.Method != http.MethodPost {
-		t.Fatalf("Method = %s, want POST", req.Method)
+	tests := []struct {
+		name  string
+		check func(t *testing.T)
+	}{
+		{
+			name: "HTTP method is POST",
+			check: func(t *testing.T) {
+				t.Helper()
+
+				if req.Method != http.MethodPost {
+					t.Fatalf("Method = %s, want POST", req.Method)
+				}
+			},
+		},
+		{
+			name: "request URL",
+			check: func(t *testing.T) {
+				t.Helper()
+
+				if req.URL.String() != "https://search.example.com/search" {
+					t.Fatalf("URL = %s, want https://search.example.com/search", req.URL.String())
+				}
+			},
+		},
+		{
+			name: "Content-Type header",
+			check: func(t *testing.T) {
+				t.Helper()
+
+				if req.Header.Get("Content-Type") != "application/x-www-form-urlencoded" {
+					t.Fatalf("Content-Type = %q, want application/x-www-form-urlencoded", req.Header.Get("Content-Type"))
+				}
+			},
+		},
+		{
+			name: "body contains query parameter",
+			check: func(t *testing.T) {
+				t.Helper()
+
+				if !strings.Contains(bodyStr, "q=golang+testing") {
+					t.Fatalf("body = %q, want to contain 'q=golang+testing'", bodyStr)
+				}
+			},
+		},
+		{
+			name: "body contains language parameter",
+			check: func(t *testing.T) {
+				t.Helper()
+
+				if !strings.Contains(bodyStr, "language=en") {
+					t.Fatalf("body = %q, want to contain 'language=en'", bodyStr)
+				}
+			},
+		},
+		{
+			name: "body contains safesearch parameter",
+			check: func(t *testing.T) {
+				t.Helper()
+
+				if !strings.Contains(bodyStr, "safesearch=1") {
+					t.Fatalf("body = %q, want to contain 'safesearch=1'", bodyStr)
+				}
+			},
+		},
+		{
+			name: "body contains time_range parameter",
+			check: func(t *testing.T) {
+				t.Helper()
+
+				if !strings.Contains(bodyStr, "time_range=month") {
+					t.Fatalf("body = %q, want to contain 'time_range=month'", bodyStr)
+				}
+			},
+		},
+		{
+			name: "body contains categories parameter (URL-encoded)",
+			check: func(t *testing.T) {
+				t.Helper()
+
+				if !strings.Contains(bodyStr, "categories=general%2Cnews") {
+					t.Fatalf("body does not contain categories=general%%2Cnews; got %s", bodyStr)
+				}
+			},
+		},
+		{
+			name: "body contains engines parameter (URL-encoded)",
+			check: func(t *testing.T) {
+				t.Helper()
+
+				if !strings.Contains(bodyStr, "engines=google%2Cbing") {
+					t.Fatalf("body does not contain engines=google%%2Cbing; got %s", bodyStr)
+				}
+			},
+		},
+		{
+			name: "body contains pageno parameter",
+			check: func(t *testing.T) {
+				t.Helper()
+
+				if !strings.Contains(bodyStr, "pageno=2") {
+					t.Fatalf("body = %q, want to contain 'pageno=2'", bodyStr)
+				}
+			},
+		},
+		{
+			name: "User-Agent header is set",
+			check: func(t *testing.T) {
+				t.Helper()
+
+				if req.Header.Get("User-Agent") == "" {
+					t.Fatal("User-Agent header is empty, setBrowserHeaders should have been called")
+				}
+			},
+		},
 	}
 
-	if req.URL.String() != "https://search.example.com/search" {
-		t.Fatalf("URL = %s, want https://search.example.com/search", req.URL.String())
-	}
-
-	if req.Header.Get("Content-Type") != "application/x-www-form-urlencoded" {
-		t.Fatalf("Content-Type = %q, want application/x-www-form-urlencoded", req.Header.Get("Content-Type"))
-	}
-
-	// Verify body contains expected parameters
-	if !strings.Contains(bodyStr, "q=golang+testing") {
-		t.Fatalf("body = %q, want to contain 'q=golang+testing'", bodyStr)
-	}
-
-	if !strings.Contains(bodyStr, "language=en") {
-		t.Fatalf("body = %q, want to contain 'language=en'", bodyStr)
-	}
-
-	if !strings.Contains(bodyStr, "safesearch=1") {
-		t.Fatalf("body = %q, want to contain 'safesearch=1'", bodyStr)
-	}
-
-	if !strings.Contains(bodyStr, "time_range=month") {
-		t.Fatalf("body = %q, want to contain 'time_range=month'", bodyStr)
-	}
-
-	if !strings.Contains(bodyStr, "categories=general%2Cnews") {
-		t.Fatalf("body does not contain categories=general%%2Cnews; got %s", bodyStr)
-	}
-
-	if !strings.Contains(bodyStr, "engines=google%2Cbing") {
-		t.Fatalf("body does not contain engines=google%%2Cbing; got %s", bodyStr)
-	}
-
-	if !strings.Contains(bodyStr, "pageno=2") {
-		t.Fatalf("body = %q, want to contain 'pageno=2'", bodyStr)
-	}
-
-	// Verify browser headers are set
-	if req.Header.Get("User-Agent") == "" {
-		t.Fatal("User-Agent header is empty, setBrowserHeaders should have been called")
+	for _, tt := range tests {
+		t.Run(tt.name, tt.check)
 	}
 }
 
