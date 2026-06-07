@@ -119,7 +119,6 @@ func TestMCPStdioE2E(t *testing.T) {
 	// layers.
 	t.Run("validation errors", func(t *testing.T) {
 		for _, tt := range SharedInvalidInputCases {
-			tt := tt
 			t.Run(tt.Name, func(t *testing.T) {
 				result := callSearchTool(ctx, t, session, tt.Arguments, stderr)
 				if !result.IsError {
@@ -250,11 +249,7 @@ func TestMCPStdioE2E(t *testing.T) {
 		warns := make(chan string, len(queries))
 
 		for _, query := range queries {
-			query := query
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-
+			wg.Go(func() {
 				result, err := session.CallTool(ctx, &mcp.CallToolParams{
 					Name: "search",
 					Arguments: map[string]any{
@@ -303,7 +298,7 @@ func TestMCPStdioE2E(t *testing.T) {
 				if strings.TrimSpace(first.Title) == "" && strings.TrimSpace(first.URL) == "" {
 					errs <- "first result has empty title and URL for " + query
 				}
-			}()
+			})
 		}
 
 		wg.Wait()

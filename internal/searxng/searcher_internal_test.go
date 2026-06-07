@@ -2,7 +2,6 @@ package searxng
 
 import (
 	"bytes"
-	"context"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -133,7 +132,7 @@ func TestLogDebugMethods(t *testing.T) {
 
 		s := &SearXNGSearcher{debug: false}
 
-		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "https://example.com", strings.NewReader("body"))
+		req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://example.com", strings.NewReader("body"))
 		// Should not panic
 		s.logDebugRequest(req, "test body")
 		s.logDebugResponse(&http.Response{StatusCode: http.StatusOK}, nil)
@@ -145,7 +144,7 @@ func TestLogDebugMethods(t *testing.T) {
 
 		s := &SearXNGSearcher{debug: true}
 
-		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "https://example.com", strings.NewReader("body"))
+		req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://example.com", strings.NewReader("body"))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "text/plain")
 		// Should not panic
@@ -162,7 +161,7 @@ func TestLogDebugMethods(t *testing.T) {
 
 		s := &SearXNGSearcher{debug: true}
 
-		req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://example.com?q=test", nil)
+		req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://example.com?q=test", nil)
 		req.Header.Set("Accept", "text/html")
 		// Should not panic
 		s.logDebugRequest(req, "")
@@ -173,7 +172,7 @@ func TestLogDebugMethods(t *testing.T) {
 
 		s := &SearXNGSearcher{debug: true}
 
-		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "https://example.com", nil)
+		req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://example.com", nil)
 		longBody := strings.Repeat("x", DebugBodyPreviewChars+100)
 		s.logDebugRequest(req, longBody)
 	})
@@ -232,7 +231,7 @@ func TestAllowGETFallbackLogsWarnings(t *testing.T) {
 		}
 
 		postReq, err := http.NewRequestWithContext(
-			context.Background(),
+			t.Context(),
 			http.MethodPost,
 			"https://search.example.com/search",
 			strings.NewReader("q=test&format=json"),
@@ -249,7 +248,7 @@ func TestAllowGETFallbackLogsWarnings(t *testing.T) {
 			},
 		}
 
-		resp, err := s.executeGETfallback(context.Background(), origResp, postReq, "q=test&format=json")
+		resp, err := s.executeGETfallback(t.Context(), origResp, postReq, "q=test&format=json")
 		if err != nil {
 			t.Fatalf("executeGETfallback() error = %v, want nil", err)
 		}

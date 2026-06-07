@@ -12,11 +12,10 @@ import (
 	"time"
 )
 
-// defaultHTTPClient is the shared client used when callers do not request a custom timeout.
-var (
-	defaultHTTPClient     *http.Client
-	defaultHTTPClientOnce sync.Once
-)
+// getDefaultHTTPClient returns the shared default HTTP client.
+var getDefaultHTTPClient = sync.OnceValue(func() *http.Client {
+	return newHTTPClient(DefaultTimeout)
+})
 
 var (
 	errRedirectDifferentHost   = errors.New("redirect to different host blocked")
@@ -94,15 +93,6 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 	}
 
 	return nil
-}
-
-// getDefaultHTTPClient returns the shared default HTTP client.
-func getDefaultHTTPClient() *http.Client {
-	defaultHTTPClientOnce.Do(func() {
-		defaultHTTPClient = newHTTPClient(DefaultTimeout)
-	})
-
-	return defaultHTTPClient
 }
 
 // validateBaseURL checks that the baseURL is valid and returns an error if not.

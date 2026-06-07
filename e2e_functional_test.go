@@ -35,7 +35,6 @@ func TestMCPFunctional(t *testing.T) {
 
 	t.Run("all safesearch levels", func(t *testing.T) {
 		for _, safesearch := range []int{0, 1, 2} {
-			safesearch := safesearch
 			t.Run(strconv.Itoa(safesearch), func(t *testing.T) {
 				response := requireSearchResponse(ctx, t, session, map[string]any{
 					"query":      "framework computer inc",
@@ -60,7 +59,6 @@ func TestMCPFunctional(t *testing.T) {
 
 	t.Run("all time ranges", func(t *testing.T) {
 		for _, timeRange := range []string{"day", "month", "year", ""} {
-			timeRange := timeRange
 			name := timeRange
 			if name == "" {
 				name = "all"
@@ -99,7 +97,6 @@ func TestMCPFunctional(t *testing.T) {
 		// for test queries on the CI SearXNG instance. Retry cannot fix this; it is not
 		// transient. Do not add it back without ensuring the files category returns results.
 		for _, category := range []string{"general", "news", "music", "images", "videos", "science", "it"} {
-			category := category
 			t.Run(category, func(t *testing.T) {
 				response := requireSearchResponse(ctx, t, session, map[string]any{
 					"query":      "framework computer inc",
@@ -124,7 +121,6 @@ func TestMCPFunctional(t *testing.T) {
 
 	t.Run("all engines", func(t *testing.T) {
 		for _, engine := range []string{"google", "bing", "duckduckgo", "yahoo"} {
-			engine := engine
 			t.Run(engine, func(t *testing.T) {
 				response := requireSearchResponse(ctx, t, session, map[string]any{
 					"query":   "framework computer inc",
@@ -147,7 +143,6 @@ func TestMCPFunctional(t *testing.T) {
 
 	t.Run("paginations", func(t *testing.T) {
 		for _, pageno := range []int{1, 2, 3} {
-			pageno := pageno
 			t.Run(strconv.Itoa(pageno), func(t *testing.T) {
 				response := requireSearchResponse(ctx, t, session, map[string]any{
 					"query":  "framework computer inc",
@@ -172,7 +167,6 @@ func TestMCPFunctional(t *testing.T) {
 
 	t.Run("limit boundaries", func(t *testing.T) {
 		for _, limit := range []int{1, 5, 10, 20} {
-			limit := limit
 			t.Run(strconv.Itoa(limit), func(t *testing.T) {
 				response := requireSearchResponse(ctx, t, session, map[string]any{
 					"query": "framework computer inc",

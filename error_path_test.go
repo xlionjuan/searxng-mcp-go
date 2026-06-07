@@ -37,7 +37,7 @@ func TestSearch_DNSFailure(t *testing.T) {
 	}
 	args := &searxng.SearchArgs{Query: "test"}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := testPerformSearch(ctx, t, cfg, args)
 	if err == nil {
@@ -75,7 +75,7 @@ func TestSearch_ConnectionRefused(t *testing.T) {
 	}
 	args := &searxng.SearchArgs{Query: "test"}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := testPerformSearch(ctx, t, cfg, args)
 	if err == nil {
@@ -109,7 +109,7 @@ func TestSearch_EmptyResponse(t *testing.T) {
 	}
 	args := &searxng.SearchArgs{Query: "test"}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := testPerformSearch(ctx, t, cfg, args)
 
 	// Empty JSON body should cause a JSON parse error
@@ -133,7 +133,7 @@ func TestSearch_EmptyJSONObject(t *testing.T) {
 	}
 	args := &searxng.SearchArgs{Query: "test"}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	result, err := testPerformSearch(ctx, t, cfg, args)
 	// Empty JSON object is technically valid but has no results
 	if err != nil {
@@ -166,7 +166,7 @@ func TestSearch_UnexpectedContentType(t *testing.T) {
 	}
 	args := &searxng.SearchArgs{Query: "test"}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := testPerformSearch(ctx, t, cfg, args)
 	if err == nil {
@@ -428,7 +428,7 @@ func TestSearch_MalformedJSON_Truncated(t *testing.T) {
 	}
 	args := &searxng.SearchArgs{Query: "test"}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := testPerformSearch(ctx, t, cfg, args)
 	if err == nil {
@@ -458,7 +458,7 @@ func TestSearch_WrongJSONType(t *testing.T) {
 	}
 	args := &searxng.SearchArgs{Query: "test"}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := testPerformSearch(ctx, t, cfg, args)
 
 	// Go's json.Unmarshal will fail when trying to unmarshal string into []SearchResult
@@ -488,7 +488,7 @@ func TestSearch_TrailingGarbage(t *testing.T) {
 	}
 	args := &searxng.SearchArgs{Query: "test"}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := testPerformSearch(ctx, t, cfg, args)
 	if err == nil {
@@ -517,7 +517,7 @@ func TestSearch_NetworkError_ConnectionClose(t *testing.T) {
 	}
 	args := &searxng.SearchArgs{Query: "test"}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := testPerformSearch(ctx, t, cfg, args)
 	if err == nil {
@@ -559,7 +559,7 @@ func TestSearch_TimeoutExceeded(t *testing.T) {
 	}
 	args := &searxng.SearchArgs{Query: "test"}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 
 	_, err := testPerformSearch(ctx, t, cfg, args)
@@ -594,7 +594,7 @@ func TestSearch_ContextDeadlineExceeded(t *testing.T) {
 	}
 	args := &searxng.SearchArgs{Query: "test"}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 
 	_, err := testPerformSearch(ctx, t, cfg, args)
@@ -644,7 +644,7 @@ func TestSearch_HTTPStatusErrors(t *testing.T) {
 			}
 			args := &searxng.SearchArgs{Query: "test"}
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			_, err := testPerformSearch(ctx, t, cfg, args)
 			if err == nil {
@@ -683,7 +683,7 @@ func TestSearch_RedirectStatus(t *testing.T) {
 
 	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 5 * time.Second, HTTPClient: client}
 
-	_, err := testPerformSearch(context.Background(), t, cfg, &searxng.SearchArgs{Query: "test"})
+	_, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
 		t.Fatal("expected redirect error, got nil")
 	}
@@ -708,7 +708,7 @@ func TestSearch_CustomHTTPClientWithoutRedirectPolicyBlocksCrossHost(t *testing.
 	client := &http.Client{Timeout: 5 * time.Second}
 	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 5 * time.Second, HTTPClient: client}
 
-	_, err := testPerformSearch(context.Background(), t, cfg, &searxng.SearchArgs{Query: "test"})
+	_, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
 		t.Fatal("expected cross-host redirect error, got nil")
 	}
@@ -739,7 +739,7 @@ func TestSearch_CustomHTTPClientSameHostRedirectAllowed(t *testing.T) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 5 * time.Second, HTTPClient: client}
 
-	result, err := testPerformSearch(context.Background(), t, cfg, &searxng.SearchArgs{Query: "test"})
+	result, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
 	if err != nil {
 		t.Fatalf("unexpected error for same-host redirect: %v", err)
 	}
@@ -772,7 +772,7 @@ func TestSearch_CustomHTTPClientCrossHostRedirectBlockedBeforeCustomPolicy(t *te
 
 	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 5 * time.Second, HTTPClient: client}
 
-	_, err := testPerformSearch(context.Background(), t, cfg, &searxng.SearchArgs{Query: "test"})
+	_, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
 		t.Fatal("expected cross-host redirect error, got nil")
 	}
@@ -808,7 +808,7 @@ func TestSearch_ConnectionResetMidResponse(t *testing.T) {
 
 	cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 5 * time.Second}
 
-	_, err := testPerformSearch(context.Background(), t, cfg, &searxng.SearchArgs{Query: "test"})
+	_, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
 		t.Fatal("expected connection reset error, got nil")
 	}
@@ -851,7 +851,7 @@ func TestSearch_AllErrorTypesAreWrapped(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			args := &searxng.SearchArgs{Query: "test"}
-			ctx := context.Background()
+			ctx := t.Context()
 
 			_, err := testPerformSearch(ctx, t, tt.cfg, args)
 			if err == nil {

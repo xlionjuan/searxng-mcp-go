@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"os"
 	"os/exec"
 	"strconv"
@@ -73,11 +73,7 @@ func TestMCPStress_Concurrent(t *testing.T) {
 	errs := make(chan string, len(queries))
 
 	for _, query := range queries {
-		query := query
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			result, err := session.CallTool(ctx, &mcp.CallToolParams{
 				Name: "search",
 				Arguments: map[string]any{
@@ -98,7 +94,7 @@ func TestMCPStress_Concurrent(t *testing.T) {
 				errs <- fmt.Sprintf("search returned tool error for %q: %s", query, text)
 				return
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -132,7 +128,6 @@ func TestMCPStress_SequentialSessions(t *testing.T) {
 	t.Logf("using MCP binary: %s", binaryPath)
 
 	for i := range 10 {
-		i := i
 		t.Run(fmt.Sprintf("session_%d", i), func(t *testing.T) {
 			subCtx, subCancel := context.WithTimeout(ctx, 30*time.Second)
 			defer subCancel()
@@ -207,11 +202,7 @@ func TestMCPStress_RapidFire(t *testing.T) {
 	errs := make(chan string, len(queries))
 
 	for _, query := range queries {
-		query := query
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			result, err := session.CallTool(ctx, &mcp.CallToolParams{
 				Name: "search",
 				Arguments: map[string]any{
@@ -232,7 +223,7 @@ func TestMCPStress_RapidFire(t *testing.T) {
 				errs <- fmt.Sprintf("search returned tool error for %q: %s", query, text)
 				return
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -295,8 +286,6 @@ func TestMCPStress_Stability(t *testing.T) {
 	}
 
 	for i, query := range queries {
-		i := i
-		query := query
 		t.Run(fmt.Sprintf("search_%d", i), func(t *testing.T) {
 			response := requireSearchResponse(ctx, t, session, map[string]any{
 				"query": query,
@@ -364,24 +353,24 @@ func TestMCPStress_Randomized(t *testing.T) {
 	seed := resolveRandomSeed(t)
 	t.Logf("randomized seed: %d (set E2E_RANDOM_SEED to replay)", seed)
 
-	rng := rand.New(rand.NewSource(seed)) //nolint:gosec // Test randomization only.
+	rng := rand.New(rand.NewPCG(uint64(seed), uint64(seed)))
 	numSearches := 10
 	searchArgs := make([]map[string]any, numSearches)
 	searchQueries := make([]string, numSearches)
 	for i := range numSearches {
-		query := baseQueries[rng.Intn(len(baseQueries))]
+		query := baseQueries[rng.IntN(len(baseQueries))]
 		args := map[string]any{
 			"query": query,
 			"limit": 3,
 		}
 
 		// Randomly add optional parameters before launching goroutines.
-		if rng.Intn(2) == 0 {
-			args["safesearch"] = rng.Intn(3)
+		if rng.IntN(2) == 0 {
+			args["safesearch"] = rng.IntN(3)
 		}
-		if rng.Intn(2) == 0 {
+		if rng.IntN(2) == 0 {
 			timeRanges := []string{"day", "month", "year"}
-			args["time_range"] = timeRanges[rng.Intn(len(timeRanges))]
+			args["time_range"] = timeRanges[rng.IntN(len(timeRanges))]
 		}
 
 		searchArgs[i] = args
@@ -393,11 +382,7 @@ func TestMCPStress_Randomized(t *testing.T) {
 	errs := make(chan string, numSearches)
 
 	for i := range numSearches {
-		i := i
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			result, err := session.CallTool(ctx, &mcp.CallToolParams{
 				Name:      "search",
 				Arguments: searchArgs[i],
@@ -415,7 +400,7 @@ func TestMCPStress_Randomized(t *testing.T) {
 				errs <- fmt.Sprintf("search returned tool error for %q (args=%#v): %s", searchQueries[i], searchArgs[i], text)
 				return
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

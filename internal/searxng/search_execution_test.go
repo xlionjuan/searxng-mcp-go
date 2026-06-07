@@ -1,7 +1,6 @@
 package searxng //nolint:testpackage // white-box tests need access to unexported types/functions
 
 import (
-	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -39,7 +38,7 @@ func TestExecuteGETfallback(t *testing.T) {
 		}
 
 		postReq, err := http.NewRequestWithContext(
-			context.Background(),
+			t.Context(),
 			http.MethodPost,
 			"https://search.example.com/search",
 			nil,
@@ -53,7 +52,7 @@ func TestExecuteGETfallback(t *testing.T) {
 			Body:       io.NopCloser(strings.NewReader("")),
 		}
 
-		resp, err := s.executeGETfallback(context.Background(), origResp, postReq, "q=test")
+		resp, err := s.executeGETfallback(t.Context(), origResp, postReq, "q=test")
 		if err != nil {
 			t.Fatalf("executeGETfallback() error = %v, want nil", err)
 		}
@@ -92,7 +91,7 @@ func TestExecuteGETfallback(t *testing.T) {
 		}
 
 		postReq, err := http.NewRequestWithContext(
-			context.Background(),
+			t.Context(),
 			http.MethodPost,
 			"https://search.example.com/search",
 			nil,
@@ -106,7 +105,7 @@ func TestExecuteGETfallback(t *testing.T) {
 			Body:       io.NopCloser(strings.NewReader("")),
 		}
 
-		resp, err := s.executeGETfallback(context.Background(), origResp, postReq, "q=test&format=json")
+		resp, err := s.executeGETfallback(t.Context(), origResp, postReq, "q=test&format=json")
 		if err != nil {
 			t.Fatalf("executeGETfallback() error = %v, want nil", err)
 		}
@@ -137,7 +136,7 @@ func TestExecuteGETfallback(t *testing.T) {
 		}
 
 		postReq, err := http.NewRequestWithContext(
-			context.Background(),
+			t.Context(),
 			http.MethodPost,
 			"https://search.example.com/search",
 			nil,
@@ -151,7 +150,7 @@ func TestExecuteGETfallback(t *testing.T) {
 			Body:       io.NopCloser(strings.NewReader("")),
 		}
 
-		resp, err := s.executeGETfallback(context.Background(), origResp, postReq, "q=test")
+		resp, err := s.executeGETfallback(t.Context(), origResp, postReq, "q=test")
 		if err != nil {
 			t.Fatalf("executeGETfallback() error = %v, want nil (non-OK responses are passed through)", err)
 		}
@@ -186,7 +185,7 @@ func TestExecuteGETfallback(t *testing.T) {
 		}
 
 		postReq, err := http.NewRequestWithContext(
-			context.Background(),
+			t.Context(),
 			http.MethodPost,
 			"https://search.example.com/custom/search",
 			nil,
@@ -200,7 +199,7 @@ func TestExecuteGETfallback(t *testing.T) {
 			Body:       io.NopCloser(strings.NewReader("")),
 		}
 
-		resp, err := s.executeGETfallback(context.Background(), origResp, postReq, "q=test")
+		resp, err := s.executeGETfallback(t.Context(), origResp, postReq, "q=test")
 		if err != nil {
 			t.Fatalf("executeGETfallback() error = %v, want nil", err)
 		}
@@ -237,7 +236,7 @@ func TestDoSearchAttempt(t *testing.T) {
 			return makeJSONResponse(minimalJSONBody), nil
 		}), 0)
 
-		resp, bodyStr, err := s.doSearchAttempt(context.Background(), &SearchArgs{Query: "test"})
+		resp, bodyStr, err := s.doSearchAttempt(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("doSearchAttempt() error = %v, want nil", err)
 		}
@@ -273,7 +272,7 @@ func TestDoSearchAttempt(t *testing.T) {
 			}, nil
 		}), 0)
 
-		resp, bodyStr, err := s.doSearchAttempt(context.Background(), &SearchArgs{Query: "test"})
+		resp, bodyStr, err := s.doSearchAttempt(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("doSearchAttempt() error = %v, want nil", err)
 		}
@@ -330,7 +329,7 @@ func TestDoSearchAttempt(t *testing.T) {
 				}), 0)
 				s.allowGETFallback = true
 
-				resp, bodyStr, err := s.doSearchAttempt(context.Background(), &SearchArgs{Query: "test"})
+				resp, bodyStr, err := s.doSearchAttempt(t.Context(), &SearchArgs{Query: "test"})
 				if err != nil {
 					t.Fatalf("doSearchAttempt() error = %v, want nil", err)
 				}
@@ -373,7 +372,7 @@ func TestDoSearchAttempt(t *testing.T) {
 		}), 0)
 		s.allowGETFallback = true
 
-		resp, _, err := s.doSearchAttempt(context.Background(), &SearchArgs{Query: "sensitive search"})
+		resp, _, err := s.doSearchAttempt(t.Context(), &SearchArgs{Query: "sensitive search"})
 		closeBody(resp)
 
 		if err == nil {
@@ -410,7 +409,7 @@ func TestDoSearchAttempt(t *testing.T) {
 			debug: false,
 		}
 
-		resp, _, err := s.doSearchAttempt(context.Background(), &SearchArgs{Query: "test"})
+		resp, _, err := s.doSearchAttempt(t.Context(), &SearchArgs{Query: "test"})
 		defer closeBody(resp)
 
 		if err == nil {
@@ -445,7 +444,7 @@ func TestDoSearchAttempt(t *testing.T) {
 			retryStrategy:  newExponentialBackoffStrategy(0, time.Microsecond, time.Microsecond),
 		}
 
-		resp, bodyStr, err := s.doSearchAttempt(context.Background(), &SearchArgs{Query: "test"})
+		resp, bodyStr, err := s.doSearchAttempt(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {
 			t.Fatalf("doSearchAttempt() error = %v, want nil", err)
 		}
