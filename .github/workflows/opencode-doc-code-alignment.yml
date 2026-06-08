@@ -55,7 +55,7 @@ jobs:
           fallback: none
 
       - name: Run OpenCode documentation/code alignment review
-        uses: anomalyco/opencode/github@385cb694419f98103af0e8fc6187ddcbcbb6eecb # v1.15.13
+        uses: anomalyco/opencode/github@6cb74317a6efacd656483cb0489d8e7e3701c12e # v1.16.0
         env:
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
