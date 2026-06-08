@@ -46,6 +46,10 @@ func buildSearchSchema() (json.RawMessage, error) {
 			prop["maximum"] = *p.Maximum
 		}
 
+		if len(p.Examples) > 0 {
+			prop["examples"] = p.Examples
+		}
+
 		if p.Nullable {
 			// Union type: ["null", "<type>"]
 			prop["type"] = []string{"null", p.MCPType}
