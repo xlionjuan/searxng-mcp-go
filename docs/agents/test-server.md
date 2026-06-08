@@ -63,6 +63,23 @@ script changes or ownership checks.
 - Starting the server a second time without stopping it first is rejected; use
   `just test-server-restart`.
 
+## Stress Testing
+
+The stress and concurrency tests use the same test server setup. The
+`stress` build tag groups in-process concurrency tests with the live-server
+E2E stress tests; the combined `e2e stress` tag is required for the latter.
+
+| Command | Scope |
+|---|---|
+| `go test -tags=stress -race ./...` | Internal concurrency tests; no SearXNG required |
+| `SEARXNG_URL=http://127.0.0.1:8888 go test -tags='e2e stress' -run 'TestMCPStress' -race -count=1 -timeout=900s .` | Live-server E2E stress suite; requires a running test server |
+| `.github/workflows/e2e-stress.yml` | Manual CI workflow dispatch |
+
+Use the same setup and lifecycle as the regular E2E tests: run
+`just test-server-setup` once, then `just test-server-start` and
+`just test-server-stop` around the stress run. The CI workflow uses
+`E2E_MCP_BINARY=./searxng-mcp-go` to skip the per-test `go build`.
+
 ## Pitfalls
 
 - `searxng-server-test/searxng/` is a git submodule registered in the root
