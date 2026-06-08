@@ -39,6 +39,14 @@ const (
 
 // ============================================================================
 
+// errParamDefaultNotInt is the sentinel error wrapped into the panic value
+// raised when a ParamDef declares GoType "int" with a Default string that
+// does not parse as an integer. Defaults are compile-time constants today,
+// so a non-int default indicates a programming error; failing fast at
+// flag-registration time is preferable to silently using 0 (which would be
+// a surprise at runtime). Wrapping keeps the panic value errors.Is-checkable.
+var errParamDefaultNotInt = errors.New("registerFlags: ParamDef has unparseable int default")
+
 // CLIFlags holds parsed CLI flag values.
 type CLIFlags struct {
 	Query            string
@@ -225,8 +233,17 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 		case "string":
 			r.searchFlags[p.Name] = fs.String(p.Name, p.Default, p.Description)
 		case "int":
-			//nolint:errcheck // int defaults in SearchParams are produced via strconv.Itoa; error is impossible
-			defaultVal, _ := strconv.Atoi(p.Default)
+			// Fail fast at registration time if an int-typed ParamDef has a
+			// non-integer Default. Today all defaults are compile-time
+			// constants produced by strconv.Itoa, so this is a programming
+			// error — panicking surfaces it immediately rather than silently
+			// falling back to 0 (which the go flag package would otherwise do).
+			defaultVal, convErr := strconv.Atoi(p.Default)
+			if convErr != nil {
+				panic(fmt.Errorf("%w (name=%q goType=%q default=%q): %w",
+					errParamDefaultNotInt, p.Name, p.GoType, p.Default, convErr))
+			}
+
 			r.searchFlags[p.Name] = fs.Int(p.Name, defaultVal, p.Description)
 		}
 	}
