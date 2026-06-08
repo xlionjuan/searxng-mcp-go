@@ -28,13 +28,10 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 |              |         |          |         | "general" covers most queries; other values    |
 |              |         |          |         | (it, science, news, map, music, files,         |
 |              |         |          |         | social media) also work but are rarely needed. |
-|              |         |          |         | Availability is set by the configured SearXNG  |
-|              |         |          |         | instance. Max 4096 bytes for the full string.  |
+|              |         |          |         | Max 4096 bytes for the full string.            |
 | `engines`    | string  | No       | -       | Comma-separated list of SearXNG engine names.  |
 |              |         |          |         | Common engines: google, bing, duckduckgo.      |
-|              |         |          |         | Engine availability is set by the configured   |
-|              |         |          |         | SearXNG instance. Max 4096 bytes for the full  |
-|              |         |          |         | string.                                        |
+|              |         |          |         | Max 4096 bytes for the full string.            |
 | `pageno`     | integer, null | No       | -       | Page number for pagination (omitted = backend default/page 1) |
 | `limit`      | integer | No       | 10      | Maximum number of results returned (1-20)      |
 

@@ -107,7 +107,7 @@ var SearchParams = []ParamDef{
 		Name: "categories", GoType: "string", Default: "",
 		Description: `Comma-separated list of SearXNG categories. "general" covers most queries. ` +
 			`Other values (it, science, news, map, music, files, social media — note the space) ` +
-			`also work but are rarely needed. Availability is set by the configured SearXNG instance.`,
+			`also work but are rarely needed.`,
 		CLIHelp:  "Comma-separated list of categories to search [max 4096 bytes]",
 		CLIType:  "CAT",
 		MCPType:  "string",
@@ -115,12 +115,11 @@ var SearchParams = []ParamDef{
 	},
 	{
 		Name: "engines", GoType: "string", Default: "",
-		Description: `Comma-separated list of SearXNG engine names. Common engines: google, bing, ` +
-			`duckduckgo. Engine availability is set by the configured SearXNG instance.`,
-		CLIHelp:  "Comma-separated list of search engines to use [max 4096 bytes]",
-		CLIType:  "ENG",
-		MCPType:  "string",
-		Examples: []string{"google", "bing", "duckduckgo"},
+		Description: `Comma-separated list of SearXNG engine names. Common engines: google, bing, duckduckgo.`,
+		CLIHelp:     "Comma-separated list of search engines to use [max 4096 bytes]",
+		CLIType:     "ENG",
+		MCPType:     "string",
+		Examples:    []string{"google", "bing", "duckduckgo"},
 	},
 	{
 		Name: "pageno", GoType: "int", Default: strconv.Itoa(MinPageno),
