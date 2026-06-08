@@ -11,7 +11,6 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -46,6 +45,10 @@ func buildSearchSchema() (json.RawMessage, error) {
 			prop["maximum"] = *p.Maximum
 		}
 
+		if len(p.Examples) > 0 {
+			prop["examples"] = p.Examples
+		}
+
 		if p.Nullable {
 			// Union type: ["null", "<type>"]
 			prop["type"] = []string{"null", p.MCPType}
@@ -75,32 +78,12 @@ func buildSearchSchema() (json.RawMessage, error) {
 	return json.RawMessage(data), nil
 }
 
-// buildToolDescription generates the MCP search tool description from the
-// centralized SearchParams table.
+// buildToolDescription returns a concise tool-level description for the MCP search tool.
+// Detailed parameter descriptions live in the structured inputSchema; this
+// description provides context at the tool level only.
 func buildToolDescription() string {
-	var sb strings.Builder
-	sb.WriteString("Search the web using SearXNG meta-search engine. ")
-	sb.WriteString("Returns web results with titles, URLs, summaries, published dates, and engine source information. ")
-	sb.WriteString("Parameters: ")
-
-	for i, p := range searxng.SearchParams {
-		if i > 0 {
-			sb.WriteString("; ")
-		}
-
-		sb.WriteString(p.Name)
-
-		if p.Required {
-			sb.WriteString(" (required)")
-		}
-
-		sb.WriteString(" - ")
-		sb.WriteString(p.Description)
-	}
-
-	sb.WriteString(".")
-
-	return sb.String()
+	return "Search the web using SearXNG meta-search engine. " +
+		"Returns web results with titles, URLs, summaries, published dates, and engine source information."
 }
 
 type mcpInitializeMessage struct {
