@@ -75,6 +75,9 @@ linters:
     prealloc:
       simple: true
       range-loops: true
+    sloglint:
+      no-mixed-args: true
+      kv-only: true
     varnamelen:
       min-name-length: 2
     nolintlint:
