@@ -147,6 +147,99 @@ func TestValidateSearchArgs(t *testing.T) {
 	})
 }
 
+// TestValidateLanguagePure verifies the pure-helper contract: validateLanguage
+// is a pure function that does not mutate any caller-visible state. It
+// returns the normalized value (empty string for "auto", case-insensitive)
+// alongside any validation error. This guards against a regression of the
+// defensive-programming issue where the helper used to mutate *SearchArgs
+// in place, which was a data-race hazard for callers that share the struct
+// across goroutines.
+//
+//nolint:gocognit // subtests cover each normalization/validation branch explicitly
+func TestValidateLanguagePure(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty stays empty", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := validateLanguage("")
+		if err != nil {
+			t.Fatalf("validateLanguage(\"\") error = %v, want nil", err)
+		}
+
+		if got != "" {
+			t.Fatalf("validateLanguage(\"\") = %q, want %q", got, "")
+		}
+	})
+
+	t.Run("auto normalized to empty (lowercase)", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := validateLanguage("auto")
+		if err != nil {
+			t.Fatalf("validateLanguage(\"auto\") error = %v, want nil", err)
+		}
+
+		if got != "" {
+			t.Fatalf("validateLanguage(\"auto\") = %q, want %q", got, "")
+		}
+	})
+
+	t.Run("AUTO normalized to empty (uppercase, case-insensitive)", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := validateLanguage("AUTO")
+		if err != nil {
+			t.Fatalf("validateLanguage(\"AUTO\") error = %v, want nil", err)
+		}
+
+		if got != "" {
+			t.Fatalf("validateLanguage(\"AUTO\") = %q, want %q", got, "")
+		}
+	})
+
+	t.Run("valid language code returned unchanged", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := validateLanguage("en-US")
+		if err != nil {
+			t.Fatalf("validateLanguage(\"en-US\") error = %v, want nil", err)
+		}
+
+		if got != "en-US" {
+			t.Fatalf("validateLanguage(\"en-US\") = %q, want %q", got, "en-US")
+		}
+	})
+
+	t.Run("invalid language code returns ValidationError and original value", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := validateLanguage("en_US")
+		if err == nil {
+			t.Fatal("validateLanguage(\"en_US\") error = nil, want ValidationError")
+		}
+
+		requireValidationError(t, err, "language")
+
+		if got != "en_US" {
+			t.Fatalf("validateLanguage(\"en_US\") = %q, want original %q on error", got, "en_US")
+		}
+	})
+
+	t.Run("language exceeding max length returns ValidationError", func(t *testing.T) {
+		t.Parallel()
+
+		longLang := strings.Repeat("a", maxLanguageLength+1)
+
+		_, err := validateLanguage(longLang)
+		if err == nil {
+			t.Fatal("validateLanguage(long) error = nil, want ValidationError")
+		}
+
+		requireValidationError(t, err, "language")
+	})
+}
+
 func TestValidateCategories(t *testing.T) {
 	t.Parallel()
 

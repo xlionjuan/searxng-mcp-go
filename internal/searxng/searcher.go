@@ -21,6 +21,7 @@ var (
 	errEmptyResponse       = errors.New("empty response from SearXNG")
 	errGETFallbackUsed     = errors.New(
 		"GET fallback was used; search query parameters may have been sent in the request URL")
+	errNilFinishResponse = errors.New("finishResponse: nil http.Response")
 )
 
 const getFallbackLogRisk = "Search query parameters may be sent in upstream URLs and recorded by " +
@@ -237,7 +238,16 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 }
 
 // finishResponse handles non-OK status, JSON parsing, and body closure for a response.
+//
+// resp is required: passing nil triggers errNilFinishResponse. The retry
+// path inside Search never reaches here with a nil response, but guarding
+// the field makes the function robust against future refactors and
+// self-documents the precondition.
 func (s *SearXNGSearcher) finishResponse(resp *http.Response, args *SearchArgs) (*SearchResponse, error) {
+	if resp == nil {
+		return nil, errNilFinishResponse
+	}
+
 	defer closeResponseBody(resp)
 
 	if resp.StatusCode != http.StatusOK {
