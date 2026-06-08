@@ -97,6 +97,12 @@ func validateCSVIdentifiers(value, field, noun string) error {
 }
 
 // ValidateSearchArgs validates and normalizes search arguments, returning a ValidationError if invalid.
+//
+// As a documented side effect, ValidateSearchArgs normalizes the Language
+// field in place: the literal "auto" (case-insensitive) is rewritten to "" so
+// downstream request building omits the language parameter. Callers that
+// share a *SearchArgs across goroutines should clone it before passing it
+// here; the validation helpers themselves do not mutate their inputs.
 func ValidateSearchArgs(args *SearchArgs) error {
 	if args == nil {
 		return NewValidationError("args", "search arguments cannot be nil")
@@ -132,10 +138,12 @@ func ValidateSearchArgs(args *SearchArgs) error {
 		return err
 	}
 
-	err = validateLanguage(args)
+	normalizedLang, err := validateLanguage(args.Language)
 	if err != nil {
 		return err
 	}
+
+	args.Language = normalizedLang
 
 	return nil
 }
@@ -156,26 +164,28 @@ func validateQuery(query string) error {
 	return nil
 }
 
-func validateLanguage(args *SearchArgs) error {
-	if args.Language == "" {
-		return nil
+// validateLanguage validates a language code and returns its normalized form.
+// The literal "auto" (case-insensitive) is normalized to the empty string so
+// downstream request building can omit the language parameter. The function
+// is pure: it does not mutate any caller-visible state.
+func validateLanguage(value string) (string, error) {
+	if value == "" {
+		return "", nil
 	}
 
-	if strings.EqualFold(args.Language, "auto") {
-		args.Language = ""
-
-		return nil
+	if strings.EqualFold(value, "auto") {
+		return "", nil
 	}
 
-	if utf8.RuneCountInString(args.Language) > maxLanguageLength {
-		return NewValidationError("language", "must be 35 runes or less")
+	if utf8.RuneCountInString(value) > maxLanguageLength {
+		return value, NewValidationError("language", "must be 35 runes or less")
 	}
 
-	if !languagePattern.MatchString(args.Language) {
-		return NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja, en-US)")
+	if !languagePattern.MatchString(value) {
+		return value, NewValidationError("language", "must be a valid language code (e.g., en, zh-tw, ja, en-US)")
 	}
 
-	return nil
+	return value, nil
 }
 
 func validatePagination(pageno, limit *int) error {

@@ -741,6 +741,34 @@ func TestRegisterFlagsDefaultPinning(t *testing.T) {
 	}
 }
 
+// TestRegisterFlagsIntDefaultsParse guards against the defensive-programming
+// issue where a future ParamDef with GoType "int" and a non-integer Default
+// would be silently coerced to 0 by registerFlags. Every int-typed ParamDef
+// in searxng.SearchParams must have a Default that strconv.Atoi can parse
+// without error; if a new parameter is added with a malformed default, this
+// test fails before registerFlags ever runs (and, in production,
+// registerFlags would panic with errParamDefaultNotInt).
+func TestRegisterFlagsIntDefaultsParse(t *testing.T) {
+	t.Parallel()
+
+	for _, p := range searxng.SearchParams {
+		if p.GoType != "int" {
+			continue
+		}
+
+		_, err := strconv.Atoi(p.Default)
+		if err != nil {
+			t.Errorf("SearchParams[%q] has GoType %q but Default %q does not parse as int: %v",
+				p.Name, p.GoType, p.Default, err)
+		}
+	}
+
+	// Smoke-check the end-to-end registration path: calling registerFlags
+	// must not panic. Today this is a no-op because all int defaults are
+	// valid, but it is the path that would panic on a regression.
+	_, _ = registerFlags()
+}
+
 func TestRunCLIMode_Success(t *testing.T) {
 	successResp := searxng.SearchResponse{
 		Query:           "golang",

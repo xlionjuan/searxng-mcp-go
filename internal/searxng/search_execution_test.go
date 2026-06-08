@@ -471,7 +471,7 @@ func TestDoSearchAttempt(t *testing.T) {
 // finishResponse tests
 // ---------------------------------------------------------------------------
 
-//nolint:gocognit // table-driven test covering response finishing scenarios
+//nolint:gocognit,gocyclo // subtests cover each response-finishing branch explicitly
 func TestFinishResponse(t *testing.T) {
 	t.Parallel()
 
@@ -580,6 +580,26 @@ func TestFinishResponse(t *testing.T) {
 
 		if !strings.Contains(err.Error(), "not found") {
 			t.Fatalf("error = %q, want 'not found'", err.Error())
+		}
+	})
+
+	t.Run("nil response returns errNilFinishResponse without panic", func(t *testing.T) {
+		t.Parallel()
+
+		s := &SearXNGSearcher{}
+
+		// Should not panic on nil response — defensive nil guard
+		result, err := s.finishResponse(nil, &SearchArgs{})
+		if err == nil {
+			t.Fatal("finishResponse(nil) error = nil, want errNilFinishResponse")
+		}
+
+		if result != nil {
+			t.Fatalf("finishResponse(nil) result = %v, want nil", result)
+		}
+
+		if !errors.Is(err, errNilFinishResponse) {
+			t.Fatalf("finishResponse(nil) error = %v, want errors.Is(_, errNilFinishResponse)", err)
 		}
 	})
 }
