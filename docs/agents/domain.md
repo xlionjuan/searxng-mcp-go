@@ -23,7 +23,11 @@ Single-context repo:
 │   ├── 005-no-corrections.md
 │   ├── 006-unresponsive-engines-debug-only.md
 │   ├── 007-no-dns-rebinding.md
-│   └── 008-same-hostname-redirect.md
+│   ├── 008-same-hostname-redirect.md
+│   ├── 009-disable-get-fallback-by-default.md
+│   ├── 010-cli-terminal-control-sanitization.md
+│   ├── 011-max-content-runes-cli-only.md
+│   └── 012-close-cancels-inflight-searches.md
 └── src/
 ```
 
