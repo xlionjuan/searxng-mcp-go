@@ -5,7 +5,14 @@ run:
 linters:
   default: all
   enable:
+    - fatcontext
     - gomodguard_v2
+    - nosprintfhostport
+    - perfsprint
+    - sloglint
+    - thelper
+    - usetesting
+    - wastedassign
   disable:
     - gochecknoglobals
     - gomodguard
@@ -33,11 +40,22 @@ linters:
               desc: "Use internal client wrapper instead"
     dupl:
       threshold: 100
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    errorlint:
+      asserts: true
+      comparison: true
     gocognit:
       min-complexity: 20
     goconst:
       min-len: 2
       min-occurrences: 2
+    gocritic:
+      enabled-checks:
+        - deferInLoop
+        - httpNoBody
+        - unnecessaryDefer
     gocyclo:
       min-complexity: 13
     govet:
@@ -54,13 +72,17 @@ linters:
     funlen:
       lines: 60
       statements: 40
+    prealloc:
+      simple: true
+      range-loops: true
+    sloglint:
+      no-mixed-args: true
+      kv-only: true
     varnamelen:
       min-name-length: 2
     nolintlint:
       require-specific: true
       require-explanation: true
-    errcheck:
-      check-type-assertions: true
   exclusions:
     generated: lax
     paths:

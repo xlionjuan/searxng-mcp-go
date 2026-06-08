@@ -30,7 +30,7 @@ func testPerformSearch(
 		return nil, err
 	}
 
-	defer func() { _ = s.Close() }()
+	defer func() { _ = s.Close() }() //nolint:errcheck // cleanup in defer; error is non-actionable
 
 	return s.Search(ctx, args)
 }
@@ -64,6 +64,6 @@ func newJSONRawTestServer(tb testing.TB, body []byte) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
+		_, _ = w.Write(body) //nolint:errcheck // test fixture write; failure does not affect test outcome
 	}))
 }

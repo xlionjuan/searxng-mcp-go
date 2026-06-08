@@ -172,7 +172,7 @@ func TestSearch_RequestParameters(t *testing.T) {
 				var params url.Values
 
 				if r.Method == http.MethodPost {
-					_ = r.ParseForm()
+					_ = r.ParseForm() //nolint:errcheck // test reads form best-effort; failure does not affect test outcome
 
 					params = make(url.Values, len(r.PostForm))
 					for key, values := range r.PostForm {
@@ -186,7 +186,7 @@ func TestSearch_RequestParameters(t *testing.T) {
 
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write(body)
+				_, _ = w.Write(body) //nolint:errcheck // test fixture write; failure does not affect test outcome
 			}))
 			defer server.Close()
 
@@ -240,7 +240,7 @@ func TestSearch_SearchPathNormalization(t *testing.T) {
 
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write(body)
+				_, _ = w.Write(body) //nolint:errcheck // test fixture write; failure does not affect test outcome
 			}))
 			defer server.Close()
 
@@ -282,7 +282,7 @@ func TestSearch_QueryEncoding(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
+		_, _ = w.Write(body) //nolint:errcheck // test fixture write; failure does not affect test outcome
 	}))
 	defer server.Close()
 
@@ -390,8 +390,8 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		_ = searcher.Close()
-		_ = searcher.Close()
+		_ = searcher.Close() //nolint:errcheck // test cleanup; error is non-actionable
+		_ = searcher.Close() //nolint:errcheck // test cleanup; double-close is intentional; error is non-actionable
 	})
 
 	t.Run("shared default client", func(t *testing.T) {
@@ -402,8 +402,8 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		_ = searcher.Close()
-		_ = searcher.Close()
+		_ = searcher.Close() //nolint:errcheck // test cleanup; error is non-actionable
+		_ = searcher.Close() //nolint:errcheck // test cleanup; double-close is intentional; error is non-actionable
 	})
 
 	t.Run("custom client", func(t *testing.T) {
@@ -417,8 +417,8 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		_ = searcher.Close()
-		_ = searcher.Close()
+		_ = searcher.Close() //nolint:errcheck // test cleanup; error is non-actionable
+		_ = searcher.Close() //nolint:errcheck // test cleanup; double-close is intentional; error is non-actionable
 	})
 }
 
@@ -515,7 +515,7 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusOK)
-					_, _ = w.Write(body)
+					_, _ = w.Write(body) //nolint:errcheck // test fixture write; failure does not affect test outcome
 
 					return
 				}
@@ -592,6 +592,7 @@ func TestSearch_RetriesRetryableStatus(t *testing.T) {
 
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
+				//nolint:errcheck // test fixture write best-effort
 				_, _ = w.Write([]byte(successResponseBody))
 			}))
 			defer server.Close()
@@ -636,11 +637,13 @@ func TestSearch_RetriesEmptySearchResponse(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 
 		if attempt == 1 {
+			//nolint:errcheck // test fixture write best-effort
 			_, _ = w.Write([]byte(`{"query":"test","results":[],"suggestions":[]}`))
 
 			return
 		}
 
+		//nolint:errcheck // test fixture write best-effort
 		_, _ = w.Write([]byte(successResponseBody))
 	}))
 	defer server.Close()
@@ -681,6 +684,7 @@ func TestSearch_EmptySearchResponseRetryCanceled(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		//nolint:errcheck // test fixture write best-effort
 		_, _ = w.Write([]byte(`{"query":"test","results":[],"suggestions":[]}`))
 	}))
 	defer server.Close()
@@ -775,7 +779,7 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 			capturedHeaders = r.Header
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write(body)
+			_, _ = w.Write(body) //nolint:errcheck // test fixture write; failure does not affect test outcome
 		}))
 		defer server.Close()
 
@@ -807,7 +811,7 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 			capturedHeaders = r.Header
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write(body)
+			_, _ = w.Write(body) //nolint:errcheck // test fixture write; failure does not affect test outcome
 		}))
 		defer server.Close()
 

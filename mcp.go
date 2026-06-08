@@ -166,7 +166,7 @@ func runMCPMode(debug bool, flags *CLIFlags, stdin io.Reader) error {
 		return fmt.Errorf("failed to create searcher: %w", err)
 	}
 
-	defer func() { _ = searcher.Close() }()
+	defer func() { _ = searcher.Close() }() //nolint:errcheck // cleanup in defer; error is non-actionable
 
 	schema, err := buildSearchSchema()
 	if err != nil {

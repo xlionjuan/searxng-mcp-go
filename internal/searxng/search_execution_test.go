@@ -44,7 +44,7 @@ func TestExecuteGETfallback(t *testing.T) {
 			t.Context(),
 			http.MethodPost,
 			"https://search.example.com/search",
-			nil,
+			http.NoBody,
 		)
 		if err != nil {
 			t.Fatalf("failed to create post request: %v", err)
@@ -97,7 +97,7 @@ func TestExecuteGETfallback(t *testing.T) {
 			t.Context(),
 			http.MethodPost,
 			"https://search.example.com/search",
-			nil,
+			http.NoBody,
 		)
 		if err != nil {
 			t.Fatalf("failed to create post request: %v", err)
@@ -142,7 +142,7 @@ func TestExecuteGETfallback(t *testing.T) {
 			t.Context(),
 			http.MethodPost,
 			"https://search.example.com/search",
-			nil,
+			http.NoBody,
 		)
 		if err != nil {
 			t.Fatalf("failed to create post request: %v", err)
@@ -191,7 +191,7 @@ func TestExecuteGETfallback(t *testing.T) {
 			t.Context(),
 			http.MethodPost,
 			"https://search.example.com/custom/search",
-			nil,
+			http.NoBody,
 		)
 		if err != nil {
 			t.Fatalf("failed to create post request: %v", err)

@@ -45,7 +45,7 @@ func mockSearXNGHandler(tb testing.TB) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
+		_, _ = w.Write(body) //nolint:errcheck // test fixture write; failure does not affect test outcome
 	}
 }
 
@@ -62,7 +62,7 @@ func newTestSearcher(t *testing.T, handler http.HandlerFunc) (*searxng.SearXNGSe
 	}
 
 	cleanup := func() {
-		_ = searcher.Close()
+		_ = searcher.Close() //nolint:errcheck // test cleanup; error is non-actionable
 		mockServer.Close()
 	}
 

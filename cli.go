@@ -141,7 +141,7 @@ func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 		return fmt.Errorf("%w: %w", errSearcherCreation, err)
 	}
 
-	defer func() { _ = searcher.Close() }()
+	defer func() { _ = searcher.Close() }() //nolint:errcheck // cleanup in defer; error is non-actionable
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
 	defer cancel()

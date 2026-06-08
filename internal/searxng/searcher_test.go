@@ -29,7 +29,7 @@ func TestNewSearXNGSearcherErrors(t *testing.T) {
 			searcher, err := NewSearXNGSearcher(&Config{SearXNGURL: tt.baseURL, Timeout: time.Second}, false)
 			if err == nil {
 				if searcher != nil {
-					_ = searcher.Close()
+					_ = searcher.Close() //nolint:errcheck // test cleanup; error is non-actionable
 				}
 
 				t.Fatal("NewSearXNGSearcher() error = nil, want error")
