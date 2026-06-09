@@ -10,7 +10,9 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
-const noResultsFound = "No results found."
+const noResultsFound = "=== Web Search Results ===\n" +
+	"Warning: " + searxng.ExternalContentWarning + "\n\n" +
+	"No results found."
 
 // sanitizeTerminalControl replaces C0 control bytes, DEL, and C1 control
 // codepoints (other than the common whitespace \t and \n) with visible

@@ -99,8 +99,12 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 func TestFormatResults_NilInput(t *testing.T) {
 	t.Parallel()
 
-	if got := formatResults(nil); got != noResultsFound {
-		t.Fatalf("formatResults(nil) = %q, want %q", got, "No results found.")
+	got := formatResults(nil)
+	if got != noResultsFound {
+		t.Fatalf("formatResults(nil) = %q, want %q", got, noResultsFound)
+	}
+	if !strings.Contains(got, "Warning: ") {
+		t.Fatalf("formatResults(nil) missing Warning header, got %q", got)
 	}
 }
 
