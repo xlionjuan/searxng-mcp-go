@@ -108,12 +108,23 @@ Pushing the tag triggers `.github/workflows/release.yml`.
 The `.goreleaser.yaml` configuration produces:
 
 - `tar.zst` archives for `linux/amd64` and `linux/arm64`
-- Static binaries with `CGO_ENABLED=0`
+- Static binaries with `CGO_ENABLED=0` and `netgo`/`osusergo` build tags
 - Archive names matching `searxng-mcp-go_v{Version}_{Os}_{Arch}`
 - Binary, `README.md`, `LICENSE`, and checksums file in release artifacts
 - GitHub Release with automatic prerelease detection and `make_latest: true`
 - Homebrew tap update for `xlionjuan/homebrew-tap`
 - Auto-generated changelog excluding `docs:`, `test:`, and `chore:` commits
+
+### Build Tags
+
+The build uses `netgo` and `osusergo` build tags
+(`.goreleaser.yaml:21-23`) together with `CGO_ENABLED=0` to produce fully
+static binaries. These tags force Go's DNS resolver and OS user lookup to
+use the pure Go implementations instead of cgo, eliminating libc and
+`nsswitch` dependencies at runtime. The result is a portable binary
+suitable for minimal containers (Alpine, distroless, scratch). Do not
+remove them without verifying that the resulting binary still works on
+the target Linux distributions (Alpine, Debian, etc.).
 
 ## Version Injection
 
