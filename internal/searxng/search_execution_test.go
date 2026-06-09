@@ -171,6 +171,66 @@ func TestExecuteGETfallback(t *testing.T) {
 		}
 	})
 
+	t.Run("GET fallback transport error preserves errSearchMethodRejected in chain", func(t *testing.T) {
+		// Regression test for #244: when POST returns 405/501 and the GET
+		// fallback transport call also fails, the final error must contain
+		// both errGETFallbackUsed and errSearchMethodRejected so callers can
+		// detect the actionable hint ("set SEARXNG_ALLOW_GET_FALLBACK=1").
+		t.Parallel()
+
+		tests := []struct {
+			name       string
+			postStatus int
+		}{
+			{name: "POST 405", postStatus: http.StatusMethodNotAllowed},
+			{name: "POST 501", postStatus: http.StatusNotImplemented},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+
+				s := &SearXNGSearcher{
+					client: &http.Client{
+						Transport: testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+							return nil, errRetryTestConnectionReset
+						}),
+					},
+					debug: false,
+				}
+
+				postReq, err := http.NewRequestWithContext(
+					t.Context(),
+					http.MethodPost,
+					"https://search.example.com/search",
+					http.NoBody,
+				)
+				if err != nil {
+					t.Fatalf("failed to create post request: %v", err)
+				}
+
+				origResp := &http.Response{
+					StatusCode: tt.postStatus,
+					Header:     http.Header{"Content-Type": []string{"text/html"}},
+					Body:       io.NopCloser(strings.NewReader("")),
+				}
+
+				_, getFallbackErr := s.executeGETfallback(t.Context(), origResp, postReq, "q=test")
+				if getFallbackErr == nil {
+					t.Fatal("executeGETfallback() error = nil, want error")
+				}
+
+				if !errors.Is(getFallbackErr, errGETFallbackUsed) {
+					t.Fatalf("errors.Is(err, errGETFallbackUsed) = false, want true; err = %v", getFallbackErr)
+				}
+
+				if !errors.Is(getFallbackErr, errSearchMethodRejected) {
+					t.Fatalf("errors.Is(err, errSearchMethodRejected) = false, want true; err = %v", getFallbackErr)
+				}
+			})
+		}
+	})
+
 	t.Run("GET fallback does not modify URL path", func(t *testing.T) {
 		t.Parallel()
 

@@ -354,6 +354,10 @@ func (s *SearXNGSearcher) executeGETfallback(
 		slog.Debug("Redirecting to GET fallback", "status", resp.StatusCode, "reason", "POST not supported by server")
 	}
 
+	// Capture the original POST rejection error before closing the response so
+	// it can be joined into the final error if the GET fallback also fails.
+	postErr := HTTPStatusError(resp.StatusCode, resp.Header.Get("Content-Type"), nil)
+
 	closeResponseBody(resp)
 
 	getURL := *postReq.URL
@@ -371,7 +375,10 @@ func (s *SearXNGSearcher) executeGETfallback(
 	//nolint:gosec // The client redirect policy blocks fallback redirects to a different host.
 	getResp, err := s.client.Do(getReq)
 	if err != nil {
-		err = fmt.Errorf("%w: %w", errGETFallbackUsed, redactSearchURLParamsFromError(err))
+		// Join the original POST rejection error so callers can inspect both:
+		//   errors.Is(err, errGETFallbackUsed)     → true
+		//   errors.Is(err, errSearchMethodRejected) → true
+		err = fmt.Errorf("%w: %w", errGETFallbackUsed, errors.Join(redactSearchURLParamsFromError(err), postErr))
 	}
 
 	s.logDebugResponse(getResp, err)
