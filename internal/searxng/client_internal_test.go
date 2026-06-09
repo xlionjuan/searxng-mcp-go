@@ -1,7 +1,9 @@
 package searxng
 
 import (
+	"bytes"
 	"errors"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -433,6 +435,36 @@ func TestCloseResponseBody(t *testing.T) {
 			t.Fatal("closeResponseBody() did not close the response body")
 		}
 	})
+
+	t.Run("drains small body fully before close", func(t *testing.T) {
+		t.Parallel()
+
+		const bodySize = 100
+		body := &drainTrackingReader{reader: bytes.NewReader(make([]byte, bodySize))}
+		closeResponseBody(&http.Response{Body: body})
+
+		if !body.closed {
+			t.Fatal("body was not closed")
+		}
+		if body.bytesRead != bodySize {
+			t.Fatalf("expected %d bytes drained, got %d", bodySize, body.bytesRead)
+		}
+	})
+
+	t.Run("caps drain at 4096 bytes for large body", func(t *testing.T) {
+		t.Parallel()
+
+		const bodySize = 8192
+		body := &drainTrackingReader{reader: bytes.NewReader(make([]byte, bodySize))}
+		closeResponseBody(&http.Response{Body: body})
+
+		if !body.closed {
+			t.Fatal("body was not closed")
+		}
+		if body.bytesRead != 4096 {
+			t.Fatalf("expected exactly 4096 bytes drained, got %d", body.bytesRead)
+		}
+	})
 }
 
 // closeTrackingReader wraps a reader and calls onClose when closed.
@@ -448,6 +480,24 @@ func (r *closeTrackingReader) Read(p []byte) (int, error) {
 func (r *closeTrackingReader) Close() error {
 	r.onClose()
 
+	return nil
+}
+
+// drainTrackingReader records bytes read and whether Close was called.
+type drainTrackingReader struct {
+	reader    io.Reader
+	bytesRead int
+	closed    bool
+}
+
+func (r *drainTrackingReader) Read(p []byte) (int, error) {
+	n, err := r.reader.Read(p)
+	r.bytesRead += n
+	return n, err
+}
+
+func (r *drainTrackingReader) Close() error {
+	r.closed = true
 	return nil
 }
 
