@@ -245,8 +245,9 @@ When a field in the query results has no value, the behavior is as follows:
 5. **`infoboxes`** — Knowledge panels
 6. **`results`** — Search result list
 7. **`suggestions`** — Related search suggestions
+8. **`unresponsive_engines`** — Debug-only array of `[engine, error]` pairs (omitted unless debug mode is enabled; see ADR-006)
 
-`answers` and `infoboxes` may be omitted when empty. `results` and `suggestions` remain present as arrays.
+`answers`, `infoboxes`, and `unresponsive_engines` may be omitted when empty. `results` and `suggestions` remain present as arrays. `unresponsive_engines` is additionally gated on debug mode.
 
 #### Output Order Diagram
 
