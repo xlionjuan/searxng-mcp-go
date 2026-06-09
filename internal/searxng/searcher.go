@@ -230,6 +230,11 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 	}
 
 	if lastErr != nil {
+		var searxErr *SearXNGError
+		if errors.As(lastErr, &searxErr) {
+			return nil, searxErr
+		}
+
 		return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, lastErr))
 	}
 
