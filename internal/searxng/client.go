@@ -3,6 +3,7 @@ package searxng
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -125,6 +126,9 @@ func closeResponseBody(resp *http.Response) {
 	if resp == nil || resp.Body == nil {
 		return
 	}
+
+	// Drain up to 4 KiB so the transport can reuse the underlying TCP connection.
+	_, _ = io.CopyN(io.Discard, resp.Body, 4096)
 
 	err := resp.Body.Close()
 	if err != nil {
