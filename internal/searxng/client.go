@@ -64,6 +64,26 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 	}
 }
 
+// hostWithoutDefaultPort returns the host with the default port for the given
+// scheme stripped. This normalises "h:443" and "h" to the same string when
+// the scheme is "https", and likewise "h:80" / "h" for "http", so that a
+// redirect that merely drops the redundant port is not mistaken for a
+// cross-host redirect.
+func hostWithoutDefaultPort(scheme, host string) string {
+	switch strings.ToLower(scheme) {
+	case "https":
+		if strings.HasSuffix(host, ":443") {
+			return host[:len(host)-4]
+		}
+	case "http":
+		if strings.HasSuffix(host, ":80") {
+			return host[:len(host)-3]
+		}
+	}
+
+	return host
+}
+
 func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 	// Note: This policy preserves the original scheme for same-host redirects.
 	// An https → http downgrade is rejected so that configuring an HTTPS
@@ -73,9 +93,10 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 	if req.URL != nil && len(via) > 0 {
 		prev := via[len(via)-1]
 		if prev.URL != nil {
-			prevHost := prev.URL.Host
-			if !strings.EqualFold(req.URL.Host, prevHost) {
-				return fmt.Errorf("%w: %s -> %s", errRedirectDifferentHost, prevHost, req.URL.Host)
+			prevHost := hostWithoutDefaultPort(prev.URL.Scheme, prev.URL.Host)
+			reqHost := hostWithoutDefaultPort(req.URL.Scheme, req.URL.Host)
+			if !strings.EqualFold(reqHost, prevHost) {
+				return fmt.Errorf("%w: %s -> %s", errRedirectDifferentHost, prev.URL.Host, req.URL.Host)
 			}
 
 			prevScheme := strings.ToLower(prev.URL.Scheme)

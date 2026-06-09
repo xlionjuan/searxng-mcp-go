@@ -384,6 +384,104 @@ func TestEnforceSearchRedirectPolicy(t *testing.T) {
 			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for https -> https same host", err)
 		}
 	})
+
+	t.Run("allow https redirect that drops explicit :443 port", func(t *testing.T) {
+		t.Parallel()
+
+		// url.URL.Host is "search.example.com:443" for the first request and
+		// "search.example.com" for the redirect; both represent the same host.
+		req := &http.Request{URL: mustParseURL(t, "https://search.example.com/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://search.example.com:443/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil when :443 is dropped from https host", err)
+		}
+	})
+
+	t.Run("allow https redirect that adds explicit :443 port", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "https://search.example.com:443/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://search.example.com/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil when :443 is added to https host", err)
+		}
+	})
+
+	t.Run("allow http redirect that drops explicit :80 port", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "http://search.example.com/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "http://search.example.com:80/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil when :80 is dropped from http host", err)
+		}
+	})
+
+	t.Run("block redirect to genuinely different host even with default port", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "https://evil.com/phishing")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://search.example.com:443/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err == nil {
+			t.Fatal("enforceSearchRedirectPolicy() = nil, want error for genuinely different host")
+		}
+
+		if !errors.Is(err, errRedirectDifferentHost) {
+			t.Fatalf("error = %v, want errRedirectDifferentHost", err)
+		}
+	})
+}
+
+// --- hostWithoutDefaultPort tests ---
+
+func TestHostWithoutDefaultPort(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		scheme string
+		host   string
+		want   string
+	}{
+		{name: "https strips :443", scheme: "https", host: "example.com:443", want: "example.com"},
+		{name: "https keeps :8443", scheme: "https", host: "example.com:8443", want: "example.com:8443"},
+		{name: "https keeps no port", scheme: "https", host: "example.com", want: "example.com"},
+		{name: "http strips :80", scheme: "http", host: "example.com:80", want: "example.com"},
+		{name: "http keeps :8080", scheme: "http", host: "example.com:8080", want: "example.com:8080"},
+		{name: "http keeps no port", scheme: "http", host: "example.com", want: "example.com"},
+		{name: "https does not strip :80", scheme: "https", host: "example.com:80", want: "example.com:80"},
+		{name: "http does not strip :443", scheme: "http", host: "example.com:443", want: "example.com:443"},
+		{name: "scheme case-insensitive HTTPS", scheme: "HTTPS", host: "example.com:443", want: "example.com"},
+		{name: "scheme case-insensitive HTTP", scheme: "HTTP", host: "example.com:80", want: "example.com"},
+		{name: "unknown scheme leaves host unchanged", scheme: "ftp", host: "example.com:21", want: "example.com:21"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := hostWithoutDefaultPort(tt.scheme, tt.host)
+			if got != tt.want {
+				t.Fatalf("hostWithoutDefaultPort(%q, %q) = %q, want %q", tt.scheme, tt.host, got, tt.want)
+			}
+		})
+	}
 }
 
 func mustParseURL(t *testing.T, raw string) *url.URL {
