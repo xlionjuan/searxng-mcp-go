@@ -246,13 +246,8 @@ func formatResults(resp *searxng.SearchResponse) string {
 	if len(resp.Results) > 0 {
 		buf.WriteString("=== Results ===\n\n")
 
-		total := resp.NumberOfResults
-		if total == 0 {
-			total = len(resp.Results)
-		}
-
 		buf.WriteString("Found ")
-		buf.WriteString(strconv.Itoa(total))
+		buf.WriteString(strconv.Itoa(len(resp.Results)))
 		buf.WriteString(" results for '")
 		buf.WriteString(sanitizeTerminalControl(searxng.UnescapeIfNeeded(resp.Query)))
 		buf.WriteString("':\n\n")
