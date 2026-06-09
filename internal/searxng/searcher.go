@@ -226,6 +226,13 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 			}
 		}
 
+		if attempt == maxRetries && s.isEmptyResponse(result) {
+			slog.Warn("search returned empty after exhausting retries",
+				"query", args.Query,
+				"attempts", attempt+1,
+			)
+		}
+
 		return result, nil
 	}
 
