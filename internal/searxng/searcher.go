@@ -18,7 +18,9 @@ var (
 	errRequestCreateFailed = errors.New("failed to create request")
 	errSearchRequestFailed = errors.New("failed to execute search request")
 	errErrorBodyTooLarge   = errors.New("error response body exceeded maximum size limit")
-	errEmptyResponse       = errors.New("empty response from SearXNG")
+	// errEmptyResponse must remain a bare errors.New sentinel (never wrapped in *SearXNGError)
+	// so that isRetryableError correctly identifies it as retryable via the errors.As(*SearXNGError) check.
+	errEmptyResponse = errors.New("empty response from SearXNG")
 	errGETFallbackUsed     = errors.New(
 		"GET fallback was used; search query parameters may have been sent in the request URL")
 	errNilFinishResponse = errors.New("finishResponse: nil http.Response")
