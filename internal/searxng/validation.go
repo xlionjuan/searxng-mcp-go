@@ -31,7 +31,13 @@ var validTimeRangesText = strings.Join(ValidTimeRanges(), ", ")
 
 // languagePattern validates common BCP47-like language tags used by SearXNG.
 // Empty values are handled separately as "auto" mode.
-var languagePattern = regexp.MustCompile(`^[\p{L}]{2,35}(?:-[\p{L}\p{N}]{1,35})*$`)
+// The alternation also accepts BCP47 grandfathered/private-use tags that start
+// with the single-letter prefixes "i" (irregular/grandfathered) or "x"
+// (private-use) followed by one or more hyphen-separated subtags, e.g.
+// "i-klingon", "i-default", "x-private".
+var languagePattern = regexp.MustCompile(
+	`^(?:[\p{L}]{2,35}(?:-[\p{L}\p{N}]{1,35})*|[ix](?:-[\p{L}\p{N}]{1,35})+)$`,
+)
 
 const maxLanguageLength = 35
 

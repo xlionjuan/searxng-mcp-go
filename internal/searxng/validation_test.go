@@ -238,6 +238,24 @@ func TestValidateLanguagePure(t *testing.T) {
 
 		requireValidationError(t, err, "language")
 	})
+
+	// BCP47 grandfathered (i-) and private-use (x-) tags must be accepted.
+	// RFC 5646 §2.2.8 / §2.2.7 defines these single-letter prefix forms.
+	for _, tag := range []string{"i-klingon", "i-default", "x-private", "x-whatever"} {
+		tag := tag
+		t.Run("grandfathered/private-use tag "+tag, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := validateLanguage(tag)
+			if err != nil {
+				t.Fatalf("validateLanguage(%q) error = %v, want nil", tag, err)
+			}
+
+			if got != tag {
+				t.Fatalf("validateLanguage(%q) = %q, want %q", tag, got, tag)
+			}
+		})
+	}
 }
 
 func TestValidateCategories(t *testing.T) {
