@@ -50,6 +50,16 @@ Answers are computed **locally** by SearXNG's built-in answerers and plugins, no
 
 ## Test Query Recipes
 
+> **Note on real-company queries in E2E tests.** Some E2E test suites
+> (functional, MCP, error, stress, helpers) use real-company search terms such
+> as `apple inc` and `framework computer inc` purely as stable sample search
+> data. These names are chosen only because they reliably return a populated
+> `results` array (and, in `apple inc`'s case, a Wikidata infobox) across the
+> upstream engines. They are **not** canonical, preferred, or semantically
+> meaningful queries; nothing in the project depends on, endorses, or treats
+> these companies specially. Any equivalent stable real-company name would
+> work just as well for parameter-iteration tests.
+
 ### One query per field
 
 | Field to Test | Query | Expected Result |
