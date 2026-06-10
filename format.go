@@ -216,6 +216,10 @@ func logUnresponsiveEngines(logger *slog.Logger, resp *searxng.SearchResponse) {
 func formatResults(logger *slog.Logger, resp *searxng.SearchResponse) string {
 	logUnresponsiveEngines(logger, resp)
 
+	if resp == nil {
+		return noResultsFound
+	}
+
 	if len(resp.Results) == 0 && len(resp.Infoboxes) == 0 && len(resp.Answers) == 0 && len(resp.Suggestions) == 0 {
 		return noResultsFound
 	}
