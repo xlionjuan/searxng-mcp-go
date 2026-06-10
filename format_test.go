@@ -105,6 +105,89 @@ func TestFormatResults_NilInput(t *testing.T) {
 	}
 }
 
+// TestFormatResults_ResultCountFormat locks the "Found N results for '...'"
+// line format across three scenarios:
+//   - mismatch: NumberOfResults > len(Results) → "Found N total (showing M)"
+//   - match:    NumberOfResults == len(Results) → "Found N results"
+//   - zero:     NumberOfResults == 0 → normalized to len(Results)
+func TestFormatResults_ResultCountFormat(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		resp   *searxng.SearchResponse
+		want   string // substring the output must contain
+		notWnt string // substring the output must NOT contain
+	}{
+		{
+			name: "server count exceeds rendered",
+			resp: &searxng.SearchResponse{
+				Query:           "overflow",
+				NumberOfResults: 100,
+				Results: []searxng.SearchResult{
+					{Title: "r1", URL: "https://e.com/1", Engine: "g"},
+					{Title: "r2", URL: "https://e.com/2", Engine: "g"},
+				},
+			},
+			want:   "Found 100 total (showing 2) results for 'overflow'",
+			notWnt: "Found 100 results for 'overflow'",
+		},
+		{
+			name: "server count matches rendered",
+			resp: &searxng.SearchResponse{
+				Query:           "exact",
+				NumberOfResults: 10,
+				Results: []searxng.SearchResult{
+					{Title: "r1", URL: "https://e.com/1", Engine: "g"},
+					{Title: "r2", URL: "https://e.com/2", Engine: "g"},
+					{Title: "r3", URL: "https://e.com/3", Engine: "g"},
+					{Title: "r4", URL: "https://e.com/4", Engine: "g"},
+					{Title: "r5", URL: "https://e.com/5", Engine: "g"},
+					{Title: "r6", URL: "https://e.com/6", Engine: "g"},
+					{Title: "r7", URL: "https://e.com/7", Engine: "g"},
+					{Title: "r8", URL: "https://e.com/8", Engine: "g"},
+					{Title: "r9", URL: "https://e.com/9", Engine: "g"},
+					{Title: "r10", URL: "https://e.com/10", Engine: "g"},
+				},
+			},
+			want:   "Found 10 results for 'exact'",
+			notWnt: "total (showing",
+		},
+		{
+			name: "server count zero normalized to rendered",
+			resp: &searxng.SearchResponse{
+				Query:           "zero",
+				NumberOfResults: 0,
+				Results: []searxng.SearchResult{
+					{Title: "r1", URL: "https://e.com/1", Engine: "g"},
+					{Title: "r2", URL: "https://e.com/2", Engine: "g"},
+					{Title: "r3", URL: "https://e.com/3", Engine: "g"},
+					{Title: "r4", URL: "https://e.com/4", Engine: "g"},
+					{Title: "r5", URL: "https://e.com/5", Engine: "g"},
+				},
+			},
+			want:   "Found 5 results for 'zero'",
+			notWnt: "total (showing",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			out := formatResults(tt.resp)
+
+			if !strings.Contains(out, tt.want) {
+				t.Errorf("formatResults() output missing %q\noutput:\n%s", tt.want, out)
+			}
+
+			if tt.notWnt != "" && strings.Contains(out, tt.notWnt) {
+				t.Errorf("formatResults() output contains unexpected %q\noutput:\n%s", tt.notWnt, out)
+			}
+		})
+	}
+}
+
 func TestFormatResults_DebugLogsUnresponsiveEngines(t *testing.T) {
 	var buf bytes.Buffer
 

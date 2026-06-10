@@ -256,7 +256,7 @@ func formatResults(resp *searxng.SearchResponse) string {
 
 		buf.WriteString("Found ")
 
-		if total > 0 && total != nResults {
+		if total != nResults {
 			buf.WriteString(strconv.Itoa(total))
 			buf.WriteString(" total (showing ")
 			buf.WriteString(strconv.Itoa(nResults))
