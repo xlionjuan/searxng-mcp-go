@@ -211,6 +211,32 @@ func TestValidateLanguagePure(t *testing.T) {
 		}
 	})
 
+	t.Run("grandfathered i-klingon accepted", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := validateLanguage("i-klingon")
+		if err != nil {
+			t.Fatalf("validateLanguage(\"i-klingon\") error = %v, want nil", err)
+		}
+
+		if got != "i-klingon" {
+			t.Fatalf("validateLanguage(\"i-klingon\") = %q, want %q", got, "i-klingon")
+		}
+	})
+
+	t.Run("private-use x-private accepted", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := validateLanguage("x-private")
+		if err != nil {
+			t.Fatalf("validateLanguage(\"x-private\") error = %v, want nil", err)
+		}
+
+		if got != "x-private" {
+			t.Fatalf("validateLanguage(\"x-private\") = %q, want %q", got, "x-private")
+		}
+	})
+
 	t.Run("invalid language code returns ValidationError and original value", func(t *testing.T) {
 		t.Parallel()
 
