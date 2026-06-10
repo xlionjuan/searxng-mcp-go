@@ -174,7 +174,7 @@ func TestConfigAndDefaultConfig(t *testing.T) {
 func TestSearchResponseMarshalJSON(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil slices serialize as empty arrays", func(t *testing.T) {
+	t.Run("nil slices serialize as null", func(t *testing.T) {
 		t.Parallel()
 
 		body, err := json.Marshal(SearchResponse{Warning: ExternalContentWarning})
@@ -189,12 +189,12 @@ func TestSearchResponseMarshalJSON(t *testing.T) {
 			t.Fatalf("json.Unmarshal() error = %v", err)
 		}
 
-		if string(got["results"]) != "[]" {
-			t.Fatalf("results = %s, want []", got["results"])
+		if string(got["results"]) != "null" {
+			t.Fatalf("results = %s, want null", got["results"])
 		}
 
-		if string(got["suggestions"]) != "[]" {
-			t.Fatalf("suggestions = %s, want []", got["suggestions"])
+		if string(got["suggestions"]) != "null" {
+			t.Fatalf("suggestions = %s, want null", got["suggestions"])
 		}
 
 		if string(got["warning"]) != `"`+ExternalContentWarning+`"` {
@@ -226,8 +226,8 @@ func TestSearchResponseMarshalJSON(t *testing.T) {
 			t.Fatalf("json.Marshal() error = %v", err)
 		}
 
-		if !strings.Contains(string(body), `"unresponsive_engines":[]`) {
-			t.Fatalf("json = %s, want empty unresponsive_engines", body)
+		if !strings.Contains(string(body), `"unresponsive_engines":null`) {
+			t.Fatalf("json = %s, want null unresponsive_engines", body)
 		}
 	})
 

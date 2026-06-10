@@ -104,10 +104,6 @@ func validateCSVIdentifiers(value, field, noun string) error {
 // share a *SearchArgs across goroutines should clone it before passing it
 // here; the validation helpers themselves do not mutate their inputs.
 func ValidateSearchArgs(args *SearchArgs) error {
-	if args == nil {
-		return NewValidationError("args", "search arguments cannot be nil")
-	}
-
 	err := validateQuery(args.Query)
 	if err != nil {
 		return err

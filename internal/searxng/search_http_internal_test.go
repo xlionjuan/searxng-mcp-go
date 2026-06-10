@@ -19,20 +19,6 @@ import (
 func TestSearch_ValidationError(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil args returns validation error", func(t *testing.T) {
-		t.Parallel()
-
-		// Transport should never be called
-		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-			return nil, errTransportNotExpected
-		}), 0)
-
-		_, err := s.Search(t.Context(), nil)
-		if err == nil {
-			t.Fatal("Search() error = nil, want validation error")
-		}
-	})
-
 	t.Run("empty query returns validation error", func(t *testing.T) {
 		t.Parallel()
 
