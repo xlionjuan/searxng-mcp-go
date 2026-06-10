@@ -30,11 +30,16 @@ jobs:
 
       - name: Verify dependencies
         run: |
-          go mod verify
           go mod download
+          go mod verify
+
+      - name: Check module files are tidy
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
 
       - name: Pre-release build
-        run: go build -o searxng-mcp-go .
+        run: go build -o /tmp/searxng-mcp-go .
 
       - name: Pre-release tests
         run: go test -race -shuffle=on ./...
@@ -73,16 +78,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_SSH_KEY: ${{ secrets.HOMEBREW_TAP_SSH_KEY }}
 
-      - name: Check for dirty module files
-        if: always()
-        run: |
-          if ! git diff --exit-code -- go.mod go.sum; then
-            echo "::error::GoReleaser pre-hooks modified go.mod or go.sum; refusing to publish release."
-            echo "Run 'go mod tidy' locally, commit the result, and re-tag the release."
-            exit 1
-          fi
-
       - name: Clean up
         if: always()
+        env:
+          # I want to make GNUPGHOME use mktemp folder, but GoReleaser don't read GNUPGHOME for GPG operations
+          # This step is not allowed to remove, DO NOT create any issues or PR to remove this
+          GNUPGHOME: "~/.gnupg"
         run: |
           rm -rf "$GNUPGHOME" || true
