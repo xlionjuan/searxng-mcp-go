@@ -173,9 +173,7 @@ The Go struct for a weather observation:
     "country_code": "JP",
     "timezone": "Asia/Tokyo"
   },
-  "datetime": {
-    "datetime": "2026-05-28T12:00:00+09:00"
-  },
+  "datetime": "2026-05-28T12:00:00+09:00",
   "summary": "Partly cloudy",
   "temperature": { "val": 22.5, "unit": "°C" },
   "feels_like": { "val": 21.0, "unit": "°C" },
@@ -191,7 +189,7 @@ The Go struct for a weather observation:
 ```go
 type WeatherItem struct {
     Location    WeatherLocation  `json:"location"`
-    Datetime    *WeatherDateTime `json:"datetime,omitempty"`
+    Datetime    *string           `json:"datetime,omitempty"`
     Summary     string           `json:"summary,omitempty"`
     Temperature WeatherMeasure   `json:"temperature"`
     FeelsLike   *WeatherMeasure  `json:"feels_like,omitempty"`
@@ -216,10 +214,6 @@ type WeatherLocation struct {
     Timezone    string  `json:"timezone,omitempty"`
 }
 
-type WeatherDateTime struct {
-    Datetime string `json:"datetime"`
-}
-
 type WeatherMeasure struct {
     Val  float64 `json:"val"`
     Unit string  `json:"unit,omitempty"`
@@ -228,7 +222,7 @@ type WeatherMeasure struct {
 
 Fields (WeatherItem):
 - `location` (object): Location information (name, coordinates, country, timezone).
-- `datetime` (object, optional): ISO 8601 timestamp for the observation.
+- `datetime` (string, optional): ISO 8601 timestamp for the observation.
 - `summary` (string, optional): Human-readable weather summary.
 - `temperature` (object): Temperature measurement with value and unit.
 - `feels_like` (object, optional): Apparent (feels-like) temperature.

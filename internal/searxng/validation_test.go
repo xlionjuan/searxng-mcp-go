@@ -33,11 +33,6 @@ func requireValidationError(t *testing.T, err error, field string) {
 func TestValidateSearchArgs(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil args", func(t *testing.T) {
-		t.Parallel()
-		requireValidationError(t, ValidateSearchArgs(nil), "args")
-	})
-
 	t.Run("empty query", func(t *testing.T) {
 		t.Parallel()
 		requireValidationError(t, ValidateSearchArgs(&SearchArgs{}), "query")

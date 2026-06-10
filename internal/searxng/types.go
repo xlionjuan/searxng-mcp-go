@@ -175,17 +175,17 @@ type TranslationItem struct {
 
 // WeatherItem is a current or forecast weather entry from a typed SearXNG answer.
 type WeatherItem struct {
-	Location    WeatherLocation  `json:"location"`
-	Datetime    *WeatherDateTime `json:"datetime,omitempty"`
-	Summary     string           `json:"summary,omitempty"`
-	Temperature WeatherMeasure   `json:"temperature"`
-	FeelsLike   *WeatherMeasure  `json:"feels_like,omitempty"`
-	Condition   string           `json:"condition"`
-	Pressure    *WeatherMeasure  `json:"pressure,omitempty"`
-	Humidity    *WeatherMeasure  `json:"humidity,omitempty"`
-	WindFrom    *WeatherMeasure  `json:"wind_from,omitempty"`
-	WindSpeed   *WeatherMeasure  `json:"wind_speed,omitempty"`
-	CloudCover  *int             `json:"cloud_cover,omitempty"`
+	Location    WeatherLocation `json:"location"`
+	Datetime    *string         `json:"datetime,omitempty"`
+	Summary     string          `json:"summary,omitempty"`
+	Temperature WeatherMeasure  `json:"temperature"`
+	FeelsLike   *WeatherMeasure `json:"feels_like,omitempty"`
+	Condition   string          `json:"condition"`
+	Pressure    *WeatherMeasure `json:"pressure,omitempty"`
+	Humidity    *WeatherMeasure `json:"humidity,omitempty"`
+	WindFrom    *WeatherMeasure `json:"wind_from,omitempty"`
+	WindSpeed   *WeatherMeasure `json:"wind_speed,omitempty"`
+	CloudCover  *int            `json:"cloud_cover,omitempty"`
 }
 
 // WeatherLocation describes the location for a weather answer.
@@ -196,11 +196,6 @@ type WeatherLocation struct {
 	Elevation   float64 `json:"elevation,omitempty"`
 	CountryCode string  `json:"country_code,omitempty"`
 	Timezone    string  `json:"timezone,omitempty"`
-}
-
-// WeatherDateTime contains the timestamp for a weather answer.
-type WeatherDateTime struct {
-	Datetime string `json:"datetime"`
 }
 
 // WeatherMeasure is a numeric weather measurement and optional unit.
@@ -252,14 +247,6 @@ type searchResponseJSON struct {
 // MarshalJSON uses a value receiver (not pointer) to avoid concurrent
 // modification of the SearchResponse during serialization.
 func (r SearchResponse) MarshalJSON() ([]byte, error) {
-	if r.Results == nil {
-		r.Results = []SearchResult{}
-	}
-
-	if r.Suggestions == nil {
-		r.Suggestions = []string{}
-	}
-
 	base := searchResponseJSON{
 		Query:           r.Query,
 		Warning:         r.Warning,
@@ -270,10 +257,6 @@ func (r SearchResponse) MarshalJSON() ([]byte, error) {
 		Suggestions:     r.Suggestions,
 	}
 	if r.Debug {
-		if r.UnresponsiveEngines == nil {
-			r.UnresponsiveEngines = [][]string{}
-		}
-
 		base.UnresponsiveEngines = &r.UnresponsiveEngines
 	}
 

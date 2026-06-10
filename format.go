@@ -193,7 +193,7 @@ func writeInfoboxes(buf *strings.Builder, infoboxes []searxng.Infobox) {
 }
 
 func logUnresponsiveEngines(resp *searxng.SearchResponse) {
-	if resp == nil || !resp.Debug || len(resp.UnresponsiveEngines) == 0 {
+	if !resp.Debug || len(resp.UnresponsiveEngines) == 0 {
 		return
 	}
 
@@ -215,10 +215,6 @@ func logUnresponsiveEngines(resp *searxng.SearchResponse) {
 //nolint:gocyclo // category-conditional formatting; a dispatch table would add indirection for simple branching
 func formatResults(resp *searxng.SearchResponse) string {
 	logUnresponsiveEngines(resp)
-
-	if resp == nil {
-		return noResultsFound
-	}
 
 	if len(resp.Results) == 0 && len(resp.Infoboxes) == 0 && len(resp.Answers) == 0 && len(resp.Suggestions) == 0 {
 		return noResultsFound
