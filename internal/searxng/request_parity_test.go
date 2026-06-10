@@ -195,15 +195,8 @@ func TestRequestBodyParity(t *testing.T) {
 
 			cliBody := captureCLIBody(t, searcher, &tt.args)
 
-			// For the MCP path, apply the same defaulting the handler does.
-			mcpArgs := tt.args
-			if mcpArgs.Limit == nil {
-				defaultLimit := DefaultResultLimit
-				mcpArgs.Limit = &defaultLimit
-			}
-
-			validateSearchArgs(t, &mcpArgs)
-			mcpBody := captureMCPBody(t, searcher, &mcpArgs)
+			// captureMCPBody handles Limit defaulting internally.
+			mcpBody := captureMCPBody(t, searcher, &tt.args)
 
 			if cliBody != mcpBody {
 				t.Fatalf("CLI body != MCP body\nCLI: %q\nMCP: %q", cliBody, mcpBody)
