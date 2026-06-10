@@ -357,7 +357,7 @@ func TestDoSearchAttempt(t *testing.T) {
 		}
 	})
 
-	t.Run("GET fallback transport error redacts query", func(t *testing.T) {
+	t.Run("GET fallback transport error redacts query and preserves original 405 error", func(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
@@ -390,6 +390,10 @@ func TestDoSearchAttempt(t *testing.T) {
 
 		if !strings.Contains(errText, "GET fallback was used") {
 			t.Fatalf("error = %q, want GET fallback warning context", errText)
+		}
+
+		if !strings.Contains(errText, "search method rejected") {
+			t.Fatalf("error = %q, want 'search method rejected' hint from original 405 error", errText)
 		}
 
 		if callCount != 2 {
