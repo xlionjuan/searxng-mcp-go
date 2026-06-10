@@ -363,7 +363,7 @@ func TestAlwaysPresentKeysInBareQueryBody(t *testing.T) {
 	}
 }
 
-// TestMCPBodyContainsLimitWhenNilInput uses the MCP capture helper to verify
+// TestMCPBodyIsUnchangedByLimitDefaulting uses the MCP capture helper to verify
 // that the MCP path applies its Limit defaulting without affecting the wire
 // body (since Limit is client-side only). This test documents the contract:
 // the MCP body must match the CLI body for the same logical search,
