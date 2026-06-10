@@ -1,4 +1,4 @@
-package searxng
+package searxng //nolint:testpackage // white-box tests need access to unexported types/functions
 
 import (
 	"net/url"
@@ -56,7 +56,8 @@ func captureMCPBody(t *testing.T, searcher *SearXNGSearcher, args *SearchArgs) s
 func validateSearchArgs(t *testing.T, args *SearchArgs) {
 	t.Helper()
 
-	if err := ValidateSearchArgs(args); err != nil {
+	err := ValidateSearchArgs(args)
+	if err != nil {
 		t.Fatalf("ValidateSearchArgs() error = %v", err)
 	}
 }
@@ -200,6 +201,7 @@ func TestRequestBodyParity(t *testing.T) {
 				defaultLimit := DefaultResultLimit
 				mcpArgs.Limit = &defaultLimit
 			}
+
 			validateSearchArgs(t, &mcpArgs)
 			mcpBody := captureMCPBody(t, searcher, &mcpArgs)
 
