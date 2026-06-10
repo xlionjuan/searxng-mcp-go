@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -164,7 +165,7 @@ func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 			return fmt.Errorf("%w: %w", errJSONEncodeFailed, err)
 		}
 	} else {
-		fmt.Print(formatResults(resp))
+		fmt.Print(formatResults(slog.Default(), resp))
 	}
 
 	return nil

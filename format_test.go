@@ -86,7 +86,7 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := formatResults(tt.response)
+			got := formatResults(slog.Default(), tt.response)
 			for _, want := range []string{"=== Answers ===", tt.wantAnswer, tt.wantEngine} {
 				if !strings.Contains(got, want) {
 					t.Fatalf("formatResults() missing %q in:\n%s", want, got)
@@ -99,7 +99,7 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 func TestFormatResults_NilInput(t *testing.T) {
 	t.Parallel()
 
-	if got := formatResults(nil); got != noResultsFound {
+	if got := formatResults(slog.Default(), nil); got != noResultsFound {
 		t.Fatalf("formatResults(nil) = %q, want %q", got, "No results found.")
 	}
 }
@@ -107,10 +107,7 @@ func TestFormatResults_NilInput(t *testing.T) {
 func TestFormatResults_DebugLogsUnresponsiveEngines(t *testing.T) {
 	var buf bytes.Buffer
 
-	old := slog.Default()
-
-	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
-	defer slog.SetDefault(old)
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	resp := &searxng.SearchResponse{
 		Query:               "test",
@@ -120,7 +117,7 @@ func TestFormatResults_DebugLogsUnresponsiveEngines(t *testing.T) {
 		Debug:               true,
 	}
 
-	_ = formatResults(resp)
+	_ = formatResults(logger, resp)
 
 	if !strings.Contains(buf.String(), "unresponsive engine") {
 		t.Fatalf("expected debug log for unresponsive engines, got: %s", buf.String())
@@ -173,7 +170,7 @@ func TestFormatResults_NeutralizesTerminalControl(t *testing.T) {
 		},
 	}
 
-	out := formatResults(resp)
+	out := formatResults(slog.Default(), resp)
 
 	// No literal ESC, BEL, BS, VT, FF, SO, SI, DLE..US, or DEL may
 	// survive in the output.
@@ -239,7 +236,7 @@ func TestFormatResults_HtmlEntityEscapedControlIsNeutralized(t *testing.T) {
 		NumberOfResults: 1,
 	}
 
-	out := formatResults(resp)
+	out := formatResults(slog.Default(), resp)
 
 	for _, b := range []byte(out) {
 		switch {
@@ -271,7 +268,7 @@ func TestFormatResults_UnicodePreserved(t *testing.T) {
 		NumberOfResults: 1,
 	}
 
-	out := formatResults(resp)
+	out := formatResults(slog.Default(), resp)
 
 	for _, want := range []string{
 		"café 日本語 🔥",

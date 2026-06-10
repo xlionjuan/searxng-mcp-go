@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -55,7 +56,7 @@ func BenchmarkFormatResults(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_ = formatResults(resp)
+		_ = formatResults(slog.Default(), resp)
 	}
 }
 
@@ -96,7 +97,7 @@ func BenchmarkFormatResultsLarge(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_ = formatResults(resp)
+		_ = formatResults(slog.Default(), resp)
 	}
 }
 
@@ -125,7 +126,7 @@ func BenchmarkFormatResultsInfoboxes(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_ = formatResults(resp)
+		_ = formatResults(slog.Default(), resp)
 	}
 }
 
@@ -161,7 +162,7 @@ func BenchmarkFormatResultsLongContent(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_ = formatResults(resp)
+		_ = formatResults(slog.Default(), resp)
 	}
 }
 
@@ -205,6 +206,6 @@ func BenchmarkFormatResultsWithEntities(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_ = formatResults(resp)
+		_ = formatResults(slog.Default(), resp)
 	}
 }
