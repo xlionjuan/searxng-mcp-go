@@ -47,6 +47,8 @@ A SearXNG instance URL is **required** — there is no default. Set it via the `
 export SEARXNG_URL=https://your-searxng-instance.example.com
 ```
 
+> **Warning:** Using `http://` for a non-private SearXNG host (any hostname that is not `localhost`, a loopback address, or an RFC 1918 private IP range) triggers a non-suppressible warning on every invocation: *"Using HTTP for non-private host. Search queries may be transmitted in clear text. Search results could be intercepted and modified by a MITM attacker."* Prefer HTTPS unless the SearXNG instance is on a private/local network.
+
 ### Max Retries
 
 The default retry count is 5 retries after the initial search attempt. Set `SEARXNG_MAX_RETRIES` to a non-negative integer (maximum 20); in CLI mode, `--max-retries` overrides the environment variable. Use `--max-retries=0` to disable retries in CLI mode.

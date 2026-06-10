@@ -32,7 +32,7 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 | `engines`    | string  | No       | -       | Comma-separated list of SearXNG engine names.  |
 |              |         |          |         | Common engines: google, bing, duckduckgo.      |
 |              |         |          |         | Max 4096 bytes for the full string.            |
-| `pageno`     | integer, null | No       | -       | Page number for pagination (omitted = backend default/page 1) |
+| `pageno`     | integer, null | No       | 1       | Page number for pagination (SearXNG defaults to page 1 when omitted) |
 | `limit`      | integer | No       | 10      | Maximum number of results returned (1-20)      |
 
 ### Response Format
