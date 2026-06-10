@@ -76,6 +76,7 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 		if prev.URL != nil {
 			prevHost := hostNoDefaultPort(prev.URL.Host, prev.URL.Scheme)
 			nextHost := hostNoDefaultPort(req.URL.Host, req.URL.Scheme)
+
 			if !strings.EqualFold(nextHost, prevHost) {
 				return fmt.Errorf("%w: %s -> %s", errRedirectDifferentHost, prevHost, nextHost)
 			}
@@ -100,15 +101,17 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 // hostNoDefaultPort strips default port numbers (443 for https, 80 for http)
 // from a host:port string. This allows same-host detection when a reverse proxy
 // such as NGINX strips the default port during a redirect (e.g. host:443 → host).
-func hostNoDefaultPort(host string, scheme string) string {
+func hostNoDefaultPort(host, scheme string) string {
 	h, port, err := net.SplitHostPort(host)
 	if err != nil {
 		// No port present — return as-is.
 		return host
 	}
+
 	if (port == "443" && scheme == "https") || (port == "80" && scheme == "http") {
 		return h
 	}
+
 	return host
 }
 
@@ -148,6 +151,7 @@ func closeResponseBody(resp *http.Response) {
 	// MaxResponseBodySize, the unconsumed tail prevents the Go HTTP
 	// transport from recycling the connection. A LimitReader bounds
 	// the drain to defend against a slow or malicious server.
+	//nolint:errcheck // drain is intentionally discarded for keep-alive
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, int64(MaxResponseBodySize)))
 
 	err := resp.Body.Close()
