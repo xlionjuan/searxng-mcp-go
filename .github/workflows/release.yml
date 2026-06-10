@@ -74,7 +74,7 @@ jobs:
           HOMEBREW_TAP_SSH_KEY: ${{ secrets.HOMEBREW_TAP_SSH_KEY }}
 
       - name: Check for dirty module files
-        if: always()
+        if: success()
         run: |
           if ! git diff --exit-code -- go.mod go.sum; then
             echo "::error::GoReleaser pre-hooks modified go.mod or go.sum; refusing to publish release."
@@ -82,7 +82,4 @@ jobs:
             exit 1
           fi
 
-      - name: Clean up
-        if: always()
-        run: |
-          rm -rf "$GNUPGHOME" || true
+
