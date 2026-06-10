@@ -55,18 +55,17 @@ const MaxAnswers = 100
 // the answer/infobox deduplication work the same way.
 const MaxInfoboxes = 100
 
-// MaxErrorDisplayChars caps the size of error body previews retained on
+// MaxErrorDisplayBytes caps the size of error body previews retained on
 // SearXNGError.ResponseBody (and surfaced in debug logs and error messages).
 //
-// Despite the "Chars" suffix, this is a byte ceiling, not a rune/character
-// count: callers truncate with truncateBytesToValidUTF8, which slices at
-// most MaxErrorDisplayChars bytes and walks back to a valid UTF-8 rune
-// boundary so multi-byte sequences are never split. The "Chars" name
-// follows the display-preview convention used by DebugBodyPreviewChars.
-const MaxErrorDisplayChars = 200
+// This is a byte ceiling, not a rune/character count: callers truncate with
+// truncateBytesToValidUTF8, which slices at most MaxErrorDisplayBytes bytes
+// and walks back to a valid UTF-8 rune boundary so multi-byte sequences are
+// never split.
+const MaxErrorDisplayBytes = 200
 
 // ResultSizeEstimate is the approximate JSON result size used for response preallocation.
 const ResultSizeEstimate = 200
 
-// DebugBodyPreviewChars is the maximum response body preview length emitted in debug logs.
-const DebugBodyPreviewChars = 500
+// DebugBodyPreviewBytes is the maximum response body preview length emitted in debug logs.
+const DebugBodyPreviewBytes = 500

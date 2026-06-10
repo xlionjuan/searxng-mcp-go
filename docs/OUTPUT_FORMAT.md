@@ -367,7 +367,7 @@ The response-body-size cap is checked before the JSON is parsed, so the
 result is a hard error rather than a partial response. MCP consumers receive
 the `SearXNGError` as a `Search error: ...` reply; CLI consumers see it in
 stderr/exit code. The error's `ResponseBody` field carries up to 200
-bytes of the truncated body for debugging (`MaxErrorDisplayChars`); the
+bytes of the truncated body for debugging (`MaxErrorDisplayBytes`); the
 truncation walks back to a valid UTF-8 rune boundary so multi-byte
 sequences are never split.
 

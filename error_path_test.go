@@ -350,8 +350,8 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 			t.Fatalf("StatusCode = %d, want %d", searxngErr.StatusCode, http.StatusInternalServerError)
 		}
 
-		if len(searxngErr.ResponseBody) != searxng.MaxErrorDisplayChars {
-			t.Fatalf("ResponseBody length = %d, want %d", len(searxngErr.ResponseBody), searxng.MaxErrorDisplayChars)
+		if len(searxngErr.ResponseBody) != searxng.MaxErrorDisplayBytes {
+			t.Fatalf("ResponseBody length = %d, want %d", len(searxngErr.ResponseBody), searxng.MaxErrorDisplayBytes)
 		}
 
 		if !strings.HasPrefix(searxngErr.ResponseBody, "eee") {
@@ -409,8 +409,8 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		if len(searxngErr.ResponseBody) != searxng.MaxErrorDisplayChars {
-			t.Fatalf("ResponseBody length = %d, want %d", len(searxngErr.ResponseBody), searxng.MaxErrorDisplayChars)
+		if len(searxngErr.ResponseBody) != searxng.MaxErrorDisplayBytes {
+			t.Fatalf("ResponseBody length = %d, want %d", len(searxngErr.ResponseBody), searxng.MaxErrorDisplayBytes)
 		}
 	})
 }

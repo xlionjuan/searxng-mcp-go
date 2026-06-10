@@ -116,8 +116,8 @@ func TestHandleNonOKResponse(t *testing.T) {
 			t.Fatalf("error type = %T, want *SearXNGError", err)
 		}
 
-		if len(searxErr.ResponseBody) > MaxErrorDisplayChars {
-			t.Fatalf("ResponseBody length = %d, want <= %d", len(searxErr.ResponseBody), MaxErrorDisplayChars)
+		if len(searxErr.ResponseBody) > MaxErrorDisplayBytes {
+			t.Fatalf("ResponseBody length = %d, want <= %d", len(searxErr.ResponseBody), MaxErrorDisplayBytes)
 		}
 	})
 
@@ -161,7 +161,7 @@ func TestHandleNonOKResponse(t *testing.T) {
 		t.Parallel()
 
 		s := &SearXNGSearcher{debug: true}
-		longBody := strings.Repeat("x", DebugBodyPreviewChars+100)
+		longBody := strings.Repeat("x", DebugBodyPreviewBytes+100)
 		resp := &http.Response{
 			StatusCode: http.StatusInternalServerError,
 			Header:     http.Header{"Content-Type": []string{"text/plain"}},

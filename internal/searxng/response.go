@@ -41,7 +41,7 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 			return nil, &HTMLResponseError{Body: "", UnderlyingErr: nil}
 		}
 
-		previewLen := min(bodyLen, MaxErrorDisplayChars)
+		previewLen := min(bodyLen, MaxErrorDisplayBytes)
 		preview := string(truncateBytesToValidUTF8(body, previewLen))
 
 		slog.Debug("HTMLResponseError: received HTML instead of JSON", "preview", preview)
@@ -111,7 +111,7 @@ func (s *SearXNGSearcher) logDebugBody(resp *http.Response, body []byte) {
 		return
 	}
 
-	bodyPreview := string(truncateBytesToValidUTF8(body, DebugBodyPreviewChars))
+	bodyPreview := string(truncateBytesToValidUTF8(body, DebugBodyPreviewBytes))
 
 	slog.Debug(
 		"HTTP response body",
@@ -166,8 +166,8 @@ func mediaTypeIs(contentType string, want ...string) bool {
 
 func decodeSearchResponse(resp *http.Response, contentType string, body []byte) (*SearchResponse, error) {
 	if !isJSONContentType(contentType) {
-		bodyPreview := string(truncateBytesToValidUTF8(body, MaxErrorDisplayChars))
-		if len(body) > MaxErrorDisplayChars {
+		bodyPreview := string(truncateBytesToValidUTF8(body, MaxErrorDisplayBytes))
+		if len(body) > MaxErrorDisplayBytes {
 			bodyPreview += "..."
 		}
 

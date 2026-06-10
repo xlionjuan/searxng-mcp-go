@@ -66,9 +66,9 @@ func truncateBody(body []byte, maxLen int) string {
 
 // buildErrorPreview returns a preview of body suitable for storage in
 // SearXNGError.ResponseBody. The size and UTF-8 safety contract are
-// defined by MaxErrorDisplayChars; see its doc comment for details.
+// defined by MaxErrorDisplayBytes; see its doc comment for details.
 func buildErrorPreview(body []byte) string {
-	return truncateBody(body, MaxErrorDisplayChars)
+	return truncateBody(body, MaxErrorDisplayBytes)
 }
 
 // truncateBytesToValidUTF8 returns data truncated to at most maxBytes bytes,
@@ -107,15 +107,15 @@ type SearXNGError struct {
 var _ error = (*SearXNGError)(nil) //nolint:errcheck // compile-time interface assertion; not a function call
 
 // NewSearXNGError creates a new SearXNGError.
-// The body string is truncated to at most MaxErrorDisplayChars bytes,
+// The body string is truncated to at most MaxErrorDisplayBytes bytes,
 // walking back to a valid UTF-8 rune boundary so multi-byte sequences
-// are never split. Despite the "Chars" suffix, MaxErrorDisplayChars is
+// are never split. Despite the "Chars" suffix, MaxErrorDisplayBytes is
 // a byte ceiling, not a rune/character count; see its doc comment.
 func NewSearXNGError(statusCode int, contentType, body string, err error) *SearXNGError {
 	return &SearXNGError{
 		StatusCode:      statusCode,
 		RespContentType: contentType,
-		ResponseBody:    truncateBody([]byte(body), MaxErrorDisplayChars),
+		ResponseBody:    truncateBody([]byte(body), MaxErrorDisplayBytes),
 		UnderlyingErr:   err,
 	}
 }
