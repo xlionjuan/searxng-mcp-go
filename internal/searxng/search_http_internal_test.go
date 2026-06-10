@@ -519,7 +519,8 @@ func TestSearch_GETfallbackErrorPreservesStatusCode(t *testing.T) {
 		}
 
 		if searxErr.StatusCode != http.StatusMethodNotAllowed {
-			t.Fatalf("StatusCode = %d, want %d (original 405 preserved, not 0)", searxErr.StatusCode, http.StatusMethodNotAllowed)
+			t.Fatalf("StatusCode = %d, want %d (original 405 preserved, not 0)",
+				searxErr.StatusCode, http.StatusMethodNotAllowed)
 		}
 
 		// The error must contain the original method-rejected hint
