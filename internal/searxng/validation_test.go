@@ -362,7 +362,7 @@ func TestSearXNGErrorAndHTMLResponseError(t *testing.T) {
 
 	underlying := errNetworkTestError
 
-	searxErr := NewSearXNGError(503, "text/plain", strings.Repeat("x", MaxErrorDisplayChars+1), underlying)
+	searxErr := NewSearXNGError(503, "text/plain", strings.Repeat("x", MaxErrorDisplayBytes+1), underlying)
 	if !errors.Is(searxErr, underlying) {
 		t.Fatal("errors.Is() = false, want true for SearXNGError underlying error")
 	}
@@ -375,8 +375,8 @@ func TestSearXNGErrorAndHTMLResponseError(t *testing.T) {
 		t.Fatalf("RespContentType = %q, want text/plain", searxErr.RespContentType)
 	}
 
-	if len(searxErr.ResponseBody) != MaxErrorDisplayChars {
-		t.Fatalf("ResponseBody length = %d, want %d", len(searxErr.ResponseBody), MaxErrorDisplayChars)
+	if len(searxErr.ResponseBody) != MaxErrorDisplayBytes {
+		t.Fatalf("ResponseBody length = %d, want %d", len(searxErr.ResponseBody), MaxErrorDisplayBytes)
 	}
 
 	if !strings.Contains(searxErr.Error(), "searxng error (status 503) - content-type text/plain") {
