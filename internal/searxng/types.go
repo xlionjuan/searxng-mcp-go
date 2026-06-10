@@ -13,13 +13,13 @@ import (
 const errTimeoutNegativeMessage = "timeout cannot be negative"
 
 var (
-	errURLRequired           = errors.New("searXNGURL cannot be empty")
+	errURLRequired           = errors.New("SearXNG URL cannot be empty")
 	errTimeoutNegative       = errors.New(errTimeoutNegativeMessage)
-	errMaxRetriesNegative    = errors.New("maxRetries cannot be negative")
-	errMaxRetriesTooLarge    = errors.New("maxRetries cannot exceed 20")
+	errMaxRetriesNegative    = errors.New("max retries cannot be negative")
+	errMaxRetriesTooLarge    = errors.New("max retries cannot exceed 20")
 	maxRetryCap              = 20
-	errRetryDelayNegative    = errors.New("retryDelay cannot be negative")
-	errMaxRetryDelayNegative = errors.New("maxRetryDelay cannot be negative")
+	errRetryDelayNegative    = errors.New("retry delay cannot be negative")
+	errMaxRetryDelayNegative = errors.New("max retry delay cannot be negative")
 )
 
 // Config controls SearXNG client behavior.

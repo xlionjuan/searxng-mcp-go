@@ -109,8 +109,7 @@ var _ error = (*SearXNGError)(nil) //nolint:errcheck // compile-time interface a
 // NewSearXNGError creates a new SearXNGError.
 // The body string is truncated to at most MaxErrorDisplayBytes bytes,
 // walking back to a valid UTF-8 rune boundary so multi-byte sequences
-// are never split. Despite the "Chars" suffix, MaxErrorDisplayBytes is
-// a byte ceiling, not a rune/character count; see its doc comment.
+// are never split. See MaxErrorDisplayBytes doc comment for details.
 func NewSearXNGError(statusCode int, contentType, body string, err error) *SearXNGError {
 	return &SearXNGError{
 		StatusCode:      statusCode,
