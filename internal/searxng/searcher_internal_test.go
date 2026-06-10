@@ -179,7 +179,7 @@ func TestLogDebugMethods(t *testing.T) {
 
 		//nolint:errcheck // test request with valid URL/method; error impossible
 		req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://example.com", http.NoBody)
-		longBody := strings.Repeat("x", DebugBodyPreviewChars+100)
+		longBody := strings.Repeat("x", DebugBodyPreviewBytes+100)
 		s.logDebugRequest(req, longBody)
 	})
 

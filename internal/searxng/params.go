@@ -79,7 +79,7 @@ var SearchParams = []ParamDef{
 	{
 		Name: "language", GoType: "string", Default: "",
 		Description: "Language code for results (e.g., en, zh-tw, ja). Leave empty or pass \"auto\" to let SearXNG decide",
-		CLIHelp:     "Language code for results (e.g., en, zh-tw, ja) [default: auto]",
+		CLIHelp:     "Language code for results (e.g., en, zh-tw, ja) [default: \"\"]",
 		CLIType:     "LANG",
 		MCPType:     "string",
 	},

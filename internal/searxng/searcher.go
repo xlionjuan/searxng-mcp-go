@@ -153,7 +153,7 @@ func (s *SearXNGSearcher) Close() error {
 // Returns SearXNGError wrapping the last error if all retries are exhausted.
 // Returns ValidationError if args are invalid.
 //
-//nolint:cyclop,gocognit,gocyclo // Search orchestrates retry loop, empty-response handling, and error chain
+//nolint:gocognit,cyclop,gocyclo // orchestrates distinct concerns; extracting adds indirection
 func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	err := ValidateSearchArgs(args)
 	if err != nil {
@@ -244,6 +244,14 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 	}
 
 	if lastErr != nil {
+		// If lastErr is already a *SearXNGError (e.g. from a GET fallback failure
+		// that preserves the original 405/501 status), avoid double-wrapping it
+		// with NewSearXNGError(0, ...) which would hide the real status code.
+		var se *SearXNGError
+		if errors.As(lastErr, &se) {
+			return nil, fmt.Errorf("%w: %w", errSearchRequestFailed, lastErr)
+		}
+
 		return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, lastErr))
 	}
 
@@ -315,7 +323,7 @@ func (s *SearXNGSearcher) logDebugRequest(req *http.Request, body string) {
 		return
 	}
 
-	bodyPreview := string(truncateBytesToValidUTF8([]byte(body), DebugBodyPreviewChars))
+	bodyPreview := string(truncateBytesToValidUTF8([]byte(body), DebugBodyPreviewBytes))
 
 	slog.Debug(
 		"HTTP request",
@@ -368,6 +376,11 @@ func (s *SearXNGSearcher) executeGETfallback(
 		slog.Debug("Redirecting to GET fallback", "status", resp.StatusCode, "reason", "POST not supported by server")
 	}
 
+	// Capture the original 405/501 error before closing the response body so the
+	// hint (including the "set SEARXNG_ALLOW_GET_FALLBACK=1" message) is preserved
+	// when GET fallback also fails.
+	origErr := HTTPStatusError(resp.StatusCode, resp.Header.Get("Content-Type"), nil)
+
 	closeResponseBody(resp)
 
 	getURL := *postReq.URL
@@ -376,7 +389,7 @@ func (s *SearXNGSearcher) executeGETfallback(
 	//nolint:gosec // GET fallback reuses the validated SearXNG base URL and only changes query parameters.
 	getReq, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, getURL.String(), http.NoBody)
 	if reqErr != nil {
-		return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errRequestCreateFailed, reqErr))
+		return nil, errors.Join(origErr, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errRequestCreateFailed, reqErr)))
 	}
 
 	setBrowserHeaders(getReq)
@@ -386,6 +399,7 @@ func (s *SearXNGSearcher) executeGETfallback(
 	getResp, err := s.client.Do(getReq)
 	if err != nil {
 		err = fmt.Errorf("%w: %w", errGETFallbackUsed, redactSearchURLParamsFromError(err))
+		err = errors.Join(origErr, err)
 	}
 
 	s.logDebugResponse(getResp, err)
@@ -435,7 +449,7 @@ func (s *SearXNGSearcher) handleNonOKResponse(resp *http.Response) error {
 	}
 
 	if s.debug {
-		errBodyPreview := string(truncateBytesToValidUTF8(body, DebugBodyPreviewChars))
+		errBodyPreview := string(truncateBytesToValidUTF8(body, DebugBodyPreviewBytes))
 
 		slog.Debug(
 			"HTTP error response body",

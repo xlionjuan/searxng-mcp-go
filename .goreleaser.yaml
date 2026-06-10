@@ -5,7 +5,7 @@ project_name: searxng-mcp-go
 
 before:
   hooks:
-    - go mod tidy
+    - go mod download
 
 builds:
   - id: searxng-mcp-go

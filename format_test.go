@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"searxng-mcp-go/internal/searxng"
+	"searxng-mcp-go/internal/testhelper"
 )
 
 // --- unescapeIfNeeded tests ---
@@ -48,35 +49,19 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		response   *searxng.SearchResponse
+		fixture    string
 		wantAnswer string
 		wantEngine string
 	}{
 		{
-			name: "translation",
-			response: &searxng.SearchResponse{
-				Answers: []searxng.Answer{
-					{
-						Answer:   "Translation: bonjour",
-						Engine:   "libretranslate",
-						Template: "answer/translations.html",
-					},
-				},
-			},
+			name:       "translation",
+			fixture:    "testdata/typed_translation_answer.json",
 			wantAnswer: "[1] Translation: bonjour",
 			wantEngine: "Engine: libretranslate",
 		},
 		{
-			name: "weather",
-			response: &searxng.SearchResponse{
-				Answers: []searxng.Answer{
-					{
-						Answer:   "Weather: Berlin, 11.2 °C, partly cloudy",
-						Engine:   "open_meteo",
-						Template: "answer/weather.html",
-					},
-				},
-			},
+			name:       "weather",
+			fixture:    "testdata/typed_weather_answer.json",
 			wantAnswer: "[1] Weather: Berlin, 11.2 °C, partly cloudy",
 			wantEngine: "Engine: open_meteo",
 		},
@@ -86,7 +71,17 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := formatResults(slog.Default(), tt.response)
+			var resp searxng.SearchResponse
+
+			testhelper.LoadJSONFixture(t, tt.fixture, &resp)
+
+			// Apply typed answer fallback (normally done in normalizeResponse).
+			for i := range resp.Answers {
+				searxng.EnsureAnswerFallback(&resp.Answers[i])
+			}
+
+			got := formatResults(slog.Default(), &resp)
+
 			for _, want := range []string{"=== Answers ===", tt.wantAnswer, tt.wantEngine} {
 				if !strings.Contains(got, want) {
 					t.Fatalf("formatResults() missing %q in:\n%s", want, got)

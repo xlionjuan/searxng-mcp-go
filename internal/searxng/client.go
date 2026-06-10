@@ -3,6 +3,7 @@ package searxng
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -73,9 +74,11 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 	if req.URL != nil && len(via) > 0 {
 		prev := via[len(via)-1]
 		if prev.URL != nil {
-			prevHost := prev.URL.Host
-			if !strings.EqualFold(req.URL.Host, prevHost) {
-				return fmt.Errorf("%w: %s -> %s", errRedirectDifferentHost, prevHost, req.URL.Host)
+			prevHost := hostNoDefaultPort(prev.URL.Host, prev.URL.Scheme)
+			nextHost := hostNoDefaultPort(req.URL.Host, req.URL.Scheme)
+
+			if !strings.EqualFold(nextHost, prevHost) {
+				return fmt.Errorf("%w: %s -> %s", errRedirectDifferentHost, prevHost, nextHost)
 			}
 
 			prevScheme := strings.ToLower(prev.URL.Scheme)
@@ -93,6 +96,23 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 	}
 
 	return nil
+}
+
+// hostNoDefaultPort strips default port numbers (443 for https, 80 for http)
+// from a host:port string. This allows same-host detection when a reverse proxy
+// such as NGINX strips the default port during a redirect (e.g. host:443 → host).
+func hostNoDefaultPort(host, scheme string) string {
+	h, port, err := net.SplitHostPort(host)
+	if err != nil {
+		// No port present — return as-is.
+		return host
+	}
+
+	if (port == "443" && scheme == "https") || (port == "80" && scheme == "http") {
+		return h
+	}
+
+	return host
 }
 
 // validateBaseURL checks that the baseURL is valid and returns an error if not.
@@ -125,6 +145,14 @@ func closeResponseBody(resp *http.Response) {
 	if resp == nil || resp.Body == nil {
 		return
 	}
+
+	// Drain any unread data before closing to allow HTTP keep-alive
+	// connection reuse. When readBodyWithLimit truncates at
+	// MaxResponseBodySize, the unconsumed tail prevents the Go HTTP
+	// transport from recycling the connection. A LimitReader bounds
+	// the drain to defend against a slow or malicious server.
+	//nolint:errcheck // drain is intentionally discarded for keep-alive
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, int64(MaxResponseBodySize)))
 
 	err := resp.Body.Close()
 	if err != nil {

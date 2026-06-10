@@ -1,12 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -15,33 +13,13 @@ import (
 	"searxng-mcp-go/internal/testhelper"
 )
 
-// readSampleResponse loads the sample SearXNG JSON response for benchmarks.
-func readSampleResponse(tb testing.TB) []byte {
-	tb.Helper()
-
-	data, err := os.ReadFile("testdata/sample_response.json")
-	if err != nil {
-		tb.Fatal(err)
-	}
-
-	return data
-}
-
 // loadSearchResponse loads a SearchResponse from a JSON fixture in testdata/.
 func loadSearchResponse(tb testing.TB, fixture string) *searxng.SearchResponse {
 	tb.Helper()
 
-	data, err := os.ReadFile("testdata/" + fixture) //nolint:gosec // test fixture, fixed path base
-	if err != nil {
-		tb.Fatal(err)
-	}
-
 	var resp searxng.SearchResponse
 
-	err = json.Unmarshal(data, &resp)
-	if err != nil {
-		tb.Fatal(err)
-	}
+	testhelper.LoadJSONFixture(tb, "testdata/"+fixture, &resp)
 
 	return &resp
 }
@@ -61,7 +39,7 @@ func BenchmarkFormatResults(b *testing.B) {
 }
 
 func BenchmarkSearch(b *testing.B) {
-	body := string(readSampleResponse(b))
+	body := string(testhelper.ReadFixture(b, "testdata/sample_response.json"))
 
 	cfg := &searxng.Config{
 		SearXNGURL: "http://127.0.0.1",

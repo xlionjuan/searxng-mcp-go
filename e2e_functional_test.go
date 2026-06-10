@@ -128,15 +128,17 @@ func TestMCPFunctional(t *testing.T) {
 					"limit":   3,
 				}, stderr, "all engines")
 
-				// Allow empty results — some engines may not return results
-				// for certain queries due to rate limiting or content gaps,
-				// but non-empty results must have valid titles.
+				if len(response.Results) == 0 {
+					warning := "engines=" + strconv.Quote(engine) + " results length = 0"
+					warnings.Add("%s", warning)
+					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
+				}
+
 				for i, result := range response.Results {
 					if strings.TrimSpace(result.Title) == "" {
 						t.Fatalf("engines=%q result[%d] title is empty\nresponse: %#v\nstderr:\n%s", engine, i, response, stderr.String())
 					}
 				}
-				t.Logf("engines=%q: got %d results", engine, len(response.Results))
 			})
 		}
 	})
