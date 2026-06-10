@@ -216,12 +216,16 @@ func logUnresponsiveEngines(resp *searxng.SearchResponse) {
 func formatResults(resp *searxng.SearchResponse) string {
 	logUnresponsiveEngines(resp)
 
+	// Build the header prefix that appears on every output path,
+	// including the early no-results return.
+	prefix := "=== Web Search Results ===\nWarning: " + searxng.ExternalContentWarning + "\n\n"
+
 	if resp == nil {
-		return noResultsFound
+		return prefix + noResultsFound
 	}
 
 	if len(resp.Results) == 0 && len(resp.Infoboxes) == 0 && len(resp.Answers) == 0 && len(resp.Suggestions) == 0 {
-		return noResultsFound
+		return prefix + noResultsFound
 	}
 
 	var buf strings.Builder
@@ -231,10 +235,7 @@ func formatResults(resp *searxng.SearchResponse) string {
 		buf.Grow(estimate)
 	}
 
-	buf.WriteString("=== Web Search Results ===\n")
-	buf.WriteString("Warning: ")
-	buf.WriteString(searxng.ExternalContentWarning)
-	buf.WriteString("\n\n")
+	buf.WriteString(prefix)
 
 	// Answers first (direct answers like IP, hash, timezone)
 	writeAnswers(&buf, resp.Answers)
@@ -246,14 +247,22 @@ func formatResults(resp *searxng.SearchResponse) string {
 	if len(resp.Results) > 0 {
 		buf.WriteString("=== Results ===\n\n")
 
+		nResults := len(resp.Results)
 		total := resp.NumberOfResults
 		if total == 0 {
-			total = len(resp.Results)
+			total = nResults
 		}
 
 		buf.WriteString("Found ")
-		buf.WriteString(strconv.Itoa(total))
-		buf.WriteString(" results for '")
+		if total > 0 && total != nResults {
+			buf.WriteString(strconv.Itoa(total))
+			buf.WriteString(" total (showing ")
+			buf.WriteString(strconv.Itoa(nResults))
+			buf.WriteString(") results for '")
+		} else {
+			buf.WriteString(strconv.Itoa(total))
+			buf.WriteString(" results for '")
+		}
 		buf.WriteString(sanitizeTerminalControl(searxng.UnescapeIfNeeded(resp.Query)))
 		buf.WriteString("':\n\n")
 

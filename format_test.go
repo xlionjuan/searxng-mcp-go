@@ -99,8 +99,9 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 func TestFormatResults_NilInput(t *testing.T) {
 	t.Parallel()
 
-	if got := formatResults(nil); got != noResultsFound {
-		t.Fatalf("formatResults(nil) = %q, want %q", got, "No results found.")
+	wantPrefix := "=== Web Search Results ===\nWarning: " + searxng.ExternalContentWarning + "\n\n"
+	if got := formatResults(nil); got != wantPrefix+noResultsFound {
+		t.Fatalf("formatResults(nil) = %q, want %q", got, wantPrefix+"No results found.")
 	}
 }
 
