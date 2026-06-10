@@ -1,12 +1,12 @@
 package searxng
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"searxng-mcp-go/internal/testhelper"
 )
 
 // --- DeduplicateAnswers tests migrated from root package ---
@@ -243,17 +243,8 @@ func TestTypedAnswerFixturesSurviveDeduplication(t *testing.T) {
 		t.Run(fixture, func(t *testing.T) {
 			t.Parallel()
 
-			body, err := os.ReadFile(filepath.Join("..", "..", "testdata", fixture)) //nolint:gosec // test reads fixture files
-			if err != nil {
-				t.Fatalf("ReadFile() error = %v", err)
-			}
-
 			var resp SearchResponse
-
-			err = json.Unmarshal(body, &resp)
-			if err != nil {
-				t.Fatalf("Unmarshal() error = %v", err)
-			}
+			testhelper.LoadJSONFixture(t, filepath.Join("..", "..", "testdata", fixture), &resp)
 
 			// Apply typed answer fallback (normally done in normalizeResponse).
 			for i := range resp.Answers {
