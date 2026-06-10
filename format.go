@@ -212,7 +212,7 @@ func logUnresponsiveEngines(resp *searxng.SearchResponse) {
 
 // formatResults formats search results as a readable string.
 //
-//nolint:gocyclo // category-conditional formatting; a dispatch table would add indirection for simple branching
+//nolint:gocognit,gocyclo,cyclop // formatResults has conditional sections for answers/infoboxes/results/suggestions
 func formatResults(resp *searxng.SearchResponse) string {
 	logUnresponsiveEngines(resp)
 
@@ -249,11 +249,13 @@ func formatResults(resp *searxng.SearchResponse) string {
 
 		nResults := len(resp.Results)
 		total := resp.NumberOfResults
+
 		if total == 0 {
 			total = nResults
 		}
 
 		buf.WriteString("Found ")
+
 		if total > 0 && total != nResults {
 			buf.WriteString(strconv.Itoa(total))
 			buf.WriteString(" total (showing ")
@@ -263,6 +265,7 @@ func formatResults(resp *searxng.SearchResponse) string {
 			buf.WriteString(strconv.Itoa(total))
 			buf.WriteString(" results for '")
 		}
+
 		buf.WriteString(sanitizeTerminalControl(searxng.UnescapeIfNeeded(resp.Query)))
 		buf.WriteString("':\n\n")
 
