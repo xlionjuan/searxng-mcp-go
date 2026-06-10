@@ -95,7 +95,7 @@ AGENTS.md) cover project overview, domain context, and agent instructions.
 - Exceptions are owner-approved and documented. Known limitations of the CI
   SearXNG instance — for example, the `files` category being excluded from
   `TestMCPFunctional`'s category loop, or the `time_range=""` subtest
-  (named `"all"` at `e2e_functional_test.go:99`) downgrading zero-result
+  (named `"all"` in `TestMCPFunctional`'s `"all time ranges"` subtest) downgrading zero-result
   outcomes to a `WARNING SUMMARY` entry — must not be broadened without
   approval. The `time_range="day"`, `"month"`, and `"year"` subtests are
   expected to potentially return zero results and log the outcome as
