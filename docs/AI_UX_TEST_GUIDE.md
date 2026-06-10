@@ -38,17 +38,20 @@ The MCP server runs in stdio mode, meaning all communication happens via JSON-RP
 
 2. **Isolated testing** (direct JSON-RPC):
 
-   > **Note:** The following `echo |` commands are illustrative pseudo-flow showing the JSON-RPC message sequence. They are not directly executable — the MCP protocol requires a persistent bidirectional session (e.g., via MCP Inspector or a test harness that keeps stdin open).
+   > **Note:** The following JSON-RPC message sequences use arrow notation (→/←) to show the bidirectional conversation. They are not directly executable shell commands — the MCP protocol requires a persistent bidirectional session (e.g., via MCP Inspector or a test harness that keeps stdin open).
 
    ```bash
    # Initialize
-   echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | ./searxng-mcp-go
-   
+   → {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}
+   ← {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{...}}}
+
    # Call tools/list
-   echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | ./searxng-mcp-go
-   
+   → {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+   ← {"jsonrpc":"2.0","id":2,"result":{"tools":[...]}}
+
    # Call tools/call (search)
-   echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search","arguments":{"query":"test","language":"en","safesearch":0,"time_range":"","categories":"","engines":"","pageno":1}}}' | ./searxng-mcp-go
+   → {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search","arguments":{"query":"test","language":"en","safesearch":0,"time_range":"","categories":"","engines":"","pageno":1}}}
+   ← {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"..."}]}}
    ```
 
 ---
@@ -74,8 +77,7 @@ The MCP server runs in stdio mode, meaning all communication happens via JSON-RP
 ```bash
 # Pass only query (test required field correctness)
 # (Pseudo-flow — see note above on bidirectional session requirement)
-echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search","arguments":{"query":"Golang MCP server"}}}' | ./searxng-mcp-go
-
+→ {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search","arguments":{"query":"Golang MCP server"}}}
 # Expected: success (only query is required)
 # Pitfall: if required is incorrectly declared, a validation error will be returned
 ```
@@ -227,12 +229,12 @@ In addition to quantitative scores, please also note the following:
 
 ### Quick Verification Commands
 
-> **Note:** The `echo |` examples below are pseudo-flow for illustration. Use MCP Inspector or a bidirectional test harness for actual testing.
+> **Note:** The →/← examples below are pseudo-flow for illustration. Use MCP Inspector or a bidirectional test harness for actual testing.
 
 ```bash
 # Verify required fields bug (if passing only query fails = bug)
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search","arguments":{"query":"test"}}}' | ./searxng-mcp-go
+→ {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search","arguments":{"query":"test"}}}
 
 # List all tools and format output
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | ./searxng-mcp-go | jq '.result.tools[0].inputSchema'
+→ {"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}
 ```

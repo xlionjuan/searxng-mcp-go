@@ -11,7 +11,7 @@ SearXNG's JSON response includes an `unresponsive_engines` field listing engines
 
 **Expose `unresponsive_engines` in the response, but only when debug mode is enabled.**
 
-In normal output (CLI and MCP), the field is omitted. When `--debug` or `DEBUG=1` is set, the field is included in JSON output and logged in CLI output.
+In normal output (CLI and MCP), the field is omitted. When `--debug` or `DEBUG=1` is set, the field is included in JSON output and logged at debug level in CLI stderr output.
 
 ## Rationale
 
@@ -24,5 +24,5 @@ In normal output (CLI and MCP), the field is omitted. When `--debug` or `DEBUG=1
 
 - `SearchResponse` gains an `UnresponsiveEngines` field with `json:",omitempty"` tag.
 - Search response normalization and output formatting conditionally include/exclude the field based on debug mode.
-- CLI debug output logs unresponsive engines.
+- CLI debug output logs unresponsive engines at slog.Debug level (visible only with `--debug` or `DEBUG=1`).
 - MCP JSON output includes the field only when debug is active.

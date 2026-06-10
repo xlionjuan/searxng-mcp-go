@@ -50,8 +50,8 @@ the same function to emulate browser-like headers and pass the limiter filters.
 | `Accept` | `text/html,...` | Satisfies `http_accept` (must contain `text/html`) |
 | `Accept-Language` | `en-US,en;q=0.9` | Satisfies `http_accept_language` (must be non-empty) |
 | `Sec-Fetch-Mode` | `navigate` | Satisfies `http_sec_fetch` (the only Sec-Fetch header the vendored source actually enforces) |
-| `Sec-Fetch-Dest` | `document` | Would satisfy `http_sec_fetch` if the vendored source returned the redirect; today the branch is dead code, so this is sent defensively against future fixes |
-| `Sec-Fetch-Site` | `none` | Would satisfy `http_sec_fetch` if the vendored source returned the redirect; today the branch is dead code, so this is sent defensively against future fixes |
+| `Sec-Fetch-Dest` | `document` | Fetch metadata header that would satisfy `http_sec_fetch` if the vendored source returned the redirect; today the branch is dead code, so this is sent defensively against future fixes |
+| `Sec-Fetch-Site` | `none` | Fetch metadata header that would satisfy `http_sec_fetch` if the vendored source returned the redirect; today the branch is dead code, so this is sent defensively against future fixes |
 | `Sec-Fetch-User` | `?1` | Camouflage; not validated by any current limiter filter |
 | `Sec-Ch-Ua` | Chrome 147 brand list | Camouflage; not validated by any current limiter filter |
 | `Sec-Ch-Ua-Mobile` | `?0` | Camouflage; not validated by any current limiter filter |
