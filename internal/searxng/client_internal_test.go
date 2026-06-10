@@ -384,6 +384,78 @@ func TestEnforceSearchRedirectPolicy(t *testing.T) {
 			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for https -> https same host", err)
 		}
 	})
+
+	// --- Default port stripping tests (issue #242) ---
+
+	t.Run("allow :443 to no-port (same host, default port stripped)", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "https://search.example.com/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://search.example.com:443/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for :443 → no-port redirect", err)
+		}
+	})
+
+	t.Run("allow no-port to :443 (same host, default port added)", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "https://search.example.com:443/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://search.example.com/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for no-port → :443 redirect", err)
+		}
+	})
+
+	t.Run("allow :80 to no-port (same host, default port stripped)", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "http://search.example.com/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "http://search.example.com:80/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for :80 → no-port redirect", err)
+		}
+	})
+
+	t.Run("allow no-port to :80 (same host, default port added)", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "http://search.example.com:80/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "http://search.example.com/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for no-port → :80 redirect", err)
+		}
+	})
+
+	t.Run("non-default port is still considered different from no-port", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "https://search.example.com/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://search.example.com:8080/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err == nil {
+			t.Fatal("enforceSearchRedirectPolicy() = nil, want error for :8080 → no-port redirect")
+		}
+	})
 }
 
 func mustParseURL(t *testing.T, raw string) *url.URL {
