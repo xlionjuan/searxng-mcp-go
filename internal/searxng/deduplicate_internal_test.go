@@ -257,7 +257,7 @@ func TestTypedAnswerFixturesSurviveDeduplication(t *testing.T) {
 
 			// Apply typed answer fallback (normally done in normalizeResponse).
 			for i := range resp.Answers {
-				ensureAnswerFallback(&resp.Answers[i])
+				EnsureAnswerFallback(&resp.Answers[i])
 			}
 
 			got := deduplicateAnswers(resp.Answers, []Infobox{{Infobox: "Other", Content: "unrelated"}})

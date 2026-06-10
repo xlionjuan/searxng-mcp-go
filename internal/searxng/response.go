@@ -190,9 +190,9 @@ func decodeSearchResponse(resp *http.Response, contentType string, body []byte) 
 
 const maxWeatherSummaryParts = 3
 
-// ensureAnswerFallback derives a human-readable Answer string for known typed
+// EnsureAnswerFallback derives a human-readable Answer string for known typed
 // answers (translation, weather) that may omit the legacy "answer" field.
-func ensureAnswerFallback(a *Answer) {
+func EnsureAnswerFallback(a *Answer) {
 	if strings.TrimSpace(a.Answer) != "" {
 		return
 	}
@@ -287,7 +287,7 @@ func (s *SearXNGSearcher) normalizeResponse(result *SearchResponse, args *Search
 	// Derive display text for typed answers (translation, weather) that may
 	// omit the legacy "answer" string.
 	for i := range result.Answers {
-		ensureAnswerFallback(&result.Answers[i])
+		EnsureAnswerFallback(&result.Answers[i])
 	}
 
 	result.Answers = deduplicateAnswers(result.Answers, result.Infoboxes)

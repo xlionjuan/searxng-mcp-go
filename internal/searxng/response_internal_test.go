@@ -639,7 +639,7 @@ func TestWeatherAnswerFallback(t *testing.T) {
 	})
 }
 
-// --- ensureAnswerFallback tests ---
+// --- EnsureAnswerFallback tests ---
 
 func TestEnsureAnswerFallback(t *testing.T) {
 	t.Parallel()
@@ -648,7 +648,7 @@ func TestEnsureAnswerFallback(t *testing.T) {
 		t.Parallel()
 
 		a := &Answer{Answer: "existing answer"}
-		ensureAnswerFallback(a)
+		EnsureAnswerFallback(a)
 
 		if a.Answer != "existing answer" {
 			t.Fatalf("Answer = %q, want %q", a.Answer, "existing answer")
@@ -661,7 +661,7 @@ func TestEnsureAnswerFallback(t *testing.T) {
 		a := &Answer{
 			Translations: []TranslationItem{{Text: "bonjour"}},
 		}
-		ensureAnswerFallback(a)
+		EnsureAnswerFallback(a)
 
 		if a.Answer != "Translation: bonjour" {
 			t.Fatalf("Answer = %q, want %q", a.Answer, "Translation: bonjour")
@@ -678,7 +678,7 @@ func TestEnsureAnswerFallback(t *testing.T) {
 				Condition:   "clear",
 			},
 		}
-		ensureAnswerFallback(a)
+		EnsureAnswerFallback(a)
 
 		want := "Weather: Paris, 15 °C, clear"
 		if a.Answer != want {
@@ -690,7 +690,7 @@ func TestEnsureAnswerFallback(t *testing.T) {
 		t.Parallel()
 
 		a := &Answer{}
-		ensureAnswerFallback(a)
+		EnsureAnswerFallback(a)
 
 		if a.Answer != "" {
 			t.Fatalf("Answer = %q, want empty", a.Answer)
