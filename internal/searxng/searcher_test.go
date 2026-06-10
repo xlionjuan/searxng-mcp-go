@@ -218,7 +218,7 @@ func TestSearchResponseMarshalJSON(t *testing.T) {
 		}
 	})
 
-	t.Run("Debug true includes empty unresponsive_engines", func(t *testing.T) {
+	t.Run("Debug true includes null unresponsive_engines", func(t *testing.T) {
 		t.Parallel()
 
 		body, err := json.Marshal(SearchResponse{Debug: true})

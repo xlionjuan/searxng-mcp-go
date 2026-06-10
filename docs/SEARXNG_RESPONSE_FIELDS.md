@@ -206,17 +206,17 @@ Supporting types:
 
 ```go
 type WeatherLocation struct {
-	Name        string  `json:"name"`
-	Latitude    float64 `json:"latitude,omitempty"`
-	Longitude   float64 `json:"longitude,omitempty"`
-	Elevation   float64 `json:"elevation,omitempty"`
-	CountryCode string  `json:"country_code,omitempty"`
-	Timezone    string  `json:"timezone,omitempty"`
+    Name        string  `json:"name"`
+    Latitude    float64 `json:"latitude,omitempty"`
+    Longitude   float64 `json:"longitude,omitempty"`
+    Elevation   float64 `json:"elevation,omitempty"`
+    CountryCode string  `json:"country_code,omitempty"`
+    Timezone    string  `json:"timezone,omitempty"`
 }
 
 type WeatherMeasure struct {
-	Val  float64 `json:"val"`
-	Unit string  `json:"unit,omitempty"`
+    Val  float64 `json:"val"`
+    Unit string  `json:"unit,omitempty"`
 }
 ```
 
