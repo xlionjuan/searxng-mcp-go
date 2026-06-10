@@ -155,7 +155,7 @@ func TestValidateSearchArgs(t *testing.T) {
 // in place, which was a data-race hazard for callers that share the struct
 // across goroutines.
 //
-//nolint:gocognit // subtests cover each normalization/validation branch explicitly
+//nolint:gocognit,gocyclo,cyclop // subtests cover each normalization/validation branch explicitly
 func TestValidateLanguagePure(t *testing.T) {
 	t.Parallel()
 
@@ -208,6 +208,32 @@ func TestValidateLanguagePure(t *testing.T) {
 
 		if got != "en-US" {
 			t.Fatalf("validateLanguage(\"en-US\") = %q, want %q", got, "en-US")
+		}
+	})
+
+	t.Run("grandfathered i-klingon accepted", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := validateLanguage("i-klingon")
+		if err != nil {
+			t.Fatalf("validateLanguage(\"i-klingon\") error = %v, want nil", err)
+		}
+
+		if got != "i-klingon" {
+			t.Fatalf("validateLanguage(\"i-klingon\") = %q, want %q", got, "i-klingon")
+		}
+	})
+
+	t.Run("private-use x-private accepted", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := validateLanguage("x-private")
+		if err != nil {
+			t.Fatalf("validateLanguage(\"x-private\") error = %v, want nil", err)
+		}
+
+		if got != "x-private" {
+			t.Fatalf("validateLanguage(\"x-private\") = %q, want %q", got, "x-private")
 		}
 	})
 
