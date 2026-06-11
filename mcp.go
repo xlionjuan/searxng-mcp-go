@@ -223,6 +223,16 @@ func NewSearchToolHandler(searcher searcher) func(
 		if err != nil {
 			slog.Error("search failed", "error", err)
 
+			var searxngErr *searxng.SearXNGError
+			if errors.As(err, &searxngErr) {
+				return &mcp.CallToolResult{
+					Content: []mcp.Content{
+						&mcp.TextContent{Text: "Search error: " + searxngErr.Error()},
+					},
+					IsError: true,
+				}, nil, nil
+			}
+
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Search error: request failed"},
