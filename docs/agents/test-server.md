@@ -87,7 +87,7 @@ Use the same setup and lifecycle as the regular E2E tests: run
   `searxng-server-test/`.
 - Do not use `searx/limiter.toml` from the production template. The generated
   test settings use `limiter: false`.
-- The repo default settings have `valkey.url: false`; do not use
+- The repo's default settings have `valkey.url: false`; do not use
   `utils/templates/etc/searxng/settings.yml`, which enables valkey.
 - When testing with granian, pass `--interface wsgi`.
 - Never run `01-start-fg.sh` from agents or CI. It blocks the calling shell

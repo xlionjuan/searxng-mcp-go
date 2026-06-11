@@ -95,9 +95,10 @@ AGENTS.md) cover project overview, domain context, and agent instructions.
 - Exceptions are owner-approved and documented. Known limitations of the CI
   SearXNG instance — for example, the `files` category being excluded from
   `TestMCPFunctional`'s category loop, or the `time_range=""` subtest
-  (named `"all"` in `TestMCPFunctional`'s `"all time ranges"` subtest) downgrading zero-result
-  outcomes to a `WARNING SUMMARY` entry — must not be broadened without
-  approval. The `time_range="day"`, `"month"`, and `"year"` subtests are
+  downgrading zero-result outcomes to a `WARNING SUMMARY` entry — must not be
+  broadened without approval. (The `time_range=""` subtest is named `"all"` in
+  `TestMCPFunctional`'s `"all time ranges"` subtest.) The `time_range="day"`,
+  `"month"`, and `"year"` subtests are
   expected to potentially return zero results and log the outcome as
   `(persistent, expected)`; they are not downgraded to warnings and are
   not part of the exception list.
@@ -165,7 +166,7 @@ exception live in `docs/MCP_TESTING.md`; do not duplicate them here.
 ## GitHub and PR Work
 
 - GitHub API operations must use `gh` CLI via terminal. Do not use browser tools
-  for GitHub, including Actions, PRs, and issues.
+  for GitHub operations such as Actions, PRs, and issues.
 - PR title and body must be in English even if the user originally discussed the
   change in another language. PR comments and review replies are exempt.
 - PR agents must create requested pull requests with `gh pr create` or update
@@ -180,8 +181,8 @@ exception live in `docs/MCP_TESTING.md`; do not duplicate them here.
   run, linked issues, and known limitations or follow-up work. Automatically
   appended agent session cards, social-card HTML/images, and GitHub Actions run
   links are allowed, but they must not replace the durable review record. Do not
-  include `/pull/new/...` links, duplicated closing keywords, or pasted chat
-  transcripts.
+  include `/pull/new/...` links, duplicated closing keywords, multiple issues
+  combined under a single closing keyword, or pasted chat transcripts.
 - See `docs/agents/pull-requests.md` for the full PR checklist.
 - When reviewing an existing PR whose CI is already green, do not re-run the
   local test suite; read CI status with `gh pr checks` / `gh run view` first.

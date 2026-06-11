@@ -272,7 +272,7 @@ template:
 Closes #...
 ```
 
-Keep the body focused on durable review context. Automatically appended agent
+Keep the body focused on durable review context. Automatically-appended agent
 session cards, social-card images, HTML embeds, links to transient agent
 sessions, and GitHub Actions run links are allowed, but they are supplemental
 metadata and must not replace the normal summary, documentation, tests, issue
@@ -299,7 +299,7 @@ Before running `gh pr create` or `gh pr edit`, verify:
   change rather than the agent workflow
 - The body is English and contains summary, documentation impact, tests, linked
   issues, and risks or follow-up
-- The body has no `/pull/new/` URL, duplicated closing keyword, or branch-only
+- The body has no `/pull/new/` URL, duplicated closing keywords, or branch-only
   handoff language
 - Any non-English user instructions have been translated or summarized in
   English rather than copied verbatim

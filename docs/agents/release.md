@@ -33,7 +33,7 @@ injects automatically and that do **not** need to be configured under
   passes it to GoReleaser
   (`.github/workflows/release.yml` "Run GoReleaser" step) so GoReleaser
   can create the GitHub Release. The `permissions: contents: write`
-  declaration at the top of the workflow grants the scopes this token
+  declaration at the top of the workflow grants the scopes that this token
   receives; no additional setup is required.
 - `GPG_FINGERPRINT` — not a secret. The "Import GPG Key" step derives
   the fingerprint from `GPG_PRIVATE_KEY` at runtime and appends it to
