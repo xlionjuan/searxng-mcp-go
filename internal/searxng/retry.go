@@ -12,7 +12,7 @@ import (
 type Outcome int
 
 const (
-	// OutcomeSuccess indicates a successful response with results.
+	// OutcomeSuccess indicates a successful response, including empty results on the final attempt.
 	OutcomeSuccess Outcome = iota
 	// OutcomeRetry indicates a transient error or retryable HTTP status.
 	OutcomeRetry
