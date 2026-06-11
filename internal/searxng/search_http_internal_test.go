@@ -131,6 +131,7 @@ func TestSearch_SuccessWithResults(t *testing.T) {
 	})
 }
 
+//nolint:gocognit // subtests cover distinct retry, exhaustion, and cancellation branches
 func TestSearch_RetryOnError(t *testing.T) {
 	t.Parallel()
 
@@ -206,6 +207,26 @@ func TestSearch_RetryOnError(t *testing.T) {
 
 		if callCount != 1 {
 			t.Fatalf("callCount = %d, want 1 (first attempt stops when context is canceled)", callCount)
+		}
+	})
+
+	t.Run("canceled context with successful response surfaces context.Canceled", func(t *testing.T) {
+		t.Parallel()
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			return makeJSONResponse(makeSearchResponseJSON(1)), nil
+		}), 0)
+
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel() // Pre-cancel: searchCtx.Err() is non-nil when classifyAttempt runs
+
+		_, err := s.Search(ctx, &SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("Search() error = nil, want context.Canceled in chain")
+		}
+
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("Search() error chain missing context.Canceled: %v", err)
 		}
 	})
 }

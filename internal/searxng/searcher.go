@@ -159,6 +159,8 @@ func (s *SearXNGSearcher) Close() error {
 // Search executes the search query against SearXNG with retry support.
 // Returns SearXNGError wrapping the last error if all retries are exhausted.
 // Returns ValidationError if args are invalid.
+//
+//nolint:gocognit,gocyclo // orchestrates distinct concerns; extracting adds indirection
 func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	err := ValidateSearchArgs(args)
 	if err != nil {
@@ -194,10 +196,15 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 		shouldRetry, delay := s.retryStrategy.ShouldRetry(searchCtx, attempt, ar.outcome)
 
 		if !shouldRetry {
-			switch {
-			case trackErr != nil:
+			if trackErr == nil && searchCtx.Err() != nil {
+				trackErr = searchCtx.Err()
+			}
+
+			if trackErr != nil {
 				lastErr = trackErr
-			case resp != nil && resp.StatusCode != http.StatusOK:
+
+				closeResponseBody(resp)
+			} else if resp != nil && resp.StatusCode != http.StatusOK {
 				_, finishErr := s.finishResponse(resp, args)
 
 				return nil, finishErr
