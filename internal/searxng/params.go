@@ -51,6 +51,8 @@ type ParamDef struct {
 	Required bool
 
 	// Schema is the pre-computed JSON Schema property for this parameter.
+	// Do not mutate; populated once by init() and shared across consumers.
+	// See docs/adr/013-paramdef-data-form.md.
 	Schema map[string]any
 }
 
@@ -180,7 +182,7 @@ func buildParamSchema(p ParamDef) map[string]any {
 	return prop
 }
 
-//nolint:gochecknoinits // pre-computes ParamDef schemas at package init time
+//nolint:gochecknoinits // ADR-013: deterministic startup cost, no nil-check on hot path
 func init() {
 	for i := range SearchParams {
 		SearchParams[i].Schema = buildParamSchema(SearchParams[i])
