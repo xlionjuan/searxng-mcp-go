@@ -18,7 +18,7 @@ var (
 	errRequestCreateFailed = errors.New("failed to create request")
 	errSearchRequestFailed = errors.New("failed to execute search request")
 	errErrorBodyTooLarge   = errors.New("error response body exceeded maximum size limit")
-	errEmptyResponse       = errors.New("empty response from SearXNG")
+	errSearchEmptyResults  = errors.New("search returned empty results after all retries")
 	errGETFallbackUsed     = errors.New(
 		"GET fallback was used; search query parameters may have been sent in the request URL")
 	errNilFinishResponse = errors.New("finishResponse: nil http.Response")
@@ -159,8 +159,6 @@ func (s *SearXNGSearcher) Close() error {
 // Search executes the search query against SearXNG with retry support.
 // Returns SearXNGError wrapping the last error if all retries are exhausted.
 // Returns ValidationError if args are invalid.
-//
-//nolint:gocognit,cyclop,gocyclo // orchestrates distinct concerns; extracting adds indirection
 func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	err := ValidateSearchArgs(args)
 	if err != nil {
@@ -168,17 +166,8 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 	}
 
 	// Tie search lifecycle to searcher close
-	searchCtx, searchCancel := context.WithCancel(ctx)
+	searchCtx, searchCancel := s.searchContext(ctx)
 	defer searchCancel()
-
-	// When searcher is closed (Close() called), cancel this search
-	go func() {
-		select {
-		case <-s.done:
-			searchCancel()
-		case <-searchCtx.Done():
-		}
-	}()
 
 	var lastErr error
 
@@ -187,83 +176,125 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		resp, _, err := s.doSearchAttempt(searchCtx, args)
 
-		shouldRetry, delay := s.retryStrategy.ShouldRetry(searchCtx, attempt, resp, err)
-
-		if shouldRetry {
-			// Retry with backoff
-			s.logDebugRetry(attempt, maxRetries+1, delay, err)
-			lastErr = err
-
-			if resp != nil {
-				closeResponseBody(resp)
-			}
-
-			if s.TestOnlyBeforeRetryWait != nil {
-				s.TestOnlyBeforeRetryWait()
-			}
-
-			waitErr := retryWait(searchCtx, delay)
-			if waitErr != nil {
-				lastErr = waitErr
-
-				break
-			}
-
-			continue
+		ar, classifyErr := s.classifyAttempt(searchCtx, attempt, maxRetries, resp, err, args)
+		if classifyErr != nil {
+			return nil, classifyErr
 		}
 
-		// No more retries — handle final result
-		if err != nil {
-			lastErr = err
+		if ar.outcome == OutcomeSuccess {
+			return ar.result, nil
+		}
+
+		// Determine the error to track for this attempt
+		trackErr := err
+		if trackErr == nil && ar.outcome == OutcomeEmptyRetry {
+			trackErr = errSearchEmptyResults
+		}
+
+		shouldRetry, delay := s.retryStrategy.ShouldRetry(searchCtx, attempt, ar.outcome)
+
+		if !shouldRetry {
+			switch {
+			case trackErr != nil:
+				lastErr = trackErr
+			case resp != nil && resp.StatusCode != http.StatusOK:
+				_, finishErr := s.finishResponse(resp, args)
+
+				return nil, finishErr
+			}
 
 			break
 		}
 
-		result, finishErr := s.finishResponse(resp, args)
-		if finishErr != nil {
-			return nil, finishErr
+		// Track last error for final wrapping
+		lastErr = trackErr
+
+		s.logDebugRetry(attempt, maxRetries+1, delay, lastErr)
+
+		closeResponseBody(resp)
+
+		if s.TestOnlyBeforeRetryWait != nil {
+			s.TestOnlyBeforeRetryWait()
 		}
 
-		// Retry empty responses if retries remain
-		if attempt < maxRetries && s.isEmptyResponse(result) {
-			shouldRetry, delay = s.retryStrategy.ShouldRetry(searchCtx, attempt, resp, errEmptyResponse)
-			if shouldRetry {
-				s.logDebugRetry(attempt, maxRetries+1, delay, nil)
+		waitErr := retryWait(searchCtx, delay)
+		if waitErr != nil {
+			lastErr = waitErr
 
-				lastErr = errEmptyResponse
-
-				if s.TestOnlyBeforeRetryWait != nil {
-					s.TestOnlyBeforeRetryWait()
-				}
-
-				waitErr := retryWait(searchCtx, delay)
-				if waitErr != nil {
-					lastErr = waitErr
-
-					break
-				}
-
-				continue
-			}
+			break
 		}
-
-		return result, nil
 	}
 
-	if lastErr != nil {
-		// If lastErr is already a *SearXNGError (e.g. from a GET fallback failure
-		// that preserves the original 405/501 status), avoid double-wrapping it
-		// with NewSearXNGError(0, ...) which would hide the real status code.
-		var se *SearXNGError
-		if errors.As(lastErr, &se) {
-			return nil, fmt.Errorf("%w: %w", errSearchRequestFailed, lastErr)
-		}
+	return nil, wrapSearchError(lastErr)
+}
 
-		return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, lastErr))
+// searchContext creates a context tied to the searcher lifecycle.
+// The returned context is canceled when the searcher is closed.
+func (s *SearXNGSearcher) searchContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	searchCtx, cancel := context.WithCancel(ctx)
+
+	go func() {
+		select {
+		case <-s.done:
+			cancel()
+		case <-searchCtx.Done():
+		}
+	}()
+
+	return searchCtx, cancel
+}
+
+// wrapSearchError wraps the last error for the Search return value.
+// Preserves SearXNGError unwrapping to avoid hiding the real status code.
+// Returns the fallback error for the "should never reach here" case when err is nil.
+func wrapSearchError(err error) error {
+	var se *SearXNGError
+	if errors.As(err, &se) {
+		return fmt.Errorf("%w: %w", errSearchRequestFailed, err)
+	}
+
+	if err != nil {
+		return NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, err))
 	}
 
 	// Should never reach here
-	return nil, NewSearXNGError(0, "", "", errSearchRequestFailed)
+	return NewSearXNGError(0, "", "", errSearchRequestFailed)
+}
+
+// attemptResult holds the result of classifying a single search attempt.
+type attemptResult struct {
+	outcome Outcome
+	result  *SearchResponse
+}
+
+// classifyAttempt processes the response from a single search attempt and
+// determines its Outcome. Returns an error only if finishResponse itself
+// fails (parse error, non-retryable HTTP status). For all other cases, it
+// returns an attemptResult whose Outcome guides the retry decision.
+func (s *SearXNGSearcher) classifyAttempt(
+	ctx context.Context,
+	attempt, maxRetries int,
+	resp *http.Response,
+	err error,
+	args *SearchArgs,
+) (*attemptResult, error) {
+	if err != nil {
+		return &attemptResult{outcome: classifyOutcome(ctx, attempt, maxRetries, resp, err, false)}, nil
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return &attemptResult{outcome: classifyOutcome(ctx, attempt, maxRetries, resp, nil, false)}, nil
+	}
+
+	result, finishErr := s.finishResponse(resp, args)
+	if finishErr != nil {
+		return nil, finishErr
+	}
+
+	isEmpty := s.isEmptyResponse(result)
+	outcome := classifyOutcome(ctx, attempt, maxRetries, resp, nil, isEmpty)
+
+	return &attemptResult{outcome: outcome, result: result}, nil
 }
 
 // finishResponse handles non-OK status, JSON parsing, and body closure for a response.

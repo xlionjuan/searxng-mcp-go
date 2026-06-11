@@ -13,41 +13,105 @@ var (
 	errRetryTestRequestCreationFailure = errors.New("request creation failed")
 )
 
-func TestRetryableError(t *testing.T) {
+func TestClassifyOutcome(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	if !isRetryableError(ctx, errRetryTestConnectionReset) {
-		t.Fatal("plain network error should be retryable")
-	}
+	t.Run("canceled context returns OutcomeAbort", func(t *testing.T) {
+		t.Parallel()
 
-	if isRetryableError(ctx, NewSearXNGError(0, "", "", errRetryTestRequestCreationFailure)) {
-		t.Fatal("SearXNGError should not be retryable")
-	}
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
 
-	canceledCtx, cancel := context.WithCancel(t.Context())
-	cancel()
+		outcome := classifyOutcome(ctx, 0, 2, nil, errRetryTestConnectionReset, false)
 
-	if isRetryableError(canceledCtx, errRetryTestConnectionReset) {
-		t.Fatal("errors should not be retryable after context cancellation")
-	}
-}
+		if outcome != OutcomeAbort {
+			t.Fatalf("classifyOutcome() = %v, want OutcomeAbort", outcome)
+		}
+	})
 
-func TestShouldRetryHonorsCanceledContext(t *testing.T) {
-	t.Parallel()
+	t.Run("SearXNGError returns OutcomeAbort", func(t *testing.T) {
+		t.Parallel()
 
-	strategy := newExponentialBackoffStrategy(1, time.Millisecond, time.Millisecond)
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
+		ctx := t.Context()
+		err := NewSearXNGError(0, "", "", errRetryTestRequestCreationFailure)
+		outcome := classifyOutcome(ctx, 0, 2, nil, err, false)
 
-	shouldRetry, delay := strategy.ShouldRetry(ctx, 0, nil, errRetryTestConnectionReset)
-	if shouldRetry {
-		t.Fatalf("ShouldRetry() shouldRetry = true, want false")
-	}
+		if outcome != OutcomeAbort {
+			t.Fatalf("classifyOutcome() = %v, want OutcomeAbort", outcome)
+		}
+	})
 
-	if delay != 0 {
-		t.Fatalf("ShouldRetry() delay = %v, want 0", delay)
-	}
+	t.Run("plain error returns OutcomeRetry", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		outcome := classifyOutcome(ctx, 0, 2, nil, errRetryTestConnectionReset, false)
+
+		if outcome != OutcomeRetry {
+			t.Fatalf("classifyOutcome() = %v, want OutcomeRetry", outcome)
+		}
+	})
+
+	t.Run("retryable status code returns OutcomeRetry", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		resp := &http.Response{StatusCode: http.StatusTooManyRequests}
+		outcome := classifyOutcome(ctx, 0, 2, resp, nil, false)
+
+		if outcome != OutcomeRetry {
+			t.Fatalf("classifyOutcome() = %v, want OutcomeRetry for 429", outcome)
+		}
+	})
+
+	t.Run("non-retryable status code returns OutcomeAbort", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		resp := &http.Response{StatusCode: http.StatusNotFound}
+		outcome := classifyOutcome(ctx, 0, 2, resp, nil, false)
+
+		if outcome != OutcomeAbort {
+			t.Fatalf("classifyOutcome() = %v, want OutcomeAbort for 404", outcome)
+		}
+	})
+
+	t.Run("empty with retries remaining returns OutcomeEmptyRetry", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		resp := &http.Response{StatusCode: http.StatusOK}
+		outcome := classifyOutcome(ctx, 0, 2, resp, nil, true)
+
+		if outcome != OutcomeEmptyRetry {
+			t.Fatalf("classifyOutcome() = %v, want OutcomeEmptyRetry for empty response with retries", outcome)
+		}
+	})
+
+	t.Run("empty on last attempt returns OutcomeSuccess", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		resp := &http.Response{StatusCode: http.StatusOK}
+		// attempt == maxRetries means no retries left
+		outcome := classifyOutcome(ctx, 2, 2, resp, nil, true)
+
+		if outcome != OutcomeSuccess {
+			t.Fatalf("classifyOutcome() = %v, want OutcomeSuccess for empty on last attempt", outcome)
+		}
+	})
+
+	t.Run("successful response returns OutcomeSuccess", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		resp := &http.Response{StatusCode: http.StatusOK}
+		outcome := classifyOutcome(ctx, 0, 2, resp, nil, false)
+
+		if outcome != OutcomeSuccess {
+			t.Fatalf("classifyOutcome() = %v, want OutcomeSuccess", outcome)
+		}
+	})
 }
 
 func TestNewExponentialBackoffStrategy(t *testing.T) {
@@ -77,7 +141,7 @@ func TestShouldRetry_AttemptLimit(t *testing.T) {
 		ctx := t.Context()
 
 		// attempt=2 means we've already used up both retries (attempt 0 and 1)
-		shouldRetry, _ := strategy.ShouldRetry(ctx, 2, nil, errRetryTestConnectionReset)
+		shouldRetry, _ := strategy.ShouldRetry(ctx, 2, OutcomeRetry)
 		if shouldRetry {
 			t.Fatal("ShouldRetry() = true, want false when attempt >= maxRetries")
 		}
@@ -89,7 +153,7 @@ func TestShouldRetry_AttemptLimit(t *testing.T) {
 		strategy := newExponentialBackoffStrategy(2, time.Millisecond, time.Millisecond)
 		ctx := t.Context()
 
-		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, nil, errRetryTestConnectionReset)
+		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, OutcomeRetry)
 		if !shouldRetry {
 			t.Fatal("ShouldRetry() = false, want true when within max retries")
 		}
@@ -101,7 +165,7 @@ func TestShouldRetry_AttemptLimit(t *testing.T) {
 		strategy := newExponentialBackoffStrategy(2, time.Millisecond, time.Millisecond)
 		ctx := t.Context()
 
-		shouldRetry, _ := strategy.ShouldRetry(ctx, 2, nil, errRetryTestConnectionReset)
+		shouldRetry, _ := strategy.ShouldRetry(ctx, 2, OutcomeRetry)
 		if shouldRetry {
 			t.Fatal("ShouldRetry() = true, want false when attempt == maxRetries (attempt is 0-indexed)")
 		}
@@ -111,29 +175,27 @@ func TestShouldRetry_AttemptLimit(t *testing.T) {
 func TestShouldRetry_ErrorTypes(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil error and nil response does not retry", func(t *testing.T) {
+	t.Run("OutcomeSuccess does not retry", func(t *testing.T) {
 		t.Parallel()
 
 		strategy := newExponentialBackoffStrategy(2, time.Millisecond, time.Millisecond)
 		ctx := t.Context()
 
-		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, nil, nil)
+		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, OutcomeSuccess)
 		if shouldRetry {
-			t.Fatal("ShouldRetry() = true, want false for nil error and nil response")
+			t.Fatal("ShouldRetry() = true, want false for OutcomeSuccess")
 		}
 	})
 
-	t.Run("non-retryable SearXNGError does not retry", func(t *testing.T) {
+	t.Run("OutcomeAbort does not retry", func(t *testing.T) {
 		t.Parallel()
 
 		strategy := newExponentialBackoffStrategy(2, time.Millisecond, time.Millisecond)
 		ctx := t.Context()
 
-		err := NewSearXNGError(http.StatusBadRequest, "text/plain", "bad request", errRetryTestRequestCreationFailure)
-
-		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, nil, err)
+		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, OutcomeAbort)
 		if shouldRetry {
-			t.Fatal("ShouldRetry() = true, want false for SearXNGError")
+			t.Fatal("ShouldRetry() = true, want false for OutcomeAbort")
 		}
 	})
 }
@@ -144,61 +206,39 @@ func TestShouldRetry_StatusCodes(t *testing.T) {
 	strategy := newExponentialBackoffStrategy(2, time.Millisecond, time.Millisecond)
 	ctx := t.Context()
 
-	t.Run("retryable status code 429", func(t *testing.T) {
+	t.Run("OutcomeRetry is retried", func(t *testing.T) {
 		t.Parallel()
 
-		resp := &http.Response{StatusCode: http.StatusTooManyRequests}
-
-		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, resp, nil)
+		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, OutcomeRetry)
 		if !shouldRetry {
-			t.Fatal("ShouldRetry() = false, want true for 429")
+			t.Fatal("ShouldRetry() = false, want true for OutcomeRetry")
 		}
 	})
 
-	t.Run("retryable status code 503", func(t *testing.T) {
+	t.Run("OutcomeEmptyRetry is retried", func(t *testing.T) {
 		t.Parallel()
 
-		resp := &http.Response{StatusCode: http.StatusServiceUnavailable}
-
-		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, resp, nil)
+		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, OutcomeEmptyRetry)
 		if !shouldRetry {
-			t.Fatal("ShouldRetry() = false, want true for 503")
+			t.Fatal("ShouldRetry() = false, want true for OutcomeEmptyRetry")
 		}
 	})
 
-	t.Run("non-retryable status code 404", func(t *testing.T) {
+	t.Run("OutcomeAbort is not retried", func(t *testing.T) {
 		t.Parallel()
 
-		resp := &http.Response{StatusCode: http.StatusNotFound}
-
-		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, resp, nil)
+		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, OutcomeAbort)
 		if shouldRetry {
-			t.Fatal("ShouldRetry() = true, want false for 404")
+			t.Fatal("ShouldRetry() = true, want false for OutcomeAbort")
 		}
 	})
 
-	t.Run("error takes precedence over nil response", func(t *testing.T) {
+	t.Run("OutcomeSuccess is not retried", func(t *testing.T) {
 		t.Parallel()
 
-		// When both err and resp are provided, error should be checked first
-		resp := &http.Response{StatusCode: http.StatusOK}
-
-		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, resp, errRetryTestConnectionReset)
-		if !shouldRetry {
-			t.Fatal("ShouldRetry() = false, want true when retryable error (error takes precedence)")
-		}
-	})
-
-	t.Run("non-retryable error with retryable status code", func(t *testing.T) {
-		t.Parallel()
-
-		// SearXNGError is not retryable even with retryable status
-		err := NewSearXNGError(http.StatusBadGateway, "text/plain", "bad gateway", errRetryTestConnectionReset)
-		resp := &http.Response{StatusCode: http.StatusBadGateway}
-
-		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, resp, err)
+		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, OutcomeSuccess)
 		if shouldRetry {
-			t.Fatal("ShouldRetry() = true, want false for SearXNGError even with retryable status code")
+			t.Fatal("ShouldRetry() = true, want false for OutcomeSuccess")
 		}
 	})
 }
