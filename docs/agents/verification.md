@@ -30,5 +30,8 @@ Root benchmarks live in `bench_test.go`; internal benchmarks live in
 | `golangci-lint run ./...` | Lint; CI uses v2.12.2 |
 | `go vet ./...` | Static analysis fallback |
 
-E2E retry tweaks, the `e2eMCPEnv` helper, and the `e2e_exitcode_test.go`
-exception live in `docs/MCP_TESTING.md`; do not duplicate them here.
+E2E retry tweaks and the `e2eMCPEnv` helper live in `docs/MCP_TESTING.md`;
+do not duplicate them here. The CLI exit-code tests in
+`e2e_exitcode_test.go` are part of the default `go test ./...` set (they
+do not require a live server), so they are exercised by the `Run tests`
+step in `.github/workflows/test.yml` as well as by the E2E workflow.

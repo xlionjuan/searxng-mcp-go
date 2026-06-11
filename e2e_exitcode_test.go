@@ -1,5 +1,3 @@
-//go:build e2e
-
 package main
 
 import (
@@ -29,7 +27,7 @@ func buildTestBinary(t *testing.T) (string, func()) {
 		t.Fatalf("failed to build binary: %v\n%s", err, out)
 	}
 
-	return binPath, func() { _ = os.Remove(binPath) }
+	return binPath, func() { _ = os.Remove(binPath) } //nolint:errcheck // best-effort temp cleanup
 }
 
 // TestValidationExitCode verifies that all validation errors in CLI mode
@@ -40,7 +38,10 @@ func TestValidationExitCode(t *testing.T) {
 	binPath, cleanup := buildTestBinary(t)
 	defer cleanup()
 
-	cmd := exec.Command( //nolint:gosec // test runs built binary
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, //nolint:gosec // test runs built binary
 		binPath, "--json", "--searxng-url",
 		"http://localhost:9999", "--pageno", "0", "test",
 	)
@@ -81,6 +82,7 @@ func TestMCPExitCode_StdinValidation(t *testing.T) {
 	stdin.WriteString("not a valid MCP initialize message\n")
 
 	var stderr bytes.Buffer
+
 	cmd := exec.CommandContext(ctx, binPath) //nolint:gosec // test runs built binary
 	cmd.Stdin = &stdin
 	cmd.Stderr = &stderr
