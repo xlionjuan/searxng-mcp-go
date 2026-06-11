@@ -100,7 +100,7 @@ func TestFormatResultsGoldenOutput(t *testing.T) {
 		"\n" +
 		"=== Results ===\n" +
 		"\n" +
-		"Found 42 results for 'golang & html \"entities\"':\n" +
+		"Found 42 total (showing 3) results for 'golang & html \"entities\"':\n" +
 		"\n" +
 		"1. First & Result <test>\n" +
 		"   URL: https://example.com/1\n" +

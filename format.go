@@ -212,16 +212,20 @@ func logUnresponsiveEngines(logger *slog.Logger, resp *searxng.SearchResponse) {
 
 // formatResults formats search results as a readable string.
 //
-//nolint:gocyclo // category-conditional formatting; a dispatch table would add indirection for simple branching
+//nolint:gocognit,gocyclo,cyclop // formatResults has conditional sections for answers/infoboxes/results/suggestions
 func formatResults(logger *slog.Logger, resp *searxng.SearchResponse) string {
+	// Build the header prefix that appears on every output path,
+	// including the early no-results return.
+	prefix := "=== Web Search Results ===\nWarning: " + searxng.ExternalContentWarning + "\n\n"
+
 	if resp == nil {
-		return noResultsFound
+		return prefix + noResultsFound
 	}
 
 	logUnresponsiveEngines(logger, resp)
 
 	if len(resp.Results) == 0 && len(resp.Infoboxes) == 0 && len(resp.Answers) == 0 && len(resp.Suggestions) == 0 {
-		return noResultsFound
+		return prefix + noResultsFound
 	}
 
 	var buf strings.Builder
@@ -231,10 +235,7 @@ func formatResults(logger *slog.Logger, resp *searxng.SearchResponse) string {
 		buf.Grow(estimate)
 	}
 
-	buf.WriteString("=== Web Search Results ===\n")
-	buf.WriteString("Warning: ")
-	buf.WriteString(searxng.ExternalContentWarning)
-	buf.WriteString("\n\n")
+	buf.WriteString(prefix)
 
 	// Answers first (direct answers like IP, hash, timezone)
 	writeAnswers(&buf, resp.Answers)
@@ -246,14 +247,25 @@ func formatResults(logger *slog.Logger, resp *searxng.SearchResponse) string {
 	if len(resp.Results) > 0 {
 		buf.WriteString("=== Results ===\n\n")
 
+		nResults := len(resp.Results)
 		total := resp.NumberOfResults
+
 		if total == 0 {
-			total = len(resp.Results)
+			total = nResults
 		}
 
 		buf.WriteString("Found ")
-		buf.WriteString(strconv.Itoa(total))
-		buf.WriteString(" results for '")
+
+		if total != nResults {
+			buf.WriteString(strconv.Itoa(total))
+			buf.WriteString(" total (showing ")
+			buf.WriteString(strconv.Itoa(nResults))
+			buf.WriteString(") results for '")
+		} else {
+			buf.WriteString(strconv.Itoa(total))
+			buf.WriteString(" results for '")
+		}
+
 		buf.WriteString(sanitizeTerminalControl(searxng.UnescapeIfNeeded(resp.Query)))
 		buf.WriteString("':\n\n")
 

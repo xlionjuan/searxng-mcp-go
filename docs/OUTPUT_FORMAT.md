@@ -215,6 +215,7 @@ When a field in the query results has no value, the behavior is as follows:
 - `infobox.attributes` is empty → omit the `Attributes:` subsection for that infobox
 - `infobox.urls` is empty → omit the `URLs:` subsection for that infobox
 - `results` is empty → omit the entire `=== Results ===` section
+- When the server-reported `numberOfResults` exceeds the actual rendered count (e.g., due to truncation or filtering), the result count line shows `Found N total (showing M) results for '...'` instead of `Found N results for '...'`
 - `result.content` is empty → omit the `Summary:` line for that result
 - `result.publishedDate` is empty → omit the `Published date:` line for that result
 - `suggestions` is empty → omit the entire `=== Search Suggestions ===` section
