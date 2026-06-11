@@ -192,8 +192,8 @@ func writeInfoboxes(buf *strings.Builder, infoboxes []searxng.Infobox) {
 	buf.WriteByte('\n')
 }
 
-func logUnresponsiveEngines(resp *searxng.SearchResponse) {
-	if !resp.Debug || len(resp.UnresponsiveEngines) == 0 {
+func logUnresponsiveEngines(logger *slog.Logger, resp *searxng.SearchResponse) {
+	if resp == nil || !resp.Debug || len(resp.UnresponsiveEngines) == 0 {
 		return
 	}
 
@@ -201,20 +201,24 @@ func logUnresponsiveEngines(resp *searxng.SearchResponse) {
 
 	for _, entry := range resp.UnresponsiveEngines {
 		if len(entry) < unresponsiveEngineEntryFields {
-			slog.Debug("unresponsive engine", "entry", entry)
+			logger.Debug("unresponsive engine", "entry", entry)
 
 			continue
 		}
 
-		slog.Debug("unresponsive engine", "engine", entry[0], "error", entry[1])
+		logger.Debug("unresponsive engine", "engine", entry[0], "error", entry[1])
 	}
 }
 
 // formatResults formats search results as a readable string.
 //
 //nolint:gocyclo // category-conditional formatting; a dispatch table would add indirection for simple branching
-func formatResults(resp *searxng.SearchResponse) string {
-	logUnresponsiveEngines(resp)
+func formatResults(logger *slog.Logger, resp *searxng.SearchResponse) string {
+	if resp == nil {
+		return noResultsFound
+	}
+
+	logUnresponsiveEngines(logger, resp)
 
 	if len(resp.Results) == 0 && len(resp.Infoboxes) == 0 && len(resp.Answers) == 0 && len(resp.Suggestions) == 0 {
 		return noResultsFound

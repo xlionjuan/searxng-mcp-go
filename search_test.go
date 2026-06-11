@@ -697,6 +697,8 @@ func TestSearch_EmptySearchResponseRetryCanceled(t *testing.T) {
 		MaxRetryDelay: 500 * time.Millisecond,
 	}
 
+	retryAboutToWait := make(chan struct{})
+
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
@@ -704,21 +706,23 @@ func TestSearch_EmptySearchResponseRetryCanceled(t *testing.T) {
 	go func() {
 		defer close(done)
 
-		// Wait for the first attempt's response to be fully written before
-		// canceling. The close fires after w.Write() on the server side,
-		// which is an acceptable approximation of "fully processed by the
-		// client" — a more precise signal would require test hooks in the
-		// retry path. The short sleep afterwards gives the client time to
-		// parse the response and enter the retry wait so the cancel
-		// exercises the retry-cancellation path rather than racing the
-		// server's Write call.
+		// Wait until the client has received the first response and
+		// is about to enter the retry wait. The TestOnlyBeforeRetryWait
+		// hook fires right before retryWait, which is after the client
+		// has parsed the empty response and decided to retry — this is
+		// the precise moment we want to cancel so the test exercises
+		// the retry-cancellation path reliably.
 		<-firstResponseWritten
-		time.Sleep(20 * time.Millisecond)
+		<-retryAboutToWait
 
 		cancel()
 	}()
 
-	_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
+	_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"}, func(s *searxng.SearXNGSearcher) {
+		s.TestOnlyBeforeRetryWait = func() {
+			close(retryAboutToWait)
+		}
+	})
 
 	<-done
 

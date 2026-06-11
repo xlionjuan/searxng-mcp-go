@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"html"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -31,6 +32,7 @@ type Config struct {
 	RetryDelay       time.Duration
 	MaxRetryDelay    time.Duration
 	AllowGETFallback bool
+	Logger           *slog.Logger // Optional logger; nil = slog.Default()
 }
 
 // DefaultConfig returns a Config populated with default timeout and retry settings.
