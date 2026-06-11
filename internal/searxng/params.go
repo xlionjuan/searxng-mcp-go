@@ -160,7 +160,9 @@ func buildParamSchema(p ParamDef) map[string]any {
 	}
 
 	if p.Enum != nil {
-		prop["enum"] = p.Enum
+		enum := make([]string, len(p.Enum))
+		copy(enum, p.Enum)
+		prop["enum"] = enum
 	}
 
 	if p.Minimum != nil {
@@ -172,7 +174,9 @@ func buildParamSchema(p ParamDef) map[string]any {
 	}
 
 	if len(p.Examples) > 0 {
-		prop["examples"] = p.Examples
+		examples := make([]string, len(p.Examples))
+		copy(examples, p.Examples)
+		prop["examples"] = examples
 	}
 
 	if p.Nullable {
