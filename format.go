@@ -214,6 +214,10 @@ func logUnresponsiveEngines(logger *slog.Logger, resp *searxng.SearchResponse) {
 //
 //nolint:gocyclo // category-conditional formatting; a dispatch table would add indirection for simple branching
 func formatResults(logger *slog.Logger, resp *searxng.SearchResponse) string {
+	if resp == nil {
+		return noResultsFound
+	}
+
 	logUnresponsiveEngines(logger, resp)
 
 	if resp == nil {

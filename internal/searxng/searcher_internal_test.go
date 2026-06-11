@@ -201,19 +201,15 @@ func TestLogDebugMethods(t *testing.T) {
 }
 
 func TestAllowGETFallbackLogsWarnings(t *testing.T) {
-	var buf bytes.Buffer
-
-	old := slog.Default()
-
-	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
-	defer slog.SetDefault(old)
-
 	t.Run("startup warning", func(t *testing.T) {
-		buf.Reset()
+		var buf bytes.Buffer
+
+		logger := slog.New(slog.NewTextHandler(&buf, nil))
 
 		searcher, err := NewSearXNGSearcher(&Config{
 			SearXNGURL:       "https://search.example.com",
 			AllowGETFallback: true,
+			Logger:           logger,
 		}, false)
 		if err != nil {
 			t.Fatalf("NewSearXNGSearcher() error = %v, want nil", err)
@@ -228,7 +224,9 @@ func TestAllowGETFallbackLogsWarnings(t *testing.T) {
 	})
 
 	t.Run("per-use warning", func(t *testing.T) {
-		buf.Reset()
+		var buf bytes.Buffer
+
+		logger := slog.New(slog.NewTextHandler(&buf, nil))
 
 		origResp := &http.Response{
 			StatusCode: http.StatusMethodNotAllowed,
@@ -252,6 +250,8 @@ func TestAllowGETFallbackLogsWarnings(t *testing.T) {
 					return makeJSONResponse(minimalJSONBody), nil
 				}),
 			},
+			logger:           logger,
+			allowGETFallback: true,
 		}
 
 		resp, err := s.executeGETfallback(t.Context(), origResp, postReq, "q=test&format=json")
