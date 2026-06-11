@@ -49,6 +49,9 @@ type ParamDef struct {
 
 	// Required indicates whether the parameter is required.
 	Required bool
+
+	// Schema is the pre-computed JSON Schema property for this parameter.
+	Schema map[string]any
 }
 
 var (
@@ -141,4 +144,45 @@ var SearchParams = []ParamDef{
 		Minimum: &paramMinLimit,
 		Maximum: &paramMaxLimit,
 	},
+}
+
+// buildParamSchema builds a JSON Schema property map from a ParamDef.
+// This is called once at init time to pre-compute the Schema field.
+func buildParamSchema(p ParamDef) map[string]any {
+	prop := map[string]any{
+		"type": p.MCPType,
+	}
+
+	if p.Description != "" {
+		prop["description"] = p.Description
+	}
+
+	if p.Enum != nil {
+		prop["enum"] = p.Enum
+	}
+
+	if p.Minimum != nil {
+		prop["minimum"] = *p.Minimum
+	}
+
+	if p.Maximum != nil {
+		prop["maximum"] = *p.Maximum
+	}
+
+	if len(p.Examples) > 0 {
+		prop["examples"] = p.Examples
+	}
+
+	if p.Nullable {
+		prop["type"] = []string{"null", p.MCPType}
+	}
+
+	return prop
+}
+
+//nolint:gochecknoinits // pre-computes ParamDef schemas at package init time
+func init() {
+	for i := range SearchParams {
+		SearchParams[i].Schema = buildParamSchema(SearchParams[i])
+	}
 }
