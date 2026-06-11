@@ -281,6 +281,7 @@ link, and risk sections.
 Do not include:
 
 - `https://github.com/.../pull/new/...` links after the PR has been created
+- Multiple issues combined under a single closing keyword (e.g. `Closes #22 and #23`, `Closes #22, #23`) — only the first issue is closed. Each issue must have its own `Closes #N` line.
 - Duplicated closing keywords such as two separate `Closes #22` lines
 - Long pasted chat transcripts or hidden reasoning
 - Claims that tests passed without the exact commands run
