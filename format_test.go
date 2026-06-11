@@ -95,7 +95,7 @@ func TestFormatResults_NilInput(t *testing.T) {
 	t.Parallel()
 
 	if got := formatResults(slog.Default(), nil); got != noResultsFound {
-		t.Fatalf("formatResults(nil) = %q, want %q", got, "No results found.")
+		t.Fatalf("formatResults(nil) = %q, want %q", got, noResultsFound)
 	}
 }
 

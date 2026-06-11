@@ -212,17 +212,13 @@ func logUnresponsiveEngines(logger *slog.Logger, resp *searxng.SearchResponse) {
 
 // formatResults formats search results as a readable string.
 //
-//nolint:cyclop,gocyclo // category-conditional formatting; a dispatch table would add indirection for simple branching
+//nolint:gocyclo // category-conditional formatting; a dispatch table would add indirection for simple branching
 func formatResults(logger *slog.Logger, resp *searxng.SearchResponse) string {
 	if resp == nil {
 		return noResultsFound
 	}
 
 	logUnresponsiveEngines(logger, resp)
-
-	if resp == nil {
-		return noResultsFound
-	}
 
 	if len(resp.Results) == 0 && len(resp.Infoboxes) == 0 && len(resp.Answers) == 0 && len(resp.Suggestions) == 0 {
 		return noResultsFound
