@@ -160,7 +160,7 @@ func (s *SearXNGSearcher) Close() error {
 // Returns SearXNGError wrapping the last error if all retries are exhausted.
 // Returns ValidationError if args are invalid.
 //
-//nolint:gocognit,gocyclo // orchestrates distinct concerns; extracting adds indirection
+//nolint:gocognit,gocyclo,cyclop // orchestrates distinct concerns; extracting adds indirection
 func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	err := ValidateSearchArgs(args)
 	if err != nil {
@@ -184,6 +184,14 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 		}
 
 		if ar.outcome == OutcomeSuccess {
+			if maxRetries > 0 && s.isEmptyResponse(ar.result) {
+				s.getLogger().Warn(
+					"search returned empty after exhausting retries",
+					"query", args.Query,
+					"attempts", attempt+1,
+				)
+			}
+
 			return ar.result, nil
 		}
 

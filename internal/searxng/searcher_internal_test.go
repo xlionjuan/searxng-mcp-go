@@ -200,6 +200,87 @@ func TestLogDebugMethods(t *testing.T) {
 	})
 }
 
+func TestSearch_LogsWarningOnExhaustedEmptyRetries(t *testing.T) {
+	t.Parallel()
+
+	t.Run("exhausted retries on empty response logs warning with attempts", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			return makeJSONResponse(minimalJSONBody), nil
+		}), 2)
+		s.logger = slog.New(slog.NewTextHandler(&buf, nil))
+
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err != nil {
+			t.Fatalf("Search() error = %v, want nil", err)
+		}
+
+		if result == nil {
+			t.Fatal("Search() result = nil, want non-nil")
+		}
+
+		if len(result.Results) != 0 {
+			t.Fatalf("len(Results) = %d, want 0", len(result.Results))
+		}
+
+		logOutput := buf.String()
+		if !strings.Contains(logOutput, "search returned empty after exhausting retries") {
+			t.Fatalf("log output = %q, want exhausted-retries warning", logOutput)
+		}
+
+		if !strings.Contains(logOutput, "query=test") {
+			t.Fatalf("log output = %q, want query attribute", logOutput)
+		}
+
+		if !strings.Contains(logOutput, "attempts=3") {
+			t.Fatalf("log output = %q, want attempts=3 attribute", logOutput)
+		}
+	})
+
+	t.Run("non-empty response on final attempt does not log warning", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			return makeJSONResponse(makeSearchResponseJSON(1)), nil
+		}), 2)
+		s.logger = slog.New(slog.NewTextHandler(&buf, nil))
+
+		_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err != nil {
+			t.Fatalf("Search() error = %v, want nil", err)
+		}
+
+		if strings.Contains(buf.String(), "search returned empty after exhausting retries") {
+			t.Fatalf("log output = %q, want no exhausted-retries warning for non-empty response", buf.String())
+		}
+	})
+
+	t.Run("maxRetries=0 with empty response does not log warning", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			return makeJSONResponse(minimalJSONBody), nil
+		}), 0)
+		s.logger = slog.New(slog.NewTextHandler(&buf, nil))
+
+		_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err != nil {
+			t.Fatalf("Search() error = %v, want nil", err)
+		}
+
+		if strings.Contains(buf.String(), "search returned empty after exhausting retries") {
+			t.Fatalf("log output = %q, want no warning when maxRetries=0", buf.String())
+		}
+	})
+}
+
 func TestAllowGETFallbackLogsWarnings(t *testing.T) {
 	t.Run("startup warning", func(t *testing.T) {
 		var buf bytes.Buffer
