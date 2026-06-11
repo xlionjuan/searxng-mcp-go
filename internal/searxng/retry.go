@@ -18,7 +18,7 @@ const (
 	OutcomeRetry
 	// OutcomeEmptyRetry indicates a successful HTTP call but empty response — retryable.
 	OutcomeEmptyRetry
-	// OutcomeAbort indicates a non-retryable error (SearXNGError, non-retryable HTTP status).
+	// OutcomeAbort indicates a non-retryable outcome: SearXNGError, non-retryable HTTP status, or canceled context.
 	OutcomeAbort
 )
 
