@@ -26,39 +26,11 @@ func buildSearchSchema() (json.RawMessage, error) {
 	var required []string
 
 	for _, p := range searxng.SearchParams {
-		prop := map[string]any{
-			"type": p.MCPType,
-		}
-		if p.Description != "" {
-			prop["description"] = p.Description
-		}
-
-		if p.Enum != nil {
-			prop["enum"] = p.Enum
-		}
-
-		if p.Minimum != nil {
-			prop["minimum"] = *p.Minimum
-		}
-
-		if p.Maximum != nil {
-			prop["maximum"] = *p.Maximum
-		}
-
-		if len(p.Examples) > 0 {
-			prop["examples"] = p.Examples
-		}
-
-		if p.Nullable {
-			// Union type: ["null", "<type>"]
-			prop["type"] = []string{"null", p.MCPType}
-		}
+		props[p.Name] = p.Schema
 
 		if p.Required {
 			required = append(required, p.Name)
 		}
-
-		props[p.Name] = prop
 	}
 
 	schema := map[string]any{

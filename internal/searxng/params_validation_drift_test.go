@@ -381,3 +381,61 @@ func TestSearchArgsFieldsMatchSearchParams(t *testing.T) {
 		}
 	}
 }
+
+// TestBuildParamSchema locks the translation contract for buildParamSchema.
+func TestBuildParamSchema(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		param    ParamDef
+		wantType any
+		wantKeys []string
+	}{
+		{
+			name: "query", param: findParam(t, "query"),
+			wantType: "string", wantKeys: []string{"type", "description"},
+		},
+		{
+			name: "safesearch", param: findParam(t, "safesearch"),
+			wantType: "integer", wantKeys: []string{"type", "description", "minimum", "maximum"},
+		},
+		{
+			name: "time_range", param: findParam(t, "time_range"),
+			wantType: "string", wantKeys: []string{"type", "description", "enum"},
+		},
+		{
+			name: "categories", param: findParam(t, "categories"),
+			wantType: "string", wantKeys: []string{"type", "description", "examples"},
+		},
+		{
+			name: "pageno", param: findParam(t, "pageno"),
+			wantType: []string{"null", "integer"}, wantKeys: []string{"type", "description", "minimum"},
+		},
+		{
+			name: "limit", param: findParam(t, "limit"),
+			wantType: "integer", wantKeys: []string{"type", "description", "minimum", "maximum"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := buildParamSchema(tt.param)
+			if got == nil {
+				t.Fatal("buildParamSchema returned nil")
+			}
+
+			if !reflect.DeepEqual(got["type"], tt.wantType) {
+				t.Errorf("type = %v (%T), want %v (%T)", got["type"], got["type"], tt.wantType, tt.wantType)
+			}
+
+			for _, key := range tt.wantKeys {
+				if _, ok := got[key]; !ok {
+					t.Errorf("missing key %q", key)
+				}
+			}
+		})
+	}
+}

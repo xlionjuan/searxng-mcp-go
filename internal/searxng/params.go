@@ -49,6 +49,11 @@ type ParamDef struct {
 
 	// Required indicates whether the parameter is required.
 	Required bool
+
+	// Schema is the pre-computed JSON Schema property for this parameter.
+	// Do not mutate; populated once by init() and shared across consumers.
+	// See docs/adr/013-paramdef-data-form.md.
+	Schema map[string]any
 }
 
 var (
@@ -141,4 +146,49 @@ var SearchParams = []ParamDef{
 		Minimum: &paramMinLimit,
 		Maximum: &paramMaxLimit,
 	},
+}
+
+// buildParamSchema builds a JSON Schema property map from a ParamDef.
+// This is called once at init time to pre-compute the Schema field.
+func buildParamSchema(p ParamDef) map[string]any {
+	prop := map[string]any{
+		"type": p.MCPType,
+	}
+
+	if p.Description != "" {
+		prop["description"] = p.Description
+	}
+
+	if p.Enum != nil {
+		enum := make([]string, len(p.Enum))
+		copy(enum, p.Enum)
+		prop["enum"] = enum
+	}
+
+	if p.Minimum != nil {
+		prop["minimum"] = *p.Minimum
+	}
+
+	if p.Maximum != nil {
+		prop["maximum"] = *p.Maximum
+	}
+
+	if len(p.Examples) > 0 {
+		examples := make([]string, len(p.Examples))
+		copy(examples, p.Examples)
+		prop["examples"] = examples
+	}
+
+	if p.Nullable {
+		prop["type"] = []string{"null", p.MCPType}
+	}
+
+	return prop
+}
+
+//nolint:gochecknoinits // ADR-013: deterministic startup cost, no nil-check on hot path
+func init() {
+	for i := range SearchParams {
+		SearchParams[i].Schema = buildParamSchema(SearchParams[i])
+	}
 }
