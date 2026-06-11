@@ -8,6 +8,20 @@ import (
 	"time"
 )
 
+// Outcome classifies a single search attempt result for retry decision-making.
+type Outcome int
+
+const (
+	// OutcomeSuccess indicates a successful response, including empty results on the final attempt.
+	OutcomeSuccess Outcome = iota
+	// OutcomeRetry indicates a transient error or retryable HTTP status.
+	OutcomeRetry
+	// OutcomeEmptyRetry indicates a successful HTTP call but empty response — retryable.
+	OutcomeEmptyRetry
+	// OutcomeAbort indicates a non-retryable outcome: SearXNGError, non-retryable HTTP status, or canceled context.
+	OutcomeAbort
+)
+
 // jitterHalfDivisor is the divisor used to compute half the delay for jitter range.
 const (
 	jitterHalfDivisor      = 2
@@ -36,8 +50,9 @@ func newExponentialBackoffStrategy(
 	}
 }
 
+// ShouldRetry determines whether to retry based on the outcome of a search attempt.
 func (s *exponentialBackoffStrategy) ShouldRetry(
-	ctx context.Context, attempt int, resp *http.Response, err error,
+	ctx context.Context, attempt int, outcome Outcome,
 ) (bool, time.Duration) {
 	if ctx.Err() != nil {
 		return false, 0
@@ -47,33 +62,47 @@ func (s *exponentialBackoffStrategy) ShouldRetry(
 		return false, 0
 	}
 
-	if err != nil {
-		if isRetryableError(ctx, err) {
-			return true, retryBackoff(attempt, s.retryDelay, s.maxRetryDelay)
-		}
-
-		return false, 0
-	}
-
-	if resp != nil && resp.StatusCode != http.StatusOK {
-		if isRetryableStatusCode(resp.StatusCode) {
-			return true, retryBackoff(attempt, s.retryDelay, s.maxRetryDelay)
-		}
-
-		return false, 0
+	if outcome == OutcomeRetry || outcome == OutcomeEmptyRetry {
+		return true, retryBackoff(attempt, s.retryDelay, s.maxRetryDelay)
 	}
 
 	return false, 0
 }
 
-func isRetryableError(ctx context.Context, err error) bool {
-	if err == nil || ctx.Err() != nil {
-		return false
+// classifyOutcome determines the Outcome of a single search attempt.
+func classifyOutcome(
+	ctx context.Context,
+	attempt, maxRetries int,
+	resp *http.Response,
+	err error,
+	isEmpty bool,
+) Outcome {
+	if ctx.Err() != nil {
+		return OutcomeAbort
 	}
 
-	var searchErr *SearXNGError
+	if err != nil {
+		var se *SearXNGError
+		if errors.As(err, &se) {
+			return OutcomeAbort
+		}
 
-	return !errors.As(err, &searchErr)
+		return OutcomeRetry
+	}
+
+	if resp != nil && resp.StatusCode != http.StatusOK {
+		if isRetryableStatusCode(resp.StatusCode) {
+			return OutcomeRetry
+		}
+
+		return OutcomeAbort
+	}
+
+	if isEmpty && attempt < maxRetries {
+		return OutcomeEmptyRetry
+	}
+
+	return OutcomeSuccess
 }
 
 func isRetryableStatusCode(statusCode int) bool {
