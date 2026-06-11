@@ -7,6 +7,17 @@ repository.
 
 Use the `gh` CLI for all GitHub operations. Do not use browser tools for GitHub.
 
+<a id="opencode"></a>
+
+**OpenCode**
+
+GitHub issue and PR comments must include `/oc` to invoke
+`.github/workflows/opencode.yml`; comments without that trigger text will not
+invoke OpenCode. The manual
+`.github/workflows/opencode-doc-code-alignment.yml` workflow runs a doc/code
+alignment audit. These are not yet indexed in this table — see the workflow
+files for inputs and permissions.
+
 Common commands:
 
 - **Inspect current PR context**: `gh pr view --json number,title,body,labels,files,reviewDecision,statusCheckRollup`
@@ -116,22 +127,10 @@ the PR body with a short reason.
 
 ## ADR Awareness
 
-Read `CONTEXT.md` and the ADRs relevant to the area being changed before
-opening the PR. If the PR contradicts an accepted ADR, either update/supersede
-the ADR in the same PR or explicitly frame the PR as an ADR challenge.
-
-Do not silently bypass these accepted decisions:
-
-- ADR-001: no PGO without representative profiling data
-- ADR-003: HTTP warning policy for non-private hosts
-- ADR-004: MCP stdin mode uses environment variables, not CLI args
-- ADR-005: do not expose `corrections`
-- ADR-006: expose `unresponsive_engines` only in debug mode
-- ADR-007: no DNS rebinding protection unless the ADR is revisited
-- ADR-008: redirects are same-hostname-only
-- ADR-009: GET fallback is disabled by default and must be explicitly opted in
-- ADR-010: neutralize terminal control sequences in CLI text output
-- ADR-011: share `TruncateRunes`; `MaxContentRunes` is CLI-only
+Read `CONTEXT.md` and the ADRs referenced in
+[docs/agents/domain.md](docs/agents/domain.md) before opening the PR. If the PR
+contradicts an accepted ADR, either update/supersede the ADR in the same PR or
+explicitly frame the PR as an ADR challenge.
 
 ## Verification
 
