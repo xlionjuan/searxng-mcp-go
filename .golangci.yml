@@ -25,12 +25,12 @@ linters:
     depguard:
       rules:
         main:
-          list-mode: lax
+          list-mode: strict
           files:
-            - main.go
-            - cli.go
-            - mcp.go
-            - testhelpers.go
+            - "**/main.go"
+            - "**/cli.go"
+            - "**/mcp.go"
+            - "**/testhelpers.go"
           allow:
             - $gostd
             - "github.com/modelcontextprotocol/go-sdk/mcp"
