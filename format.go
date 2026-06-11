@@ -192,7 +192,7 @@ func writeInfoboxes(buf *strings.Builder, infoboxes []searxng.Infobox) {
 	buf.WriteByte('\n')
 }
 
-func logUnresponsiveEngines(resp *searxng.SearchResponse) {
+func logUnresponsiveEngines(logger *slog.Logger, resp *searxng.SearchResponse) {
 	if resp == nil || !resp.Debug || len(resp.UnresponsiveEngines) == 0 {
 		return
 	}
@@ -201,21 +201,19 @@ func logUnresponsiveEngines(resp *searxng.SearchResponse) {
 
 	for _, entry := range resp.UnresponsiveEngines {
 		if len(entry) < unresponsiveEngineEntryFields {
-			slog.Debug("unresponsive engine", "entry", entry)
+			logger.Debug("unresponsive engine", "entry", entry)
 
 			continue
 		}
 
-		slog.Debug("unresponsive engine", "engine", entry[0], "error", entry[1])
+		logger.Debug("unresponsive engine", "engine", entry[0], "error", entry[1])
 	}
 }
 
 // formatResults formats search results as a readable string.
 //
 //nolint:gocognit,gocyclo,cyclop // formatResults has conditional sections for answers/infoboxes/results/suggestions
-func formatResults(resp *searxng.SearchResponse) string {
-	logUnresponsiveEngines(resp)
-
+func formatResults(logger *slog.Logger, resp *searxng.SearchResponse) string {
 	// Build the header prefix that appears on every output path,
 	// including the early no-results return.
 	prefix := "=== Web Search Results ===\nWarning: " + searxng.ExternalContentWarning + "\n\n"
@@ -223,6 +221,8 @@ func formatResults(resp *searxng.SearchResponse) string {
 	if resp == nil {
 		return prefix + noResultsFound
 	}
+
+	logUnresponsiveEngines(logger, resp)
 
 	if len(resp.Results) == 0 && len(resp.Infoboxes) == 0 && len(resp.Answers) == 0 && len(resp.Suggestions) == 0 {
 		return prefix + noResultsFound

@@ -33,11 +33,6 @@ func requireValidationError(t *testing.T, err error, field string) {
 func TestValidateSearchArgs(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil args", func(t *testing.T) {
-		t.Parallel()
-		requireValidationError(t, ValidateSearchArgs(nil), "args")
-	})
-
 	t.Run("empty query", func(t *testing.T) {
 		t.Parallel()
 		requireValidationError(t, ValidateSearchArgs(&SearchArgs{}), "query")
@@ -155,7 +150,7 @@ func TestValidateSearchArgs(t *testing.T) {
 // in place, which was a data-race hazard for callers that share the struct
 // across goroutines.
 //
-//nolint:gocognit // subtests cover each normalization/validation branch explicitly
+//nolint:gocognit,gocyclo,cyclop // subtests cover each normalization/validation branch explicitly
 func TestValidateLanguagePure(t *testing.T) {
 	t.Parallel()
 
@@ -208,6 +203,32 @@ func TestValidateLanguagePure(t *testing.T) {
 
 		if got != "en-US" {
 			t.Fatalf("validateLanguage(\"en-US\") = %q, want %q", got, "en-US")
+		}
+	})
+
+	t.Run("grandfathered i-klingon accepted", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := validateLanguage("i-klingon")
+		if err != nil {
+			t.Fatalf("validateLanguage(\"i-klingon\") error = %v, want nil", err)
+		}
+
+		if got != "i-klingon" {
+			t.Fatalf("validateLanguage(\"i-klingon\") = %q, want %q", got, "i-klingon")
+		}
+	})
+
+	t.Run("private-use x-private accepted", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := validateLanguage("x-private")
+		if err != nil {
+			t.Fatalf("validateLanguage(\"x-private\") error = %v, want nil", err)
+		}
+
+		if got != "x-private" {
+			t.Fatalf("validateLanguage(\"x-private\") = %q, want %q", got, "x-private")
 		}
 	})
 
@@ -336,7 +357,7 @@ func TestSearXNGErrorAndHTMLResponseError(t *testing.T) {
 
 	underlying := errNetworkTestError
 
-	searxErr := NewSearXNGError(503, "text/plain", strings.Repeat("x", MaxErrorDisplayChars+1), underlying)
+	searxErr := NewSearXNGError(503, "text/plain", strings.Repeat("x", MaxErrorDisplayBytes+1), underlying)
 	if !errors.Is(searxErr, underlying) {
 		t.Fatal("errors.Is() = false, want true for SearXNGError underlying error")
 	}
@@ -349,8 +370,8 @@ func TestSearXNGErrorAndHTMLResponseError(t *testing.T) {
 		t.Fatalf("RespContentType = %q, want text/plain", searxErr.RespContentType)
 	}
 
-	if len(searxErr.ResponseBody) != MaxErrorDisplayChars {
-		t.Fatalf("ResponseBody length = %d, want %d", len(searxErr.ResponseBody), MaxErrorDisplayChars)
+	if len(searxErr.ResponseBody) != MaxErrorDisplayBytes {
+		t.Fatalf("ResponseBody length = %d, want %d", len(searxErr.ResponseBody), MaxErrorDisplayBytes)
 	}
 
 	if !strings.Contains(searxErr.Error(), "searxng error (status 503) - content-type text/plain") {

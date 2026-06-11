@@ -19,20 +19,6 @@ import (
 func TestSearch_ValidationError(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil args returns validation error", func(t *testing.T) {
-		t.Parallel()
-
-		// Transport should never be called
-		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-			return nil, errTransportNotExpected
-		}), 0)
-
-		_, err := s.Search(t.Context(), nil)
-		if err == nil {
-			t.Fatal("Search() error = nil, want validation error")
-		}
-	})
-
 	t.Run("empty query returns validation error", func(t *testing.T) {
 		t.Parallel()
 
@@ -477,6 +463,55 @@ func TestSearch_GETFallbackFlow(t *testing.T) {
 
 		if callCount != 2 {
 			t.Fatalf("callCount = %d, want 2 (POST 405 + GET fallback)", callCount)
+		}
+	})
+}
+
+func TestSearch_GETfallbackErrorPreservesStatusCode(t *testing.T) {
+	t.Parallel()
+
+	t.Run("GET fallback error preserves original 405 status code in final SearXNGError", func(t *testing.T) {
+		t.Parallel()
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			if req.Method == http.MethodPost {
+				return &http.Response{
+					StatusCode: http.StatusMethodNotAllowed,
+					Header:     http.Header{"Content-Type": []string{"text/html"}},
+					Body:       io.NopCloser(strings.NewReader("")),
+				}, nil
+			}
+
+			// GET fallback fails with a transport error
+			return nil, errRetryTestConnectionReset
+		}), 0)
+		s.allowGETFallback = true
+
+		_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("Search() error = nil, want error")
+		}
+
+		// The error must contain errSearchRequestFailed (from Search's final wrapping)
+		if !strings.Contains(err.Error(), "failed to execute search request") {
+			t.Fatalf("error = %q, want 'failed to execute search request'", err.Error())
+		}
+
+		// The SearXNGError inside the error chain must preserve the original 405 status code
+		// (not 0 from an unnecessary outer NewSearXNGError wrapper).
+		var searxErr *SearXNGError
+		if !errors.As(err, &searxErr) {
+			t.Fatalf("error type = %T, want *SearXNGError accessible via errors.As", err)
+		}
+
+		if searxErr.StatusCode != http.StatusMethodNotAllowed {
+			t.Fatalf("StatusCode = %d, want %d (original 405 preserved, not 0)",
+				searxErr.StatusCode, http.StatusMethodNotAllowed)
+		}
+
+		// The error must contain the original method-rejected hint
+		if !strings.Contains(err.Error(), "search method rejected") {
+			t.Fatalf("error = %q, want 'search method rejected' hint", err.Error())
 		}
 	})
 }

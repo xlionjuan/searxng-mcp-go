@@ -32,11 +32,18 @@ type SearXNGSearcher struct {
 	client           *http.Client // Configurable HTTP client
 	searchEndpoint   *url.URL     // Precomputed /search endpoint URL; cloned per request
 	debug            bool         // When true, enables verbose HTTP request/response logging
+	logger           *slog.Logger // Logger for warnings and debug output; nil = slog.Default()
 	done             chan struct{}
 	closeOnce        sync.Once
 	retryStrategy    *exponentialBackoffStrategy
 	ownsTransport    bool // true if the searcher created its own transport (safe to close)
 	allowGETFallback bool
+
+	// TestOnlyBeforeRetryWait is a test-only hook. If non-nil, it is called
+	// each time the searcher is about to wait before a retry attempt.
+	// This field is always nil in production; setting it has no effect outside
+	// of tests that explicitly check for it.
+	TestOnlyBeforeRetryWait func()
 }
 
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
@@ -71,14 +78,19 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		return nil, fmt.Errorf("%w: %w", errSearcherURLParseInternal, err)
 	}
 
+	logger := slog.Default()
+	if cfg.Logger != nil {
+		logger = cfg.Logger
+	}
+
 	if searchEndpoint.Scheme == "http" && !isPrivateHost(searchEndpoint.Host) {
-		slog.Warn("Using HTTP for non-private host. " +
+		logger.Warn("Using HTTP for non-private host. " +
 			"Search queries may be transmitted in clear text. " +
 			"Search results could be intercepted and modified by a MITM attacker")
 	}
 
 	if cfg.AllowGETFallback {
-		slog.Warn("GET fallback is enabled. " + getFallbackLogRisk)
+		logger.Warn("GET fallback is enabled. " + getFallbackLogRisk)
 	}
 
 	client := cfg.HTTPClient
@@ -115,6 +127,7 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		client:           client,
 		searchEndpoint:   searchEndpoint,
 		debug:            debug,
+		logger:           logger,
 		retryStrategy:    newExponentialBackoffStrategy(cfg.MaxRetries, cfg.RetryDelay, cfg.MaxRetryDelay),
 		ownsTransport:    ownsTransport,
 		allowGETFallback: cfg.AllowGETFallback,
@@ -147,7 +160,7 @@ func (s *SearXNGSearcher) Close() error {
 // Returns SearXNGError wrapping the last error if all retries are exhausted.
 // Returns ValidationError if args are invalid.
 //
-//nolint:gocognit,gocyclo // orchestrates distinct concerns; extracting adds indirection
+//nolint:gocognit,cyclop,gocyclo // orchestrates distinct concerns; extracting adds indirection
 func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	err := ValidateSearchArgs(args)
 	if err != nil {
@@ -185,6 +198,10 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 				closeResponseBody(resp)
 			}
 
+			if s.TestOnlyBeforeRetryWait != nil {
+				s.TestOnlyBeforeRetryWait()
+			}
+
 			waitErr := retryWait(searchCtx, delay)
 			if waitErr != nil {
 				lastErr = waitErr
@@ -215,6 +232,10 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 
 				lastErr = errEmptyResponse
 
+				if s.TestOnlyBeforeRetryWait != nil {
+					s.TestOnlyBeforeRetryWait()
+				}
+
 				waitErr := retryWait(searchCtx, delay)
 				if waitErr != nil {
 					lastErr = waitErr
@@ -230,6 +251,14 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 	}
 
 	if lastErr != nil {
+		// If lastErr is already a *SearXNGError (e.g. from a GET fallback failure
+		// that preserves the original 405/501 status), avoid double-wrapping it
+		// with NewSearXNGError(0, ...) which would hide the real status code.
+		var se *SearXNGError
+		if errors.As(lastErr, &se) {
+			return nil, fmt.Errorf("%w: %w", errSearchRequestFailed, lastErr)
+		}
+
 		return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errSearchRequestFailed, lastErr))
 	}
 
@@ -291,7 +320,7 @@ func (s *SearXNGSearcher) logDebugRequest(req *http.Request, body string) {
 	}
 
 	if req.Method == http.MethodGet {
-		slog.Debug(
+		s.getLogger().Debug(
 			"HTTP request",
 			"method", req.Method,
 			"url", req.URL.String(),
@@ -301,9 +330,9 @@ func (s *SearXNGSearcher) logDebugRequest(req *http.Request, body string) {
 		return
 	}
 
-	bodyPreview := string(truncateBytesToValidUTF8([]byte(body), DebugBodyPreviewChars))
+	bodyPreview := string(truncateBytesToValidUTF8([]byte(body), DebugBodyPreviewBytes))
 
-	slog.Debug(
+	s.getLogger().Debug(
 		"HTTP request",
 		"method", req.Method,
 		"url", req.URL.String(),
@@ -318,7 +347,7 @@ func (s *SearXNGSearcher) logDebugResponse(resp *http.Response, err error) {
 		return
 	}
 
-	slog.Debug(
+	s.getLogger().Debug(
 		"HTTP response",
 		"status", resp.StatusCode,
 		"content_type", resp.Header.Get("Content-Type"),
@@ -330,7 +359,7 @@ func (s *SearXNGSearcher) logDebugRetry(attempt, maxAttempts int, delay time.Dur
 		return
 	}
 
-	slog.Debug(
+	s.getLogger().Debug(
 		"retrying search request",
 		"attempt", attempt+1,
 		"max_attempts", maxAttempts,
@@ -345,14 +374,21 @@ func (s *SearXNGSearcher) executeGETfallback(
 	postReq *http.Request,
 	postBodyStr string,
 ) (*http.Response, error) {
-	slog.Warn(
+	s.getLogger().Warn(
 		"GET fallback used after POST search was rejected. "+getFallbackLogRisk,
 		"status", resp.StatusCode,
 	)
 
 	if s.debug {
-		slog.Debug("Redirecting to GET fallback", "status", resp.StatusCode, "reason", "POST not supported by server")
+		s.getLogger().Debug("Redirecting to GET fallback",
+			"status", resp.StatusCode,
+			"reason", "POST not supported by server")
 	}
+
+	// Capture the original 405/501 error before closing the response body so the
+	// hint (including the "set SEARXNG_ALLOW_GET_FALLBACK=1" message) is preserved
+	// when GET fallback also fails.
+	origErr := HTTPStatusError(resp.StatusCode, resp.Header.Get("Content-Type"), nil)
 
 	closeResponseBody(resp)
 
@@ -362,7 +398,7 @@ func (s *SearXNGSearcher) executeGETfallback(
 	//nolint:gosec // GET fallback reuses the validated SearXNG base URL and only changes query parameters.
 	getReq, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, getURL.String(), http.NoBody)
 	if reqErr != nil {
-		return nil, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errRequestCreateFailed, reqErr))
+		return nil, errors.Join(origErr, NewSearXNGError(0, "", "", fmt.Errorf("%w: %w", errRequestCreateFailed, reqErr)))
 	}
 
 	setBrowserHeaders(getReq)
@@ -372,6 +408,7 @@ func (s *SearXNGSearcher) executeGETfallback(
 	getResp, err := s.client.Do(getReq)
 	if err != nil {
 		err = fmt.Errorf("%w: %w", errGETFallbackUsed, redactSearchURLParamsFromError(err))
+		err = errors.Join(origErr, err)
 	}
 
 	s.logDebugResponse(getResp, err)
@@ -421,9 +458,9 @@ func (s *SearXNGSearcher) handleNonOKResponse(resp *http.Response) error {
 	}
 
 	if s.debug {
-		errBodyPreview := string(truncateBytesToValidUTF8(body, DebugBodyPreviewChars))
+		errBodyPreview := string(truncateBytesToValidUTF8(body, DebugBodyPreviewBytes))
 
-		slog.Debug(
+		s.getLogger().Debug(
 			"HTTP error response body",
 			"status", resp.StatusCode,
 			"content_type", resp.Header.Get("Content-Type"),
@@ -438,4 +475,13 @@ func (s *SearXNGSearcher) handleNonOKResponse(resp *http.Response) error {
 	}
 
 	return HTTPStatusError(resp.StatusCode, resp.Header.Get("Content-Type"), body)
+}
+
+// getLogger returns the searcher's logger, falling back to slog.Default() if nil.
+func (s *SearXNGSearcher) getLogger() *slog.Logger {
+	if s.logger != nil {
+		return s.logger
+	}
+
+	return slog.Default()
 }

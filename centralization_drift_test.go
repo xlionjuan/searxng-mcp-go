@@ -17,8 +17,7 @@ import (
 //
 // Not t.Parallel(): captureStdout swaps process-global os.Stdout, which
 // races with any other test that captures stdout (see issue #21). The
-// stdout-capturing tests in this file are kept serial so this PR stays
-// race-safe independent of the captureStdout mutex fix in #78.
+// stdout-capturing tests in this file are kept serial to stay race-safe.
 func TestCLIHelpTimeoutDefaultDerivesFromConstant(t *testing.T) {
 	output := captureStdout(t, func() {
 		printCLIHelp()

@@ -3,40 +3,18 @@ package searxng //nolint:testpackage // white-box tests need access to unexporte
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
+
+	"searxng-mcp-go/internal/testhelper"
 )
-
-// readJSONFixture reads a JSON fixture from testdata/ and fails the test on error.
-func readJSONFixture(tb testing.TB, name string) []byte {
-	tb.Helper()
-
-	data, err := os.ReadFile("../../testdata/" + name) //nolint:gosec // test fixture, fixed path base
-	if err != nil {
-		tb.Fatal(err)
-	}
-
-	return data
-}
-
-func readSampleResponse(tb testing.TB) []byte {
-	tb.Helper()
-
-	return readJSONFixture(tb, "sample_response.json")
-}
 
 // loadSearchResponse loads a SearchResponse from a JSON fixture in testdata/.
 func loadSearchResponse(tb testing.TB, fixture string) *SearchResponse {
 	tb.Helper()
 
-	data := readJSONFixture(tb, fixture)
-
 	var resp SearchResponse
 
-	err := json.Unmarshal(data, &resp)
-	if err != nil {
-		tb.Fatal(err)
-	}
+	testhelper.LoadJSONFixture(tb, "../../testdata/"+fixture, &resp)
 
 	return &resp
 }
@@ -46,7 +24,7 @@ func loadSearchResponse(tb testing.TB, fixture string) *SearchResponse {
 // ============================================================================
 
 func BenchmarkJSONUnmarshal(b *testing.B) {
-	data := readSampleResponse(b)
+	data := testhelper.ReadFixture(b, "../../testdata/sample_response.json")
 
 	b.ReportAllocs()
 
@@ -61,7 +39,7 @@ func BenchmarkJSONUnmarshal(b *testing.B) {
 }
 
 func BenchmarkJSONUnmarshalLarge(b *testing.B) {
-	data := readJSONFixture(b, "large_response_100.json")
+	data := testhelper.ReadFixture(b, "../../testdata/large_response_100.json")
 
 	b.ReportAllocs()
 

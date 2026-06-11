@@ -150,17 +150,17 @@ func TestBuildErrorPreview(t *testing.T) {
 		}
 	})
 
-	t.Run("ASCII truncated to MaxErrorDisplayChars", func(t *testing.T) {
+	t.Run("ASCII truncated to MaxErrorDisplayBytes", func(t *testing.T) {
 		t.Parallel()
 
-		body := []byte(strings.Repeat("a", MaxErrorDisplayChars+50))
+		body := []byte(strings.Repeat("a", MaxErrorDisplayBytes+50))
 		got := buildErrorPreview(body)
 
-		if len(got) != MaxErrorDisplayChars {
-			t.Fatalf("buildErrorPreview length = %d, want %d", len(got), MaxErrorDisplayChars)
+		if len(got) != MaxErrorDisplayBytes {
+			t.Fatalf("buildErrorPreview length = %d, want %d", len(got), MaxErrorDisplayBytes)
 		}
 
-		if got != strings.Repeat("a", MaxErrorDisplayChars) {
+		if got != strings.Repeat("a", MaxErrorDisplayBytes) {
 			t.Errorf("buildErrorPreview content mismatch: got %q", got)
 		}
 	})
@@ -169,14 +169,14 @@ func TestBuildErrorPreview(t *testing.T) {
 		t.Parallel()
 
 		// "你好" is 6 bytes in UTF-8 (3 bytes each). Build a body of many copies
-		// so it well exceeds MaxErrorDisplayChars (200 bytes) and force the
+		// so it well exceeds MaxErrorDisplayBytes (200 bytes) and force the
 		// truncation to land inside a multi-byte rune.
-		body := []byte(strings.Repeat("你好", MaxErrorDisplayChars))
+		body := []byte(strings.Repeat("你好", MaxErrorDisplayBytes))
 
 		got := buildErrorPreview(body)
 
-		if len(got) > MaxErrorDisplayChars {
-			t.Fatalf("buildErrorPreview length = %d, want <= %d", len(got), MaxErrorDisplayChars)
+		if len(got) > MaxErrorDisplayBytes {
+			t.Fatalf("buildErrorPreview length = %d, want <= %d", len(got), MaxErrorDisplayBytes)
 		}
 
 		if !utf8.ValidString(got) {
@@ -192,13 +192,13 @@ func TestBuildErrorPreview(t *testing.T) {
 		t.Parallel()
 
 		// "🔥" is 4 bytes in UTF-8. Build a body of many copies so it well
-		// exceeds MaxErrorDisplayChars and force truncation inside a rune.
-		body := []byte(strings.Repeat("🔥", MaxErrorDisplayChars))
+		// exceeds MaxErrorDisplayBytes and force truncation inside a rune.
+		body := []byte(strings.Repeat("🔥", MaxErrorDisplayBytes))
 
 		got := buildErrorPreview(body)
 
-		if len(got) > MaxErrorDisplayChars {
-			t.Fatalf("buildErrorPreview length = %d, want <= %d", len(got), MaxErrorDisplayChars)
+		if len(got) > MaxErrorDisplayBytes {
+			t.Fatalf("buildErrorPreview length = %d, want <= %d", len(got), MaxErrorDisplayBytes)
 		}
 
 		if !utf8.ValidString(got) {
@@ -321,10 +321,10 @@ func TestHTTPStatusError(t *testing.T) {
 		}
 	})
 
-	t.Run("error body truncated to MaxErrorDisplayChars", func(t *testing.T) {
+	t.Run("error body truncated to MaxErrorDisplayBytes", func(t *testing.T) {
 		t.Parallel()
 
-		longBody := []byte(strings.Repeat("x", MaxErrorDisplayChars+50))
+		longBody := []byte(strings.Repeat("x", MaxErrorDisplayBytes+50))
 		err := HTTPStatusError(http.StatusInternalServerError, "text/plain", longBody)
 
 		var searxErr *SearXNGError
@@ -332,8 +332,8 @@ func TestHTTPStatusError(t *testing.T) {
 			t.Fatalf("type = %T, want *SearXNGError", err)
 		}
 
-		if len(searxErr.ResponseBody) != MaxErrorDisplayChars {
-			t.Fatalf("ResponseBody length = %d, want %d", len(searxErr.ResponseBody), MaxErrorDisplayChars)
+		if len(searxErr.ResponseBody) != MaxErrorDisplayBytes {
+			t.Fatalf("ResponseBody length = %d, want %d", len(searxErr.ResponseBody), MaxErrorDisplayBytes)
 		}
 	})
 
@@ -341,8 +341,8 @@ func TestHTTPStatusError(t *testing.T) {
 		t.Parallel()
 
 		// "你好" is 6 bytes in UTF-8 (3 bytes each). A body of many copies well
-		// exceeds MaxErrorDisplayChars and forces truncation inside a rune.
-		multiByteBody := []byte(strings.Repeat("你好", MaxErrorDisplayChars))
+		// exceeds MaxErrorDisplayBytes and forces truncation inside a rune.
+		multiByteBody := []byte(strings.Repeat("你好", MaxErrorDisplayBytes))
 
 		err := HTTPStatusError(http.StatusInternalServerError, "text/plain; charset=utf-8", multiByteBody)
 		if err == nil {
@@ -354,8 +354,8 @@ func TestHTTPStatusError(t *testing.T) {
 			t.Fatalf("type = %T, want *SearXNGError", err)
 		}
 
-		if len(searxErr.ResponseBody) > MaxErrorDisplayChars {
-			t.Fatalf("ResponseBody length = %d, want <= %d", len(searxErr.ResponseBody), MaxErrorDisplayChars)
+		if len(searxErr.ResponseBody) > MaxErrorDisplayBytes {
+			t.Fatalf("ResponseBody length = %d, want <= %d", len(searxErr.ResponseBody), MaxErrorDisplayBytes)
 		}
 
 		if !utf8.ValidString(searxErr.ResponseBody) {
@@ -444,7 +444,7 @@ func TestLogDebugBody(t *testing.T) {
 			StatusCode: http.StatusOK,
 			Header:     http.Header{"Content-Type": []string{"application/json"}},
 		}
-		longBody := []byte(strings.Repeat("x", DebugBodyPreviewChars+100))
+		longBody := []byte(strings.Repeat("x", DebugBodyPreviewBytes+100))
 		// Should not panic
 		s.logDebugBody(resp, longBody)
 	})

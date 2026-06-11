@@ -30,8 +30,9 @@ var validTimeRanges = func() map[string]bool {
 var validTimeRangesText = strings.Join(ValidTimeRanges(), ", ")
 
 // languagePattern validates common BCP47-like language tags used by SearXNG.
-// Empty values are handled separately as "auto" mode.
-var languagePattern = regexp.MustCompile(`^[\p{L}]{2,35}(?:-[\p{L}\p{N}]{1,35})*$`)
+// It also accepts grandfathered tags (starting with "i-") and private-use
+// tags (starting with "x-"). Empty values are handled separately as "auto" mode.
+var languagePattern = regexp.MustCompile(`^(?:[ix]-[\p{L}\p{N}_-]{1,35}|[\p{L}]{2,35}(?:-[\p{L}\p{N}]{1,35})*)$`)
 
 const maxLanguageLength = 35
 
@@ -104,10 +105,6 @@ func validateCSVIdentifiers(value, field, noun string) error {
 // share a *SearchArgs across goroutines should clone it before passing it
 // here; the validation helpers themselves do not mutate their inputs.
 func ValidateSearchArgs(args *SearchArgs) error {
-	if args == nil {
-		return NewValidationError("args", "search arguments cannot be nil")
-	}
-
 	err := validateQuery(args.Query)
 	if err != nil {
 		return err

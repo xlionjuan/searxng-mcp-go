@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"searxng-mcp-go/internal/searxng"
+	"searxng-mcp-go/internal/testhelper"
 )
 
 // --- unescapeIfNeeded tests ---
@@ -48,35 +49,19 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		response   *searxng.SearchResponse
+		fixture    string
 		wantAnswer string
 		wantEngine string
 	}{
 		{
-			name: "translation",
-			response: &searxng.SearchResponse{
-				Answers: []searxng.Answer{
-					{
-						Answer:   "Translation: bonjour",
-						Engine:   "libretranslate",
-						Template: "answer/translations.html",
-					},
-				},
-			},
+			name:       "translation",
+			fixture:    "testdata/typed_translation_answer.json",
 			wantAnswer: "[1] Translation: bonjour",
 			wantEngine: "Engine: libretranslate",
 		},
 		{
-			name: "weather",
-			response: &searxng.SearchResponse{
-				Answers: []searxng.Answer{
-					{
-						Answer:   "Weather: Berlin, 11.2 °C, partly cloudy",
-						Engine:   "open_meteo",
-						Template: "answer/weather.html",
-					},
-				},
-			},
+			name:       "weather",
+			fixture:    "testdata/typed_weather_answer.json",
 			wantAnswer: "[1] Weather: Berlin, 11.2 °C, partly cloudy",
 			wantEngine: "Engine: open_meteo",
 		},
@@ -86,7 +71,17 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := formatResults(tt.response)
+			var resp searxng.SearchResponse
+
+			testhelper.LoadJSONFixture(t, tt.fixture, &resp)
+
+			// Apply typed answer fallback (normally done in normalizeResponse).
+			for i := range resp.Answers {
+				searxng.EnsureAnswerFallback(&resp.Answers[i])
+			}
+
+			got := formatResults(slog.Default(), &resp)
+
 			for _, want := range []string{"=== Answers ===", tt.wantAnswer, tt.wantEngine} {
 				if !strings.Contains(got, want) {
 					t.Fatalf("formatResults() missing %q in:\n%s", want, got)
@@ -100,7 +95,7 @@ func TestFormatResults_NilInput(t *testing.T) {
 	t.Parallel()
 
 	wantPrefix := "=== Web Search Results ===\nWarning: " + searxng.ExternalContentWarning + "\n\n"
-	if got := formatResults(nil); got != wantPrefix+noResultsFound {
+	if got := formatResults(slog.Default(), nil); got != wantPrefix+noResultsFound {
 		t.Fatalf("formatResults(nil) = %q, want %q", got, wantPrefix+"No results found.")
 	}
 }
@@ -175,7 +170,7 @@ func TestFormatResults_ResultCountFormat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			out := formatResults(tt.resp)
+			out := formatResults(slog.Default(), tt.resp)
 
 			if !strings.Contains(out, tt.want) {
 				t.Errorf("formatResults() output missing %q\noutput:\n%s", tt.want, out)
@@ -191,10 +186,7 @@ func TestFormatResults_ResultCountFormat(t *testing.T) {
 func TestFormatResults_DebugLogsUnresponsiveEngines(t *testing.T) {
 	var buf bytes.Buffer
 
-	old := slog.Default()
-
-	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
-	defer slog.SetDefault(old)
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	resp := &searxng.SearchResponse{
 		Query:               "test",
@@ -204,7 +196,7 @@ func TestFormatResults_DebugLogsUnresponsiveEngines(t *testing.T) {
 		Debug:               true,
 	}
 
-	_ = formatResults(resp)
+	_ = formatResults(logger, resp)
 
 	if !strings.Contains(buf.String(), "unresponsive engine") {
 		t.Fatalf("expected debug log for unresponsive engines, got: %s", buf.String())
@@ -257,7 +249,7 @@ func TestFormatResults_NeutralizesTerminalControl(t *testing.T) {
 		},
 	}
 
-	out := formatResults(resp)
+	out := formatResults(slog.Default(), resp)
 
 	// No literal ESC, BEL, BS, VT, FF, SO, SI, DLE..US, or DEL may
 	// survive in the output.
@@ -323,7 +315,7 @@ func TestFormatResults_HtmlEntityEscapedControlIsNeutralized(t *testing.T) {
 		NumberOfResults: 1,
 	}
 
-	out := formatResults(resp)
+	out := formatResults(slog.Default(), resp)
 
 	for _, b := range []byte(out) {
 		switch {
@@ -355,7 +347,7 @@ func TestFormatResults_UnicodePreserved(t *testing.T) {
 		NumberOfResults: 1,
 	}
 
-	out := formatResults(resp)
+	out := formatResults(slog.Default(), resp)
 
 	for _, want := range []string{
 		"café 日本語 🔥",
