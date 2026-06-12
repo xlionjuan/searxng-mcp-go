@@ -361,6 +361,7 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 		t.Fatalf("timed out waiting for all %d requests to enter transport; got %d",
 			numGoroutines, atomic.LoadInt64(&requestCount))
 	}
+
 	cancel()
 
 	// Wait with timeout
@@ -378,10 +379,20 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 		t.Fatal("Graceful shutdown timed out")
 	}
 
-	reqCount := atomic.LoadInt64(&requestCount)
-	sent := atomic.LoadInt64(&sentCount)
-	success := atomic.LoadInt64(&successCount)
-	canceled := atomic.LoadInt64(&cancelledCount)
+	checkGracefulShutdownResults(t, numGoroutines, &requestCount, &sentCount, &successCount, &cancelledCount)
+}
+
+func checkGracefulShutdownResults(
+	t *testing.T,
+	numGoroutines int64,
+	requestCount, sentCount, successCount, cancelledCount *int64,
+) {
+	t.Helper()
+
+	reqCount := atomic.LoadInt64(requestCount)
+	sent := atomic.LoadInt64(sentCount)
+	success := atomic.LoadInt64(successCount)
+	canceled := atomic.LoadInt64(cancelledCount)
 	compCount := success + canceled
 
 	if sent != numGoroutines {

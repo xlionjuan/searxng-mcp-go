@@ -655,6 +655,36 @@ func TestGetConfig(t *testing.T) {
 		}
 	})
 
+	t.Run("--allow-get-fallback=false overrides env true", func(t *testing.T) {
+		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "1")
+
+		_, flags, _, err := parseArgs([]string{
+			"--searxng-url", "https://flag.example.com",
+			"--allow-get-fallback=false",
+			"test query",
+		})
+		if err != nil {
+			t.Fatalf("parseArgs() error = %v, want nil", err)
+		}
+
+		if !flags.AllowGETFallbackExplicit {
+			t.Fatal("flags.AllowGETFallbackExplicit = false, want true (flag was explicitly set)")
+		}
+
+		if flags.AllowGETFallback {
+			t.Fatal("flags.AllowGETFallback = true, want false (flag explicitly set to false)")
+		}
+
+		cfg, err := getConfig(flags, true)
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
+
+		if cfg.AllowGETFallback {
+			t.Fatal("cfg.AllowGETFallback = true, want false (CLI false overrides env true)")
+		}
+	})
+
 	t.Run("--allow-get-fallback absent preserves env value", func(t *testing.T) {
 		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "1")
 

@@ -51,22 +51,23 @@ var errParamDefaultNotInt = errors.New("registerFlags: ParamDef has unparseable 
 
 // CLIFlags holds parsed CLI flag values.
 type CLIFlags struct {
-	Query            string
-	JSON             bool
-	Help             bool
-	Version          bool
-	SearXNGURL       string
-	Language         string
-	SafeSearch       int
-	TimeRange        string
-	Categories       string
-	Engines          string
-	Pageno           *int
-	Limit            *int
-	Debug            bool
-	Timeout          *time.Duration
-	MaxRetries       *int
-	AllowGETFallback bool
+	Query                    string
+	JSON                     bool
+	Help                     bool
+	Version                  bool
+	SearXNGURL               string
+	Language                 string
+	SafeSearch               int
+	TimeRange                string
+	Categories               string
+	Engines                  string
+	Pageno                   *int
+	Limit                    *int
+	Debug                    bool
+	Timeout                  *time.Duration
+	MaxRetries               *int
+	AllowGETFallback         bool
+	AllowGETFallbackExplicit bool
 }
 
 type registeredFlags struct {
@@ -106,10 +107,11 @@ func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 	// pointer; unset flags remain nil so downstream code (getConfig) can
 	// distinguish "not provided" from "provided-but-equal-to-default".
 	var (
-		pagenoPtr     *int
-		limitPtr      *int
-		timeoutPtr    *time.Duration
-		maxRetriesPtr *int
+		pagenoPtr                *int
+		limitPtr                 *int
+		timeoutPtr               *time.Duration
+		maxRetriesPtr            *int
+		allowGETFallbackExplicit bool
 	)
 
 	fs.Visit(func(f *flag.Flag) {
@@ -128,6 +130,8 @@ func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 		case "max-retries":
 			val := *registered.maxRetries
 			maxRetriesPtr = &val
+		case "allow-get-fallback":
+			allowGETFallbackExplicit = true
 		}
 	})
 
@@ -167,22 +171,23 @@ func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 	}
 
 	flags := CLIFlags{
-		Query:            *queryPtr,
-		JSON:             *registered.jsonOut,
-		Help:             *registered.help,
-		Version:          *registered.version,
-		SearXNGURL:       *registered.searxngURL,
-		Language:         *languagePtr,
-		SafeSearch:       *safeSearchPtr,
-		TimeRange:        *timeRangePtr,
-		Categories:       *categoriesPtr,
-		Engines:          *enginesPtr,
-		Pageno:           pagenoPtr,
-		Limit:            limitPtr,
-		Debug:            *registered.debug,
-		Timeout:          timeoutPtr,
-		MaxRetries:       maxRetriesPtr,
-		AllowGETFallback: *registered.allowGETFallback,
+		Query:                    *queryPtr,
+		JSON:                     *registered.jsonOut,
+		Help:                     *registered.help,
+		Version:                  *registered.version,
+		SearXNGURL:               *registered.searxngURL,
+		Language:                 *languagePtr,
+		SafeSearch:               *safeSearchPtr,
+		TimeRange:                *timeRangePtr,
+		Categories:               *categoriesPtr,
+		Engines:                  *enginesPtr,
+		Pageno:                   pagenoPtr,
+		Limit:                    limitPtr,
+		Debug:                    *registered.debug,
+		Timeout:                  timeoutPtr,
+		MaxRetries:               maxRetriesPtr,
+		AllowGETFallback:         *registered.allowGETFallback,
+		AllowGETFallbackExplicit: allowGETFallbackExplicit,
 	}
 
 	isCLIMode := len(args) > 0 || flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
@@ -442,7 +447,7 @@ var configSources = []func(*searxng.Config, *CLIFlags){
 }
 
 func allowGetFallbackFlagPtr(flags *CLIFlags) *bool {
-	if flags.AllowGETFallback {
+	if flags.AllowGETFallbackExplicit {
 		return &flags.AllowGETFallback
 	}
 
