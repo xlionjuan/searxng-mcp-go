@@ -14,6 +14,83 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
+func TestSearch_TimeoutZeroWithBackgroundContext(t *testing.T) {
+	t.Parallel()
+
+	searchResp := searxng.SearchResponse{
+		Results: []searxng.SearchResult{
+			{Title: "Result", URL: "https://example.com/1", Content: "Content 1", Engine: "test"},
+		},
+		NumberOfResults: 1,
+		Query:           "test",
+	}
+
+	server := newJSONTestServer(t, searchResp)
+	defer server.Close()
+
+	cfg := &searxng.Config{
+		SearXNGURL: server.URL,
+		Timeout:    0,
+	}
+	args := &searxng.SearchArgs{
+		Query: "test",
+	}
+
+	result, err := testPerformSearch(context.Background(), t, cfg, args)
+	if err != nil {
+		t.Fatalf("Search() error = %v, want nil (timeout=0 should not cancel)", err)
+	}
+
+	if len(result.Results) != 1 {
+		t.Fatalf("results length = %d, want 1", len(result.Results))
+	}
+}
+
+func TestSearch_RetryAfterRequestTimeout(t *testing.T) {
+	t.Parallel()
+
+	var attempts atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		n := attempts.Add(1)
+		if n < 3 {
+			time.Sleep(500 * time.Millisecond)
+
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		//nolint:errcheck // test fixture write best-effort
+		_, _ = w.Write([]byte(
+			`{"query":"test","number_of_results":1,` +
+				`"results":[{"title":"OK","url":"https://example.com","content":"ok","engine":"test"}],` +
+				`"suggestions":[]}`))
+	}))
+	defer server.Close()
+
+	cfg := &searxng.Config{
+		SearXNGURL:    server.URL,
+		Timeout:       200 * time.Millisecond,
+		MaxRetries:    2,
+		RetryDelay:    time.Nanosecond,
+		MaxRetryDelay: time.Nanosecond,
+	}
+
+	result, err := testPerformSearch(context.Background(), t, cfg, &searxng.SearchArgs{Query: "test"})
+	if err != nil {
+		t.Fatalf("Search() error = %v, want nil (retries should not be preempted by request timeout)", err)
+	}
+
+	if got := attempts.Load(); got != 3 {
+		t.Fatalf("attempts = %d, want 3 (2 request timeouts + 1 success)", got)
+	}
+
+	if len(result.Results) != 1 {
+		t.Fatalf("results length = %d, want 1", len(result.Results))
+	}
+}
+
 func TestSearch_Success(t *testing.T) {
 	t.Parallel()
 
