@@ -24,3 +24,18 @@
 - For local server setup, use `just test-server-start`; never run
   `searxng-server-test/01-start-fg.sh` from agents or CI. See
   `docs/agents/test-server.md`.
+
+## CI Retry Wrapper
+
+`.github/workflows/e2e.yml` wraps all E2E test suites — those matching
+`-run 'TestMCP'` (which includes `TestMCPFunctional`, `TestMCPStdioE2E`,
+and `TestMCPErrors_InvalidInputs`) and `-run 'TestCLISmoke'` — in
+`Wandalen/wretry.action` with `attempt_limit=10`.
+This is because upstream search engines probabilistically rate-limit or ban
+the CI SearXNG instance during automated runs — a characteristic inherent to
+meta-search against live third-party engines, not a code or SearXNG bug.
+
+Library-level retry (`SEARXNG_MAX_RETRIES=2`) covers single-request flakes;
+the CI retry wrapper recovers from whole-instance throttling by retrying the
+entire test run to land on a clean window. See the inline comment in
+`e2e.yml` for the worst-case budget.
