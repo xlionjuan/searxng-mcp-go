@@ -617,8 +617,8 @@ func TestGetConfig(t *testing.T) {
 			t.Fatalf("parseArgs() error = %v, want nil", err)
 		}
 
-		if !flags.AllowGETFallbackSet {
-			t.Fatal("flags.AllowGETFallbackSet = false, want true (flag was explicitly set)")
+		if !flags.AllowGETFallbackExplicit {
+			t.Fatal("flags.AllowGETFallbackExplicit = false, want true (flag was explicitly set)")
 		}
 
 		if flags.AllowGETFallback {

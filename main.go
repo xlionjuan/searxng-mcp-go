@@ -65,7 +65,7 @@ type CLIFlags struct {
 	Timeout             *time.Duration
 	MaxRetries          *int
 	AllowGETFallback    bool
-	AllowGETFallbackSet bool
+	AllowGETFallbackExplicit bool
 }
 
 type registeredFlags struct {
@@ -109,7 +109,7 @@ func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 		limitPtr            *int
 		timeoutPtr          *time.Duration
 		maxRetriesPtr       *int
-		allowGETFallbackSet bool
+		allowGETFallbackExplicit bool
 	)
 
 	fs.Visit(func(f *flag.Flag) {
@@ -129,7 +129,7 @@ func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 			val := *registered.maxRetries
 			maxRetriesPtr = &val
 		case "allow-get-fallback":
-			allowGETFallbackSet = true
+			allowGETFallbackExplicit = true
 		}
 	})
 
@@ -185,7 +185,7 @@ func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 		Timeout:             timeoutPtr,
 		MaxRetries:          maxRetriesPtr,
 		AllowGETFallback:    *registered.allowGETFallback,
-		AllowGETFallbackSet: allowGETFallbackSet,
+		AllowGETFallbackExplicit: allowGETFallbackExplicit,
 	}
 
 	isCLIMode := len(args) > 0 || flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
@@ -445,7 +445,7 @@ var configSources = []func(*searxng.Config, *CLIFlags){
 }
 
 func allowGetFallbackFlagPtr(flags *CLIFlags) *bool {
-	if flags.AllowGETFallbackSet {
+	if flags.AllowGETFallbackExplicit {
 		return &flags.AllowGETFallback
 	}
 
