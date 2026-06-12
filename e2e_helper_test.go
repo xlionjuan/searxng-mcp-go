@@ -31,7 +31,7 @@ func buildE2EMCPBinary(ctx context.Context, t *testing.T) string {
 	t.Helper()
 
 	binaryPath := t.TempDir() + "/searxng-mcp-go"
-	cmd := exec.CommandContext(ctx, "go", "build", "-o", binaryPath, ".")
+	cmd := exec.CommandContext(ctx, "go", "build", "-o", binaryPath, ".") //nolint:gosec // test builds binary
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -52,18 +52,23 @@ func e2eMCPEnv(searxngURL string, extra ...string) []string {
 // removeEnv returns a copy of env with the variable named key removed.
 func removeEnv(env []string, key string) []string {
 	var result []string
+
 	prefix := key + "="
 	for _, e := range env {
 		if !strings.HasPrefix(e, prefix) {
 			result = append(result, e)
 		}
 	}
+
 	return result
 }
 
 // newMCPSession creates an MCP client, connects over stdio, and returns the
 // session. The caller is responsible for cleanup.
-func newMCPSession(ctx context.Context, t *testing.T, cmd *exec.Cmd, stderr *bytes.Buffer, clientName string) *mcp.ClientSession {
+func newMCPSession(
+	ctx context.Context, t *testing.T, cmd *exec.Cmd,
+	stderr *bytes.Buffer, clientName string,
+) *mcp.ClientSession {
 	t.Helper()
 
 	client := mcp.NewClient(&mcp.Implementation{
@@ -85,32 +90,38 @@ func newMCPSession(ctx context.Context, t *testing.T, cmd *exec.Cmd, stderr *byt
 // post-cleanup inspection).
 //
 // This helper uses the client name "searxng-mcp-go-e2e-test".
-func startMCPSession(ctx context.Context, t *testing.T, searxngURL string, extraEnv ...string) (*mcp.ClientSession, *bytes.Buffer, *exec.Cmd) {
+func startMCPSession(
+	ctx context.Context, t *testing.T, searxngURL string,
+	extraEnv ...string,
+) (*mcp.ClientSession, *bytes.Buffer, *exec.Cmd) { //nolint:unparam // test helper returns cmd for optional caller use
 	t.Helper()
 
 	binaryPath := os.Getenv("E2E_MCP_BINARY")
 	if binaryPath == "" {
 		binaryPath = buildE2EMCPBinary(ctx, t)
 	}
+
 	t.Logf("using MCP binary: %s", binaryPath)
 
 	var stderr bytes.Buffer
 
-	cmd := exec.CommandContext(ctx, binaryPath)
+	cmd := exec.CommandContext(ctx, binaryPath) //nolint:gosec // test runs built binary
 	cmd.Env = e2eMCPEnv(searxngURL, extraEnv...)
 	cmd.Stderr = &stderr
 
 	var session *mcp.ClientSession
+
 	t.Cleanup(func() {
 		if session != nil {
-			if closeErr := session.Close(); closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
+			closeErr := session.Close()
+			if closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
 				t.Logf("close MCP session: %v\nstderr:\n%s", closeErr, stderr.String())
 			}
 		}
 
 		if cmd.Process != nil && cmd.ProcessState == nil {
-			_ = cmd.Process.Kill()
-			_, _ = cmd.Process.Wait()
+			_ = cmd.Process.Kill()    //nolint:errcheck // best-effort cleanup
+			_, _ = cmd.Process.Wait() //nolint:errcheck // best-effort cleanup
 		}
 	})
 
@@ -132,10 +143,12 @@ func findSearchTool(ctx context.Context, t *testing.T, session *mcp.ClientSessio
 	if err != nil {
 		t.Fatalf("tools/list failed: %v\nstderr:\n%s", err, stderr.String())
 	}
+
 	t.Logf("tools/list returned %d tools", len(tools.Tools))
 
 	for _, tool := range tools.Tools {
 		t.Logf("  tool: %s - %s", tool.Name, tool.Description)
+
 		if tool.Name == "search" {
 			requireSearchToolSchema(t, tool, stderr)
 
@@ -143,7 +156,8 @@ func findSearchTool(ctx context.Context, t *testing.T, session *mcp.ClientSessio
 		}
 	}
 
-	t.Fatalf("tools/list did not include search tool; got %#v\nstderr:\n%s", tools.Tools, stderr.String())
+	t.Fatalf("tools/list did not include search tool; got %#v\nstderr:\n%s", //nolint:revive // unreachable marker
+		tools.Tools, stderr.String())
 	panic("unreachable")
 }
 
@@ -181,14 +195,18 @@ func requireSearchResponse(
 	t.Helper()
 
 	t.Logf("%s: sending arguments %#v", name, arguments)
+
 	result := callSearchTool(ctx, t, session, arguments, stderr)
+
 	if result.IsError {
 		t.Fatalf("%s returned tool error: %s\nstderr:\n%s", name, toolText(t, result), stderr.String())
 	}
 
 	response := parseSearchResponse(t, result, stderr)
-	t.Logf("%s parsed: query=%q, results=%d, answers=%d, infoboxes=%d, suggestions=%d",
-		name, response.Query, len(response.Results), len(response.Answers), len(response.Infoboxes), len(response.Suggestions))
+	t.Logf("%s parsed: query=%q, results=%d, answers=%d, "+
+		"infoboxes=%d, suggestions=%d",
+		name, response.Query, len(response.Results), len(response.Answers),
+		len(response.Infoboxes), len(response.Suggestions))
 
 	return response
 }
@@ -200,7 +218,9 @@ func parseSearchResponse(t *testing.T, result *mcp.CallToolResult, stderr *bytes
 	text := toolText(t, result)
 
 	var response searxng.SearchResponse
-	if err := json.Unmarshal([]byte(text), &response); err != nil {
+
+	err := json.Unmarshal([]byte(text), &response)
+	if err != nil {
 		t.Fatalf("search tool text is not SearchResponse JSON: %v\ntext:\n%s\nstderr:\n%s", err, text, stderr.String())
 	}
 
@@ -247,21 +267,26 @@ func requireSearchToolSchema(t *testing.T, tool *mcp.Tool, stderr *bytes.Buffer)
 	if got := schema["type"]; got != "object" {
 		t.Fatalf("search schema type = %#v, want object\nschema: %#v\nstderr:\n%s", got, schema, stderr.String())
 	}
+
 	if got := schema["additionalProperties"]; got != false {
-		t.Fatalf("search schema additionalProperties = %#v, want false\nschema: %#v\nstderr:\n%s", got, schema, stderr.String())
+		t.Fatalf("search schema additionalProperties = %#v, want false"+
+			"\nschema: %#v\nstderr:\n%s", got, schema, stderr.String())
 	}
 
 	required, ok := schema["required"].([]any)
 	if !ok {
-		t.Fatalf("search schema required type = %T, want []any\nschema: %#v\nstderr:\n%s", schema["required"], schema, stderr.String())
+		t.Fatalf("search schema required type = %T, want []any"+
+			"\nschema: %#v\nstderr:\n%s", schema["required"], schema, stderr.String())
 	}
+
 	if len(required) != 1 || required[0] != "query" {
 		t.Fatalf("search schema required = %#v, want [query]\nschema: %#v\nstderr:\n%s", required, schema, stderr.String())
 	}
 
 	props, ok := schema["properties"].(map[string]any)
 	if !ok {
-		t.Fatalf("search schema properties type = %T, want map[string]any\nschema: %#v\nstderr:\n%s", schema["properties"], schema, stderr.String())
+		t.Fatalf("search schema properties type = %T, want map[string]any"+
+			"\nschema: %#v\nstderr:\n%s", schema["properties"], schema, stderr.String())
 	}
 
 	limit := requireProperty(t, props, "limit", stderr)
@@ -295,7 +320,9 @@ func requireSchemaMap(t *testing.T, schema any, stderr *bytes.Buffer) map[string
 	}
 
 	var schemaMap map[string]any
-	if err := json.Unmarshal(data, &schemaMap); err != nil {
+
+	err = json.Unmarshal(data, &schemaMap)
+	if err != nil {
 		t.Fatalf("unmarshal InputSchema failed: %v\nschema JSON: %s\nstderr:\n%s", err, string(data), stderr.String())
 	}
 
@@ -307,7 +334,8 @@ func requireProperty(t *testing.T, props map[string]any, name string, stderr *by
 
 	prop, ok := props[name].(map[string]any)
 	if !ok {
-		t.Fatalf("schema property %q type = %T, want map[string]any\nproperties: %#v\nstderr:\n%s", name, props[name], props, stderr.String())
+		t.Fatalf("schema property %q type = %T, want map[string]any"+
+			"\nproperties: %#v\nstderr:\n%s", name, props[name], props, stderr.String())
 	}
 
 	return prop
@@ -328,9 +356,11 @@ func requirePropertyUnionType(t *testing.T, prop map[string]any, want []string, 
 	if !ok {
 		t.Fatalf("property type = %T, want []any\nproperty: %#v\nstderr:\n%s", prop["type"], prop, stderr.String())
 	}
+
 	if len(got) != len(want) {
 		t.Fatalf("property union type = %#v, want %#v\nproperty: %#v\nstderr:\n%s", got, want, prop, stderr.String())
 	}
+
 	for i, wantValue := range want {
 		if got[i] != wantValue {
 			t.Fatalf("property union type = %#v, want %#v\nproperty: %#v\nstderr:\n%s", got, want, prop, stderr.String())
@@ -345,6 +375,7 @@ func requireNumber(t *testing.T, prop map[string]any, field string, want float64
 	if !ok {
 		t.Fatalf("property %s = %T, want number\nproperty: %#v\nstderr:\n%s", field, prop[field], prop, stderr.String())
 	}
+
 	if got != want {
 		t.Fatalf("property %s = %v, want %v\nproperty: %#v\nstderr:\n%s", field, got, want, prop, stderr.String())
 	}
@@ -357,9 +388,11 @@ func requireStringEnum(t *testing.T, prop map[string]any, field string, want []s
 	if !ok {
 		t.Fatalf("property %s = %T, want []any\nproperty: %#v\nstderr:\n%s", field, prop[field], prop, stderr.String())
 	}
+
 	if len(got) != len(want) {
 		t.Fatalf("property %s = %#v, want %#v\nproperty: %#v\nstderr:\n%s", field, got, want, prop, stderr.String())
 	}
+
 	for i, wantValue := range want {
 		if got[i] != wantValue {
 			t.Fatalf("property %s = %#v, want %#v\nproperty: %#v\nstderr:\n%s", field, got, want, prop, stderr.String())
@@ -407,7 +440,7 @@ type e2eWarnings struct {
 }
 
 // Add records a warning message. It is safe for concurrent calls.
-func (w *e2eWarnings) Add(format string, args ...any) {
+func (w *e2eWarnings) Addf(format string, args ...any) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -416,11 +449,14 @@ func (w *e2eWarnings) Add(format string, args ...any) {
 
 // Report prints the WARNING SUMMARY block if any warnings were collected.
 func (w *e2eWarnings) Report(t *testing.T) {
+	t.Helper()
+
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	if len(w.warnings) > 0 {
 		t.Logf("--- WARNING SUMMARY ---")
+
 		for _, warning := range w.warnings {
 			t.Logf("  WARN: %s", warning)
 		}
@@ -446,11 +482,43 @@ type invalidInputCase struct {
 // test file appends its own extra cases.
 var SharedInvalidInputCases = []invalidInputCase{
 	{Name: "whitespace query", Arguments: map[string]any{"query": "   "}, WantField: "query"},
-	{Name: "limit too high", Arguments: map[string]any{"query": "framework computer inc", "limit": 21}, WantField: "limit", WantSchemaErr: true},
-	{Name: "pageno too low", Arguments: map[string]any{"query": "framework computer inc", "pageno": 0}, WantField: "pageno", WantSchemaErr: true},
-	{Name: "invalid time range", Arguments: map[string]any{"query": "framework computer inc", "time_range": "week"}, WantField: "time_range", WantSchemaErr: true},
-	{Name: "invalid safesearch", Arguments: map[string]any{"query": "framework computer inc", "safesearch": 3}, WantField: "safesearch", WantSchemaErr: true},
-	{Name: "invalid language", Arguments: map[string]any{"query": "framework computer inc", "language": "not a valid language code"}, WantField: "language"},
-	{Name: "invalid categories", Arguments: map[string]any{"query": "framework computer inc", "categories": "general/../../x"}, WantField: "categories"},
-	{Name: "invalid engines", Arguments: map[string]any{"query": "framework computer inc", "engines": "bing/../../x"}, WantField: "engines"},
+	{
+		Name:          "limit too high",
+		Arguments:     map[string]any{"query": "framework computer inc", "limit": 21},
+		WantField:     "limit",
+		WantSchemaErr: true,
+	},
+	{
+		Name:          "pageno too low",
+		Arguments:     map[string]any{"query": "framework computer inc", "pageno": 0},
+		WantField:     "pageno",
+		WantSchemaErr: true,
+	},
+	{
+		Name:          "invalid time range",
+		Arguments:     map[string]any{"query": "framework computer inc", "time_range": "week"},
+		WantField:     "time_range",
+		WantSchemaErr: true,
+	},
+	{
+		Name:          "invalid safesearch",
+		Arguments:     map[string]any{"query": "framework computer inc", "safesearch": 3},
+		WantField:     "safesearch",
+		WantSchemaErr: true,
+	},
+	{
+		Name:      "invalid language",
+		Arguments: map[string]any{"query": "framework computer inc", "language": "not a valid language code"},
+		WantField: "language",
+	},
+	{
+		Name:      "invalid categories",
+		Arguments: map[string]any{"query": "framework computer inc", "categories": "general/../../x"},
+		WantField: "categories",
+	},
+	{
+		Name:      "invalid engines",
+		Arguments: map[string]any{"query": "framework computer inc", "engines": "bing/../../x"},
+		WantField: "engines",
+	},
 }

@@ -38,7 +38,7 @@ func TestConcurrentSearches(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
+		_, _ = w.Write(body) //nolint:errcheck // test server write
 	}))
 	defer server.Close()
 
@@ -46,11 +46,12 @@ func TestConcurrentSearches(t *testing.T) {
 		SearXNGURL: server.URL,
 		Timeout:    30 * time.Second,
 	}
+
 	searcher, err := searxng.NewSearXNGSearcher(cfg, false)
 	if err != nil {
 		t.Fatalf("NewSearXNGSearcher() error = %v", err)
 	}
-	defer func() { _ = searcher.Close() }()
+	defer func() { _ = searcher.Close() }() //nolint:errcheck // test cleanup
 
 	const (
 		numGoroutines       = 20
@@ -180,6 +181,7 @@ func TestChannelDeadlockDetection(t *testing.T) {
 		Query:           "test",
 	}
 	server := newJSONTestServer(t, searchResp)
+
 	defer server.Close()
 
 	cfg := &searxng.Config{
@@ -194,7 +196,9 @@ func TestChannelDeadlockDetection(t *testing.T) {
 	// Launch many concurrent searches
 	for range numGoroutines {
 		wg.Go(func() {
-			_, _ = testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
+			//nolint:errcheck // intentional discard
+			_, _ = testPerformSearch(t.Context(), t, cfg,
+				&searxng.SearchArgs{Query: "test"})
 		})
 	}
 
@@ -233,7 +237,7 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
+		_, _ = w.Write(body) //nolint:errcheck // test server write
 	}))
 	defer server.Close()
 
@@ -444,9 +448,12 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 		Query:           "test",
 	}
 	server := newJSONTestServer(t, searchResp)
+
 	defer server.Close()
 
-	searcher, _ := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}, false)
+	//nolint:errcheck // test setup
+	searcher, _ := searxng.NewSearXNGSearcher(
+		&searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}, false)
 
 	const numGoroutines = 50
 
@@ -520,7 +527,7 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
+		_, _ = w.Write(body) //nolint:errcheck // test server write
 	}))
 	defer server.Close()
 	defer close(release)
@@ -533,8 +540,8 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 	done := make(chan error, 1)
 
 	go func() {
-		_, err := searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
-		done <- err
+		_, searchErr := searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
+		done <- searchErr
 	}()
 
 	<-started
@@ -549,6 +556,7 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 		if err == nil {
 			t.Fatal("Search() expected error after Close(), got nil")
 		}
+
 		if !errors.Is(err, context.Canceled) {
 			t.Fatalf("Search() error = %v, want context.Canceled", err)
 		}
