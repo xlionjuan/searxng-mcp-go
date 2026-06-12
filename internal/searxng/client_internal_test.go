@@ -2,6 +2,7 @@ package searxng
 
 import (
 	"errors"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -477,7 +478,7 @@ func TestCloseResponseBody(t *testing.T) {
 	t.Run("nil response", func(t *testing.T) {
 		t.Parallel()
 		// Should not panic
-		closeResponseBody(nil)
+		closeResponseBody(nil, slog.Default())
 	})
 
 	t.Run("nil body", func(t *testing.T) {
@@ -485,7 +486,7 @@ func TestCloseResponseBody(t *testing.T) {
 
 		resp := &http.Response{Body: nil}
 		// Should not panic
-		closeResponseBody(resp)
+		closeResponseBody(resp, slog.Default())
 	})
 
 	t.Run("closes body", func(t *testing.T) {
@@ -499,7 +500,7 @@ func TestCloseResponseBody(t *testing.T) {
 			},
 		}
 		resp := &http.Response{Body: body}
-		closeResponseBody(resp)
+		closeResponseBody(resp, slog.Default())
 
 		if !closeCalled {
 			t.Fatal("closeResponseBody() did not close the response body")
