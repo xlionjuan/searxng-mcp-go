@@ -109,6 +109,15 @@ configured SearXNG instance.
   pushing a branch. For OpenCode running inside GitHub Actions, see
   [docs/agents/opencode-github-actions.md](docs/agents/opencode-github-actions.md).
 
+## Git Configuration
+
+- Treat all Git configuration as read-only. Agents may inspect Git config, but
+  must not write, unset, or override any Git config at repo, worktree, global,
+  system, file, submodule, or per-command (`git -c`) scope unless the current
+  human explicitly names the config key to change. If Git fails because config
+  or identity is missing, unsafe, or wrong, stop and report; do not repair,
+  guess, or work around it.
+
 ## Git Identity
 
 - Use the existing git identity as-is. Inspect with
