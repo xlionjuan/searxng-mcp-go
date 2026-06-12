@@ -61,12 +61,24 @@ jobs:
           git -C "$HOME/.agents/skills/cc-skills-golang" fetch --depth=1 origin "$CC_SKILLS_GOLANG_SHA"
           git -C "$HOME/.agents/skills/cc-skills-golang" checkout --detach "$CC_SKILLS_GOLANG_SHA"
 
-      - name: Run opencode
-        uses: anomalyco/opencode/github@76c631d198f9ff620e15468e45f3457d50481b57 # v1.16.2
+      - name: Install opencode (pinned)
+        # renovate: datasource=github-releases packageName=anomalyco/opencode versioning=loose
         env:
+          OPENCODE_VERSION: v1.17.4
+          OPENCODE_SHA256: a2ece9181aab3817a6b59fa390b6d459b187e3ec917be802ecbca88b632c5ef9
+        run: |
+          curl -fsSL "https://github.com/anomalyco/opencode/releases/download/${OPENCODE_VERSION}/opencode-linux-x64.tar.gz" -o /tmp/opencode.tar.gz
+          echo "${OPENCODE_SHA256}  /tmp/opencode.tar.gz" | sha256sum -c -
+          mkdir -p "$HOME/.opencode/bin"
+          tar -xzf /tmp/opencode.tar.gz -C "$HOME/.opencode/bin"
+          rm /tmp/opencode.tar.gz
+          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+
+      - name: Run opencode
+        env:
+          MODEL: opencode-go/deepseek-v4-flash
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GH_TOKEN: ${{ github.token }}
-        with:
-          model: opencode-go/deepseek-v4-flash
-          # model: minimax/MiniMax-M3
+        run: |
+          opencode github run
