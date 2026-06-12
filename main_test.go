@@ -43,15 +43,17 @@ func TestParseErrorHelpGoesToStderr(t *testing.T) {
 				t.Fatal("expected error, got nil")
 			}
 
-			var stdoutBuf, stderrBuf bytes.Buffer
+			var stderrBuf bytes.Buffer
 
 			// Simulate the main() parse-error path:
 			// error message and help both go to stderr.
-			fmt.Fprintf(&stderrBuf, "\033[31mERROR: %v\033[0m\n", err)
-			fmt.Fprintln(&stderrBuf, "")
-			printCLIHelp(&stderrBuf)
+			stdout := captureStdout(t, func() {
+				fmt.Fprintf(&stderrBuf, "\033[31mERROR: %v\033[0m\n", err)
+				fmt.Fprintln(&stderrBuf, "")
+				printCLIHelp(&stderrBuf)
+			})
 
-			if stdoutBuf.Len() > 0 {
+			if stdout != "" {
 				t.Error("help text should not appear on stdout for parse errors")
 			}
 
@@ -492,20 +494,16 @@ func captureStdout(t *testing.T, fn func()) string {
 		os.Stdout = oldStdout
 	}()
 
-	func() {
-		defer func() {
-			err := w.Close()
-			if err != nil {
-				t.Logf("warning: failed to close stdout pipe writer: %v", err)
-			}
-		}()
+	fn()
 
-		fn()
-	}()
+	err := w.Close()
+	if err != nil {
+		t.Logf("warning: failed to close stdout pipe writer: %v", err)
+	}
 
 	var buf bytes.Buffer
 
-	_, err := buf.ReadFrom(r)
+	_, err = buf.ReadFrom(r)
 	if err != nil {
 		t.Fatalf("failed to read stdout: %v", err)
 	}

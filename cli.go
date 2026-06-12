@@ -84,7 +84,7 @@ For more information, see: https://github.com/xlionjuan/searxng-mcp-go
 
 	_, err := w.Write([]byte(b.String()))
 	if err != nil {
-		_ = err
+		slog.Warn("failed to write help text", "error", err)
 	}
 }
 
