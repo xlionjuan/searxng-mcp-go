@@ -3,9 +3,14 @@ package searxng
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
+
+	"searxng-mcp-go/internal/testhelper"
 )
 
 var (
@@ -13,6 +18,7 @@ var (
 	errRetryTestRequestCreationFailure = errors.New("request creation failed")
 )
 
+//nolint:gocognit // table-driven test covers many redirect-scenario branches
 func TestClassifyOutcome(t *testing.T) {
 	t.Parallel()
 
@@ -110,6 +116,54 @@ func TestClassifyOutcome(t *testing.T) {
 
 		if outcome != OutcomeSuccess {
 			t.Fatalf("classifyOutcome() = %v, want OutcomeSuccess", outcome)
+		}
+	})
+
+	t.Run("errRedirectDifferentHost wrapped in url.Error returns OutcomeAbort", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		err := &url.Error{
+			Op:  "Post",
+			URL: "https://search.example.com/search",
+			Err: fmt.Errorf("redirect to different host blocked: %w", errRedirectDifferentHost),
+		}
+		outcome := classifyOutcome(ctx, 0, 2, nil, err, false)
+
+		if outcome != OutcomeAbort {
+			t.Fatalf("classifyOutcome() = %v, want OutcomeAbort for errRedirectDifferentHost", outcome)
+		}
+	})
+
+	t.Run("errRedirectSchemeDowngrade wrapped in url.Error returns OutcomeAbort", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		err := &url.Error{
+			Op:  "Post",
+			URL: "https://search.example.com/search",
+			Err: fmt.Errorf("https to http downgrade blocked: %w", errRedirectSchemeDowngrade),
+		}
+		outcome := classifyOutcome(ctx, 0, 2, nil, err, false)
+
+		if outcome != OutcomeAbort {
+			t.Fatalf("classifyOutcome() = %v, want OutcomeAbort for errRedirectSchemeDowngrade", outcome)
+		}
+	})
+
+	t.Run("errTooManyRedirects wrapped in url.Error returns OutcomeAbort", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		err := &url.Error{
+			Op:  "Post",
+			URL: "https://search.example.com/search",
+			Err: errTooManyRedirects,
+		}
+		outcome := classifyOutcome(ctx, 0, 2, nil, err, false)
+
+		if outcome != OutcomeAbort {
+			t.Fatalf("classifyOutcome() = %v, want OutcomeAbort for errTooManyRedirects", outcome)
 		}
 	})
 }
@@ -323,6 +377,169 @@ func TestRetryWait(t *testing.T) {
 		err := retryWait(ctx, time.Second)
 		if err == nil {
 			t.Fatal("retryWait() error = nil, want context.Canceled")
+		}
+	})
+}
+
+//nolint:gocognit,gocyclo // call-count regression tests cover each redirect error + transient baseline
+func TestSearchRedirectPolicyNotRetried(t *testing.T) {
+	t.Parallel()
+
+	t.Run("cross-host redirect error aborts without retry", func(t *testing.T) {
+		t.Parallel()
+
+		callCount := 0
+		transport := testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			callCount++
+
+			return nil, &url.Error{
+				Op:  req.Method,
+				URL: req.URL.String(),
+				Err: fmt.Errorf("redirect to different host blocked: %w", errRedirectDifferentHost),
+			}
+		})
+
+		client := &http.Client{Transport: transport}
+
+		endpoint, err := computeSearchEndpoint("https://search.example.com")
+		if err != nil {
+			t.Fatalf("computeSearchEndpoint() error = %v", err)
+		}
+
+		s := &SearXNGSearcher{
+			client:         client,
+			searchEndpoint: endpoint,
+			retryStrategy:  newExponentialBackoffStrategy(2, time.Microsecond, time.Microsecond),
+			debug:          false,
+		}
+		s.done = make(chan struct{})
+
+		_, err = s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("Search() error = nil, want redirect error")
+		}
+
+		if !strings.Contains(err.Error(), "redirect to different host blocked") {
+			t.Fatalf("error = %q, want 'redirect to different host blocked'", err.Error())
+		}
+
+		if callCount != 1 {
+			t.Fatalf("RoundTrip callCount = %d, want 1 (no retry)", callCount)
+		}
+	})
+
+	t.Run("scheme downgrade error aborts without retry", func(t *testing.T) {
+		t.Parallel()
+
+		callCount := 0
+		transport := testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			callCount++
+
+			return nil, &url.Error{
+				Op:  req.Method,
+				URL: req.URL.String(),
+				Err: fmt.Errorf("https to http downgrade blocked: %w", errRedirectSchemeDowngrade),
+			}
+		})
+
+		client := &http.Client{Transport: transport}
+
+		endpoint, err := computeSearchEndpoint("https://search.example.com")
+		if err != nil {
+			t.Fatalf("computeSearchEndpoint() error = %v", err)
+		}
+
+		s := &SearXNGSearcher{
+			client:         client,
+			searchEndpoint: endpoint,
+			retryStrategy:  newExponentialBackoffStrategy(2, time.Microsecond, time.Microsecond),
+			debug:          false,
+		}
+		s.done = make(chan struct{})
+
+		_, err = s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("Search() error = nil, want redirect error")
+		}
+
+		if callCount != 1 {
+			t.Fatalf("RoundTrip callCount = %d, want 1 (no retry)", callCount)
+		}
+	})
+
+	t.Run("too many redirects error aborts without retry", func(t *testing.T) {
+		t.Parallel()
+
+		callCount := 0
+		transport := testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			callCount++
+
+			return nil, &url.Error{
+				Op:  req.Method,
+				URL: req.URL.String(),
+				Err: errTooManyRedirects,
+			}
+		})
+
+		client := &http.Client{Transport: transport}
+
+		endpoint, err := computeSearchEndpoint("https://search.example.com")
+		if err != nil {
+			t.Fatalf("computeSearchEndpoint() error = %v", err)
+		}
+
+		s := &SearXNGSearcher{
+			client:         client,
+			searchEndpoint: endpoint,
+			retryStrategy:  newExponentialBackoffStrategy(2, time.Microsecond, time.Microsecond),
+			debug:          false,
+		}
+		s.done = make(chan struct{})
+
+		_, err = s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("Search() error = nil, want redirect error")
+		}
+
+		if callCount != 1 {
+			t.Fatalf("RoundTrip callCount = %d, want 1 (no retry)", callCount)
+		}
+	})
+
+	t.Run("transient transport error still retries", func(t *testing.T) {
+		t.Parallel()
+
+		callCount := 0
+		transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			callCount++
+
+			return nil, errRetryTestConnectionReset
+		})
+
+		client := &http.Client{Transport: transport}
+
+		endpoint, err := computeSearchEndpoint("https://search.example.com")
+		if err != nil {
+			t.Fatalf("computeSearchEndpoint() error = %v", err)
+		}
+
+		s := &SearXNGSearcher{
+			client:         client,
+			searchEndpoint: endpoint,
+			retryStrategy:  newExponentialBackoffStrategy(2, time.Microsecond, time.Microsecond),
+			debug:          false,
+		}
+		s.done = make(chan struct{})
+
+		_, err = s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("Search() error = nil, want transport error after retries exhausted")
+		}
+
+		// With maxRetries=2 and a transient error, the transport should be
+		// called up to 3 times (attempt 0 + 2 retries).
+		if callCount != 3 {
+			t.Fatalf("RoundTrip callCount = %d, want 3 (initial + 2 retries)", callCount)
 		}
 	})
 }
