@@ -474,7 +474,7 @@ func TestGetConfig(t *testing.T) {
 	t.Setenv("SEARXNG_URL", "https://env.example.com")
 
 	t.Run("flag overrides env", func(t *testing.T) {
-		cfg, err := getConfig(&CLIFlags{SearXNGURL: "https://flag.example.com"})
+		cfg, err := getConfig(&CLIFlags{SearXNGURL: "https://flag.example.com"}, false)
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -485,7 +485,7 @@ func TestGetConfig(t *testing.T) {
 	})
 
 	t.Run("env used when flag empty", func(t *testing.T) {
-		cfg, err := getConfig(&CLIFlags{})
+		cfg, err := getConfig(&CLIFlags{}, false)
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -498,7 +498,7 @@ func TestGetConfig(t *testing.T) {
 	t.Run("timeout env parsed", func(t *testing.T) {
 		t.Setenv("SEARXNG_TIMEOUT", "250ms")
 
-		cfg, err := getConfig(&CLIFlags{})
+		cfg, err := getConfig(&CLIFlags{}, false)
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -511,7 +511,7 @@ func TestGetConfig(t *testing.T) {
 	t.Run("max retries env parsed", func(t *testing.T) {
 		t.Setenv("SEARXNG_MAX_RETRIES", "3")
 
-		cfg, err := getConfig(&CLIFlags{})
+		cfg, err := getConfig(&CLIFlags{}, false)
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -524,7 +524,7 @@ func TestGetConfig(t *testing.T) {
 	t.Run("GET fallback env parsed", func(t *testing.T) {
 		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "1")
 
-		cfg, err := getConfig(&CLIFlags{})
+		cfg, err := getConfig(&CLIFlags{}, false)
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -537,7 +537,7 @@ func TestGetConfig(t *testing.T) {
 	t.Run("GET fallback env zero disables", func(t *testing.T) {
 		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "0")
 
-		cfg, err := getConfig(&CLIFlags{})
+		cfg, err := getConfig(&CLIFlags{}, false)
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -563,7 +563,7 @@ func TestGetConfig(t *testing.T) {
 			t.Fatalf("parseArgs() error = %v, want nil", err)
 		}
 
-		cfg, err := getConfig(flags)
+		cfg, err := getConfig(flags, true)
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -595,7 +595,7 @@ func TestGetConfig(t *testing.T) {
 			t.Fatal("flags.AllowGETFallback = false, want true")
 		}
 
-		cfg, err := getConfig(flags)
+		cfg, err := getConfig(flags, true)
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -620,7 +620,7 @@ func TestGetConfig(t *testing.T) {
 			t.Fatal("flags.AllowGETFallback = true, want false (flag not passed)")
 		}
 
-		cfg, err := getConfig(flags)
+		cfg, err := getConfig(flags, true)
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -635,7 +635,7 @@ func TestGetConfig(t *testing.T) {
 		t.Setenv("SEARXNG_MAX_RETRIES", "-1")
 		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "true")
 
-		cfg, err := getConfig(&CLIFlags{})
+		cfg, err := getConfig(&CLIFlags{}, false)
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -665,7 +665,7 @@ func TestGetConfig(t *testing.T) {
 			t.Fatalf("parseArgs() error = %v, want nil", err)
 		}
 
-		cfg, err := getConfig(flags)
+		cfg, err := getConfig(flags, true)
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -687,7 +687,7 @@ func TestGetConfig(t *testing.T) {
 			t.Fatalf("parseArgs() error = %v, want nil", err)
 		}
 
-		cfg, err := getConfig(flags)
+		cfg, err := getConfig(flags, true)
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
@@ -700,7 +700,7 @@ func TestGetConfig(t *testing.T) {
 	t.Run("error when neither set", func(t *testing.T) {
 		t.Setenv("SEARXNG_URL", "")
 
-		_, err := getConfig(&CLIFlags{})
+		_, err := getConfig(&CLIFlags{}, false)
 		if err == nil {
 			t.Fatal("getConfig() error = nil, want error")
 		}
