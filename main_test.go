@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -22,12 +23,57 @@ func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m)
 }
 
+func TestParseErrorHelpGoesToStderr(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "unknown flag", args: []string{"--unknown"}},
+		{name: "missing query value", args: []string{"--query"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, _, _, err := parseArgs(tt.args)
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+
+			var stderrBuf bytes.Buffer
+
+			// Simulate the main() parse-error path:
+			// error message and help both go to stderr.
+			stdout := captureStdout(t, func() {
+				fmt.Fprintf(&stderrBuf, "\033[31mERROR: %v\033[0m\n", err)
+				fmt.Fprintln(&stderrBuf, "")
+				printCLIHelp(&stderrBuf)
+			})
+
+			if stdout != "" {
+				t.Error("help text should not appear on stdout for parse errors")
+			}
+
+			if stderrBuf.Len() == 0 {
+				t.Error("expected help text on stderr for parse errors")
+			}
+
+			if !strings.Contains(stderrBuf.String(), "SearXNG MCP Server") {
+				t.Error("stderr should contain help text")
+			}
+		})
+	}
+}
+
 func TestPrintCLIHelp(t *testing.T) {
 	t.Parallel()
 
-	output := captureStdout(t, func() {
-		printCLIHelp()
-	})
+	var buf bytes.Buffer
+	printCLIHelp(&buf)
+	output := buf.String()
 
 	expectedContent := []string{
 		"SearXNG MCP Server - CLI Mode",
@@ -436,24 +482,28 @@ func captureStdout(t *testing.T, fn func()) string {
 	defer stdoutMu.Unlock()
 
 	oldStdout := os.Stdout
-	r, w, _ := os.Pipe() //nolint:errcheck // test creates pipe; error is impossible in test
+
+	r, w, pipeErr := os.Pipe()
+	if pipeErr != nil {
+		t.Fatalf("failed to create pipe for stdout capture: %v", pipeErr)
+	}
+
 	os.Stdout = w
 
 	defer func() {
 		os.Stdout = oldStdout
 	}()
 
-	func() {
-		defer func() {
-			_ = w.Close() //nolint:errcheck // test cleanup; error is non-actionable
-		}()
+	fn()
 
-		fn()
-	}()
+	err := w.Close()
+	if err != nil {
+		t.Logf("warning: failed to close stdout pipe writer: %v", err)
+	}
 
 	var buf bytes.Buffer
 
-	_, err := buf.ReadFrom(r)
+	_, err = buf.ReadFrom(r)
 	if err != nil {
 		t.Fatalf("failed to read stdout: %v", err)
 	}

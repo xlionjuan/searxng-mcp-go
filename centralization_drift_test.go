@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -20,7 +21,7 @@ import (
 // stdout-capturing tests in this file are kept serial to stay race-safe.
 func TestCLIHelpTimeoutDefaultDerivesFromConstant(t *testing.T) {
 	output := captureStdout(t, func() {
-		printCLIHelp()
+		printCLIHelp(os.Stdout)
 	})
 
 	wantSubstr := "[default: " + searxng.DefaultTimeout.String() + "]"
@@ -45,7 +46,7 @@ func TestCLIHelpTimeoutDefaultDerivesFromConstant(t *testing.T) {
 // Not t.Parallel(): see TestCLIHelpTimeoutDefaultDerivesFromConstant.
 func TestCLIHelpMaxRetriesDefaultDerivesFromConstant(t *testing.T) {
 	output := captureStdout(t, func() {
-		printCLIHelp()
+		printCLIHelp(os.Stdout)
 	})
 
 	wantSubstr := "[default: " + strconv.Itoa(searxng.DefaultMaxRetries) + "]"
@@ -70,7 +71,7 @@ func TestCLIHelpMaxRetriesDefaultDerivesFromConstant(t *testing.T) {
 // Not t.Parallel(): see TestCLIHelpTimeoutDefaultDerivesFromConstant.
 func TestCLIHelpNoStaleDefaultLiterals(t *testing.T) {
 	output := captureStdout(t, func() {
-		printCLIHelp()
+		printCLIHelp(os.Stdout)
 	})
 
 	// Both derived and hardcoded forms happen to match when the
@@ -97,7 +98,7 @@ func TestCLIHelpNoStaleDefaultLiterals(t *testing.T) {
 // Not t.Parallel(): see TestCLIHelpTimeoutDefaultDerivesFromConstant.
 func TestCLIHelpLimitHelpTextMatchesBounds(t *testing.T) {
 	output := captureStdout(t, func() {
-		printCLIHelp()
+		printCLIHelp(os.Stdout)
 	})
 
 	wantDefaultStr := "[default: " + strconv.Itoa(searxng.DefaultResultLimit) + "]"
