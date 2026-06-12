@@ -382,6 +382,68 @@ func TestSearchArgsFieldsMatchSearchParams(t *testing.T) {
 	}
 }
 
+// TestNewSearchArgsDefaultLimit verifies that NewSearchArgs sets Limit to
+// DefaultResultLimit. This guards against accidental drift if the defaulting
+// policy moves out of the constructor into callers (which would re-introduce
+// the duplication that NewSearchArgs was designed to eliminate).
+func TestNewSearchArgsDefaultLimit(t *testing.T) {
+	t.Parallel()
+
+	args := NewSearchArgs("test")
+
+	if args.Limit == nil {
+		t.Fatal("NewSearchArgs().Limit = nil, want non-nil")
+	}
+
+	if *args.Limit != DefaultResultLimit {
+		t.Fatalf("NewSearchArgs().Limit = %d, want %d", *args.Limit, DefaultResultLimit)
+	}
+
+	if args.Pageno != nil {
+		t.Fatal("NewSearchArgs().Pageno = non-nil, want nil")
+	}
+}
+
+// TestApplyDefaultsFillsNilLimit verifies that ApplyDefaults fills a nil
+// Limit with DefaultResultLimit and is a no-op when Limit is already set.
+// This is the MCP path's entry point for defaulting.
+func TestApplyDefaultsFillsNilLimit(t *testing.T) {
+	t.Parallel()
+
+	t.Run("fills nil limit", func(t *testing.T) {
+		t.Parallel()
+
+		args := &SearchArgs{Query: "test"}
+
+		if args.Limit != nil {
+			t.Fatal("test setup: expected nil limit")
+		}
+
+		args.ApplyDefaults()
+
+		if args.Limit == nil {
+			t.Fatal("ApplyDefaults() left Limit = nil, want non-nil")
+		}
+
+		if *args.Limit != DefaultResultLimit {
+			t.Fatalf("ApplyDefaults() Limit = %d, want %d", *args.Limit, DefaultResultLimit)
+		}
+	})
+
+	t.Run("no-op when limit already set", func(t *testing.T) {
+		t.Parallel()
+
+		limit := 7
+		args := &SearchArgs{Query: "test", Limit: &limit}
+
+		args.ApplyDefaults()
+
+		if args.Limit != &limit {
+			t.Fatalf("ApplyDefaults() changed Limit from %v to %v", &limit, args.Limit)
+		}
+	})
+}
+
 // TestBuildParamSchema locks the translation contract for buildParamSchema.
 func TestBuildParamSchema(t *testing.T) {
 	t.Parallel()

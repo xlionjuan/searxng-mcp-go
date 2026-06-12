@@ -139,7 +139,7 @@ func BenchmarkValidateSearchArgs(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		err := ValidateSearchArgs(args)
+		_, err := ValidateSearchArgs(args)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -152,7 +152,7 @@ func BenchmarkValidateSearchArgsMinimal(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		err := ValidateSearchArgs(args)
+		_, err := ValidateSearchArgs(args)
 		if err != nil {
 			b.Fatal(err)
 		}

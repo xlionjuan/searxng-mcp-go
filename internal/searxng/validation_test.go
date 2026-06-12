@@ -30,17 +30,23 @@ func requireValidationError(t *testing.T, err error, field string) {
 	}
 }
 
+func validateSearchArgsErr(args *SearchArgs) error {
+	_, err := ValidateSearchArgs(args)
+
+	return err
+}
+
 func TestValidateSearchArgs(t *testing.T) {
 	t.Parallel()
 
 	t.Run("empty query", func(t *testing.T) {
 		t.Parallel()
-		requireValidationError(t, ValidateSearchArgs(&SearchArgs{}), "query")
+		requireValidationError(t, validateSearchArgsErr(&SearchArgs{}), "query")
 	})
 
 	t.Run("whitespace-only query", func(t *testing.T) {
 		t.Parallel()
-		requireValidationError(t, ValidateSearchArgs(&SearchArgs{Query: " \t "}), "query")
+		requireValidationError(t, validateSearchArgsErr(&SearchArgs{Query: " \t "}), "query")
 	})
 
 	t.Run("query with control characters", func(t *testing.T) {
@@ -49,7 +55,7 @@ func TestValidateSearchArgs(t *testing.T) {
 		for _, query := range []string{"test\x00query", "test\x1fquery", "test\x7fquery", "test\nquery"} {
 			t.Run(fmt.Sprintf("%q", query), func(t *testing.T) {
 				t.Parallel()
-				requireValidationError(t, ValidateSearchArgs(&SearchArgs{Query: query}), "query")
+				requireValidationError(t, validateSearchArgsErr(&SearchArgs{Query: query}), "query")
 			})
 		}
 	})
@@ -58,13 +64,13 @@ func TestValidateSearchArgs(t *testing.T) {
 		t.Parallel()
 
 		args := &SearchArgs{Query: strings.Repeat("a", MaxQueryLength+1)}
-		requireValidationError(t, ValidateSearchArgs(args), "query")
+		requireValidationError(t, validateSearchArgsErr(args), "query")
 	})
 
 	t.Run("valid query", func(t *testing.T) {
 		t.Parallel()
 
-		err := ValidateSearchArgs(&SearchArgs{Query: "golang search"})
+		_, err := ValidateSearchArgs(&SearchArgs{Query: "golang search"})
 		if err != nil {
 			t.Fatalf("ValidateSearchArgs() error = %v, want nil", err)
 		}
@@ -72,13 +78,13 @@ func TestValidateSearchArgs(t *testing.T) {
 
 	t.Run("invalid time_range", func(t *testing.T) {
 		t.Parallel()
-		requireValidationError(t, ValidateSearchArgs(&SearchArgs{Query: "test", TimeRange: "week"}), "time_range")
+		requireValidationError(t, validateSearchArgsErr(&SearchArgs{Query: "test", TimeRange: "week"}), "time_range")
 	})
 
 	t.Run("valid time_range", func(t *testing.T) {
 		t.Parallel()
 
-		err := ValidateSearchArgs(&SearchArgs{Query: "test", TimeRange: "day"})
+		_, err := ValidateSearchArgs(&SearchArgs{Query: "test", TimeRange: "day"})
 		if err != nil {
 			t.Fatalf("ValidateSearchArgs() error = %v, want nil", err)
 		}
@@ -86,13 +92,13 @@ func TestValidateSearchArgs(t *testing.T) {
 
 	t.Run("SafeSearch out of range", func(t *testing.T) {
 		t.Parallel()
-		requireValidationError(t, ValidateSearchArgs(&SearchArgs{Query: "test", SafeSearch: 3}), "safesearch")
+		requireValidationError(t, validateSearchArgsErr(&SearchArgs{Query: "test", SafeSearch: 3}), "safesearch")
 	})
 
 	t.Run("SafeSearch valid", func(t *testing.T) {
 		t.Parallel()
 
-		err := ValidateSearchArgs(&SearchArgs{Query: "test", SafeSearch: 2})
+		_, err := ValidateSearchArgs(&SearchArgs{Query: "test", SafeSearch: 2})
 		if err != nil {
 			t.Fatalf("ValidateSearchArgs() error = %v, want nil", err)
 		}
@@ -102,14 +108,14 @@ func TestValidateSearchArgs(t *testing.T) {
 		t.Parallel()
 
 		pageno := 0
-		requireValidationError(t, ValidateSearchArgs(&SearchArgs{Query: "test", Pageno: &pageno}), "pageno")
+		requireValidationError(t, validateSearchArgsErr(&SearchArgs{Query: "test", Pageno: &pageno}), "pageno")
 	})
 
 	t.Run("Limit out of range", func(t *testing.T) {
 		t.Parallel()
 
 		limit := 21
-		requireValidationError(t, ValidateSearchArgs(&SearchArgs{Query: "test", Limit: &limit}), "limit")
+		requireValidationError(t, validateSearchArgsErr(&SearchArgs{Query: "test", Limit: &limit}), "limit")
 	})
 
 	t.Run("Language auto normalized to empty", func(t *testing.T) {
@@ -117,25 +123,25 @@ func TestValidateSearchArgs(t *testing.T) {
 
 		args := &SearchArgs{Query: "test", Language: "auto"}
 
-		err := ValidateSearchArgs(args)
+		got, err := ValidateSearchArgs(args)
 		if err != nil {
 			t.Fatalf("ValidateSearchArgs() error = %v, want nil", err)
 		}
 
-		if args.Language != "" {
-			t.Fatalf("Language = %q, want empty string", args.Language)
+		if got.Language != "" {
+			t.Fatalf("Language = %q, want empty string", got.Language)
 		}
 	})
 
 	t.Run("Language invalid format", func(t *testing.T) {
 		t.Parallel()
-		requireValidationError(t, ValidateSearchArgs(&SearchArgs{Query: "test", Language: "en_US"}), "language")
+		requireValidationError(t, validateSearchArgsErr(&SearchArgs{Query: "test", Language: "en_US"}), "language")
 	})
 
 	t.Run("Language valid", func(t *testing.T) {
 		t.Parallel()
 
-		err := ValidateSearchArgs(&SearchArgs{Query: "test", Language: "en-US"})
+		_, err := ValidateSearchArgs(&SearchArgs{Query: "test", Language: "en-US"})
 		if err != nil {
 			t.Fatalf("ValidateSearchArgs() error = %v, want nil", err)
 		}

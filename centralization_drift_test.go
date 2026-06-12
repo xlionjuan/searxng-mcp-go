@@ -219,6 +219,28 @@ func TestMCPSearchSchemaPagenoBoundsDeriveFromConstant(t *testing.T) {
 	verifyJSONNumber(t, raw, "minimum", float64(searxng.MinPageno))
 }
 
+// TestParseArgsDefaultLimitMatchesConstant guards the CLI defaulting policy:
+// when --limit is not provided, parseArgs must default to DefaultResultLimit.
+// If the CLI path diverges from the MCP path (which uses ApplyDefaults /
+// NewSearchArgs), this test catches the drift.
+func TestParseArgsDefaultLimitMatchesConstant(t *testing.T) {
+	t.Parallel()
+
+	_, flags, _, err := parseArgs([]string{"test query"})
+	if err != nil {
+		t.Fatalf("parseArgs() error = %v", err)
+	}
+
+	if flags.Limit == nil {
+		t.Fatal("parseArgs left Limit = nil, want non-nil default")
+	}
+
+	if *flags.Limit != searxng.DefaultResultLimit {
+		t.Fatalf("parseArgs Limit = %d, want %d (DefaultResultLimit)",
+			*flags.Limit, searxng.DefaultResultLimit)
+	}
+}
+
 // TestMCPSearchSchemaTimeRangeEnumDerivesFromConstant guards the MCP
 // JSON Schema enum for `time_range`. The Enum field in SearchParams is
 // derived from ValidTimeRanges(), so the schema must reflect that.

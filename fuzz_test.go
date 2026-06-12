@@ -67,7 +67,7 @@ func FuzzValidateSearchArgs(f *testing.F) {
 		}
 
 		// ValidateSearchArgs must not panic on any input
-		err := searxng.ValidateSearchArgs(args)
+		got, err := searxng.ValidateSearchArgs(args)
 		// Invariant: nil args must return error
 		// (args is always non-nil here, but we verify the nil path separately)
 		// Invariant: if err is non-nil, it should be a *ValidationError
@@ -84,9 +84,9 @@ func FuzzValidateSearchArgs(f *testing.F) {
 		}
 
 		// Invariant: after validation, "auto" language should be normalized to empty
-		if strings.EqualFold(language, "auto") && err == nil {
-			if args.Language != "" {
-				t.Errorf("ValidateSearchArgs did not normalize 'auto' language; got %q", args.Language)
+		if err == nil && got != nil && strings.EqualFold(language, "auto") {
+			if got.Language != "" {
+				t.Errorf("ValidateSearchArgs did not normalize 'auto' language; got %q", got.Language)
 			}
 		}
 

@@ -175,12 +175,9 @@ func NewSearchToolHandler(searcher searcher) func(
 	context.Context, *mcp.CallToolRequest, searxng.SearchArgs,
 ) (*mcp.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcp.CallToolRequest, args searxng.SearchArgs) (*mcp.CallToolResult, any, error) {
-		if args.Limit == nil {
-			defaultLimit := searxng.DefaultResultLimit
-			args.Limit = &defaultLimit
-		}
+		args.ApplyDefaults()
 
-		err := searxng.ValidateSearchArgs(&args)
+		normalized, err := searxng.ValidateSearchArgs(&args)
 		if err != nil {
 			//nolint:nilerr // MCP handler packs error into tool result
 			return &mcp.CallToolResult{
@@ -191,7 +188,7 @@ func NewSearchToolHandler(searcher searcher) func(
 			}, nil, nil
 		}
 
-		resp, err := searcher.Search(ctx, &args)
+		resp, err := searcher.Search(ctx, normalized)
 		if err != nil {
 			slog.Error("search failed", "error", err)
 

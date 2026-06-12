@@ -466,7 +466,7 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 				SafeSearch: 0,
 			}
 
-			err := searxng.ValidateSearchArgs(args)
+			_, err := searxng.ValidateSearchArgs(args)
 			if err != nil {
 				atomic.AddInt64(&validationErrors, 1)
 				t.Errorf("unexpected validation error: %v", err)

@@ -56,7 +56,7 @@ func captureMCPBody(t *testing.T, searcher *SearXNGSearcher, args *SearchArgs) s
 func validateSearchArgs(t *testing.T, args *SearchArgs) {
 	t.Helper()
 
-	err := ValidateSearchArgs(args)
+	_, err := ValidateSearchArgs(args)
 	if err != nil {
 		t.Fatalf("ValidateSearchArgs() error = %v", err)
 	}
