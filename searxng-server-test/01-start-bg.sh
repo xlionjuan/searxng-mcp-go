@@ -76,7 +76,7 @@ cd "$SEARXNG_DIR"
 # Detach from the calling shell so the background process survives the agent's
 # tool shell exit (SIGHUP/SIGTTIN). nohup ignores SIGHUP; </dev/null cuts the
 # controlling tty; & disown removes it from the shell's job table.
-nohup python searx/webapp.py >>"$SEARXNG_LOG_FILE" 2>&1 </dev/null &
+nohup granian --interface wsgi searx.webapp:app --port "$SEARXNG_PORT" >>"$SEARXNG_LOG_FILE" 2>&1 </dev/null &
 SEARXNG_PID=$!
 disown "$SEARXNG_PID" 2>/dev/null || true
 echo "$SEARXNG_PID" > "$SEARXNG_PID_FILE"

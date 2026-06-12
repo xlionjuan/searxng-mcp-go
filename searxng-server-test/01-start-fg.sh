@@ -48,4 +48,4 @@ echo "  URL: http://127.0.0.1:8888"
 echo ""
 
 cd "$SEARXNG_DIR"
-python searx/webapp.py
+granian --interface wsgi searx.webapp:app --port "${SEARXNG_PORT:-8888}"

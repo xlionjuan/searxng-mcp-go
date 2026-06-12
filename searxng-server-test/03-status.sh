@@ -45,9 +45,9 @@ if [ -f "$SEARXNG_PID_FILE" ]; then
 fi
 
 # No PID file — look for orphans
-orphans="$(pgrep -f 'searx/webapp\.py' 2>/dev/null || true)"
+orphans="$(pgrep -f 'searx/webapp\.py|granian' 2>/dev/null || true)"
 if [ -n "$orphans" ]; then
-    echo "orphan — no .bg-pid but searx/webapp.py is running (PIDs: $orphans)"
+    echo "orphan — no .bg-pid but a SearXNG process (searx/webapp.py or granian) is running (PIDs: $orphans)"
     echo "          this is leftover from a previous crashed session"
     echo "          run: ./02-stop.sh --force"
     exit 1
