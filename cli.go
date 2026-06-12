@@ -165,7 +165,8 @@ func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 			return fmt.Errorf("%w: %w", errJSONEncodeFailed, err)
 		}
 	} else {
-		fmt.Print(formatResults(slog.Default(), resp))
+		logUnresponsiveEngines(slog.Default(), resp)
+		fmt.Print(formatResults(resp))
 	}
 
 	return nil

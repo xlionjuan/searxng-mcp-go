@@ -213,7 +213,7 @@ func logUnresponsiveEngines(logger *slog.Logger, resp *searxng.SearchResponse) {
 // formatResults formats search results as a readable string.
 //
 //nolint:gocognit,gocyclo,cyclop // formatResults has conditional sections for answers/infoboxes/results/suggestions
-func formatResults(logger *slog.Logger, resp *searxng.SearchResponse) string {
+func formatResults(resp *searxng.SearchResponse) string {
 	// Build the header prefix that appears on every output path,
 	// including the early no-results return.
 	prefix := "=== Web Search Results ===\nWarning: " + searxng.ExternalContentWarning + "\n\n"
@@ -221,8 +221,6 @@ func formatResults(logger *slog.Logger, resp *searxng.SearchResponse) string {
 	if resp == nil {
 		return prefix + noResultsFound
 	}
-
-	logUnresponsiveEngines(logger, resp)
 
 	if len(resp.Results) == 0 && len(resp.Infoboxes) == 0 && len(resp.Answers) == 0 && len(resp.Suggestions) == 0 {
 		return prefix + noResultsFound
