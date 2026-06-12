@@ -505,42 +505,6 @@ func captureStdout(t *testing.T, fn func()) string {
 	return buf.String()
 }
 
-func captureStderr(t *testing.T, fn func()) string {
-	t.Helper()
-
-	stderrMu.Lock()
-	defer stderrMu.Unlock()
-
-	oldStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
-
-	defer func() {
-		os.Stderr = oldStderr
-	}()
-
-	func() {
-		defer func() {
-			_ = w.Close()
-		}()
-
-		fn()
-	}()
-
-	var buf bytes.Buffer
-
-	_, err := buf.ReadFrom(r)
-	if err != nil {
-		t.Fatalf("failed to read stderr: %v", err)
-	}
-
-	return buf.String()
-}
-
-// stderrMu serializes access to the process-global os.Stderr variable inside
-// captureStderr.
-var stderrMu sync.Mutex
-
 // stdoutMu serializes access to the process-global os.Stdout variable inside
 // captureStdout. Without it, two tests that call captureStdout in parallel can
 // race: one test's os.Stdout swap may capture output belonging to another

@@ -24,6 +24,7 @@ var (
 
 // printCLIHelp writes the help message to the given writer.
 func printCLIHelp(w io.Writer) {
+	//nolint:errcheck // write errors are non-actionable when writing help text
 	fmt.Fprintln(w, `SearXNG MCP Server - CLI Mode (`+version+`)`+`
 A Model Context Protocol server that provides web search via SearXNG.
 
@@ -36,9 +37,11 @@ OPTIONS:
                      Can also be set via SEARXNG_URL environment variable`)
 	// Print search parameter options from the shared table.
 	for _, p := range searxng.SearchParams {
+		//nolint:errcheck // write errors are non-actionable when writing help text
 		fmt.Fprintln(w, p.CLIHelpLine())
 	}
 
+	//nolint:errcheck // write errors are non-actionable when writing help text
 	fmt.Fprintf(w, `  --debug            Enable verbose HTTP request/response logging
                      Can also be enabled via DEBUG=1 environment variable
   --timeout DURATION HTTP client timeout (e.g., 8s) [default: %s]
