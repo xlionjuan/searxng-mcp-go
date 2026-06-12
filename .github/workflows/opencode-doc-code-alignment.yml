@@ -54,6 +54,17 @@ jobs:
           tool: just@1.51.0
           fallback: none
 
+      - name: Install Go skills for OpenCode
+        env:
+          # renovate: datasource=git-refs packageName=https://github.com/samber/cc-skills-golang currentValue=main
+          CC_SKILLS_GOLANG_SHA: a5e0e5997aac169b659e70cb826a20b489bc4c6c
+        run: |
+          mkdir -p "$HOME/.agents/skills"
+          git init "$HOME/.agents/skills/cc-skills-golang"
+          git -C "$HOME/.agents/skills/cc-skills-golang" remote add origin https://github.com/samber/cc-skills-golang.git
+          git -C "$HOME/.agents/skills/cc-skills-golang" fetch --depth=1 origin "$CC_SKILLS_GOLANG_SHA"
+          git -C "$HOME/.agents/skills/cc-skills-golang" checkout --detach "$CC_SKILLS_GOLANG_SHA"
+
       - name: Run OpenCode documentation/code alignment review
         uses: anomalyco/opencode/github@76c631d198f9ff620e15468e45f3457d50481b57 # v1.16.2
         env:

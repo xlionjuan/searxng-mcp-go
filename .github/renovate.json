@@ -15,6 +15,21 @@
     "enabled": true
   },
   "minimumReleaseAge": "3 days",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update pinned cc-skills-golang Git SHA used by OpenCode workflows",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/opencode.*\\.yml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=git-refs packageName=(?<packageName>\\S+) currentValue=(?<currentValue>\\S+)\\s+CC_SKILLS_GOLANG_SHA: (?<currentDigest>[a-f0-9]{40})"
+      ],
+      "datasourceTemplate": "git-refs",
+      "depNameTemplate": "samber/cc-skills-golang",
+      "versioningTemplate": "git"
+    }
+  ],
   "packageRules": [
     {
       "description": "Group Go minor and patch updates together",

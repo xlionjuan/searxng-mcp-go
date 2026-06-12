@@ -171,6 +171,10 @@ E2E tests require a SearXNG test server and `SEARXNG_URL`; see
 
 ## Reviewing Existing PRs
 
+For code-review requests, follow [docs/agents/code-review.md](code-review.md).
+That file is the review standard; this section only describes how to treat CI
+while reviewing an existing PR.
+
 When asked to review or follow up on a PR that the agent did not create or
 modify, do not re-run the local test suite by default. CI is the source of
 truth for the existing change.

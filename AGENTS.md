@@ -26,6 +26,7 @@ configured SearXNG instance.
 |-------|----------|
 | Local SearXNG test server | [docs/agents/test-server.md](docs/agents/test-server.md) |
 | Pull-request agent workflow | [docs/agents/pull-requests.md](docs/agents/pull-requests.md) |
+| Code review workflow | [docs/agents/code-review.md](docs/agents/code-review.md) |
 | GitHub Actions OpenCode runtime | [docs/agents/opencode-github-actions.md](docs/agents/opencode-github-actions.md) |
 | Release agent workflow | [docs/agents/release.md](docs/agents/release.md) |
 | Issue tracker workflow | [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md) |
@@ -74,6 +75,17 @@ configured SearXNG instance.
 - For new files, use an available file-edit/write primitive rather than shell
   heredocs or command-output redirection.
 
+### Go Skill Corpus
+
+- When the optional `cc-skills-golang` corpus is available, all AI agents
+  working on Go code should consult the skills relevant to the task.
+- For coding tasks, choose skills by implementation domain, such as error
+  handling, concurrency, context propagation, CLI behavior, testing, security,
+  dependencies, or performance. Do not limit coding work to the review-focused
+  skill subset.
+- For code review tasks, follow [docs/agents/code-review.md](docs/agents/code-review.md).
+- Repository rules and local project context override generic skill advice.
+
 ### Verification
 
 - Code changes must be verified with the narrowest meaningful build/test command before committing.
@@ -85,6 +97,7 @@ configured SearXNG instance.
 ## GitHub and PR Work
 
 - Use `gh` CLI for all GitHub operations (not browser tools).
+- For code review requests, follow [docs/agents/code-review.md](docs/agents/code-review.md).
 - PR title and body in English. See [docs/agents/pull-requests.md](docs/agents/pull-requests.md) for the full PR workflow, title policy, and body checklist.
 - PR agents must create requested PRs with `gh pr create`; do not stop after
   pushing a branch. For OpenCode running inside GitHub Actions, see
@@ -102,6 +115,7 @@ configured SearXNG instance.
 
 - Issues: [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md)
 - Pull requests: [docs/agents/pull-requests.md](docs/agents/pull-requests.md)
+- Code review: [docs/agents/code-review.md](docs/agents/code-review.md)
 - GitHub Actions OpenCode runtime: [docs/agents/opencode-github-actions.md](docs/agents/opencode-github-actions.md)
 - Release: [docs/agents/release.md](docs/agents/release.md)
 - Domain and ADR: [docs/agents/domain.md](docs/agents/domain.md)
