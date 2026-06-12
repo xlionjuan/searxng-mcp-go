@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 
@@ -21,10 +22,9 @@ var (
 	errJSONEncodeFailed    = errors.New("failed to encode json")
 )
 
-// printCLIHelp prints the help message for CLI mode.
-func printCLIHelp() {
-	fmt.Println(`SearXNG MCP Server - CLI Mode (` + version + `)
-
+// printCLIHelp writes the help message to the given writer.
+func printCLIHelp(w io.Writer) {
+	fmt.Fprintln(w, `SearXNG MCP Server - CLI Mode (`+version+`)`+`
 A Model Context Protocol server that provides web search via SearXNG.
 
 USAGE:
@@ -36,10 +36,10 @@ OPTIONS:
                      Can also be set via SEARXNG_URL environment variable`)
 	// Print search parameter options from the shared table.
 	for _, p := range searxng.SearchParams {
-		fmt.Println(p.CLIHelpLine())
+		fmt.Fprintln(w, p.CLIHelpLine())
 	}
 
-	fmt.Printf(`  --debug            Enable verbose HTTP request/response logging
+	fmt.Fprintf(w, `  --debug            Enable verbose HTTP request/response logging
                      Can also be enabled via DEBUG=1 environment variable
   --timeout DURATION HTTP client timeout (e.g., 8s) [default: %s]
                      Can also be set via SEARXNG_TIMEOUT environment variable
@@ -82,7 +82,7 @@ For more information, see: https://github.com/xlionjuan/searxng-mcp-go
 //nolint:gocyclo // CLI dispatch (help/debug/search/format) is inherently sequential; extracting adds layers
 func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 	if flags.Help {
-		printCLIHelp()
+		printCLIHelp(os.Stdout)
 
 		return nil
 	}

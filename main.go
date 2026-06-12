@@ -300,7 +300,7 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "\033[31mERROR: %v\033[0m\n", err)
 		fmt.Fprintln(os.Stderr, "")
-		printCLIHelp()
+		printCLIHelp(os.Stderr)
 		os.Exit(exitCodeCLIError)
 	}
 
