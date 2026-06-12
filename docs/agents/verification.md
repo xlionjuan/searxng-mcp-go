@@ -3,9 +3,9 @@
 - Code changes must be verified with the narrowest meaningful build/test
   commands before committing. Broaden verification for shared behavior, public
   interfaces, test infrastructure, or release/CI changes.
-- PR agents must run local verification before opening or updating a PR. For Go
-  code, test, CI, or script changes, the minimum local gate is `go test ./...`
-  plus `golangci-lint run ./...`.
+- PR agents must run local verification before opening or updating a PR or
+  reporting the task complete. For Go code, test, CI, or script changes, the
+  minimum completion gate is the non-E2E workflow checks listed below.
 - If `golangci-lint` is unavailable, run `go vet ./...` as the fallback static
   check and state in the PR body that the linter itself could not be run.
 - If a subagent made code changes, the coordinating agent must review and verify
@@ -29,6 +29,38 @@ Root benchmarks live in `bench_test.go`; internal benchmarks live in
 | `go test -tags=e2e -run TestMCPStdioE2E -count=1 .` | E2E test; requires `SEARXNG_URL` and a running test server. `E2E_MCP_BINARY` skips per-test `go build`; see `docs/MCP_TESTING.md`. |
 | `golangci-lint run ./...` | Lint; CI uses v2.12.2 |
 | `go vet ./...` | Static analysis fallback |
+
+## Completion Gate for AI Agents
+
+Before any AI agent opens a PR, updates a PR, or reports a code-changing task
+complete, it must run the non-E2E checks that are listed in this repository's
+workflows and are executable in the agent environment.
+
+For Go code changes, run the `.github/workflows/test.yml` checks except the E2E
+workflow:
+
+- `go mod verify`
+- `go mod download`
+- `go mod tidy`
+- `git diff --exit-code go.mod go.sum`
+- `go build -o searxng-mcp-go .`
+- `go test -race -shuffle=on -coverprofile=coverage.out ./...`
+- `go test -race -tags=stress -shuffle=on ./...`
+
+Also run the `.github/workflows/lint.yml` checks:
+
+- `golangci-lint run --timeout 5m`
+- `golangci-lint fmt --diff`
+
+Do not treat the E2E workflow as a pre-completion requirement for AI agents.
+E2E requires the SearXNG test server and remains a pull-request status check.
+CodeQL is also a GitHub Actions status check rather than a repo-local command
+that agents should try to reproduce before completion.
+
+If a required tool is unavailable, use the documented fallback when one exists
+and state the exact limitation in the PR body or final response. If the missing
+tool means the completion gate could not be run, do not claim the task is fully
+verified.
 
 E2E retry tweaks and the `e2eMCPEnv` helper live in `docs/MCP_TESTING.md`;
 do not duplicate them here. The CLI exit-code tests in

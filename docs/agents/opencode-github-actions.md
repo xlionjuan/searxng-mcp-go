@@ -113,11 +113,10 @@ change-focused; that is the useful part of the commit metadata for this guide.
 
 ## Verification
 
-Run the narrowest meaningful verification before opening or updating a PR when
-the workflow permits it. For Go code changes, the usual minimum remains:
-
-- `go test ./...`
-- `golangci-lint run ./...`
+GitHub Actions OpenCode must follow the same AI-agent completion gate as every
+other agent. Before opening a PR, updating a PR, or reporting a code-changing
+task complete, run the non-E2E workflow checks listed in
+`docs/agents/verification.md`.
 
 If the workflow prompt specifies stronger verification, follow the prompt. If a
 tool is unavailable in the Action environment, use the documented fallback from

@@ -77,8 +77,9 @@ configured SearXNG instance.
 ### Verification
 
 - Code changes must be verified with the narrowest meaningful build/test command before committing.
-- For Go changes, the minimum gate is `go test ./...` plus
-  `golangci-lint run ./...` (fallback: `go vet ./...`).
+- Before opening or updating a PR, or reporting a code-changing task complete,
+  all AI agents must run the non-E2E workflow checks listed in
+  [docs/agents/verification.md](docs/agents/verification.md).
 - See [docs/agents/verification.md](docs/agents/verification.md) for build, test, lint, and E2E commands.
 
 ## GitHub and PR Work
