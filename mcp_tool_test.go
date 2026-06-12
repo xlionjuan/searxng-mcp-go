@@ -317,6 +317,38 @@ func TestNewSearchToolHandler(t *testing.T) {
 		tc := assertTextContent(t, result)
 		assertContains(t, tc.Text, "Search error")
 	})
+
+	t.Run("returns SearXNGError details", func(t *testing.T) {
+		t.Parallel()
+
+		searxngErr := searxng.NewSearXNGError(500, "text/plain", "internal error", errMockSearcherBoom)
+
+		handler := NewSearchToolHandler(&mockSearcher{
+			searchFunc: func(_ context.Context, _ *searxng.SearchArgs) (*searxng.SearchResponse, error) {
+				return nil, searxngErr
+			},
+		})
+
+		result := callToolHandler(t, handler, searxng.SearchArgs{Query: "test"})
+		assertIsError(t, result)
+		tc := assertTextContent(t, result)
+		assertContains(t, tc.Text, "Search error: searxng error (status 500) - content-type text/plain: boom")
+	})
+
+	t.Run("returns generic message for non-SearXNGError", func(t *testing.T) {
+		t.Parallel()
+
+		handler := NewSearchToolHandler(&mockSearcher{
+			searchFunc: func(_ context.Context, _ *searxng.SearchArgs) (*searxng.SearchResponse, error) {
+				return nil, errMockSearcherBoom
+			},
+		})
+
+		result := callToolHandler(t, handler, searxng.SearchArgs{Query: "test"})
+		assertIsError(t, result)
+		tc := assertTextContent(t, result)
+		assertContains(t, tc.Text, "Search error: request failed")
+	})
 }
 
 // testNewSearchToolHandlerValidatesInput is a subtest helper for input validation.
