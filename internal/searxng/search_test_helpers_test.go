@@ -76,10 +76,13 @@ func newRequestTestSearcher(t *testing.T, baseURL string) *SearXNGSearcher {
 		t.Fatalf("computeSearchEndpoint(%q) error = %v", baseURL, err)
 	}
 
-	return &SearXNGSearcher{
+	s := &SearXNGSearcher{
 		searchEndpoint: endpoint,
 		client:         http.DefaultClient,
 	}
+	s.done = make(chan struct{})
+
+	return s
 }
 
 // closeBody is a helper to close response bodies in tests.
