@@ -480,7 +480,12 @@ func captureStdout(t *testing.T, fn func()) string {
 	defer stdoutMu.Unlock()
 
 	oldStdout := os.Stdout
-	r, w, _ := os.Pipe() //nolint:errcheck // test creates pipe; error is impossible in test
+
+	r, w, pipeErr := os.Pipe()
+	if pipeErr != nil {
+		t.Fatalf("failed to create pipe for stdout capture: %v", pipeErr)
+	}
+
 	os.Stdout = w
 
 	defer func() {
@@ -489,7 +494,10 @@ func captureStdout(t *testing.T, fn func()) string {
 
 	func() {
 		defer func() {
-			_ = w.Close() //nolint:errcheck // test cleanup; error is non-actionable
+			err := w.Close()
+			if err != nil {
+				t.Logf("warning: failed to close stdout pipe writer: %v", err)
+			}
 		}()
 
 		fn()

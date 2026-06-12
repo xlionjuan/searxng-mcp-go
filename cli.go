@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strings"
 
 	"searxng-mcp-go/internal/searxng"
 )
@@ -24,8 +25,10 @@ var (
 
 // printCLIHelp writes the help message to the given writer.
 func printCLIHelp(w io.Writer) {
-	//nolint:errcheck // write errors are non-actionable when writing help text
-	fmt.Fprintln(w, `SearXNG MCP Server - CLI Mode (`+version+`)`+`
+	var b strings.Builder
+
+	b.WriteString(`SearXNG MCP Server - CLI Mode (` + version + `)`)
+	b.WriteString(`
 A Model Context Protocol server that provides web search via SearXNG.
 
 USAGE:
@@ -34,15 +37,15 @@ USAGE:
 OPTIONS:
   --json             Output results as formatted JSON instead of human-readable text
   --searxng-url URL  SearXNG instance URL (required)
-                     Can also be set via SEARXNG_URL environment variable`)
-	// Print search parameter options from the shared table.
+                     Can also be set via SEARXNG_URL environment variable
+`)
+
 	for _, p := range searxng.SearchParams {
-		//nolint:errcheck // write errors are non-actionable when writing help text
-		fmt.Fprintln(w, p.CLIHelpLine())
+		b.WriteString(p.CLIHelpLine())
+		b.WriteString("\n")
 	}
 
-	//nolint:errcheck // write errors are non-actionable when writing help text
-	fmt.Fprintf(w, `  --debug            Enable verbose HTTP request/response logging
+	fmt.Fprintf(&b, `  --debug            Enable verbose HTTP request/response logging
                      Can also be enabled via DEBUG=1 environment variable
   --timeout DURATION HTTP client timeout (e.g., 8s) [default: %s]
                      Can also be set via SEARXNG_TIMEOUT environment variable
@@ -78,6 +81,11 @@ EXIT CODES:
 For more information, see: https://github.com/xlionjuan/searxng-mcp-go
 `,
 		searxng.DefaultTimeout, searxng.DefaultMaxRetries)
+
+	_, err := w.Write([]byte(b.String()))
+	if err != nil {
+		_ = err
+	}
 }
 
 // runCLIMode executes the CLI-mode search flow.
