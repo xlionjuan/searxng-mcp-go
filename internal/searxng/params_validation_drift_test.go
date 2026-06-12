@@ -444,8 +444,8 @@ func TestApplyDefaultsFillsNilLimit(t *testing.T) {
 	})
 }
 
-// TestBuildParamSchema locks the translation contract for buildParamSchema.
-func TestBuildParamSchema(t *testing.T) {
+// TestParamDefJSONSchema locks the translation contract for ParamDef.JSONSchema.
+func TestParamDefJSONSchema(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -484,9 +484,9 @@ func TestBuildParamSchema(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := buildParamSchema(tt.param)
+			got := tt.param.JSONSchema()
 			if got == nil {
-				t.Fatal("buildParamSchema returned nil")
+				t.Fatal("ParamDef.JSONSchema returned nil")
 			}
 
 			if !reflect.DeepEqual(got["type"], tt.wantType) {

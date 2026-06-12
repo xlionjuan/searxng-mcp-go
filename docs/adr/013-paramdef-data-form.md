@@ -1,50 +1,75 @@
-# ADR-013: Embed JSON Schema Directly in ParamDef
+# ADR-013: ParamDef as Data Form with Per-Consumer Renderers
 
-**Status:** Accepted
-**Date:** 2026-06-12
+**Status:** Accepted (revised 2026-06-12)
 
 ## Context
 
 Search parameters (`ParamDef`) were defined as a data struct with fields for
 type, description, bounds, and constraints. Three separate consumers — CLI help
-text, MCP JSON Schema generation, and runtime validation — each read `ParamDef`
+text, MCP JSON Schema generation, and flag registration — each read `ParamDef`
 fields and reconstructed their own representation. Adding a new parameter meant
 touching all three consumers, and the JSON Schema generation in
 `buildSearchSchema()` was a 30-line conditional ladder that duplicated the same
-field-to-schema mapping logic in a single place.
+field-to-schema mapping logic.
 
-Issue #226 proposed a **mild** fix: add three methods on `ParamDef`
-(`JSONSchema()`, `FlagSpec()`, `CLIHelpLine()`) so each consumer calls a
-method instead of reimplementing the mapping.
+The initial attempt (ADR-013 v1) embedded a pre-computed `Schema map[string]any`
+field in `ParamDef`, populated at `init()` time. While this simplified
+`buildSearchSchema()`, it left the other two consumers unchanged and required
+a `//nolint:gochecknoinits` suppression. The drift tests in
+`params_validation_drift_test.go` remained ~500 lines.
 
 ## Decision
 
-Adopt the **deep** version proposed in issue #239: embed the pre-computed JSON
-Schema property directly in `ParamDef` as a `Schema map[string]any` field,
-populated at package `init()` time by `buildParamSchema()`.
+Add three methods on `ParamDef`, each owning the rendering contract for one
+consumer:
 
-`buildSearchSchema()` in `mcp.go` no longer rebuilds each property schema from
-individual fields. It iterates `searxng.SearchParams`, copies the pre-computed
-`Schema` map into the properties object, and collects `required` names. The old
-conditional ladder is removed entirely.
+- `ParamDef.JSONSchema() map[string]any` — replaces `buildParamSchema()`.
+- `ParamDef.FlagDefault() (any, error)` — returns the parsed default value
+  for use with Go's `flag` package.
+- `ParamDef.CLIHelpLine() string` — returns the full formatted CLI help line
+  including indentation, flag expression, and help text.
+
+The `Schema` field, `buildParamSchema()` function, and package `init()` are
+removed. Each consumer calls the appropriate method instead of interpreting
+`ParamDef` fields directly:
+
+```go
+// mcp.go — buildSearchSchema
+for _, p := range searxng.SearchParams {
+    props[p.Name] = p.JSONSchema()
+}
+
+// main.go — registerFlags
+for _, p := range searxng.SearchParams {
+    defaultVal, err := p.FlagDefault()
+    switch v := defaultVal.(type) {
+    case string: r.searchFlags[p.Name] = fs.String(p.Name, v, p.Description)
+    case int:    r.searchFlags[p.Name] = fs.Int(p.Name, v, p.Description)
+    }
+}
+
+// cli.go — printCLIHelp
+for _, p := range searxng.SearchParams {
+    fmt.Println(p.CLIHelpLine())
+}
+```
 
 ## Consequences
 
-- **Simpler MCP consumer.** `buildSearchSchema()` drops from ~30 lines to a
-    straight copy loop. No branching per parameter type.
-- **Drift resistance.** The schema is now a *value* on each `ParamDef` rather
-    than a function output. The 383-line `params_validation_drift_test.go`
-    still locks `ParamDef` fields against runtime validators; the new `Schema`
-    field is a direct derivative and does not need separate drift coverage.
-- **Public API addition.** `ParamDef` gains an exported `Schema` field.
-    Consumers other than the root package may exist; this is documented and
-    the field is read-only after init.
-- **init() over lazy init.** Deterministic startup cost with no nil-check
-    burden on every `buildSearchSchema` call. The `//nolint:gochecknoinits`
-    suppression is justified by package-level correctness: `SearchParams` is a
-    `var` with function-call initializers, so init ordering is well-defined.
-- **Mutation hazard (advisory).** `Schema` is a shared `map[string]any` on a
-    package-level slice. No current consumer mutates it. A future defensive
-    accessor can be added if mutation becomes a concern.
+- **No init() needed.** Schema computation is lazy and per-call; no
+  `//nolint:gochecknoinits` required.
+- **Drift resistance.** Each consumer calls a method whose contract is tested
+  by a single test in `params_validation_drift_test.go`
+  (`TestParamDefJSONSchema`). The ~500-line drift test file shrinks because
+  the per-consumer mappings are now methods, not copied logic.
+- **No exported Schema field.** `ParamDef` no longer exposes a pre-computed
+  map, removing the mutation-hazard concern.
+- **No change to ParamDef fields.** The existing `CLIHelp`, `CLIType`,
+  `MCPType`, `Minimum`, `Maximum`, `Enum`, `Examples`, and `Nullable` fields
+  remain. They are the raw material from which the renderer methods build
+  their output.
+- **CLIHelpLine layout is fixed.** The method hardcodes 18-character padding
+  for the flag-expression column. If a future consumer needs different
+  padding, it can format manually from the raw fields.
 
-Supersedes the mild approach in issue #226.
+Supersedes the pre-computed Schema approach from ADR-013 v1.

@@ -1,6 +1,7 @@
 package searxng
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -49,11 +50,6 @@ type ParamDef struct {
 
 	// Required indicates whether the parameter is required.
 	Required bool
-
-	// Schema is the pre-computed JSON Schema property for this parameter.
-	// Do not mutate; populated once by init() and shared across consumers.
-	// See docs/adr/013-paramdef-data-form.md.
-	Schema map[string]any
 }
 
 var (
@@ -63,6 +59,14 @@ var (
 	paramMinLimit      = MinResultLimit
 	paramMaxLimit      = MaxResultLimit
 )
+
+// errUnexpectedGoType is a sentinel error for FlagDefault when a ParamDef
+// declares an unsupported GoType.
+var errUnexpectedGoType = errors.New("unexpected GoType")
+
+// cliHelpPadding is the minimum width reserved for the flag expression
+// column in CLI help output, matching the CLI consumer's expectation.
+const cliHelpPadding = 18
 
 // SearchParams is the canonical list of all search parameters used by both CLI
 // and MCP layers. Adding or changing a parameter here propagates to flag
@@ -148,9 +152,8 @@ var SearchParams = []ParamDef{
 	},
 }
 
-// buildParamSchema builds a JSON Schema property map from a ParamDef.
-// This is called once at init time to pre-compute the Schema field.
-func buildParamSchema(p ParamDef) map[string]any {
+// JSONSchema returns the JSON Schema property map for this parameter.
+func (p ParamDef) JSONSchema() map[string]any {
 	prop := map[string]any{
 		"type": p.MCPType,
 	}
@@ -186,9 +189,24 @@ func buildParamSchema(p ParamDef) map[string]any {
 	return prop
 }
 
-//nolint:gochecknoinits // ADR-013: deterministic startup cost, no nil-check on hot path
-func init() {
-	for i := range SearchParams {
-		SearchParams[i].Schema = buildParamSchema(SearchParams[i])
+// FlagDefault returns the parsed default value for use with Go's flag package.
+// The returned type matches the ParamDef.GoType: string or int.
+// An unparseable int default is treated as a programming error and reported.
+func (p ParamDef) FlagDefault() (any, error) {
+	switch p.GoType {
+	case "string":
+		return p.Default, nil
+	case "int":
+		return strconv.Atoi(p.Default)
+	default:
+		return nil, fmt.Errorf("%w %q for param %q", errUnexpectedGoType, p.GoType, p.Name)
 	}
+}
+
+// CLIHelpLine returns the formatted CLI help line for this parameter.
+func (p ParamDef) CLIHelpLine() string {
+	flagExpr := "--" + p.Name + " " + p.CLIType
+	padding := max(cliHelpPadding-len(flagExpr), 1)
+
+	return fmt.Sprintf("  %s%s%s", flagExpr, strings.Repeat(" ", padding), p.CLIHelp)
 }
