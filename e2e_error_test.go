@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func TestMCPErrors_Startup(t *testing.T) {
+func TestMCPErrors_Startup(t *testing.T) { //nolint:gocognit // test table, acceptable complexity
 	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 
@@ -21,6 +21,7 @@ func TestMCPErrors_Startup(t *testing.T) {
 	if binaryPath == "" {
 		binaryPath = buildE2EMCPBinary(ctx, t)
 	}
+
 	t.Logf("using MCP binary: %s", binaryPath)
 
 	tests := []struct {
@@ -56,12 +57,12 @@ func TestMCPErrors_Startup(t *testing.T) {
 			subCtx, subCancel := context.WithTimeout(ctx, 10*time.Second)
 			defer subCancel()
 
-			var stderr bytes.Buffer
-			var stdin bytes.Buffer
+			var stderr, stdin bytes.Buffer
 			stdin.WriteString(validMCPInitialize)
 
-			cmd := exec.CommandContext(subCtx, binaryPath)
+			cmd := exec.CommandContext(subCtx, binaryPath) //nolint:gosec // test runs built binary
 			cmd.Env = os.Environ()
+
 			for k, v := range tt.env {
 				if v == "" {
 					cmd.Env = removeEnv(cmd.Env, k)
@@ -69,6 +70,7 @@ func TestMCPErrors_Startup(t *testing.T) {
 					cmd.Env = append(cmd.Env, k+"="+v)
 				}
 			}
+
 			cmd.Stdin = &stdin
 			cmd.Stderr = &stderr
 
@@ -84,6 +86,7 @@ func TestMCPErrors_Startup(t *testing.T) {
 			if !errors.As(err, &exitErr) {
 				t.Fatalf("cmd.Run() error = %v, want *exec.ExitError\nstderr:\n%s", err, stderrStr)
 			}
+
 			if got := exitErr.ExitCode(); got != 2 {
 				t.Fatalf("exit code = %d, want 2 (MCP server error per documented contract)\nstderr:\n%s", got, stderrStr)
 			}
@@ -127,7 +130,7 @@ func TestMCPErrors_DebugMode(t *testing.T) {
 		// Route zero-result outcomes through WARNING SUMMARY instead of
 		// fatal, consistent with the rest of the E2E test suite.
 		if len(response.Results) == 0 {
-			warnings.Add("debug mode search returned no results")
+			warnings.Addf("debug mode search returned no results")
 			t.Logf("debug mode search returned no results\nstderr:\n%s", stderrStr)
 		}
 	}
@@ -144,6 +147,7 @@ func TestMCPErrors_DebugMode(t *testing.T) {
 	if result.IsError {
 		t.Fatalf("debug mode response fields returned tool error: %s\nstderr:\n%s", toolText(t, result), stderr.String())
 	}
+
 	text := toolText(t, result)
 	if !strings.Contains(text, `"unresponsive_engines"`) {
 		t.Fatalf("debug response JSON does not contain unresponsive_engines\ntext:\n%s\nstderr:\n%s", text, stderr.String())
@@ -153,8 +157,11 @@ func TestMCPErrors_DebugMode(t *testing.T) {
 	if len(response.Results) == 0 {
 		t.Logf("debug mode response fields returned no results\nresponse: %#v\nstderr:\n%s", response, stderr.String())
 	}
+
 	if response.UnresponsiveEngines == nil {
-		t.Fatalf("response.UnresponsiveEngines is nil, want debug JSON field to unmarshal as empty or populated slice\ntext:\n%s\nstderr:\n%s", text, stderr.String())
+		t.Fatalf("response.UnresponsiveEngines is nil, "+
+			"want debug JSON field to unmarshal as empty or populated slice\ntext:\n%s\nstderr:\n%s",
+			text, stderr.String())
 	}
 
 	// Verify the response is valid JSON and contains expected fields.
@@ -185,15 +192,33 @@ func TestMCPErrors_InvalidInputs(t *testing.T) {
 	session, stderr, _ := startMCPSession(ctx, t, searxngURL)
 
 	// Start with the shared overlapping cases and append coverage-specific extra cases.
-	tests := make([]invalidInputCase, len(SharedInvalidInputCases))
-	copy(tests, SharedInvalidInputCases)
+	tests := make([]invalidInputCase, 0, len(SharedInvalidInputCases)+4)
+	tests = append(tests, SharedInvalidInputCases...)
 	tests = append(tests,
 		// Extra cases that only the exhaustive coverage test exercises
 		// (control characters, long query, limit=0, negative safesearch).
-		invalidInputCase{Name: "control characters in query", Arguments: map[string]any{"query": "golang\x00search"}, WantField: "query"},
-		invalidInputCase{Name: "long query", Arguments: map[string]any{"query": strings.Repeat("a", 501)}, WantField: "query"},
-		invalidInputCase{Name: "limit too low", Arguments: map[string]any{"query": "framework computer inc", "limit": 0}, WantField: "limit", WantSchemaErr: true},
-		invalidInputCase{Name: "safesearch negative", Arguments: map[string]any{"query": "framework computer inc", "safesearch": -1}, WantField: "safesearch", WantSchemaErr: true},
+		invalidInputCase{
+			Name:      "control characters in query",
+			Arguments: map[string]any{"query": "golang\x00search"},
+			WantField: "query",
+		},
+		invalidInputCase{
+			Name:      "long query",
+			Arguments: map[string]any{"query": strings.Repeat("a", 501)},
+			WantField: "query",
+		},
+		invalidInputCase{
+			Name:          "limit too low",
+			Arguments:     map[string]any{"query": "framework computer inc", "limit": 0},
+			WantField:     "limit",
+			WantSchemaErr: true,
+		},
+		invalidInputCase{
+			Name:          "safesearch negative",
+			Arguments:     map[string]any{"query": "framework computer inc", "safesearch": -1},
+			WantField:     "safesearch",
+			WantSchemaErr: true,
+		},
 	)
 
 	for _, tt := range tests {
@@ -202,6 +227,7 @@ func TestMCPErrors_InvalidInputs(t *testing.T) {
 			if !result.IsError {
 				t.Fatalf("IsError = false, want true\nresult: %#v\nstderr:\n%s", result, stderr.String())
 			}
+
 			if len(result.Content) != 1 {
 				t.Fatalf("content length = %d, want 1\nresult: %#v\nstderr:\n%s", len(result.Content), result, stderr.String())
 			}

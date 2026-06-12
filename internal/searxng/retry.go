@@ -87,6 +87,14 @@ func classifyOutcome(
 			return OutcomeAbort
 		}
 
+		// Redirect policy failures are deterministic — retrying would submit
+		// the same request to the same blocked redirect on every attempt.
+		if errors.Is(err, errRedirectDifferentHost) ||
+			errors.Is(err, errRedirectSchemeDowngrade) ||
+			errors.Is(err, errTooManyRedirects) {
+			return OutcomeAbort
+		}
+
 		return OutcomeRetry
 	}
 

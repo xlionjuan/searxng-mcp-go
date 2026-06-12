@@ -124,6 +124,14 @@ func TestClose_Searcher(t *testing.T) {
 	})
 }
 
+func TestSearch_NilArgs(t *testing.T) {
+	t.Parallel()
+
+	s := &SearXNGSearcher{}
+	_, err := s.Search(t.Context(), nil)
+	requireValidationError(t, err, "args")
+}
+
 // --- log debug methods (coverage-only, verify no panic) ---
 
 func TestLogDebugMethods(t *testing.T) {

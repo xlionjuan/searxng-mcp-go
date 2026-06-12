@@ -213,7 +213,7 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 			if trackErr != nil {
 				lastErr = trackErr
 
-				closeResponseBody(resp)
+				closeResponseBody(resp, s.getLogger())
 			} else if resp != nil && resp.StatusCode != http.StatusOK {
 				_, finishErr := s.finishResponse(resp, args)
 
@@ -228,7 +228,7 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 
 		s.logDebugRetry(attempt, maxRetries+1, delay, lastErr)
 
-		closeResponseBody(resp)
+		closeResponseBody(resp, s.getLogger())
 
 		if s.TestOnlyBeforeRetryWait != nil {
 			s.TestOnlyBeforeRetryWait()
@@ -325,7 +325,7 @@ func (s *SearXNGSearcher) finishResponse(resp *http.Response, args *SearchArgs) 
 		return nil, errNilFinishResponse
 	}
 
-	defer closeResponseBody(resp)
+	defer closeResponseBody(resp, s.getLogger())
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, s.handleNonOKResponse(resp)
@@ -371,7 +371,7 @@ func (s *SearXNGSearcher) logDebugRequest(req *http.Request, body string) {
 		s.getLogger().Debug(
 			"HTTP request",
 			"method", req.Method,
-			"url", req.URL.String(),
+			"url", redactSearchURLParams(req.URL.String()),
 			"Accept", req.Header.Get("Accept"),
 		)
 
@@ -438,7 +438,7 @@ func (s *SearXNGSearcher) executeGETfallback(
 	// when GET fallback also fails.
 	origErr := HTTPStatusError(resp.StatusCode, resp.Header.Get("Content-Type"), nil)
 
-	closeResponseBody(resp)
+	closeResponseBody(resp, s.getLogger())
 
 	getURL := *postReq.URL
 	getURL.RawQuery = postBodyStr
@@ -486,12 +486,9 @@ func redactSearchURLParams(rawURL string) string {
 		return rawURL
 	}
 
-	query := parsed.Query()
-	if _, ok := query["q"]; ok {
-		query.Set("q", "[REDACTED]")
+	if parsed.RawQuery != "" {
+		parsed.RawQuery = "[REDACTED]"
 	}
-
-	parsed.RawQuery = query.Encode()
 
 	return parsed.String()
 }

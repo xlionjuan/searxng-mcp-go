@@ -103,6 +103,10 @@ func validateCSVIdentifiers(value, field, noun string) error {
 // *SearchArgs is never mutated, making this function safe to call with a
 // struct shared across goroutines.
 func ValidateSearchArgs(args *SearchArgs) (*SearchArgs, error) {
+	if args == nil {
+		return nil, NewValidationError("args", "search arguments must not be nil")
+	}
+
 	// Shallow copy so mutation of the result does not affect the caller.
 	result := *args
 

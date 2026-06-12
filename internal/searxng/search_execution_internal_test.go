@@ -401,6 +401,82 @@ func TestDoSearchAttempt(t *testing.T) {
 		}
 	})
 
+	t.Run("GET fallback transport error redacts all search parameters", func(t *testing.T) {
+		t.Parallel()
+
+		callCount := 0
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			callCount++
+
+			if req.Method == http.MethodPost {
+				return &http.Response{
+					StatusCode: http.StatusMethodNotAllowed,
+					Header:     http.Header{"Content-Type": []string{"text/html"}},
+					Body:       io.NopCloser(strings.NewReader("")),
+				}, nil
+			}
+
+			return nil, errRetryTestConnectionReset
+		}), 0)
+		s.allowGETFallback = true
+
+		page := 2
+		resp, _, err := s.doSearchAttempt(t.Context(), &SearchArgs{
+			Query:      "confidential",
+			Language:   "de",
+			Categories: "news,general",
+			Engines:    "google,duckduckgo",
+			TimeRange:  "month",
+			Pageno:     &page,
+		})
+		closeBody(resp)
+
+		if err == nil {
+			t.Fatal("doSearchAttempt() error = nil, want GET fallback error")
+		}
+
+		errText := err.Error()
+		if strings.Contains(errText, "=confidential") {
+			t.Fatalf("error leaked query parameter: %v", err)
+		}
+
+		if strings.Contains(errText, "language=") {
+			t.Fatalf("error leaked language parameter: %v", err)
+		}
+
+		if strings.Contains(errText, "categories=") {
+			t.Fatalf("error leaked categories parameter: %v", err)
+		}
+
+		if strings.Contains(errText, "engines=") {
+			t.Fatalf("error leaked engines parameter: %v", err)
+		}
+
+		if strings.Contains(errText, "time_range=") {
+			t.Fatalf("error leaked time_range parameter: %v", err)
+		}
+
+		if strings.Contains(errText, "pageno=") {
+			t.Fatalf("error leaked pageno parameter: %v", err)
+		}
+
+		if strings.Contains(errText, "safesearch=") {
+			t.Fatalf("error leaked safesearch parameter: %v", err)
+		}
+
+		if !strings.Contains(errText, "GET fallback was used") {
+			t.Fatalf("error = %q, want GET fallback warning context", errText)
+		}
+
+		if !strings.Contains(errText, "search method rejected") {
+			t.Fatalf("error = %q, want 'search method rejected' hint from original 405 error", errText)
+		}
+
+		if callCount != 2 {
+			t.Fatalf("RoundTrip callCount = %d, want 2 (POST + GET fallback)", callCount)
+		}
+	})
+
 	t.Run("build error from missing precomputed endpoint propagates", func(t *testing.T) {
 		t.Parallel()
 

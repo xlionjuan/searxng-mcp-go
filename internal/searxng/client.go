@@ -109,6 +109,10 @@ func hostNoDefaultPort(host, scheme string) string {
 	}
 
 	if (port == "443" && scheme == "https") || (port == "80" && scheme == "http") {
+		if strings.HasPrefix(host, "[") {
+			return "[" + h + "]"
+		}
+
 		return h
 	}
 
@@ -141,7 +145,7 @@ func validateBaseURL(baseURL string) error {
 	return nil
 }
 
-func closeResponseBody(resp *http.Response) {
+func closeResponseBody(resp *http.Response, logger *slog.Logger) {
 	if resp == nil || resp.Body == nil {
 		return
 	}
@@ -156,7 +160,7 @@ func closeResponseBody(resp *http.Response) {
 
 	err := resp.Body.Close()
 	if err != nil {
-		slog.Debug("failed to close response body", "error", err)
+		logger.Debug("failed to close response body", "error", err)
 	}
 }
 

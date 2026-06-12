@@ -38,7 +38,7 @@ func TestConcurrentSearches(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
+		_, _ = w.Write(body) //nolint:errcheck // test server write
 	}))
 	defer server.Close()
 
@@ -46,11 +46,12 @@ func TestConcurrentSearches(t *testing.T) {
 		SearXNGURL: server.URL,
 		Timeout:    30 * time.Second,
 	}
+
 	searcher, err := searxng.NewSearXNGSearcher(cfg, false)
 	if err != nil {
 		t.Fatalf("NewSearXNGSearcher() error = %v", err)
 	}
-	defer func() { _ = searcher.Close() }()
+	defer func() { _ = searcher.Close() }() //nolint:errcheck // test cleanup
 
 	const (
 		numGoroutines       = 20
@@ -180,6 +181,7 @@ func TestChannelDeadlockDetection(t *testing.T) {
 		Query:           "test",
 	}
 	server := newJSONTestServer(t, searchResp)
+
 	defer server.Close()
 
 	cfg := &searxng.Config{
@@ -194,7 +196,9 @@ func TestChannelDeadlockDetection(t *testing.T) {
 	// Launch many concurrent searches
 	for range numGoroutines {
 		wg.Go(func() {
-			_, _ = testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
+			//nolint:errcheck // intentional discard
+			_, _ = testPerformSearch(t.Context(), t, cfg,
+				&searxng.SearchArgs{Query: "test"})
 		})
 	}
 
@@ -233,7 +237,7 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
+		_, _ = w.Write(body) //nolint:errcheck // test server write
 	}))
 	defer server.Close()
 
@@ -351,7 +355,12 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 		})
 	}
 
-	<-allRequestsEntered
+	select {
+	case <-allRequestsEntered:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("timed out waiting for all %d requests to enter transport; got %d",
+			numGoroutines, atomic.LoadInt64(&requestCount))
+	}
 	cancel()
 
 	// Wait with timeout
@@ -444,9 +453,12 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 		Query:           "test",
 	}
 	server := newJSONTestServer(t, searchResp)
+
 	defer server.Close()
 
-	searcher, _ := searxng.NewSearXNGSearcher(&searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}, false)
+	//nolint:errcheck // test setup
+	searcher, _ := searxng.NewSearXNGSearcher(
+		&searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}, false)
 
 	const numGoroutines = 50
 
@@ -520,7 +532,7 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
+		_, _ = w.Write(body) //nolint:errcheck // test server write
 	}))
 	defer server.Close()
 	defer close(release)
@@ -533,11 +545,15 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 	done := make(chan error, 1)
 
 	go func() {
-		_, err := searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
-		done <- err
+		_, searchErr := searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
+		done <- searchErr
 	}()
 
-	<-started
+	select {
+	case <-started:
+	case <-time.After(1 * time.Second):
+		t.Fatal("timed out waiting for search request to reach server handler")
+	}
 
 	err = searcher.Close()
 	if err != nil {
@@ -549,6 +565,7 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 		if err == nil {
 			t.Fatal("Search() expected error after Close(), got nil")
 		}
+
 		if !errors.Is(err, context.Canceled) {
 			t.Fatalf("Search() error = %v, want context.Canceled", err)
 		}
