@@ -30,6 +30,12 @@ The comment-triggered OpenCode workflow runs only when an authorized comment
 contains `/oc` or `/opencode`. Comments without those trigger words do not start
 OpenCode.
 
+Do not set a fixed `with.prompt` in `.github/workflows/opencode.yml`. The
+OpenCode GitHub Action treats that input as an override for the default
+comment-driven prompt, so a fixed prompt can cause OpenCode to ignore the
+actual `/oc ...` user request. Put durable instructions in `AGENTS.md` and
+`docs/agents/` instead.
+
 The documentation/code alignment workflow is manually dispatched. Follow its
 workflow inputs first:
 
