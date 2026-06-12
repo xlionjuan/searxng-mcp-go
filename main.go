@@ -221,22 +221,20 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 	// Register search parameters from the shared table.
 	// Note: "query" is also used as a positional argument in CLI mode.
 	for _, p := range searxng.SearchParams {
-		switch p.GoType {
-		case "string":
-			r.searchFlags[p.Name] = fs.String(p.Name, p.Default, p.Description)
-		case "int":
-			// Fail fast at registration time if an int-typed ParamDef has a
-			// non-integer Default. Today all defaults are compile-time
-			// constants produced by strconv.Itoa, so this is a programming
-			// error — panicking surfaces it immediately rather than silently
-			// falling back to 0 (which the go flag package would otherwise do).
-			defaultVal, convErr := strconv.Atoi(p.Default)
-			if convErr != nil {
-				panic(fmt.Errorf("%w (name=%q goType=%q default=%q): %w",
-					errParamDefaultNotInt, p.Name, p.GoType, p.Default, convErr))
-			}
+		defaultVal, err := p.FlagDefault()
+		if err != nil {
+			panic(fmt.Errorf("%w (name=%q goType=%q default=%q): %w",
+				errParamDefaultNotInt, p.Name, p.GoType, p.Default, err))
+		}
 
-			r.searchFlags[p.Name] = fs.Int(p.Name, defaultVal, p.Description)
+		switch v := defaultVal.(type) {
+		case string:
+			r.searchFlags[p.Name] = fs.String(p.Name, v, p.Description)
+		case int:
+			r.searchFlags[p.Name] = fs.Int(p.Name, v, p.Description)
+		default:
+			panic(fmt.Errorf("%w: %s has unexpected default type %T",
+				errUnexpectedFlagType, p.Name, v))
 		}
 	}
 

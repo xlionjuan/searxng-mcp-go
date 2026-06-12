@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
 
 	"searxng-mcp-go/internal/searxng"
 )
@@ -21,9 +20,6 @@ var (
 	errSearchFailed        = errors.New("search error")
 	errJSONEncodeFailed    = errors.New("failed to encode json")
 )
-
-// flagHelpPadding is the minimum width reserved for the flag expression column in help output.
-const flagHelpPadding = 18
 
 // printCLIHelp prints the help message for CLI mode.
 func printCLIHelp() {
@@ -40,10 +36,7 @@ OPTIONS:
                      Can also be set via SEARXNG_URL environment variable`)
 	// Print search parameter options from the shared table.
 	for _, p := range searxng.SearchParams {
-		flagExpr := "--" + p.Name + " " + p.CLIType
-		padding := flagHelpPadding - len(flagExpr)
-		padding = max(padding, 1)
-		fmt.Printf("  %s%s%s\n", flagExpr, strings.Repeat(" ", padding), p.CLIHelp)
+		fmt.Println(p.CLIHelpLine())
 	}
 
 	fmt.Printf(`  --debug            Enable verbose HTTP request/response logging
