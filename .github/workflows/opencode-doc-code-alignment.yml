@@ -66,13 +66,15 @@ jobs:
           git -C "$HOME/.agents/skills/cc-skills-golang" checkout --detach "$CC_SKILLS_GOLANG_SHA"
 
       - name: Install opencode (pinned)
-        # renovate: datasource=github-releases packageName=anomalyco/opencode versioning=loose
         env:
+          # renovate: datasource=github-releases packageName=anomalyco/opencode versioning=loose
           OPENCODE_VERSION: v1.17.4
-          OPENCODE_SHA256: a2ece9181aab3817a6b59fa390b6d459b187e3ec917be802ecbca88b632c5ef9
         run: |
           curl -fsSL "https://github.com/anomalyco/opencode/releases/download/${OPENCODE_VERSION}/opencode-linux-x64.tar.gz" -o /tmp/opencode.tar.gz
-          echo "${OPENCODE_SHA256}  /tmp/opencode.tar.gz" | sha256sum -c -
+          SHA256=$(curl -fsSL "https://api.github.com/repos/anomalyco/opencode/releases/tags/${OPENCODE_VERSION}" \
+            | jq -r '.assets[] | select(.name=="opencode-linux-x64.tar.gz") | .digest' \
+            | cut -d: -f2)
+          echo "${SHA256}  /tmp/opencode.tar.gz" | sha256sum -c -
           mkdir -p "$HOME/.opencode/bin"
           tar -xzf /tmp/opencode.tar.gz -C "$HOME/.opencode/bin"
           rm /tmp/opencode.tar.gz

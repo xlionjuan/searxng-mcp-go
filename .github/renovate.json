@@ -23,6 +23,17 @@
       "datasourceTemplate": "git-refs",
       "depNameTemplate": "samber/cc-skills-golang",
       "versioningTemplate": "git"
+    },
+    {
+      "customType": "regex",
+      "description": "Update pinned OpenCode version in workflows",
+      "managerFilePatterns": ["/^\\.github/workflows/opencode.*\\.yml$/"],
+      "matchStrings": [
+        "# renovate: datasource=github-releases packageName=anomalyco/opencode versioning=loose\\s+OPENCODE_VERSION: (?<currentValue>v[^\\s]+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "anomalyco/opencode",
+      "versioningTemplate": "loose"
     }
   ],
   "packageRules": [
