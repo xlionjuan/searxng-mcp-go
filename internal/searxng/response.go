@@ -190,6 +190,23 @@ func decodeSearchResponse(resp *http.Response, contentType string, body []byte) 
 
 const maxWeatherSummaryParts = 3
 
+// Answer represents a direct answer from SearXNG.
+//
+// SearXNG has legacy string answers and typed answers. Typed answers such as
+// translations and weather use template-specific fields and may omit the
+// legacy "answer" string entirely. Display text derivation for typed answers
+// is handled by the normalization layer.
+type Answer struct {
+	Answer       string            `json:"answer"`
+	Engine       string            `json:"engine"`
+	Template     string            `json:"template,omitempty"`
+	URL          string            `json:"url,omitempty"`
+	Translations []TranslationItem `json:"translations,omitempty"`
+	Current      *WeatherItem      `json:"current,omitempty"`
+	Forecasts    []WeatherItem     `json:"forecasts,omitempty"`
+	Service      string            `json:"service,omitempty"`
+}
+
 // EnsureAnswerFallback derives a human-readable Answer string for known typed
 // answers (translation, weather) that may omit the legacy "answer" field.
 func EnsureAnswerFallback(a *Answer) {
