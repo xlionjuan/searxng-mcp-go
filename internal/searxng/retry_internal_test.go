@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
@@ -18,7 +17,7 @@ var (
 	errRetryTestRequestCreationFailure = errors.New("request creation failed")
 )
 
-//nolint:gocognit // table-driven test covers many redirect-scenario branches
+//nolint:gocognit // sequential subtests covering many outcome branches
 func TestClassifyOutcome(t *testing.T) {
 	t.Parallel()
 
@@ -381,167 +380,99 @@ func TestRetryWait(t *testing.T) {
 	})
 }
 
-//nolint:gocognit,gocyclo // call-count regression tests cover each redirect error + transient baseline
 func TestSearchRedirectPolicyNotRetried(t *testing.T) {
 	t.Parallel()
 
-	t.Run("cross-host redirect error aborts without retry", func(t *testing.T) {
-		t.Parallel()
+	tests := []struct {
+		name     string
+		rtErr    func(*http.Request) error
+		wantErr  error
+		wantCall int
+	}{
+		{
+			name: "cross-host redirect error aborts without retry",
+			rtErr: func(req *http.Request) error {
+				return &url.Error{
+					Op:  req.Method,
+					URL: req.URL.String(),
+					Err: fmt.Errorf("redirect to different host blocked: %w", errRedirectDifferentHost),
+				}
+			},
+			wantErr:  errRedirectDifferentHost,
+			wantCall: 1,
+		},
+		{
+			name: "scheme downgrade error aborts without retry",
+			rtErr: func(req *http.Request) error {
+				return &url.Error{
+					Op:  req.Method,
+					URL: req.URL.String(),
+					Err: fmt.Errorf("https to http downgrade blocked: %w", errRedirectSchemeDowngrade),
+				}
+			},
+			wantErr:  errRedirectSchemeDowngrade,
+			wantCall: 1,
+		},
+		{
+			name: "too many redirects error aborts without retry",
+			rtErr: func(req *http.Request) error {
+				return &url.Error{
+					Op:  req.Method,
+					URL: req.URL.String(),
+					Err: errTooManyRedirects,
+				}
+			},
+			wantErr:  errTooManyRedirects,
+			wantCall: 1,
+		},
+		{
+			name:     "transient transport error still retries",
+			rtErr:    func(*http.Request) error { return errRetryTestConnectionReset },
+			wantErr:  errRetryTestConnectionReset,
+			wantCall: 3,
+		},
+	}
 
-		callCount := 0
-		transport := testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
-			callCount++
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-			return nil, &url.Error{
-				Op:  req.Method,
-				URL: req.URL.String(),
-				Err: fmt.Errorf("redirect to different host blocked: %w", errRedirectDifferentHost),
+			callCount := 0
+			transport := testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+				callCount++
+
+				return nil, tt.rtErr(req)
+			})
+
+			client := &http.Client{Transport: transport}
+
+			endpoint, err := computeSearchEndpoint("https://search.example.com")
+			if err != nil {
+				t.Fatalf("computeSearchEndpoint() error = %v", err)
+			}
+
+			s := &SearXNGSearcher{
+				client:         client,
+				searchEndpoint: endpoint,
+				retryStrategy:  newExponentialBackoffStrategy(2, time.Microsecond, time.Microsecond),
+				debug:          false,
+			}
+			s.done = make(chan struct{})
+
+			_, err = s.Search(t.Context(), &SearchArgs{Query: "test"})
+			if err == nil {
+				t.Fatal("Search() error = nil, want error")
+			}
+
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("error = %v, want sentinel %v", err, tt.wantErr)
+			}
+
+			if callCount != tt.wantCall {
+				t.Fatalf("RoundTrip callCount = %d, want %d", callCount, tt.wantCall)
 			}
 		})
-
-		client := &http.Client{Transport: transport}
-
-		endpoint, err := computeSearchEndpoint("https://search.example.com")
-		if err != nil {
-			t.Fatalf("computeSearchEndpoint() error = %v", err)
-		}
-
-		s := &SearXNGSearcher{
-			client:         client,
-			searchEndpoint: endpoint,
-			retryStrategy:  newExponentialBackoffStrategy(2, time.Microsecond, time.Microsecond),
-			debug:          false,
-		}
-		s.done = make(chan struct{})
-
-		_, err = s.Search(t.Context(), &SearchArgs{Query: "test"})
-		if err == nil {
-			t.Fatal("Search() error = nil, want redirect error")
-		}
-
-		if !strings.Contains(err.Error(), "redirect to different host blocked") {
-			t.Fatalf("error = %q, want 'redirect to different host blocked'", err.Error())
-		}
-
-		if callCount != 1 {
-			t.Fatalf("RoundTrip callCount = %d, want 1 (no retry)", callCount)
-		}
-	})
-
-	t.Run("scheme downgrade error aborts without retry", func(t *testing.T) {
-		t.Parallel()
-
-		callCount := 0
-		transport := testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
-			callCount++
-
-			return nil, &url.Error{
-				Op:  req.Method,
-				URL: req.URL.String(),
-				Err: fmt.Errorf("https to http downgrade blocked: %w", errRedirectSchemeDowngrade),
-			}
-		})
-
-		client := &http.Client{Transport: transport}
-
-		endpoint, err := computeSearchEndpoint("https://search.example.com")
-		if err != nil {
-			t.Fatalf("computeSearchEndpoint() error = %v", err)
-		}
-
-		s := &SearXNGSearcher{
-			client:         client,
-			searchEndpoint: endpoint,
-			retryStrategy:  newExponentialBackoffStrategy(2, time.Microsecond, time.Microsecond),
-			debug:          false,
-		}
-		s.done = make(chan struct{})
-
-		_, err = s.Search(t.Context(), &SearchArgs{Query: "test"})
-		if err == nil {
-			t.Fatal("Search() error = nil, want redirect error")
-		}
-
-		if callCount != 1 {
-			t.Fatalf("RoundTrip callCount = %d, want 1 (no retry)", callCount)
-		}
-	})
-
-	t.Run("too many redirects error aborts without retry", func(t *testing.T) {
-		t.Parallel()
-
-		callCount := 0
-		transport := testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
-			callCount++
-
-			return nil, &url.Error{
-				Op:  req.Method,
-				URL: req.URL.String(),
-				Err: errTooManyRedirects,
-			}
-		})
-
-		client := &http.Client{Transport: transport}
-
-		endpoint, err := computeSearchEndpoint("https://search.example.com")
-		if err != nil {
-			t.Fatalf("computeSearchEndpoint() error = %v", err)
-		}
-
-		s := &SearXNGSearcher{
-			client:         client,
-			searchEndpoint: endpoint,
-			retryStrategy:  newExponentialBackoffStrategy(2, time.Microsecond, time.Microsecond),
-			debug:          false,
-		}
-		s.done = make(chan struct{})
-
-		_, err = s.Search(t.Context(), &SearchArgs{Query: "test"})
-		if err == nil {
-			t.Fatal("Search() error = nil, want redirect error")
-		}
-
-		if callCount != 1 {
-			t.Fatalf("RoundTrip callCount = %d, want 1 (no retry)", callCount)
-		}
-	})
-
-	t.Run("transient transport error still retries", func(t *testing.T) {
-		t.Parallel()
-
-		callCount := 0
-		transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-			callCount++
-
-			return nil, errRetryTestConnectionReset
-		})
-
-		client := &http.Client{Transport: transport}
-
-		endpoint, err := computeSearchEndpoint("https://search.example.com")
-		if err != nil {
-			t.Fatalf("computeSearchEndpoint() error = %v", err)
-		}
-
-		s := &SearXNGSearcher{
-			client:         client,
-			searchEndpoint: endpoint,
-			retryStrategy:  newExponentialBackoffStrategy(2, time.Microsecond, time.Microsecond),
-			debug:          false,
-		}
-		s.done = make(chan struct{})
-
-		_, err = s.Search(t.Context(), &SearchArgs{Query: "test"})
-		if err == nil {
-			t.Fatal("Search() error = nil, want transport error after retries exhausted")
-		}
-
-		// With maxRetries=2 and a transient error, the transport should be
-		// called up to 3 times (attempt 0 + 2 retries).
-		if callCount != 3 {
-			t.Fatalf("RoundTrip callCount = %d, want 3 (initial + 2 retries)", callCount)
-		}
-	})
+	}
 }
 
 func TestIsRetryableStatusCode(t *testing.T) {
