@@ -65,15 +65,25 @@ jobs:
           git -C "$HOME/.agents/skills/cc-skills-golang" fetch --depth=1 origin "$CC_SKILLS_GOLANG_SHA"
           git -C "$HOME/.agents/skills/cc-skills-golang" checkout --detach "$CC_SKILLS_GOLANG_SHA"
 
-      - name: Run OpenCode documentation/code alignment review
-        uses: anomalyco/opencode/github@76c631d198f9ff620e15468e45f3457d50481b57 # v1.16.2
+      - name: Install opencode (pinned)
         env:
-          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-          GH_TOKEN: ${{ github.token }}
-        with:
-          model: opencode-go/deepseek-v4-flash
-          prompt: |
+          # renovate: datasource=github-releases packageName=anomalyco/opencode versioning=loose
+          OPENCODE_VERSION: v1.17.4
+        run: |
+          curl -fsSL --retry 10 "https://github.com/anomalyco/opencode/releases/download/${OPENCODE_VERSION}/opencode-linux-x64.tar.gz" -o /tmp/opencode.tar.gz
+          SHA256=$(curl -fsSL --retry 10 "https://api.github.com/repos/anomalyco/opencode/releases/tags/${OPENCODE_VERSION}" \
+            | jq -r '.assets[] | select(.name=="opencode-linux-x64.tar.gz") | .digest' \
+            | cut -d: -f2)
+          echo "${SHA256}  /tmp/opencode.tar.gz" | sha256sum -c -
+          mkdir -p "$HOME/.opencode/bin"
+          tar -xzf /tmp/opencode.tar.gz -C "$HOME/.opencode/bin"
+          rm /tmp/opencode.tar.gz
+          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+
+      - name: Run OpenCode documentation/code alignment review
+        env:
+          MODEL: opencode-go/deepseek-v4-flash
+          PROMPT: |
             Run a multi-dimensional documentation/code alignment review for this repository.
 
             Manual run inputs:
@@ -176,3 +186,8 @@ jobs:
             - List PRs created, if any, with links.
             - If no Issues or PRs were created, explain why.
             - Explicitly state whether documentation updates are needed.
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          opencode github run

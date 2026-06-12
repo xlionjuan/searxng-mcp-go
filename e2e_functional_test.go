@@ -18,11 +18,12 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
-func TestMCPFunctional(t *testing.T) {
+func TestMCPFunctional(t *testing.T) { //nolint:gocognit,gocyclo,cyclop,maintidx // large test table, acceptable
 	searxngURL := os.Getenv("SEARXNG_URL")
 	if searxngURL == "" {
 		t.Skip("SEARXNG_URL not set")
 	}
+
 	var warnings e2eWarnings
 
 	ctx, cancel := context.WithTimeout(t.Context(), 180*time.Second)
@@ -44,13 +45,14 @@ func TestMCPFunctional(t *testing.T) {
 
 				if len(response.Results) == 0 {
 					warning := "safesearch=" + strconv.Itoa(safesearch) + " results length = 0"
-					warnings.Add("%s", warning)
+					warnings.Addf("%s", warning)
 					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 				}
 
 				for i, result := range response.Results {
 					if strings.TrimSpace(result.Title) == "" {
-						t.Fatalf("safesearch=%d result[%d] title is empty\nresponse: %#v\nstderr:\n%s", safesearch, i, response, stderr.String())
+						t.Fatalf("safesearch=%d result[%d] title is empty"+
+							"\nresponse: %#v\nstderr:\n%s", safesearch, i, response, stderr.String())
 					}
 				}
 			})
@@ -63,6 +65,7 @@ func TestMCPFunctional(t *testing.T) {
 			if name == "" {
 				name = "all"
 			}
+
 			t.Run(name, func(t *testing.T) {
 				args := map[string]any{
 					"query": "framework computer inc",
@@ -71,20 +74,23 @@ func TestMCPFunctional(t *testing.T) {
 				if timeRange != "" {
 					args["time_range"] = timeRange
 				}
+
 				response := requireSearchResponse(ctx, t, session, args, stderr, "all time ranges")
 
 				if len(response.Results) == 0 {
 					if timeRange != "" {
-						t.Logf("time_range=%q results length = 0 (persistent, expected)\nresponse: %#v\nstderr:\n%s", timeRange, response, stderr.String())
+						t.Logf("time_range=%q results length = 0 (persistent, expected)"+
+							"\nresponse: %#v\nstderr:\n%s", timeRange, response, stderr.String())
 					} else {
 						warning := "time_range=\"all\" results length = 0"
-						warnings.Add("%s", warning)
+						warnings.Addf("%s", warning)
 						t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 					}
 				} else {
 					for i, result := range response.Results {
 						if strings.TrimSpace(result.Title) == "" {
-							t.Fatalf("time_range=%q result[%d] title is empty\nresponse: %#v\nstderr:\n%s", timeRange, i, response, stderr.String())
+							t.Fatalf("time_range=%q result[%d] title is empty"+
+								"\nresponse: %#v\nstderr:\n%s", timeRange, i, response, stderr.String())
 						}
 					}
 				}
@@ -106,13 +112,14 @@ func TestMCPFunctional(t *testing.T) {
 
 				if len(response.Results) == 0 {
 					warning := "categories=" + strconv.Quote(category) + " results length = 0"
-					warnings.Add("%s", warning)
+					warnings.Addf("%s", warning)
 					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 				}
 
 				for i, result := range response.Results {
 					if strings.TrimSpace(result.Title) == "" {
-						t.Fatalf("categories=%q result[%d] title is empty\nresponse: %#v\nstderr:\n%s", category, i, response, stderr.String())
+						t.Fatalf("categories=%q result[%d] title is empty"+
+							"\nresponse: %#v\nstderr:\n%s", category, i, response, stderr.String())
 					}
 				}
 			})
@@ -130,7 +137,7 @@ func TestMCPFunctional(t *testing.T) {
 
 				if len(response.Results) == 0 {
 					warning := "engines=" + strconv.Quote(engine) + " results length = 0"
-					warnings.Add("%s", warning)
+					warnings.Addf("%s", warning)
 					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 				}
 
@@ -154,7 +161,7 @@ func TestMCPFunctional(t *testing.T) {
 
 				if len(response.Results) == 0 {
 					warning := "pageno=" + strconv.Itoa(pageno) + " results length = 0"
-					warnings.Add("%s", warning)
+					warnings.Addf("%s", warning)
 					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 				}
 
@@ -177,12 +184,15 @@ func TestMCPFunctional(t *testing.T) {
 
 				if len(response.Results) == 0 {
 					warning := "limit=" + strconv.Itoa(limit) + " got 0 results, want 1.." + strconv.Itoa(limit)
-					warnings.Add("%s", warning)
+					warnings.Addf("%s", warning)
 					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 				}
+
 				if len(response.Results) > limit {
-					t.Fatalf("limit=%d got %d results, want <= %d\nresponse: %#v\nstderr:\n%s", limit, len(response.Results), limit, response, stderr.String())
+					t.Fatalf("limit=%d got %d results, want <= %d"+
+						"\nresponse: %#v\nstderr:\n%s", limit, len(response.Results), limit, response, stderr.String())
 				}
+
 				for i, result := range response.Results {
 					if strings.TrimSpace(result.Title) == "" {
 						t.Fatalf("limit=%d result[%d] title is empty\nresponse: %#v\nstderr:\n%s", limit, i, response, stderr.String())
@@ -203,7 +213,7 @@ func TestMCPFunctional(t *testing.T) {
 
 			if len(response.Results) == 0 {
 				warning := "language+categories results length = 0"
-				warnings.Add("%s", warning)
+				warnings.Addf("%s", warning)
 				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 			}
 
@@ -229,6 +239,7 @@ func TestMCPFunctional(t *testing.T) {
 					t.Fatalf("engines+time_range result[%d] title is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
 				}
 			}
+
 			t.Logf("engines+time_range: got %d results", len(response.Results))
 		})
 
@@ -240,10 +251,13 @@ func TestMCPFunctional(t *testing.T) {
 			}, stderr, "parameter combinations pageno+limit")
 
 			if len(response.Results) == 0 {
-				t.Logf("pageno+limit results length = 0 (persistent, expected)\nresponse: %#v\nstderr:\n%s", response, stderr.String())
+				t.Logf("pageno+limit results length = 0 (persistent, expected)"+
+					"\nresponse: %#v\nstderr:\n%s", response, stderr.String())
 			} else if len(response.Results) > 5 {
-				t.Fatalf("pageno+limit got %d results, want <= 5\nresponse: %#v\nstderr:\n%s", len(response.Results), response, stderr.String())
+				t.Fatalf("pageno+limit got %d results, want <= 5"+
+					"\nresponse: %#v\nstderr:\n%s", len(response.Results), response, stderr.String())
 			}
+
 			if len(response.Results) > 0 {
 				for i, result := range response.Results {
 					if strings.TrimSpace(result.Title) == "" {
@@ -264,9 +278,10 @@ func TestMCPFunctional(t *testing.T) {
 			if !strings.Contains(response.Query, "你好") {
 				t.Fatalf("chinese query not preserved in response: query=%q\nstderr:\n%s", response.Query, stderr.String())
 			}
+
 			if len(response.Results) == 0 {
 				warning := "chinese query results length = 0"
-				warnings.Add("%s", warning)
+				warnings.Addf("%s", warning)
 				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 			}
 		})
@@ -280,9 +295,10 @@ func TestMCPFunctional(t *testing.T) {
 			if !strings.Contains(response.Query, "こんにちは") {
 				t.Fatalf("japanese query not preserved in response: query=%q\nstderr:\n%s", response.Query, stderr.String())
 			}
+
 			if len(response.Results) == 0 {
 				warning := "japanese query results length = 0"
-				warnings.Add("%s", warning)
+				warnings.Addf("%s", warning)
 				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 			}
 		})
@@ -295,7 +311,7 @@ func TestMCPFunctional(t *testing.T) {
 
 			if len(response.Results) == 0 {
 				warning := "emoji query results length = 0"
-				warnings.Add("%s", warning)
+				warnings.Addf("%s", warning)
 				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 			}
 		})
@@ -309,7 +325,7 @@ func TestMCPFunctional(t *testing.T) {
 
 		if len(response.Results) == 0 {
 			warning := "response structure results length = 0"
-			warnings.Add("%s", warning)
+			warnings.Addf("%s", warning)
 			t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 		}
 
@@ -317,12 +333,15 @@ func TestMCPFunctional(t *testing.T) {
 			if strings.TrimSpace(result.Title) == "" {
 				t.Fatalf("result[%d] title is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
 			}
+
 			if strings.TrimSpace(result.URL) == "" {
 				t.Fatalf("result[%d] URL is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
 			}
+
 			if strings.TrimSpace(result.Content) == "" {
 				t.Fatalf("result[%d] content is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
 			}
+
 			if strings.TrimSpace(result.Engine) == "" {
 				t.Fatalf("result[%d] engine is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
 			}
@@ -352,11 +371,12 @@ func TestMCPFunctional(t *testing.T) {
 // when the live server is broken in a way the WARNING SUMMARY cannot
 // express — e.g. malformed `--json` output, or `--json "..."` returning a
 // non-SearchResponse payload.
-func TestCLISmoke(t *testing.T) {
+func TestCLISmoke(t *testing.T) { //nolint:gocognit,gocyclo,cyclop,maintidx // large test with closures, acceptable
 	searxngURL := os.Getenv("SEARXNG_URL")
 	if searxngURL == "" {
 		t.Skip("SEARXNG_URL not set")
 	}
+
 	var warnings e2eWarnings
 
 	ctx, cancel := context.WithTimeout(t.Context(), 600*time.Second)
@@ -366,6 +386,7 @@ func TestCLISmoke(t *testing.T) {
 	if binaryPath == "" {
 		binaryPath = buildE2EMCPBinary(ctx, t)
 	}
+
 	t.Logf("using CLI smoke binary: %s", binaryPath)
 
 	// runCLI executes the binary in CLI mode with --json, parses the
@@ -381,25 +402,31 @@ func TestCLISmoke(t *testing.T) {
 		cliArgs := append([]string{"--json", "--searxng-url", searxngURL}, args...)
 
 		cmd := exec.CommandContext(subCtx, binaryPath, cliArgs...) //nolint:gosec // test runs built binary
+
 		cmd.Env = append(os.Environ(), "SEARXNG_MAX_RETRIES=2")
 
 		var stdout, stderr bytes.Buffer
+
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 
-		if err := cmd.Run(); err != nil {
+		err := cmd.Run()
+		if err != nil {
 			t.Fatalf("%s: binary failed: %v\nstdout:\n%s\nstderr:\n%s",
 				name, err, stdout.String(), stderr.String())
 		}
 
 		var response searxng.SearchResponse
-		if err := json.Unmarshal(bytes.TrimSpace(stdout.Bytes()), &response); err != nil {
+
+		err = json.Unmarshal(bytes.TrimSpace(stdout.Bytes()), &response)
+		if err != nil {
 			t.Fatalf("%s: --json output is not SearchResponse JSON: %v\nstdout:\n%s\nstderr:\n%s",
 				name, err, stdout.String(), stderr.String())
 		}
 
 		t.Logf("%s parsed: query=%q, results=%d, answers=%d, infoboxes=%d, suggestions=%d",
-			name, response.Query, len(response.Results), len(response.Answers), len(response.Infoboxes), len(response.Suggestions))
+			name, response.Query, len(response.Results), len(response.Answers),
+			len(response.Infoboxes), len(response.Suggestions))
 
 		return response
 	}
@@ -420,19 +447,22 @@ func TestCLISmoke(t *testing.T) {
 	// CI failure.
 	assertResultsNotEmpty := func(t *testing.T, name string, response searxng.SearchResponse) {
 		t.Helper()
+
 		if len(response.Results) == 0 {
-			warnings.Add("%s results length = 0", name)
+			warnings.Addf("%s results length = 0", name)
 			t.Logf("%s results length = 0\nresponse: %#v", name, response)
 
 			return
 		}
+
 		for i, result := range response.Results {
 			if strings.TrimSpace(result.Title) == "" {
-				warnings.Add("%s result[%d] title is empty", name, i)
+				warnings.Addf("%s result[%d] title is empty", name, i)
 				t.Logf("%s result[%d] title is empty\nresponse: %#v", name, i, response)
 			}
+
 			if strings.TrimSpace(result.URL) == "" {
-				warnings.Add("%s result[%d] URL is empty", name, i)
+				warnings.Addf("%s result[%d] URL is empty", name, i)
 				t.Logf("%s result[%d] URL is empty\nresponse: %#v", name, i, response)
 			}
 		}
@@ -448,18 +478,22 @@ func TestCLISmoke(t *testing.T) {
 	// are direct migrations of the previous shell smoke regex checks.
 	assertAnswerMatches := func(t *testing.T, name string, response searxng.SearchResponse, pattern *regexp.Regexp) {
 		t.Helper()
+
 		if len(response.Answers) == 0 {
-			warnings.Add("%s answers length = 0", name)
+			warnings.Addf("%s answers length = 0", name)
 			t.Logf("%s answers length = 0\nresponse: %#v", name, response)
 
 			return
 		}
+
 		for i, ans := range response.Answers {
 			if pattern.MatchString(ans.Answer) {
 				return
 			}
+
 			t.Logf("%s answer[%d]=%q did not match %s", name, i, ans.Answer, pattern)
 		}
+
 		t.Fatalf("%s: no answer matched %s\nresponse: %#v", name, pattern, response)
 	}
 
@@ -495,7 +529,7 @@ func TestCLISmoke(t *testing.T) {
 		response := runCLI(t, "infobox json", "apple inc")
 
 		if len(response.Infoboxes) == 0 {
-			warnings.Add("infobox json infoboxes length = 0")
+			warnings.Addf("infobox json infoboxes length = 0")
 			t.Logf("infobox json infoboxes length = 0\nresponse: %#v", response)
 		} else {
 			for i, ib := range response.Infoboxes {
@@ -519,7 +553,8 @@ func TestCLISmoke(t *testing.T) {
 		response := runCLI(t, "language parameter", "--language", "zh-tw", "測試")
 
 		if !containsCJK(response.Query) {
-			t.Fatalf("language parameter response.Query=%q does not contain CJK characters\nresponse: %#v", response.Query, response)
+			t.Fatalf("language parameter response.Query=%q does not contain CJK characters"+
+				"\nresponse: %#v", response.Query, response)
 		}
 
 		assertResultsNotEmpty(t, "language parameter", response)
@@ -550,7 +585,9 @@ func TestCLISmoke(t *testing.T) {
 		// the JSON, and either return results or surface the empty
 		// case via WARNING SUMMARY. A validation error or non-JSON
 		// output is a hard fail.
-		words := []string{"golang"}
+		words := make([]string, 0, 36)
+		words = append(words, "golang")
+
 		for range 35 {
 			words = append(words, "search")
 		}
@@ -560,6 +597,7 @@ func TestCLISmoke(t *testing.T) {
 		if response.Query == "" {
 			t.Fatalf("long query response.Query is empty\nresponse: %#v", response)
 		}
+
 		assertResultsNotEmpty(t, "long query", response)
 	})
 
@@ -596,7 +634,8 @@ func TestCLISmoke(t *testing.T) {
 		// Mirrors: "random uuid" →
 		//   grep "Answers" + grep -Eiq "[0-9a-f]{8}-[0-9a-f]{4}-..."
 		response := runCLI(t, "random uuid answer", "random uuid")
-		assertAnswerMatches(t, "random uuid answer", response, regexp.MustCompile(`(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`))
+		assertAnswerMatches(t, "random uuid answer", response,
+			regexp.MustCompile(`(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`))
 	})
 
 	t.Run("berlin time answer", func(t *testing.T) {

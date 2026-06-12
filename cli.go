@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
+	"strings"
 
 	"searxng-mcp-go/internal/searxng"
 )
@@ -21,10 +23,12 @@ var (
 	errJSONEncodeFailed    = errors.New("failed to encode json")
 )
 
-// printCLIHelp prints the help message for CLI mode.
-func printCLIHelp() {
-	fmt.Println(`SearXNG MCP Server - CLI Mode (` + version + `)
+// printCLIHelp writes the help message to the given writer.
+func printCLIHelp(w io.Writer) {
+	var b strings.Builder
 
+	b.WriteString(`SearXNG MCP Server - CLI Mode (` + version + `)`)
+	b.WriteString(`
 A Model Context Protocol server that provides web search via SearXNG.
 
 USAGE:
@@ -33,13 +37,15 @@ USAGE:
 OPTIONS:
   --json             Output results as formatted JSON instead of human-readable text
   --searxng-url URL  SearXNG instance URL (required)
-                     Can also be set via SEARXNG_URL environment variable`)
-	// Print search parameter options from the shared table.
+                     Can also be set via SEARXNG_URL environment variable
+`)
+
 	for _, p := range searxng.SearchParams {
-		fmt.Println(p.CLIHelpLine())
+		b.WriteString(p.CLIHelpLine())
+		b.WriteString("\n")
 	}
 
-	fmt.Printf(`  --debug            Enable verbose HTTP request/response logging
+	fmt.Fprintf(&b, `  --debug            Enable verbose HTTP request/response logging
                      Can also be enabled via DEBUG=1 environment variable
   --timeout DURATION HTTP client timeout (e.g., 8s) [default: %s]
                      Can also be set via SEARXNG_TIMEOUT environment variable
@@ -75,6 +81,11 @@ EXIT CODES:
 For more information, see: https://github.com/xlionjuan/searxng-mcp-go
 `,
 		searxng.DefaultTimeout, searxng.DefaultMaxRetries)
+
+	_, err := w.Write([]byte(b.String()))
+	if err != nil {
+		slog.Warn("failed to write help text", "error", err)
+	}
 }
 
 // runCLIMode executes the CLI-mode search flow.
@@ -82,7 +93,7 @@ For more information, see: https://github.com/xlionjuan/searxng-mcp-go
 //nolint:gocyclo // CLI dispatch (help/debug/search/format) is inherently sequential; extracting adds layers
 func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 	if flags.Help {
-		printCLIHelp()
+		printCLIHelp(os.Stdout)
 
 		return nil
 	}
@@ -109,7 +120,7 @@ func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 		return errSearchQueryRequired
 	}
 
-	cfg, err := getConfig(flags)
+	cfg, err := getConfig(flags, true)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errConfigurationFailed, err)
 	}
@@ -140,10 +151,7 @@ func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 
 	defer func() { _ = searcher.Close() }() //nolint:errcheck // cleanup in defer; error is non-actionable
 
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
-	defer cancel()
-
-	resp, err := searcher.Search(ctx, args)
+	resp, err := searcher.Search(context.Background(), args)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errSearchFailed, err)
 	}

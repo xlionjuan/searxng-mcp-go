@@ -2,6 +2,7 @@ package searxng
 
 import (
 	"errors"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -456,6 +457,52 @@ func TestEnforceSearchRedirectPolicy(t *testing.T) {
 			t.Fatal("enforceSearchRedirectPolicy() = nil, want error for :8080 → no-port redirect")
 		}
 	})
+
+	t.Run("allow IPv6 :443 to no-port (same host, default port stripped)", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "https://[::1]/search")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://[::1]:443/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for IPv6 :443 → no-port redirect", err)
+		}
+	})
+
+	t.Run("allow IPv6 no-port to :443 (same host, default port added)", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "https://[::1]:443/search")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://[::1]/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for IPv6 no-port → :443 redirect", err)
+		}
+	})
+
+	t.Run("block IPv6 cross-host redirect", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{URL: mustParseURL(t, "https://[::2]/search")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://[::1]:443/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err == nil {
+			t.Fatal("enforceSearchRedirectPolicy() = nil, want error for IPv6 cross-host redirect")
+		}
+
+		if !strings.Contains(err.Error(), "redirect to different host blocked") {
+			t.Fatalf("error = %q, want redirect to different host blocked", err.Error())
+		}
+	})
 }
 
 func mustParseURL(t *testing.T, raw string) *url.URL {
@@ -477,7 +524,7 @@ func TestCloseResponseBody(t *testing.T) {
 	t.Run("nil response", func(t *testing.T) {
 		t.Parallel()
 		// Should not panic
-		closeResponseBody(nil)
+		closeResponseBody(nil, slog.Default())
 	})
 
 	t.Run("nil body", func(t *testing.T) {
@@ -485,7 +532,7 @@ func TestCloseResponseBody(t *testing.T) {
 
 		resp := &http.Response{Body: nil}
 		// Should not panic
-		closeResponseBody(resp)
+		closeResponseBody(resp, slog.Default())
 	})
 
 	t.Run("closes body", func(t *testing.T) {
@@ -499,7 +546,7 @@ func TestCloseResponseBody(t *testing.T) {
 			},
 		}
 		resp := &http.Response{Body: body}
-		closeResponseBody(resp)
+		closeResponseBody(resp, slog.Default())
 
 		if !closeCalled {
 			t.Fatal("closeResponseBody() did not close the response body")

@@ -44,12 +44,12 @@ func (s *SearXNGSearcher) parseSearchResponse(resp *http.Response, args *SearchA
 		previewLen := min(bodyLen, MaxErrorDisplayBytes)
 		preview := string(truncateBytesToValidUTF8(body, previewLen))
 
-		slog.Debug("HTMLResponseError: received HTML instead of JSON", "preview", preview)
+		s.getLogger().Debug("HTMLResponseError: received HTML instead of JSON", "preview", preview)
 
 		return nil, &HTMLResponseError{Body: preview, UnderlyingErr: nil}
 	}
 
-	result, err := decodeSearchResponse(resp, contentType, body)
+	result, err := decodeSearchResponse(resp, contentType, body, s.getLogger())
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (s *SearXNGSearcher) logDebugBody(resp *http.Response, body []byte) {
 
 	bodyPreview := string(truncateBytesToValidUTF8(body, DebugBodyPreviewBytes))
 
-	slog.Debug(
+	s.getLogger().Debug(
 		"HTTP response body",
 		"status", resp.StatusCode,
 		"content_type", resp.Header.Get("Content-Type"),
@@ -164,14 +164,16 @@ func mediaTypeIs(contentType string, want ...string) bool {
 	return slices.Contains(want, mt)
 }
 
-func decodeSearchResponse(resp *http.Response, contentType string, body []byte) (*SearchResponse, error) {
+func decodeSearchResponse(
+	resp *http.Response, contentType string, body []byte, logger *slog.Logger,
+) (*SearchResponse, error) {
 	if !isJSONContentType(contentType) {
 		bodyPreview := string(truncateBytesToValidUTF8(body, MaxErrorDisplayBytes))
 		if len(body) > MaxErrorDisplayBytes {
 			bodyPreview += "..."
 		}
 
-		slog.Debug("UnexpectedContentTypeError", "content_type", contentType, "body_preview", bodyPreview)
+		logger.Debug("UnexpectedContentTypeError", "content_type", contentType, "body_preview", bodyPreview)
 
 		return nil, NewSearXNGError(resp.StatusCode, contentType, "", errUnexpectedContentType)
 	}
@@ -180,7 +182,7 @@ func decodeSearchResponse(resp *http.Response, contentType string, body []byte) 
 
 	err := json.Unmarshal(body, &result)
 	if err != nil {
-		slog.Debug("JSONParseError: failed to parse JSON response", "error", err)
+		logger.Debug("JSONParseError: failed to parse JSON response", "error", err)
 
 		return nil, NewSearXNGError(resp.StatusCode, contentType, "", fmt.Errorf("%w: %w", errJSONResponseParseFailed, err))
 	}
@@ -288,14 +290,14 @@ func (s *SearXNGSearcher) normalizeResponse(result *SearchResponse, args *Search
 	// compact entries into these arrays, forcing very large CPU work
 	// before result limiting. See MaxAnswers / MaxInfoboxes for details.
 	if len(result.Answers) > MaxAnswers {
-		slog.Warn("truncating answers before deduplication",
+		s.getLogger().Warn("truncating answers before deduplication",
 			"count", len(result.Answers),
 			"max", MaxAnswers)
 		result.Answers = result.Answers[:MaxAnswers]
 	}
 
 	if len(result.Infoboxes) > MaxInfoboxes {
-		slog.Warn("truncating infoboxes before deduplication",
+		s.getLogger().Warn("truncating infoboxes before deduplication",
 			"count", len(result.Infoboxes),
 			"max", MaxInfoboxes)
 		result.Infoboxes = result.Infoboxes[:MaxInfoboxes]
