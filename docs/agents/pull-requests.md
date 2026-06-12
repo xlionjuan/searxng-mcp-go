@@ -18,6 +18,11 @@ invoke OpenCode. The manual
 alignment audit. These are not yet indexed in this table — see the workflow
 files for inputs and permissions.
 
+For OpenCode runs inside GitHub Actions, also follow
+[docs/agents/opencode-github-actions.md](opencode-github-actions.md). That file
+defines the narrow exceptions for Action-managed PR creation, best-effort PR
+title control, and workflow-provided git identity.
+
 Common commands:
 
 - **Inspect current PR context**: `gh pr view --json number,title,body,labels,files,reviewDecision,statusCheckRollup`

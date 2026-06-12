@@ -16,7 +16,7 @@ configured SearXNG instance.
   the inline golden string in that test.
 - Fixtures: `testdata/`
 - CI and release workflows: `.github/workflows/`
-- OpenCode agent runtime: `docs/agents/pull-requests.md#opencode`
+- GitHub Actions OpenCode runtime: `docs/agents/opencode-github-actions.md`
 - Domain context and terminology: `CONTEXT.md`
 - Architecture decisions: `docs/adr/`
 
@@ -26,6 +26,7 @@ configured SearXNG instance.
 |-------|----------|
 | Local SearXNG test server | [docs/agents/test-server.md](docs/agents/test-server.md) |
 | Pull-request agent workflow | [docs/agents/pull-requests.md](docs/agents/pull-requests.md) |
+| GitHub Actions OpenCode runtime | [docs/agents/opencode-github-actions.md](docs/agents/opencode-github-actions.md) |
 | Release agent workflow | [docs/agents/release.md](docs/agents/release.md) |
 | Issue tracker workflow | [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md) |
 | Domain and ADR workflow | [docs/agents/domain.md](docs/agents/domain.md) |
@@ -85,7 +86,8 @@ configured SearXNG instance.
 - Use `gh` CLI for all GitHub operations (not browser tools).
 - PR title and body in English. See [docs/agents/pull-requests.md](docs/agents/pull-requests.md) for the full PR workflow, title policy, and body checklist.
 - PR agents must create requested PRs with `gh pr create`; do not stop after
-  pushing a branch.
+  pushing a branch. For OpenCode running inside GitHub Actions, see
+  [docs/agents/opencode-github-actions.md](docs/agents/opencode-github-actions.md).
 
 ## Git Identity
 
@@ -99,5 +101,6 @@ configured SearXNG instance.
 
 - Issues: [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md)
 - Pull requests: [docs/agents/pull-requests.md](docs/agents/pull-requests.md)
+- GitHub Actions OpenCode runtime: [docs/agents/opencode-github-actions.md](docs/agents/opencode-github-actions.md)
 - Release: [docs/agents/release.md](docs/agents/release.md)
 - Domain and ADR: [docs/agents/domain.md](docs/agents/domain.md)
