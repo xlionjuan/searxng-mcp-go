@@ -1,4 +1,4 @@
-package searxng //nolint:testpackage // white-box access to internal types for shared test helpers
+package searxng
 
 import (
 	"errors"

@@ -16,7 +16,7 @@ The initial attempt (ADR-013 v1) embedded a pre-computed `Schema map[string]any`
 field in `ParamDef`, populated at `init()` time. While this simplified
 `buildSearchSchema()`, it left the other two consumers unchanged and required
 a `//nolint:gochecknoinits` suppression. The drift tests in
-`params_validation_drift_test.go` remained ~500 lines.
+`params_validation_drift_internal_test.go` remained ~500 lines.
 
 ## Decision
 
@@ -59,7 +59,7 @@ for _, p := range searxng.SearchParams {
 - **No init() needed.** Schema computation is lazy and per-call; no
   `//nolint:gochecknoinits` required.
 - **Drift resistance.** Each consumer calls a method whose contract is tested
-  by a single test in `params_validation_drift_test.go`
+  by a single test in `params_validation_drift_internal_test.go`
   (`TestParamDefJSONSchema`). The ~500-line drift test file shrinks because
   the per-consumer mappings are now methods, not copied logic.
 - **No exported Schema field.** `ParamDef` no longer exposes a pre-computed
