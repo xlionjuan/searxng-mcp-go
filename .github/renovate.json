@@ -1,11 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:best-practices"
-  ],
-  "postUpdateOptions": [
-    "gomodTidy"
-  ],
+  "extends": ["config:best-practices"],
+  "postUpdateOptions": ["gomodTidy"],
+  "git-submodules": { "enabled": true },
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
   "semanticCommits": "enabled",
@@ -19,9 +16,7 @@
     {
       "customType": "regex",
       "description": "Update pinned cc-skills-golang Git SHA used by OpenCode workflows",
-      "managerFilePatterns": [
-        "/^\\.github/workflows/opencode.*\\.yml$/"
-      ],
+      "managerFilePatterns": ["/^\\.github/workflows/opencode.*\\.yml$/"],
       "matchStrings": [
         "# renovate: datasource=git-refs packageName=(?<packageName>\\S+) currentValue=(?<currentValue>\\S+)\\s+CC_SKILLS_GOLANG_SHA: (?<currentDigest>[a-f0-9]{40})"
       ],
@@ -33,13 +28,8 @@
   "packageRules": [
     {
       "description": "Group Go minor and patch updates together",
-      "matchManagers": [
-        "gomod"
-      ],
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
-      ],
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch"],
       "groupName": "go minor and patch updates"
     }
   ]
