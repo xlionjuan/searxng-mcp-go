@@ -44,7 +44,7 @@ export SEARXNG_DEBUG="${SEARXNG_DEBUG:-0}"
 echo "=== Starting SearXNG ==="
 echo "  Settings: ${SEARXNG_SETTINGS_PATH:-built-in defaults}"
 echo "  Debug: ${SEARXNG_DEBUG}"
-echo "  URL: http://127.0.0.1:8888"
+echo "  URL: http://127.0.0.1:${SEARXNG_PORT:-8888}"
 echo ""
 
 cd "$SEARXNG_DIR"

@@ -95,8 +95,8 @@ Use the same setup and lifecycle as the regular E2E tests: run
 - Never run `01-start-fg.sh` from agents or CI. It blocks the calling shell
   until killed.
 - `.bg-pid` can go stale if an agent shell dies. Inspect with
-  `pgrep -f 'searx/webapp\.py|granian'`, then use `just test-server-stop` or the stop
+  `pgrep -f 'searx/webapp\\.py|searx\\.webapp:app'`, then use `just test-server-stop` or the stop
   script with `--force` if needed.
 - A recorded PID can be recycled by an unrelated process. The start, stop, and
-  status scripts verify that argv contains `searx/webapp.py` or `granian`; do not bypass that
+  status scripts verify that argv contains `searx/webapp.py` or `searx.webapp:app`; do not bypass that
   check.

@@ -63,7 +63,7 @@ fi
 
 # Fallback: look for any orphaned searx/webapp.py process
 if [ "$stopped" -eq 0 ]; then
-    orphans="$(pgrep -f 'searx/webapp\.py|granian' 2>/dev/null || true)"
+    orphans="$(pgrep -f 'searx/webapp\\.py|searx\\.webapp:app' 2>/dev/null || true)"
     if [ -n "$orphans" ]; then
         if [ "$force" -eq 1 ]; then
             echo "Found orphaned SearXNG process (PIDs: $orphans); --force killing."
@@ -74,7 +74,7 @@ if [ "$stopped" -eq 0 ]; then
         else
             echo "Found orphaned SearXNG process (PIDs: $orphans)." >&2
             echo "These are not tracked by .bg-pid. Re-run with --force to kill," >&2
-            echo "or use 'pgrep -f searx/webapp\.py' or 'pgrep -f granian' to inspect first." >&2
+            echo "or use 'pgrep -f searx/webapp\\.py' or 'pgrep -f searx\\.webapp:app' to inspect first." >&2
         fi
     fi
 fi

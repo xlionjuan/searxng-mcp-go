@@ -46,9 +46,9 @@ echo ""
 echo "--- Installing setup helper dependencies ---"
 uv sync --locked --project "$SCRIPT_DIR" --inexact --no-install-project
 
-# Install dependencies from upstream pinned requirements, then SearXNG itself.
+# Install SearXNG in editable mode (dependencies already installed via uv sync above).
 echo ""
-echo "--- Installing SearXNG dependencies ---"
+echo "--- Installing SearXNG (editable) ---"
 cd "$SEARXNG_DIR"
 
 # echo "  Installing from requirements.txt and requirements-server.txt..."
