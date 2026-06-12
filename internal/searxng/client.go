@@ -109,6 +109,10 @@ func hostNoDefaultPort(host, scheme string) string {
 	}
 
 	if (port == "443" && scheme == "https") || (port == "80" && scheme == "http") {
+		if strings.HasPrefix(host, "[") {
+			return "[" + h + "]"
+		}
+
 		return h
 	}
 
