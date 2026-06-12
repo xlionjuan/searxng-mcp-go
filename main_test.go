@@ -764,7 +764,7 @@ func TestGetConfig(t *testing.T) {
 		_, err := getConfig(&CLIFlags{
 			SearXNGURL: "https://example.com",
 			MaxRetries: new(21),
-		})
+		}, true)
 		if err == nil {
 			t.Fatal("getConfig() error = nil, want error for --max-retries=21")
 		}
@@ -778,7 +778,7 @@ func TestGetConfig(t *testing.T) {
 		_, err := getConfig(&CLIFlags{
 			SearXNGURL: "https://example.com",
 			Timeout:    new(-1 * time.Second),
-		})
+		}, true)
 		if err == nil {
 			t.Fatal("getConfig() error = nil, want error for --timeout=-1s")
 		}
