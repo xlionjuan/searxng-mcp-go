@@ -371,7 +371,7 @@ func (s *SearXNGSearcher) logDebugRequest(req *http.Request, body string) {
 		s.getLogger().Debug(
 			"HTTP request",
 			"method", req.Method,
-			"url", req.URL.String(),
+			"url", redactSearchURLParams(req.URL.String()),
 			"Accept", req.Header.Get("Accept"),
 		)
 
@@ -486,12 +486,9 @@ func redactSearchURLParams(rawURL string) string {
 		return rawURL
 	}
 
-	query := parsed.Query()
-	if _, ok := query["q"]; ok {
-		query.Set("q", "[REDACTED]")
+	if parsed.RawQuery != "" {
+		parsed.RawQuery = "[REDACTED]"
 	}
-
-	parsed.RawQuery = query.Encode()
 
 	return parsed.String()
 }
