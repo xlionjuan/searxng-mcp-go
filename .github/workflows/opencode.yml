@@ -66,8 +66,8 @@ jobs:
           # renovate: datasource=github-releases packageName=anomalyco/opencode versioning=loose
           OPENCODE_VERSION: v1.17.4
         run: |
-          curl -fsSL "https://github.com/anomalyco/opencode/releases/download/${OPENCODE_VERSION}/opencode-linux-x64.tar.gz" -o /tmp/opencode.tar.gz
-          SHA256=$(curl -fsSL "https://api.github.com/repos/anomalyco/opencode/releases/tags/${OPENCODE_VERSION}" \
+          curl -fsSL --retry 10 "https://github.com/anomalyco/opencode/releases/download/${OPENCODE_VERSION}/opencode-linux-x64.tar.gz" -o /tmp/opencode.tar.gz
+          SHA256=$(curl -fsSL --retry 10 "https://api.github.com/repos/anomalyco/opencode/releases/tags/${OPENCODE_VERSION}" \
             | jq -r '.assets[] | select(.name=="opencode-linux-x64.tar.gz") | .digest' \
             | cut -d: -f2)
           echo "${SHA256}  /tmp/opencode.tar.gz" | sha256sum -c -
