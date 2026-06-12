@@ -218,8 +218,9 @@ On a developer machine, use the corpus only if it is already available or can be
 located from the local environment. Do not assume a fixed path and do not require
 cloning it into `/tmp`.
 
-When the corpus is available, an AI reviewer may consult the relevant skill
-files for deeper checks. Start code review with these review-relevant skills:
+When the corpus is available, an AI reviewer must locate and read the relevant
+skill files before producing review findings. Start code review with these
+review-relevant skills:
 
 - `golang-troubleshooting/references/code-review-flags.md`
 - `golang-lint/references/nolint-directives.md`
@@ -229,11 +230,12 @@ files for deeper checks. Start code review with these review-relevant skills:
 - `golang-testing/SKILL.md`
 - `golang-code-style/SKILL.md`
 
-Consult other `cc-skills-golang` skills when the patch touches their domain,
-such as context propagation, CLI behavior, dependency management, security, or
+Read other `cc-skills-golang` skills when the patch touches their domain, such
+as context propagation, CLI behavior, dependency management, security, or
 performance.
 
 For coding tasks, do not use this review-focused list as the default. Choose the
-skills that match the implementation work, as described in `AGENTS.md`.
+skills that match the implementation work, then read them before editing, as
+described in `AGENTS.md`.
 Repository rules win over generic skill advice, and the PR diff still has
 priority over background reading.

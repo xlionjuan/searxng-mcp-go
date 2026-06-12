@@ -77,13 +77,16 @@ configured SearXNG instance.
 
 ### Go Skill Corpus
 
-- When the optional `cc-skills-golang` corpus is available, all AI agents
-  working on Go code should consult the skills relevant to the task.
-- For coding tasks, choose skills by implementation domain, such as error
-  handling, concurrency, context propagation, CLI behavior, testing, security,
-  dependencies, or performance. Do not limit coding work to the review-focused
-  skill subset.
-- For code review tasks, follow [docs/agents/code-review.md](docs/agents/code-review.md).
+- When the optional `cc-skills-golang` corpus is available, every AI agent
+  working on Go code must locate and read the relevant skill files before
+  editing, reviewing, or claiming completion.
+- For coding tasks, first identify the implementation domains involved, such as
+  error handling, concurrency, context propagation, CLI behavior, testing,
+  security, dependencies, or performance. Then read the matching
+  `cc-skills-golang` skill files. Do not limit coding work to the
+  review-focused skill subset.
+- For code review tasks, follow [docs/agents/code-review.md](docs/agents/code-review.md)
+  and read the review-relevant skills named there before producing findings.
 - Repository rules and local project context override generic skill advice.
 
 ### Verification

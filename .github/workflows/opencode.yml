@@ -69,4 +69,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         with:
           model: opencode-go/deepseek-v4-flash
+          prompt: |
+            Read and follow AGENTS.md before doing any work.
+
+            The cc-skills-golang corpus is installed at:
+            ~/.agents/skills/cc-skills-golang/skills
+
+            For any Go coding task, first identify the implementation domains
+            involved, then read the matching cc-skills-golang skill files before
+            editing or claiming completion. For code review tasks, read
+            docs/agents/code-review.md and the review-relevant Go skill files
+            named there before producing findings.
+
+            Repository rules override generic skill advice.
           # model: minimax/MiniMax-M3

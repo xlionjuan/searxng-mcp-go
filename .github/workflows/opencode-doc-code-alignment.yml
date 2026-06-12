@@ -90,6 +90,7 @@ jobs:
 
             Repository rules:
             - Read and follow AGENTS.md before doing any work.
+            - The cc-skills-golang corpus is installed at `~/.agents/skills/cc-skills-golang/skills`; for Go coding or code review work, locate and read the relevant skill files before editing, opening Issues or PRs, or reporting findings.
             - Respect the documented project boundaries:
               - Entry points: main.go, cli.go, mcp.go, format.go
               - Core package: internal/searxng/
