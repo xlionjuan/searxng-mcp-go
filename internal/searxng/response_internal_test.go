@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"testing"
@@ -299,7 +300,7 @@ func TestDecodeSearchResponse(t *testing.T) {
 			Header:     http.Header{"Content-Type": []string{"application/json"}},
 		}
 
-		result, err := decodeSearchResponse(resp, "application/json", []byte(body))
+		result, err := decodeSearchResponse(resp, "application/json", []byte(body), slog.Default())
 		if err != nil {
 			t.Fatalf("decodeSearchResponse() error = %v", err)
 		}
@@ -322,7 +323,7 @@ func TestDecodeSearchResponse(t *testing.T) {
 
 		body := `{"query": "test"}`
 
-		result, err := decodeSearchResponse(&http.Response{}, "text/json", []byte(body))
+		result, err := decodeSearchResponse(&http.Response{}, "text/json", []byte(body), slog.Default())
 		if err != nil {
 			t.Fatalf("decodeSearchResponse() error = %v", err)
 		}
@@ -337,7 +338,7 @@ func TestDecodeSearchResponse(t *testing.T) {
 
 		body := `{"query": "test"}`
 
-		result, err := decodeSearchResponse(&http.Response{}, "application/json; charset=utf-8", []byte(body))
+		result, err := decodeSearchResponse(&http.Response{}, "application/json; charset=utf-8", []byte(body), slog.Default())
 		if err != nil {
 			t.Fatalf("decodeSearchResponse() error = %v", err)
 		}
@@ -352,7 +353,7 @@ func TestDecodeSearchResponse(t *testing.T) {
 
 		body := `{"query": "test"}`
 
-		result, err := decodeSearchResponse(&http.Response{}, "text/json; charset=utf-8", []byte(body))
+		result, err := decodeSearchResponse(&http.Response{}, "text/json; charset=utf-8", []byte(body), slog.Default())
 		if err != nil {
 			t.Fatalf("decodeSearchResponse() error = %v", err)
 		}
@@ -367,7 +368,7 @@ func TestDecodeSearchResponse(t *testing.T) {
 
 		body := `{"query": "test"}`
 
-		result, err := decodeSearchResponse(&http.Response{}, "APPLICATION/JSON", []byte(body))
+		result, err := decodeSearchResponse(&http.Response{}, "APPLICATION/JSON", []byte(body), slog.Default())
 		if err != nil {
 			t.Fatalf("decodeSearchResponse() error = %v", err)
 		}
@@ -382,7 +383,7 @@ func TestDecodeSearchResponse(t *testing.T) {
 
 		body := `{"query": "test"}`
 
-		result, err := decodeSearchResponse(&http.Response{}, "Application/Json", []byte(body))
+		result, err := decodeSearchResponse(&http.Response{}, "Application/Json", []byte(body), slog.Default())
 		if err != nil {
 			t.Fatalf("decodeSearchResponse() error = %v", err)
 		}
@@ -397,7 +398,7 @@ func TestDecodeSearchResponse(t *testing.T) {
 
 		body := `{"query": "test"}`
 
-		result, err := decodeSearchResponse(&http.Response{}, "TEXT/JSON", []byte(body))
+		result, err := decodeSearchResponse(&http.Response{}, "TEXT/JSON", []byte(body), slog.Default())
 		if err != nil {
 			t.Fatalf("decodeSearchResponse() error = %v", err)
 		}
@@ -412,7 +413,7 @@ func TestDecodeSearchResponse(t *testing.T) {
 
 		resp := &http.Response{StatusCode: http.StatusOK}
 
-		_, err := decodeSearchResponse(resp, "application/jsonish", []byte(`{"query": "test"}`))
+		_, err := decodeSearchResponse(resp, "application/jsonish", []byte(`{"query": "test"}`), slog.Default())
 		if err == nil {
 			t.Fatal("decodeSearchResponse() error = nil, want error for application/jsonish")
 		}
@@ -427,7 +428,7 @@ func TestDecodeSearchResponse(t *testing.T) {
 
 		resp := &http.Response{StatusCode: http.StatusOK}
 
-		_, err := decodeSearchResponse(resp, "text/jsonish", []byte(`{"query": "test"}`))
+		_, err := decodeSearchResponse(resp, "text/jsonish", []byte(`{"query": "test"}`), slog.Default())
 		if err == nil {
 			t.Fatal("decodeSearchResponse() error = nil, want error for text/jsonish")
 		}
@@ -442,7 +443,7 @@ func TestDecodeSearchResponse(t *testing.T) {
 
 		resp := &http.Response{StatusCode: http.StatusOK}
 
-		_, err := decodeSearchResponse(resp, "not a mime type", []byte(`{"query": "test"}`))
+		_, err := decodeSearchResponse(resp, "not a mime type", []byte(`{"query": "test"}`), slog.Default())
 		if err == nil {
 			t.Fatal("decodeSearchResponse() error = nil, want error for malformed content-type")
 		}
@@ -457,7 +458,7 @@ func TestDecodeSearchResponse(t *testing.T) {
 
 		resp := &http.Response{StatusCode: http.StatusOK}
 
-		_, err := decodeSearchResponse(resp, "", []byte(`{"query": "test"}`))
+		_, err := decodeSearchResponse(resp, "", []byte(`{"query": "test"}`), slog.Default())
 		if err == nil {
 			t.Fatal("decodeSearchResponse() error = nil, want error for empty content-type")
 		}
@@ -472,7 +473,7 @@ func TestDecodeSearchResponse(t *testing.T) {
 
 		resp := &http.Response{StatusCode: http.StatusOK}
 
-		_, err := decodeSearchResponse(resp, "text/plain", []byte("not json"))
+		_, err := decodeSearchResponse(resp, "text/plain", []byte("not json"), slog.Default())
 		if err == nil {
 			t.Fatal("decodeSearchResponse() error = nil, want error")
 		}
@@ -485,7 +486,9 @@ func TestDecodeSearchResponse(t *testing.T) {
 	t.Run("invalid JSON", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := decodeSearchResponse(&http.Response{StatusCode: http.StatusOK}, "application/json", []byte("{invalid}"))
+		_, err := decodeSearchResponse(
+			&http.Response{StatusCode: http.StatusOK},
+			"application/json", []byte("{invalid}"), slog.Default())
 		if err == nil {
 			t.Fatal("decodeSearchResponse() error = nil, want error")
 		}
@@ -972,4 +975,133 @@ func TestNormalizeResponse(t *testing.T) {
 			t.Fatalf("len(Infoboxes) = %d, want <= %d", len(result.Infoboxes), MaxInfoboxes)
 		}
 	})
+}
+
+// --- Logger routing regression tests ---
+// These tests verify that response-processing diagnostics route through
+// the configured Config.Logger rather than the package-global slog.
+
+func TestNormalizeResponseLoggerRouting(t *testing.T) {
+	t.Parallel()
+
+	t.Run("answer truncation warning goes to configured logger", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+
+		logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+		s := &SearXNGSearcher{logger: logger}
+
+		answers := make([]Answer, MaxAnswers+1)
+		for i := range answers {
+			answers[i] = Answer{Answer: "test", Engine: "e"}
+		}
+
+		result := &SearchResponse{Answers: answers}
+
+		s.normalizeResponse(result, &SearchArgs{})
+
+		if !strings.Contains(buf.String(), "truncating answers before deduplication") {
+			t.Fatal("expected truncation warning in configured logger, got none")
+		}
+	})
+
+	t.Run("infobox truncation warning goes to configured logger", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+
+		logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+		s := &SearXNGSearcher{logger: logger}
+
+		infoboxes := make([]Infobox, MaxInfoboxes+1)
+		for i := range infoboxes {
+			infoboxes[i] = Infobox{Infobox: "topic", Content: "content"}
+		}
+
+		result := &SearchResponse{Infoboxes: infoboxes}
+
+		s.normalizeResponse(result, &SearchArgs{})
+
+		if !strings.Contains(buf.String(), "truncating infoboxes before deduplication") {
+			t.Fatal("expected infobox truncation warning in configured logger, got none")
+		}
+	})
+
+	t.Run("answer truncation does not go to configured logger when below cap", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+
+		logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+		s := &SearXNGSearcher{logger: logger}
+
+		answers := make([]Answer, MaxAnswers)
+		for i := range answers {
+			answers[i] = Answer{Answer: "test", Engine: "e"}
+		}
+
+		result := &SearchResponse{Answers: answers}
+
+		s.normalizeResponse(result, &SearchArgs{})
+
+		if buf.Len() != 0 {
+			t.Fatal("expected no log output when answers are at or below cap")
+		}
+	})
+}
+
+func TestHTMLResponseErrorLoggerRouting(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	s := &SearXNGSearcher{
+		logger: logger,
+	}
+
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/html"}},
+		Body:       io.NopCloser(strings.NewReader("<html><body>JSON not enabled</body></html>")),
+	}
+
+	_, err := s.parseSearchResponse(resp, &SearchArgs{})
+	if err == nil {
+		t.Fatal("expected HTMLResponseError for HTML response")
+	}
+
+	if !strings.Contains(buf.String(), "HTMLResponseError: received HTML instead of JSON") {
+		t.Fatal("expected HTMLResponseError log in configured logger, got none")
+	}
+}
+
+func TestCloseResponseBodyLoggerRouting(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	body := &errorCloseReader{}
+	resp := &http.Response{Body: body}
+
+	closeResponseBody(resp, logger)
+
+	if !strings.Contains(buf.String(), "failed to close response body") {
+		t.Fatal("expected close error log in configured logger, got none")
+	}
+}
+
+var errMockClose = errors.New("mock close error")
+
+// errorCloseReader implements io.ReadCloser and returns an error on Close.
+type errorCloseReader struct{}
+
+func (e *errorCloseReader) Read(_ []byte) (int, error) {
+	return 0, io.EOF
+}
+
+func (e *errorCloseReader) Close() error {
+	return errMockClose
 }
