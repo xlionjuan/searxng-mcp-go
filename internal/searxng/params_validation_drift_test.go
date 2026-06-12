@@ -444,8 +444,8 @@ func TestApplyDefaultsFillsNilLimit(t *testing.T) {
 	})
 }
 
-// TestBuildParamSchema locks the translation contract for buildParamSchema.
-func TestBuildParamSchema(t *testing.T) {
+// TestParamDefJSONSchema locks the translation contract for ParamDef.JSONSchema.
+func TestParamDefJSONSchema(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -484,9 +484,9 @@ func TestBuildParamSchema(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := buildParamSchema(tt.param)
+			got := tt.param.JSONSchema()
 			if got == nil {
-				t.Fatal("buildParamSchema returned nil")
+				t.Fatal("ParamDef.JSONSchema returned nil")
 			}
 
 			if !reflect.DeepEqual(got["type"], tt.wantType) {
@@ -497,6 +497,155 @@ func TestBuildParamSchema(t *testing.T) {
 				if _, ok := got[key]; !ok {
 					t.Errorf("missing key %q", key)
 				}
+			}
+		})
+	}
+}
+
+// TestParamDefFlagDefault locks the translation contract for ParamDef.FlagDefault.
+func TestParamDefFlagDefault(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		param   ParamDef
+		wantVal any
+		wantErr bool
+	}{
+		{
+			name:    "string query",
+			param:   findParam(t, "query"),
+			wantVal: "",
+			wantErr: false,
+		},
+		{
+			name:    "string language",
+			param:   findParam(t, "language"),
+			wantVal: "",
+			wantErr: false,
+		},
+		{
+			name:    "int safesearch",
+			param:   findParam(t, "safesearch"),
+			wantVal: MinSafeSearch,
+			wantErr: false,
+		},
+		{
+			name:    "int pageno",
+			param:   findParam(t, "pageno"),
+			wantVal: MinPageno,
+			wantErr: false,
+		},
+		{
+			name:    "int limit",
+			param:   findParam(t, "limit"),
+			wantVal: DefaultResultLimit,
+			wantErr: false,
+		},
+		{
+			name: "unknown go type",
+			param: ParamDef{
+				Name: "bad", GoType: "float64", Default: "1.5",
+			},
+			wantVal: nil,
+			wantErr: true,
+		},
+		{
+			name: "int with unparseable default",
+			param: ParamDef{
+				Name: "badint", GoType: "int", Default: "not-a-number",
+			},
+			wantVal: nil,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := tt.param.FlagDefault()
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("FlagDefault() = nil, want error")
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("FlagDefault() = %v, %v, want %v, nil", got, err, tt.wantVal)
+			}
+
+			if got != tt.wantVal {
+				t.Errorf("FlagDefault() = %v (%T), want %v (%T)", got, got, tt.wantVal, tt.wantVal)
+			}
+		})
+	}
+}
+
+// TestParamDefCLIHelpLine locks the output format for ParamDef.CLIHelpLine.
+func TestParamDefCLIHelpLine(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		param      ParamDef
+		wantPrefix string
+		wantSuffix string
+	}{
+		{
+			name:       "query",
+			param:      findParam(t, "query"),
+			wantPrefix: "  --query string",
+			wantSuffix: findParam(t, "query").CLIHelp,
+		},
+		{
+			name:       "safesearch",
+			param:      findParam(t, "safesearch"),
+			wantPrefix: "  --safesearch 0-2",
+			wantSuffix: findParam(t, "safesearch").CLIHelp,
+		},
+		{
+			name:       "pageno",
+			param:      findParam(t, "pageno"),
+			wantPrefix: "  --pageno N",
+			wantSuffix: findParam(t, "pageno").CLIHelp,
+		},
+		{
+			name:       "limit",
+			param:      findParam(t, "limit"),
+			wantPrefix: "  --limit N",
+			wantSuffix: findParam(t, "limit").CLIHelp,
+		},
+		{
+			name:       "categories",
+			param:      findParam(t, "categories"),
+			wantPrefix: "  --categories CAT",
+			wantSuffix: findParam(t, "categories").CLIHelp,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := tt.param.CLIHelpLine()
+
+			if !strings.HasPrefix(got, tt.wantPrefix) {
+				t.Errorf("CLIHelpLine() = %q, want prefix %q", got, tt.wantPrefix)
+			}
+
+			if !strings.HasSuffix(got, tt.wantSuffix) {
+				t.Errorf("CLIHelpLine() = %q, want suffix %q", got, tt.wantSuffix)
+			}
+
+			// Verify the padding is at least 1 space and lines up to 18-char column.
+			flagExpr := "--" + tt.param.Name + " " + tt.param.CLIType
+
+			if len(got) < len("  "+flagExpr+" ") {
+				t.Errorf("CLIHelpLine() length = %d, want at least %d", len(got), len("  "+flagExpr+" "))
 			}
 		})
 	}

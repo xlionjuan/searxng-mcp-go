@@ -26,7 +26,7 @@ func buildSearchSchema() (json.RawMessage, error) {
 	var required []string
 
 	for _, p := range searxng.SearchParams {
-		props[p.Name] = p.Schema
+		props[p.Name] = p.JSONSchema()
 
 		if p.Required {
 			required = append(required, p.Name)
