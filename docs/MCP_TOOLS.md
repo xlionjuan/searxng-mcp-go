@@ -273,15 +273,16 @@ Handler validation error examples:
 | Invalid `language` value      | `Validation error: validation error on "language": must be a valid language code (e.g., en, zh-tw, ja, en-US)` |
 | Language too long (>35 runes) | `Validation error: validation error on "language": must be 35 runes or less` |
 
-Search error examples:
+Search error examples — the response format depends on whether the error is a `SearXNGError` (includes status code, content type, and underlying cause) or another error type:
 
 | Error Condition | Response Format (as received by MCP client) |
 |-----------------|---------------------------------------------|
-| Network failure | `Search error: request failed` (full error logged server-side) |
-| SearXNG HTTP error | `Search error: request failed` (full error logged server-side) |
-| POST `/search` rejected with 405/501 | `Search error: request failed` (full error logged server-side; fix the reverse proxy or opt in with `SEARXNG_ALLOW_GET_FALLBACK=1`) |
+| Network failure (wrapped as `SearXNGError`) | `Search error: searxng error (status 0): <error description>` (full error logged server-side) |
+| SearXNG HTTP error (4xx/5xx, wrapped as `SearXNGError`) | `Search error: searxng error (status <N>) - content-type <type>: <error description>` (full error logged server-side) |
+| POST `/search` rejected with 405/501 | `Search error: searxng error (status 405/501) - content-type <type>: search method rejected` (full error logged server-side; fix the reverse proxy or opt in with `SEARXNG_ALLOW_GET_FALLBACK=1`) |
+| Invalid JSON from SearXNG | `Search error: searxng error (status <N>) - content-type <type>: <error description>` (full error logged server-side) |
 | HTML response (JSON disabled) | `Search error: request failed` (full error logged server-side) |
-| Invalid JSON from SearXNG | `Search error: request failed` (full error logged server-side) |
+| Other unexpected errors | `Search error: request failed` (full error logged server-side) |
 | Response marshal failure | `Search error: failed to format results` (full error logged server-side) |
 
 ### Implementation Details
