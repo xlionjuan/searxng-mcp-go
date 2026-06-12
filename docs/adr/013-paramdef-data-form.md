@@ -33,7 +33,7 @@ conditional ladder is removed entirely.
 - **Simpler MCP consumer.** `buildSearchSchema()` drops from ~30 lines to a
     straight copy loop. No branching per parameter type.
 - **Drift resistance.** The schema is now a *value* on each `ParamDef` rather
-    than a function output. The 383-line `params_validation_drift_test.go`
+    than a function output. The 383-line `params_validation_drift_internal_test.go`
     still locks `ParamDef` fields against runtime validators; the new `Schema`
     field is a direct derivative and does not need separate drift coverage.
 - **Public API addition.** `ParamDef` gains an exported `Schema` field.

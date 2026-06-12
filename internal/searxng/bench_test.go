@@ -1,4 +1,4 @@
-package searxng //nolint:testpackage // white-box tests need access to unexported types/functions
+package searxng //nolint:testpackage // documented exception: benchmarks need access to internals
 
 import (
 	"encoding/json"

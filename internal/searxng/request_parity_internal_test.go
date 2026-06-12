@@ -1,4 +1,4 @@
-package searxng //nolint:testpackage // white-box tests need access to unexported types/functions
+package searxng
 
 import (
 	"net/url"
