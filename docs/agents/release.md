@@ -10,7 +10,7 @@ configured under `Settings → Secrets and variables → Actions` *before* a
 release tag is pushed:
 
 - `GPG_PRIVATE_KEY` — ASCII-armored GPG private key used to sign the
-  Homebrew tap commit. The workflow imports it into a temporary keyring
+  Homebrew tap commit. The workflow imports it into the default keyring
   (`release.yml` "Import GPG Key" step), derives the fingerprint at
   runtime, and exports it as `GPG_FINGERPRINT` for GoReleaser.
 - `HOMEBREW_TAP_SSH_KEY` — SSH key with push access to
