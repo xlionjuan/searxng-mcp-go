@@ -109,8 +109,8 @@ func TestConcurrentContextCancellation(t *testing.T) {
 	var (
 		successCount     int64
 		errorCount       int64
-		cancelledCount   int64
-		unexpectedErrors []error
+		contextCanceledCount   int64
+		unexpectedErrors     []error
 		mu               sync.Mutex
 	)
 
@@ -126,7 +126,7 @@ func TestConcurrentContextCancellation(t *testing.T) {
 				atomic.AddInt64(&errorCount, 1)
 
 				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-					atomic.AddInt64(&cancelledCount, 1)
+					atomic.AddInt64(&contextCanceledCount, 1)
 
 					return
 				}
@@ -162,8 +162,8 @@ func TestConcurrentContextCancellation(t *testing.T) {
 		t.Fatalf("errorCount = %d, want %d", errorCount, numGoroutines)
 	}
 
-	if cancelledCount != numGoroutines {
-		t.Fatalf("cancelledCount = %d, want %d", cancelledCount, numGoroutines)
+	if contextCanceledCount != numGoroutines {
+		t.Fatalf("contextCanceledCount = %d, want %d", contextCanceledCount, numGoroutines)
 	}
 
 	if len(unexpectedErrors) > 0 {

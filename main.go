@@ -355,28 +355,22 @@ type configSource[T any] struct {
 }
 
 func (cs configSource[T]) apply(cfg *searxng.Config, flags *CLIFlags) error {
-	var err error
-
 	// Phase 1: environment variable.
 	if envStr, ok := os.LookupEnv(cs.envVar); ok {
-		var val T
-
-		val, err = cs.parseEnv(envStr)
+		val, err := cs.parseEnv(envStr)
 		if err != nil {
 			warnInvalidConfigEntry(cs.envVar, envStr, err)
-
-			return nil
-		}
-
-		err = cs.setValue(cfg, val)
-		if err != nil {
-			warnInvalidConfigEntry(cs.envVar, envStr, err)
+		} else {
+			err = cs.setValue(cfg, val)
+			if err != nil {
+				warnInvalidConfigEntry(cs.envVar, envStr, err)
+			}
 		}
 	}
 
 	// Phase 2: CLI flag override (takes precedence over env var).
 	if ptr := cs.getFlag(flags); ptr != nil {
-		err = cs.setValue(cfg, *ptr)
+		err := cs.setValue(cfg, *ptr)
 		if err != nil {
 			return fmt.Errorf("invalid --%s value: %w", cs.flagName, err)
 		}
