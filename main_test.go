@@ -1032,6 +1032,40 @@ func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
 	}
 }
 
+func TestRunCLIMode_TimeoutZeroSucceeds(t *testing.T) {
+	t.Parallel()
+
+	resp := searxng.SearchResponse{
+		Query:           "test",
+		NumberOfResults: 1,
+		Results: []searxng.SearchResult{
+			{Title: "Go", URL: "https://go.dev", Content: "Go language", Engine: "test"},
+		},
+	}
+
+	server := newJSONTestServer(t, resp)
+	defer server.Close()
+
+	timeout := time.Duration(0)
+	flags := &CLIFlags{
+		Query:   "test",
+		Pageno:  nil,
+		Timeout: &timeout,
+	}
+	flags.SearXNGURL = server.URL
+
+	output := captureStdout(t, func() {
+		err := runCLIMode(false, flags, []string{})
+		if err != nil {
+			t.Fatalf("runCLIMode() error = %v, want nil (timeout=0 should not cancel)", err)
+		}
+	})
+
+	if !strings.Contains(output, "=== Results ===") {
+		t.Fatalf("expected results output, got: %q", output)
+	}
+}
+
 func TestRunCLIMode_FlagOnlyInvocations(t *testing.T) {
 	t.Parallel()
 
