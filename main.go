@@ -24,8 +24,10 @@ var (
 
 var (
 	errArgumentParseFailed = errors.New("failed to parse arguments")
-	errSearXNGURLRequired  = errors.New(
+	errSearXNGURLRequiredCLI = errors.New(
 		"SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
+	errSearXNGURLRequiredMCP = errors.New(
+		"SearXNG_URL is required: set SEARXNG_URL environment variable")
 	errUnexpectedFlagType = errors.New("registered search flag has unexpected type")
 )
 
@@ -449,7 +451,7 @@ func allowGetFallbackFlagPtr(flags *CLIFlags) *bool {
 
 // getConfig builds a Config from defaults, env vars, and CLI flags.
 // Precedence: default → env var → CLI flag override.
-func getConfig(flags *CLIFlags) (*searxng.Config, error) {
+func getConfig(flags *CLIFlags, isCLIMode bool) (*searxng.Config, error) {
 	cfg := searxng.DefaultConfig()
 
 	// URL is handled separately because it is required and has no
@@ -460,7 +462,11 @@ func getConfig(flags *CLIFlags) (*searxng.Config, error) {
 	}
 
 	if searxngURL == "" {
-		return nil, errSearXNGURLRequired
+		if isCLIMode {
+			return nil, errSearXNGURLRequiredCLI
+		}
+
+		return nil, errSearXNGURLRequiredMCP
 	}
 
 	cfg.SearXNGURL = searxngURL

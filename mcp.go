@@ -111,7 +111,7 @@ func isValidMCPInitializeMessage(line []byte) bool {
 // It returns an error on failure so that main can handle exit codes and
 // deferred cleanup (searcher.Close) runs correctly.
 func runMCPMode(debug bool, flags *CLIFlags, stdin io.Reader) error {
-	cfg, err := getConfig(flags)
+	cfg, err := getConfig(flags, false)
 	if err != nil {
 		return fmt.Errorf("configuration error: %w", err)
 	}

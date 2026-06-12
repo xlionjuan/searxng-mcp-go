@@ -109,7 +109,7 @@ func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 		return errSearchQueryRequired
 	}
 
-	cfg, err := getConfig(flags)
+	cfg, err := getConfig(flags, true)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errConfigurationFailed, err)
 	}
