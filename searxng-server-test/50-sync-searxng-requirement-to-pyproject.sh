@@ -3,6 +3,12 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
+# Check uvx availability (uvx is part of uv, but verify uvx command is on PATH)
+if ! command -v uvx &>/dev/null; then
+    echo "Error: uvx not found. Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh" >&2
+    exit 1
+fi
+
 echo "--- Clearing existing dependencies from pyproject.toml ---"
 
 uvx --from tomlkit python - <<'PY'
