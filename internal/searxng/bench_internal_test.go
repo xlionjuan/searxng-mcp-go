@@ -1,4 +1,4 @@
-package searxng //nolint:testpackage // documented exception: benchmarks need access to internals
+package searxng
 
 import (
 	"encoding/json"
