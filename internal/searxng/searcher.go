@@ -162,10 +162,12 @@ func (s *SearXNGSearcher) Close() error {
 //
 //nolint:gocognit,gocyclo,cyclop // orchestrates distinct concerns; extracting adds indirection
 func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
-	err := ValidateSearchArgs(args)
+	normalized, err := ValidateSearchArgs(args)
 	if err != nil {
 		return nil, err
 	}
+
+	args = normalized
 
 	// Tie search lifecycle to searcher close
 	searchCtx, searchCancel := s.searchContext(ctx)

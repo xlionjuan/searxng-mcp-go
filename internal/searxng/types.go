@@ -47,6 +47,36 @@ func DefaultConfig() *Config {
 	}
 }
 
+// SetTimeout validates and sets the Timeout field. Returns an error for
+// negative values. Both env-var parsing and flag overrides go through this
+// setter so the "valid until Validate" footgun is closed.
+func (c *Config) SetTimeout(d time.Duration) error {
+	if d < 0 {
+		return errTimeoutNegative
+	}
+
+	c.Timeout = d
+
+	return nil
+}
+
+// SetMaxRetries validates and sets the MaxRetries field. Returns an error
+// for negative values or values exceeding maxRetryCap. Both env-var parsing
+// and flag overrides go through this setter.
+func (c *Config) SetMaxRetries(n int) error {
+	if n < 0 {
+		return errMaxRetriesNegative
+	}
+
+	if n > maxRetryCap {
+		return errMaxRetriesTooLarge
+	}
+
+	c.MaxRetries = n
+
+	return nil
+}
+
 // Validate checks the configuration for valid values.
 // No side effects: no HTTP calls, no logging.
 func (c *Config) Validate() error {
@@ -108,6 +138,29 @@ type SearchArgs struct {
 	Engines    string `json:"engines"`
 	Pageno     *int   `json:"pageno"`
 	Limit      *int   `json:"limit"`
+}
+
+// NewSearchArgs creates a SearchArgs with the given query and default Limit.
+// Pageno is left nil (omitted = backend default / page 1). Both CLI and MCP
+// callers should use this constructor so the defaulting policy lives in one
+// place instead of being duplicated across layers.
+func NewSearchArgs(query string) *SearchArgs {
+	limit := DefaultResultLimit
+
+	return &SearchArgs{
+		Query: query,
+		Limit: &limit,
+	}
+}
+
+// ApplyDefaults fills nil Limit with DefaultResultLimit. It is a no-op when
+// Limit is already set. Callers that construct SearchArgs manually (e.g. from
+// MCP deserialization) should call this before ValidateSearchArgs.
+func (args *SearchArgs) ApplyDefaults() {
+	if args.Limit == nil {
+		limit := DefaultResultLimit
+		args.Limit = &limit
+	}
 }
 
 // UnescapeIfNeeded calls html.UnescapeString only when the string contains

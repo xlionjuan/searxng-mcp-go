@@ -67,7 +67,7 @@ func FuzzValidateSearchArgs(f *testing.F) {
 		}
 
 		// ValidateSearchArgs must not panic on any input
-		err := searxng.ValidateSearchArgs(args)
+		_, err := searxng.ValidateSearchArgs(args)
 		// Invariant: nil args must return error
 		// (args is always non-nil here, but we verify the nil path separately)
 		// Invariant: if err is non-nil, it should be a *ValidationError

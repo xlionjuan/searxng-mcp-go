@@ -121,18 +121,21 @@ func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 		return fmt.Errorf("%w: %w", errConfigurationFailed, err)
 	}
 
-	args := &searxng.SearchArgs{
-		Query:      query,
-		Language:   flags.Language,
-		SafeSearch: flags.SafeSearch,
-		TimeRange:  flags.TimeRange,
-		Categories: flags.Categories,
-		Engines:    flags.Engines,
-		Pageno:     flags.Pageno,
-		Limit:      flags.Limit,
+	args := searxng.NewSearchArgs(query)
+	args.Language = flags.Language
+	args.SafeSearch = flags.SafeSearch
+	args.TimeRange = flags.TimeRange
+	args.Categories = flags.Categories
+	args.Engines = flags.Engines
+	args.Pageno = flags.Pageno
+	// Limit is set by NewSearchArgs to DefaultResultLimit; override if
+	// the CLI flag was explicitly provided (flags.Limit is always non-nil
+	// after parseArgs because parseArgs fills the default when unset).
+	if flags.Limit != nil {
+		args.Limit = flags.Limit
 	}
 
-	err = searxng.ValidateSearchArgs(args)
+	args, err = searxng.ValidateSearchArgs(args)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errSearchValidation, err)
 	}

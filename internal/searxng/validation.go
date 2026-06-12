@@ -97,52 +97,53 @@ func validateCSVIdentifiers(value, field, noun string) error {
 	return nil
 }
 
-// ValidateSearchArgs validates and normalizes search arguments, returning a ValidationError if invalid.
-//
-// As a documented side effect, ValidateSearchArgs normalizes the Language
-// field in place: the literal "auto" (case-insensitive) is rewritten to "" so
-// downstream request building omits the language parameter. Callers that
-// share a *SearchArgs across goroutines should clone it before passing it
-// here; the validation helpers themselves do not mutate their inputs.
-func ValidateSearchArgs(args *SearchArgs) error {
-	err := validateQuery(args.Query)
+// ValidateSearchArgs validates search arguments and returns a normalized copy
+// with Language rewritten (the literal "auto", case-insensitive, becomes ""
+// so downstream request building omits the language parameter). The original
+// *SearchArgs is never mutated, making this function safe to call with a
+// struct shared across goroutines.
+func ValidateSearchArgs(args *SearchArgs) (*SearchArgs, error) {
+	// Shallow copy so mutation of the result does not affect the caller.
+	result := *args
+
+	err := validateQuery(result.Query)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = validateTimeRange(args.TimeRange)
+	err = validateTimeRange(result.TimeRange)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = validateSafesearch(args.SafeSearch)
+	err = validateSafesearch(result.SafeSearch)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = validatePagination(args.Pageno, args.Limit)
+	err = validatePagination(result.Pageno, result.Limit)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = validateCSVIdentifiers(args.Categories, "categories", "category")
+	err = validateCSVIdentifiers(result.Categories, "categories", "category")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = validateCSVIdentifiers(args.Engines, "engines", "engine")
+	err = validateCSVIdentifiers(result.Engines, "engines", "engine")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	normalizedLang, err := validateLanguage(args.Language)
+	normalizedLang, err := validateLanguage(result.Language)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	args.Language = normalizedLang
+	result.Language = normalizedLang
 
-	return nil
+	return &result, nil
 }
 
 func validateQuery(query string) error {

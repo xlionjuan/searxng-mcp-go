@@ -62,10 +62,8 @@ type CLIFlags struct {
 	Pageno           *int
 	Limit            *int
 	Debug            bool
-	Timeout          time.Duration
-	TimeoutSet       bool
-	MaxRetries       int
-	MaxRetriesSet    bool
+	Timeout          *time.Duration
+	MaxRetries       *int
 	AllowGETFallback bool
 }
 
@@ -88,7 +86,7 @@ type registeredFlags struct {
 // Any supplied arguments route the process into CLI mode; otherwise the server runs in MCP mode.
 // Flags are accepted anywhere before or after positional args, matching the current CLI behavior.
 //
-//nolint:gocognit,gocyclo,cyclop // interleaved positional/flag processing inherent to CLI; linear scan is standard
+//nolint:gocyclo,cyclop // interleaved positional/flag processing inherent to CLI; linear scan is standard
 func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 	// Build the FlagSet first so we can use Lookup to determine whether a
 	// flag takes a value (via the IsBoolFlag interface) during the
@@ -101,37 +99,33 @@ func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 		return false, nil, nil, fmt.Errorf("%w: %w", errArgumentParseFailed, err)
 	}
 
-	// Use flag.Visit to determine whether optional pointer flags were explicitly set.
-	// When --pageno is not set, leave Pageno nil so CLI mode omits pageno from the
-	// search request (matching MCP mode behavior and the documented
-	// "omitted = backend default/page 1" contract). Limit always has an effective
-	// default so response truncation is consistent with the documented CLI default.
+	// Use flag.Visit with a symmetric data-driven pattern to populate *T
+	// optional fields. Only flags that were explicitly set get a non-nil
+	// pointer; unset flags remain nil so downstream code (getConfig) can
+	// distinguish "not provided" from "provided-but-equal-to-default".
 	var (
 		pagenoPtr     *int
 		limitPtr      *int
-		timeoutSet    bool
-		maxRetriesSet bool
+		timeoutPtr    *time.Duration
+		maxRetriesPtr *int
 	)
 
 	fs.Visit(func(f *flag.Flag) {
-		if f.Name == "pageno" {
+		switch f.Name {
+		case "pageno":
 			if ptr, ok := registered.searchFlags["pageno"].(*int); ok {
 				pagenoPtr = ptr
 			}
-		}
-
-		if f.Name == "limit" {
+		case "limit":
 			if ptr, ok := registered.searchFlags["limit"].(*int); ok {
 				limitPtr = ptr
 			}
-		}
-
-		if f.Name == "timeout" {
-			timeoutSet = true
-		}
-
-		if f.Name == "max-retries" {
-			maxRetriesSet = true
+		case "timeout":
+			val := *registered.timeout
+			timeoutPtr = &val
+		case "max-retries":
+			val := *registered.maxRetries
+			maxRetriesPtr = &val
 		}
 	})
 
@@ -184,10 +178,8 @@ func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 		Pageno:           pagenoPtr,
 		Limit:            limitPtr,
 		Debug:            *registered.debug,
-		Timeout:          *registered.timeout,
-		TimeoutSet:       timeoutSet,
-		MaxRetries:       *registered.maxRetries,
-		MaxRetriesSet:    maxRetriesSet,
+		Timeout:          timeoutPtr,
+		MaxRetries:       maxRetriesPtr,
 		AllowGETFallback: *registered.allowGETFallback,
 	}
 
@@ -345,10 +337,125 @@ func main() {
 	}
 }
 
-//nolint:gocyclo,cyclop // multi-source config with explicit precedence; each branch is a distinct concern
+// configSource represents one configurable setting with env-var fallback and
+// CLI-flag override. Each source is a row in a single loop inside getConfig;
+// adding a new configurable field means one new row, not branches in three
+// places. The shared warn-and-ignore handler is warnInvalidConfigEntry.
+type configSource[T any] struct {
+	envVar   string
+	getFlag  func(*CLIFlags) *T
+	parseEnv func(string) (T, error)
+	setValue func(*searxng.Config, T) error
+}
+
+func (cs configSource[T]) apply(cfg *searxng.Config, flags *CLIFlags) {
+	var err error
+
+	// Phase 1: environment variable.
+	if envStr, ok := os.LookupEnv(cs.envVar); ok {
+		var val T
+
+		val, err = cs.parseEnv(envStr)
+		if err != nil {
+			warnInvalidConfigEntry(cs.envVar, envStr, err)
+
+			return
+		}
+
+		err = cs.setValue(cfg, val)
+		if err != nil {
+			warnInvalidConfigEntry(cs.envVar, envStr, err)
+		}
+	}
+
+	// Phase 2: CLI flag override (takes precedence over env var).
+	if ptr := cs.getFlag(flags); ptr != nil {
+		err = cs.setValue(cfg, *ptr)
+		if err != nil {
+			warnInvalidConfigEntry("--"+cs.envVar, *ptr, err)
+		}
+	}
+}
+
+func warnInvalidConfigEntry[T any](source string, value T, err error) {
+	slog.Warn("invalid configuration value from "+source+", ignoring",
+		"value", value, "error", err)
+}
+
+var (
+	errMustBeNonNegative = errors.New("must be non-negative")
+	errMustBe01          = errors.New("must be 0 or 1")
+)
+
+// intFromString parses an integer from an environment variable string,
+// rejecting negative values. Zero is accepted (disables retries).
+func intFromString(s string) (int, error) {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, err
+	}
+
+	if n < 0 {
+		return 0, errMustBeNonNegative
+	}
+
+	return n, nil
+}
+
+// boolFromString parses a boolean from "1"/"0" environment variable string.
+func boolFromString(s string) (bool, error) {
+	switch s {
+	case "1":
+		return true, nil
+	case "0":
+		return false, nil
+	default:
+		return false, errMustBe01
+	}
+}
+
+// configSources is the single loop table for getConfig. Each row wires one
+// configurable setting: env var → parse → apply → flag override.
+var configSources = []func(*searxng.Config, *CLIFlags){
+	configSource[time.Duration]{
+		envVar:   "SEARXNG_TIMEOUT",
+		getFlag:  func(f *CLIFlags) *time.Duration { return f.Timeout },
+		parseEnv: time.ParseDuration,
+		setValue: (*searxng.Config).SetTimeout,
+	}.apply,
+	configSource[int]{
+		envVar:   "SEARXNG_MAX_RETRIES",
+		getFlag:  func(f *CLIFlags) *int { return f.MaxRetries },
+		parseEnv: intFromString,
+		setValue: (*searxng.Config).SetMaxRetries,
+	}.apply,
+	configSource[bool]{
+		envVar:   "SEARXNG_ALLOW_GET_FALLBACK",
+		getFlag:  allowGetFallbackFlagPtr,
+		parseEnv: boolFromString,
+		setValue: func(cfg *searxng.Config, v bool) error {
+			cfg.AllowGETFallback = v
+
+			return nil
+		},
+	}.apply,
+}
+
+func allowGetFallbackFlagPtr(flags *CLIFlags) *bool {
+	if flags.AllowGETFallback {
+		return &flags.AllowGETFallback
+	}
+
+	return nil
+}
+
+// getConfig builds a Config from defaults, env vars, and CLI flags.
+// Precedence: default → env var → CLI flag override.
 func getConfig(flags *CLIFlags) (*searxng.Config, error) {
 	cfg := searxng.DefaultConfig()
 
+	// URL is handled separately because it is required and has no
+	// per-env-var setter (it is a plain string assignment).
 	searxngURL := flags.SearXNGURL
 	if searxngURL == "" {
 		searxngURL = os.Getenv("SEARXNG_URL")
@@ -360,56 +467,14 @@ func getConfig(flags *CLIFlags) (*searxng.Config, error) {
 
 	cfg.SearXNGURL = searxngURL
 
-	// Apply SEARXNG_TIMEOUT env var (parsed as Go duration, e.g. "8s")
-	if timeoutStr := os.Getenv("SEARXNG_TIMEOUT"); timeoutStr != "" {
-		d, err := time.ParseDuration(timeoutStr)
-		switch {
-		case err != nil:
-			slog.Warn("invalid SEARXNG_TIMEOUT, ignoring", "value", timeoutStr, "error", err)
-		case d <= 0:
-			slog.Warn("invalid SEARXNG_TIMEOUT, ignoring", "value", timeoutStr, "reason", "non-positive duration")
-		default:
-			cfg.Timeout = d
-		}
+	// Apply the data-driven config sources (env → flag override).
+	for _, apply := range configSources {
+		apply(cfg, flags)
 	}
 
-	// Apply SEARXNG_MAX_RETRIES env var (parsed as integer)
-	if maxRetriesStr := os.Getenv("SEARXNG_MAX_RETRIES"); maxRetriesStr != "" {
-		n, err := strconv.Atoi(maxRetriesStr)
-		if err != nil || n < 0 {
-			slog.Warn("invalid SEARXNG_MAX_RETRIES, ignoring", "value", maxRetriesStr, "error", err)
-		} else {
-			cfg.MaxRetries = n
-		}
-	}
-
-	// Apply SEARXNG_ALLOW_GET_FALLBACK env var. This is intentionally
-	// opt-in because GET puts search parameters in the request URL.
-	if allowGETFallback := os.Getenv("SEARXNG_ALLOW_GET_FALLBACK"); allowGETFallback != "" {
-		switch allowGETFallback {
-		case "1":
-			cfg.AllowGETFallback = true
-		case "0":
-			cfg.AllowGETFallback = false
-		default:
-			slog.Warn("invalid SEARXNG_ALLOW_GET_FALLBACK, ignoring", "value", allowGETFallback)
-		}
-	}
-
-	// CLI flag overrides take precedence over env vars (and defaults).
-	if flags.TimeoutSet {
-		cfg.Timeout = flags.Timeout
-	}
-
-	if flags.MaxRetriesSet {
-		cfg.MaxRetries = flags.MaxRetries
-	}
-
-	if flags.AllowGETFallback {
-		cfg.AllowGETFallback = true
-	}
-
-	// Validate the constructed config for early error detection.
+	// Lightweight final validation. By this point each setter has already
+	// rejected invalid individual values, so Validate primarily serves as a
+	// cross-field consistency check (none today) and a safety net.
 	err := cfg.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
