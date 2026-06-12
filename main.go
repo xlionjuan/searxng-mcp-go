@@ -23,7 +23,7 @@ var (
 )
 
 var (
-	errArgumentParseFailed = errors.New("failed to parse arguments")
+	errArgumentParseFailed   = errors.New("failed to parse arguments")
 	errSearXNGURLRequiredCLI = errors.New(
 		"SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
 	errSearXNGURLRequiredMCP = errors.New(
