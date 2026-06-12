@@ -128,6 +128,13 @@ test-server-restart: test-server-stop test-server-start
 test-server-pid-helper:
     bash searxng-server-test/test-pid-helper.sh
 
+# Sync pyproject.toml dependencies from upstream SearXNG requirements files
+# Run after updating the searxng submodule, or when requirements.txt /
+# requirements-server.txt change upstream. Clears existing deps, re-imports,
+# and refreshes uv.lock.
+test-server-deps-sync:
+    cd searxng-server-test && bash 50-sync-searxng-requirement-to-pyproject.sh
+
 # Update SearXNG submoudle
 update-searxng-submodule:
     git submodule update --remote searxng-server-test/searxng

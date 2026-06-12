@@ -37,7 +37,7 @@ fi
 # Create venv (official: python3 -m venv)
 echo ""
 echo "--- Creating venv at ${VENV_DIR} ---"
-uv venv "$VENV_DIR" --python python3
+uv venv "$VENV_DIR" --python 3.14
 source "${VENV_DIR}/bin/activate"
 
 # Install locked helper-script dependencies before adding the larger SearXNG
@@ -46,16 +46,13 @@ echo ""
 echo "--- Installing setup helper dependencies ---"
 uv sync --locked --project "$SCRIPT_DIR" --inexact --no-install-project
 
-# Install dependencies (official order: pip, setuptools, wheel, then deps, then searxng)
+# Install SearXNG in editable mode (dependencies already installed via uv sync above).
 echo ""
-echo "--- Installing SearXNG dependencies ---"
+echo "--- Installing SearXNG (editable) ---"
 cd "$SEARXNG_DIR"
 
-echo "  Installing pip, setuptools, wheel..."
-uv pip install -U pip setuptools wheel
-
-echo "  Installing pyyaml, msgspec, typing-extensions, pybind11..."
-uv pip install -U pyyaml msgspec typing-extensions pybind11
+# echo "  Installing from requirements.txt and requirements-server.txt..."
+# uv pip install -r requirements.txt -r requirements-server.txt
 
 echo "  Installing searxng (editable)..."
 uv pip install --no-build-isolation -e .

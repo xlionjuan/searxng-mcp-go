@@ -25,6 +25,7 @@ just test-server-stop
 | Command | Purpose |
 |---|---|
 | `just test-server-setup` | One-time setup or reset |
+| `just test-server-deps-sync` | Sync pyproject.toml deps from upstream SearXNG requirements; run after submodule update |
 | `just test-server-start` | Start background server and wait for readiness |
 | `just test-server-status` | Report live / degraded / stale / dead / orphan |
 | `just test-server-logs` | Tail `searxng-server-test/searxng.log` |
@@ -44,6 +45,7 @@ script changes or ownership checks.
 | `searxng-server-test/01-start-fg.sh` | Foreground start; do not use from agents or CI |
 | `searxng-server-test/02-stop.sh` | Stop background instance; `--force` kills orphans |
 | `searxng-server-test/03-status.sh` | Report live / stale / dead / orphan state |
+| `searxng-server-test/50-sync-searxng-requirement-to-pyproject.sh` | Re-import upstream requirements into pyproject.toml and refresh uv.lock |
 | `searxng-server-test/lib-searxng-pid.sh` | Shared `is_searxng_pid` ownership check |
 | `searxng-server-test/test-pid-helper.sh` | Shell unit tests for `is_searxng_pid` |
 
@@ -93,8 +95,8 @@ Use the same setup and lifecycle as the regular E2E tests: run
 - Never run `01-start-fg.sh` from agents or CI. It blocks the calling shell
   until killed.
 - `.bg-pid` can go stale if an agent shell dies. Inspect with
-  `pgrep -f 'searx/webapp.py'`, then use `just test-server-stop` or the stop
+  `pgrep -f 'searx/webapp\\.py|searx\\.webapp:app'`, then use `just test-server-stop` or the stop
   script with `--force` if needed.
 - A recorded PID can be recycled by an unrelated process. The start, stop, and
-  status scripts verify that argv contains `searx/webapp.py`; do not bypass that
+  status scripts verify that argv contains `searx/webapp.py` or `searx.webapp:app`; do not bypass that
   check.
