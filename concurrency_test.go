@@ -336,7 +336,7 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 	requestCount := int64(0)
 	sentCount := int64(0)
 	successCount := int64(0)
-	cancelledCount := int64(0)
+	canceledCount := int64(0)
 	allRequestsEntered := make(chan struct{})
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -360,7 +360,7 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 			_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-					atomic.AddInt64(&cancelledCount, 1)
+					atomic.AddInt64(&canceledCount, 1)
 
 					return
 				}
@@ -390,7 +390,7 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 	reqCount := atomic.LoadInt64(&requestCount)
 	sent := atomic.LoadInt64(&sentCount)
 	success := atomic.LoadInt64(&successCount)
-	canceled := atomic.LoadInt64(&cancelledCount)
+	canceled := atomic.LoadInt64(&canceledCount)
 	compCount := success + canceled
 
 	if sent != numGoroutines {
@@ -406,7 +406,7 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 	}
 
 	if canceled != numGoroutines {
-		t.Fatalf("cancelledCount = %d, want %d", canceled, numGoroutines)
+		t.Fatalf("canceledCount = %d, want %d", canceled, numGoroutines)
 	}
 
 	if compCount != numGoroutines {
