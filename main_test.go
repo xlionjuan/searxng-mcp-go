@@ -675,7 +675,7 @@ func TestGetConfig(t *testing.T) {
 			t.Fatal("flags.AllowGETFallback = true, want false (flag explicitly set to false)")
 		}
 
-		cfg, err := getConfig(flags)
+		cfg, err := getConfig(flags, true)
 		if err != nil {
 			t.Fatalf("getConfig() error = %v, want nil", err)
 		}
