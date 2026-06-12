@@ -80,7 +80,7 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 				searxng.EnsureAnswerFallback(&resp.Answers[i])
 			}
 
-			got := formatResults(slog.Default(), &resp)
+			got := formatResults(&resp)
 
 			for _, want := range []string{"=== Answers ===", tt.wantAnswer, tt.wantEngine} {
 				if !strings.Contains(got, want) {
@@ -95,7 +95,7 @@ func TestFormatResults_NilInput(t *testing.T) {
 	t.Parallel()
 
 	wantPrefix := "=== Web Search Results ===\nWarning: " + searxng.ExternalContentWarning + "\n\n"
-	if got := formatResults(slog.Default(), nil); got != wantPrefix+noResultsFound {
+	if got := formatResults(nil); got != wantPrefix+noResultsFound {
 		t.Fatalf("formatResults(nil) = %q, want %q", got, wantPrefix+"No results found.")
 	}
 }
@@ -170,7 +170,7 @@ func TestFormatResults_ResultCountFormat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			out := formatResults(slog.Default(), tt.resp)
+			out := formatResults(tt.resp)
 
 			if !strings.Contains(out, tt.want) {
 				t.Errorf("formatResults() output missing %q\noutput:\n%s", tt.want, out)
@@ -183,7 +183,7 @@ func TestFormatResults_ResultCountFormat(t *testing.T) {
 	}
 }
 
-func TestFormatResults_DebugLogsUnresponsiveEngines(t *testing.T) {
+func TestLogUnresponsiveEngines(t *testing.T) {
 	var buf bytes.Buffer
 
 	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
@@ -196,7 +196,7 @@ func TestFormatResults_DebugLogsUnresponsiveEngines(t *testing.T) {
 		Debug:               true,
 	}
 
-	_ = formatResults(logger, resp)
+	logUnresponsiveEngines(logger, resp)
 
 	if !strings.Contains(buf.String(), "unresponsive engine") {
 		t.Fatalf("expected debug log for unresponsive engines, got: %s", buf.String())
@@ -249,7 +249,7 @@ func TestFormatResults_NeutralizesTerminalControl(t *testing.T) {
 		},
 	}
 
-	out := formatResults(slog.Default(), resp)
+	out := formatResults(resp)
 
 	// No literal ESC, BEL, BS, VT, FF, SO, SI, DLE..US, or DEL may
 	// survive in the output.
@@ -315,7 +315,7 @@ func TestFormatResults_HtmlEntityEscapedControlIsNeutralized(t *testing.T) {
 		NumberOfResults: 1,
 	}
 
-	out := formatResults(slog.Default(), resp)
+	out := formatResults(resp)
 
 	for _, b := range []byte(out) {
 		switch {
@@ -347,7 +347,7 @@ func TestFormatResults_UnicodePreserved(t *testing.T) {
 		NumberOfResults: 1,
 	}
 
-	out := formatResults(slog.Default(), resp)
+	out := formatResults(resp)
 
 	for _, want := range []string{
 		"café 日本語 🔥",

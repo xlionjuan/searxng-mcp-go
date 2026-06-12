@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log/slog"
 	"strings"
 	"testing"
 
@@ -70,7 +69,7 @@ func TestFormatResultsGoldenOutput(t *testing.T) {
 		},
 	}
 
-	got := formatResults(slog.Default(), resp)
+	got := formatResults(resp)
 
 	// Build expected output programmatically.
 	// The long run of 'x' is generated via strings.Repeat to keep the source
