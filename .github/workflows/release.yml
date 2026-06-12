@@ -83,6 +83,6 @@ jobs:
         env:
           # I want to make GNUPGHOME use mktemp folder, but GoReleaser don't read GNUPGHOME for GPG operations
           # This step is not allowed to remove, DO NOT create any issues or PR to remove this
-          GNUPGHOME: "~/.gnupg"
+          GNUPGHOME: $HOME/.gnupg
         run: |
           rm -rf "$GNUPGHOME" || true
