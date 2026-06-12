@@ -321,7 +321,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 	t.Run("returns SearXNGError details", func(t *testing.T) {
 		t.Parallel()
 
-		searxngErr := searxng.NewSearXNGError(500, "text/plain", "internal error", errors.New("upstream failure"))
+		searxngErr := searxng.NewSearXNGError(500, "text/plain", "internal error", errMockSearcherBoom)
 
 		handler := NewSearchToolHandler(&mockSearcher{
 			searchFunc: func(_ context.Context, _ *searxng.SearchArgs) (*searxng.SearchResponse, error) {
@@ -332,7 +332,7 @@ func TestNewSearchToolHandler(t *testing.T) {
 		result := callToolHandler(t, handler, searxng.SearchArgs{Query: "test"})
 		assertIsError(t, result)
 		tc := assertTextContent(t, result)
-		assertContains(t, tc.Text, "Search error: searxng error (status 500) - content-type text/plain: upstream failure")
+		assertContains(t, tc.Text, "Search error: searxng error (status 500) - content-type text/plain: boom")
 	})
 
 	t.Run("returns generic message for non-SearXNGError", func(t *testing.T) {
