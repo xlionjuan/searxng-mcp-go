@@ -68,6 +68,32 @@ Do not substitute a `/pull/new/...` URL for an actual PR. If neither OpenCode's
 GitHub integration nor `gh pr create` can create the PR, report the exact
 failure and stop.
 
+## Automatic Push Safety
+
+Treat the OpenCode GitHub Action working tree as a write boundary. The Action
+infrastructure checks whether the local branch is dirty after the agent
+responds; if it is dirty, the infrastructure may create a commit and push it
+automatically. This can happen even when the user asked only a question.
+
+Before doing anything that can modify files, decide whether the user explicitly
+asked for a content change.
+
+For read-only requests, such as investigation, explanation, verification,
+review, triage, or "is this safe?", the agent must not leave any file,
+submodule, generated artifact, dependency file, cache output, or formatting
+change in the working tree. Use read-only commands where possible. Avoid
+commands that update submodules, rewrite generated files, run formatters, run
+tidy commands, or otherwise normalize the checkout unless the user asked for a
+change.
+
+If a read-only task dirties the working tree anyway, restore the worktree to its
+initial state before finishing. If it cannot be restored safely, stop and report
+the exact dirty files instead of allowing the infrastructure to auto-push them.
+
+For write requests, keep changes limited to the requested scope and verify the
+diff before the run finishes. Never rely on the infrastructure's automatic
+commit step as a substitute for checking what will be pushed.
+
 ## PR Titles and Bodies
 
 Write PR bodies in English and include durable review context:

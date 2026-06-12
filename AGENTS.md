@@ -55,6 +55,9 @@ configured SearXNG instance.
 - Run the release workflow only when the user explicitly asks for a release and
   the target version is known or confirmed. See [docs/agents/release.md](docs/agents/release.md).
 - CI workflow rules: [docs/agents/ci.md](docs/agents/ci.md).
+- In GitHub Actions OpenCode, any dirty worktree may be committed and pushed by
+  the action infrastructure. For read-only requests, do not leave local changes;
+  see [docs/agents/opencode-github-actions.md](docs/agents/opencode-github-actions.md).
 
 ### E2E Tests
 
