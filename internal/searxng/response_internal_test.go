@@ -1049,6 +1049,28 @@ func TestNormalizeResponseLoggerRouting(t *testing.T) {
 			t.Fatal("expected no log output when answers are at or below cap")
 		}
 	})
+
+	t.Run("infobox truncation does not go to configured logger when below cap", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+
+		logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+		s := &SearXNGSearcher{logger: logger}
+
+		infoboxes := make([]Infobox, MaxInfoboxes)
+		for i := range infoboxes {
+			infoboxes[i] = Infobox{Infobox: "topic", Content: "content"}
+		}
+
+		result := &SearchResponse{Infoboxes: infoboxes}
+
+		s.normalizeResponse(result, &SearchArgs{})
+
+		if buf.Len() != 0 {
+			t.Fatal("expected no log output when infoboxes are at or below cap")
+		}
+	})
 }
 
 func TestHTMLResponseErrorLoggerRouting(t *testing.T) {
@@ -1091,6 +1113,67 @@ func TestCloseResponseBodyLoggerRouting(t *testing.T) {
 	if !strings.Contains(buf.String(), "failed to close response body") {
 		t.Fatal("expected close error log in configured logger, got none")
 	}
+}
+
+func TestLogDebugBodyLoggerRouting(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	s := &SearXNGSearcher{debug: true, logger: logger}
+
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+	}
+	body := []byte(`{"key": "value"}`)
+
+	s.logDebugBody(resp, body)
+
+	if !strings.Contains(buf.String(), "HTTP response body") {
+		t.Fatal("expected HTTP response body log in configured logger, got none")
+	}
+}
+
+func TestDecodeSearchResponseLoggerRouting(t *testing.T) {
+	t.Parallel()
+
+	t.Run("unexpected content type logs to configured logger", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+
+		logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		resp := &http.Response{StatusCode: http.StatusOK}
+
+		_, err := decodeSearchResponse(resp, "text/plain", []byte("not json"), logger)
+		if err == nil {
+			t.Fatal("expected error for text/plain content type")
+		}
+
+		if !strings.Contains(buf.String(), "UnexpectedContentTypeError") {
+			t.Fatal("expected UnexpectedContentTypeError log in configured logger, got none")
+		}
+	})
+
+	t.Run("JSON parse error logs to configured logger", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+
+		logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		resp := &http.Response{StatusCode: http.StatusOK}
+
+		_, err := decodeSearchResponse(resp, "application/json", []byte("{invalid}"), logger)
+		if err == nil {
+			t.Fatal("expected error for invalid JSON")
+		}
+
+		if !strings.Contains(buf.String(), "JSONParseError") {
+			t.Fatal("expected JSONParseError log in configured logger, got none")
+		}
+	})
 }
 
 var errMockClose = errors.New("mock close error")
