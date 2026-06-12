@@ -351,7 +351,12 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 		})
 	}
 
-	<-allRequestsEntered
+	select {
+	case <-allRequestsEntered:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("timed out waiting for all %d requests to enter transport; got %d",
+			numGoroutines, atomic.LoadInt64(&requestCount))
+	}
 	cancel()
 
 	// Wait with timeout
@@ -537,7 +542,11 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 		done <- err
 	}()
 
-	<-started
+	select {
+	case <-started:
+	case <-time.After(1 * time.Second):
+		t.Fatal("timed out waiting for search request to reach server handler")
+	}
 
 	err = searcher.Close()
 	if err != nil {
