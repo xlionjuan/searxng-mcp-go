@@ -709,6 +709,34 @@ func TestGetConfig(t *testing.T) {
 			t.Fatalf("getConfig() error = %q, want error mentioning 'SearXNG_URL' and 'required'", err.Error())
 		}
 	})
+
+	t.Run("cli max-retries exceeds cap", func(t *testing.T) {
+		_, err := getConfig(&CLIFlags{
+			SearXNGURL: "https://example.com",
+			MaxRetries: new(21),
+		})
+		if err == nil {
+			t.Fatal("getConfig() error = nil, want error for --max-retries=21")
+		}
+
+		if !strings.Contains(err.Error(), "max retries cannot exceed 20") {
+			t.Fatalf("getConfig() error = %q, want mention of max retry cap", err.Error())
+		}
+	})
+
+	t.Run("cli timeout negative", func(t *testing.T) {
+		_, err := getConfig(&CLIFlags{
+			SearXNGURL: "https://example.com",
+			Timeout:    new(-1 * time.Second),
+		})
+		if err == nil {
+			t.Fatal("getConfig() error = nil, want error for --timeout=-1s")
+		}
+
+		if !strings.Contains(err.Error(), "timeout cannot be negative") {
+			t.Fatalf("getConfig() error = %q, want mention of negative timeout", err.Error())
+		}
+	})
 }
 
 // TestRegisterFlagsDefaultPinning guards against the bug reported in

@@ -346,7 +346,7 @@ type configSource[T any] struct {
 	setValue func(*searxng.Config, T) error
 }
 
-func (cs configSource[T]) apply(cfg *searxng.Config, flags *CLIFlags) {
+func (cs configSource[T]) apply(cfg *searxng.Config, flags *CLIFlags) error {
 	var err error
 
 	// Phase 1: environment variable.
@@ -357,7 +357,7 @@ func (cs configSource[T]) apply(cfg *searxng.Config, flags *CLIFlags) {
 		if err != nil {
 			warnInvalidConfigEntry(cs.envVar, envStr, err)
 
-			return
+			return nil
 		}
 
 		err = cs.setValue(cfg, val)
@@ -370,9 +370,11 @@ func (cs configSource[T]) apply(cfg *searxng.Config, flags *CLIFlags) {
 	if ptr := cs.getFlag(flags); ptr != nil {
 		err = cs.setValue(cfg, *ptr)
 		if err != nil {
-			warnInvalidConfigEntry("--"+cs.envVar, *ptr, err)
+			return fmt.Errorf("invalid --%s value: %w", cs.envVar, err)
 		}
 	}
+
+	return nil
 }
 
 func warnInvalidConfigEntry[T any](source string, value T, err error) {
@@ -414,7 +416,7 @@ func boolFromString(s string) (bool, error) {
 
 // configSources is the single loop table for getConfig. Each row wires one
 // configurable setting: env var → parse → apply → flag override.
-var configSources = []func(*searxng.Config, *CLIFlags){
+var configSources = []func(*searxng.Config, *CLIFlags) error{
 	configSource[time.Duration]{
 		envVar:   "SEARXNG_TIMEOUT",
 		getFlag:  func(f *CLIFlags) *time.Duration { return f.Timeout },
@@ -467,7 +469,10 @@ func getConfig(flags *CLIFlags) (*searxng.Config, error) {
 
 	// Apply the data-driven config sources (env → flag override).
 	for _, apply := range configSources {
-		apply(cfg, flags)
+		err := apply(cfg, flags)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Lightweight final validation. By this point each setter has already
