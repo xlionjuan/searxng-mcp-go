@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"log/slog"
 	"strings"
 	"testing"
@@ -88,6 +89,37 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestTypedAnswerFixture_EnsureAnswerFallback guards the typed-translation
+// example in docs/MCP_TOOLS.md. After EnsureAnswerFallback, the JSON
+// serialization of the fixture must contain "answer":"Translation: bonjour"
+// and "engine":"libretranslate".
+func TestTypedAnswerFixture_EnsureAnswerFallback(t *testing.T) {
+	t.Parallel()
+
+	var resp searxng.SearchResponse
+
+	testhelper.LoadJSONFixture(t, "testdata/typed_translation_answer.json", &resp)
+
+	if len(resp.Answers) == 0 {
+		t.Fatal("fixture must contain at least one answer")
+	}
+
+	for i := range resp.Answers {
+		searxng.EnsureAnswerFallback(&resp.Answers[i])
+	}
+
+	got, err := json.Marshal(resp.Answers[0])
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+
+	for _, want := range []string{`"answer":"Translation: bonjour"`, `"engine":"libretranslate"`} {
+		if !bytes.Contains(got, []byte(want)) {
+			t.Fatalf("JSON answer missing %q in:\n%s", want, got)
+		}
 	}
 }
 
