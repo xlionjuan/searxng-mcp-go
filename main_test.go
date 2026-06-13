@@ -1128,7 +1128,7 @@ func TestRunCLIMode_VersionFlag(t *testing.T) {
 func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {}))
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 	server.Close()
 
 	flags := &CLIFlags{Query: "test", SearXNGURL: server.URL, Language: "", SafeSearch: 0, Pageno: nil}
