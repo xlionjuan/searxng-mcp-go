@@ -102,6 +102,10 @@ ci: mod-verify fmt vet lint
     just test-cover
     just test-stress
 
+# Check the ADR listing in docs/agents/domain.md matches docs/adr/
+check-adr-listing:
+    bash scripts/check-adr-listing.sh
+
 # Quick check (no formatting, just vet + lint + test)
 quick:
     just vet lint test

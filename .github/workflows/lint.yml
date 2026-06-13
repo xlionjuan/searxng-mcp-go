@@ -43,3 +43,6 @@ jobs:
 
       - name: Check formatting (gofumpt / goimports / gci)
         run: golangci-lint fmt --diff
+
+      - name: Check ADR listing
+        run: bash scripts/check-adr-listing.sh

@@ -51,6 +51,7 @@ Also run the `.github/workflows/lint.yml` checks:
 
 - `golangci-lint run --timeout 5m`
 - `golangci-lint fmt --diff`
+- `bash scripts/check-adr-listing.sh` (ADR listing guard)
 
 Do not treat the E2E workflow as a pre-completion requirement for AI agents.
 E2E requires the SearXNG test server and remains a pull-request status check.
