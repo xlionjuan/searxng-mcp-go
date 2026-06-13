@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -23,7 +22,7 @@ func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m)
 }
 
-func TestParseErrorHelpGoesToStderr(t *testing.T) {
+func TestPrintParseError(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -43,28 +42,78 @@ func TestParseErrorHelpGoesToStderr(t *testing.T) {
 				t.Fatal("expected error, got nil")
 			}
 
-			var stderrBuf bytes.Buffer
+			var buf bytes.Buffer
+			printParseError(err, &buf)
 
-			// Simulate the main() parse-error path:
-			// error message and help both go to stderr.
-			stdout := captureStdout(t, func() {
-				fmt.Fprintf(&stderrBuf, "\033[31mERROR: %v\033[0m\n", err)
-				fmt.Fprintln(&stderrBuf, "")
-				printCLIHelp(&stderrBuf)
-			})
+			output := buf.String()
 
-			if stdout != "" {
-				t.Error("help text should not appear on stdout for parse errors")
+			if !strings.Contains(output, "ERROR:") {
+				t.Error("output should contain error message")
 			}
 
-			if stderrBuf.Len() == 0 {
-				t.Error("expected help text on stderr for parse errors")
-			}
-
-			if !strings.Contains(stderrBuf.String(), "SearXNG MCP Server") {
-				t.Error("stderr should contain help text")
+			if !strings.Contains(output, "SearXNG MCP Server") {
+				t.Error("output should contain help text")
 			}
 		})
+	}
+}
+
+func TestMainRoutesParseErrorToStderr(t *testing.T) {
+	t.Parallel()
+
+	// Capture os.Stderr via pipe.
+	stderrR, stderrW, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create stderr pipe: %v", err)
+	}
+
+	oldStderr := os.Stderr
+	os.Stderr = stderrW
+
+	readCh := make(chan string)
+
+	go func() {
+		var buf bytes.Buffer
+
+		_, readErr := buf.ReadFrom(stderrR)
+		if readErr != nil {
+			t.Errorf("failed to read from stderr pipe: %v", readErr)
+		}
+
+		readCh <- buf.String()
+	}()
+
+	// Call printParseError with os.Stderr — same routing as main().
+	//nolint:dogsled // parseArgs returns 4 values; only error is needed
+	_, _, _, parseErr := parseArgs([]string{"--unknown"})
+	if parseErr == nil {
+		t.Fatal("expected parse error, got nil")
+	}
+
+	// Capture stdout to verify nothing leaks there.
+	stdout := captureStdout(t, func() {
+		printParseError(parseErr, os.Stderr)
+	})
+
+	err = stderrW.Close()
+	if err != nil {
+		t.Errorf("failed to close stderr pipe: %v", err)
+	}
+
+	os.Stderr = oldStderr
+
+	stderrOutput := <-readCh
+
+	if stdout != "" {
+		t.Error("printParseError should not write to stdout")
+	}
+
+	if !strings.Contains(stderrOutput, "ERROR:") {
+		t.Error("stderr should contain error message")
+	}
+
+	if !strings.Contains(stderrOutput, "SearXNG MCP Server") {
+		t.Error("stderr should contain help text")
 	}
 }
 
