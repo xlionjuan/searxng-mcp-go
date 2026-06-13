@@ -348,38 +348,35 @@ func main() {
 // places. The shared warn-and-ignore handler is warnInvalidConfigEntry.
 type configSource[T any] struct {
 	envVar   string
+	flagName string
 	getFlag  func(*CLIFlags) *T
 	parseEnv func(string) (T, error)
 	setValue func(*searxng.Config, T) error
 }
 
-func (cs configSource[T]) apply(cfg *searxng.Config, flags *CLIFlags) {
-	var err error
-
+func (cs configSource[T]) apply(cfg *searxng.Config, flags *CLIFlags) error {
 	// Phase 1: environment variable.
 	if envStr, ok := os.LookupEnv(cs.envVar); ok {
-		var val T
-
-		val, err = cs.parseEnv(envStr)
+		val, err := cs.parseEnv(envStr)
 		if err != nil {
 			warnInvalidConfigEntry(cs.envVar, envStr, err)
-
-			return
-		}
-
-		err = cs.setValue(cfg, val)
-		if err != nil {
-			warnInvalidConfigEntry(cs.envVar, envStr, err)
+		} else {
+			err = cs.setValue(cfg, val)
+			if err != nil {
+				warnInvalidConfigEntry(cs.envVar, envStr, err)
+			}
 		}
 	}
 
 	// Phase 2: CLI flag override (takes precedence over env var).
 	if ptr := cs.getFlag(flags); ptr != nil {
-		err = cs.setValue(cfg, *ptr)
+		err := cs.setValue(cfg, *ptr)
 		if err != nil {
-			warnInvalidConfigEntry("--"+cs.envVar, *ptr, err)
+			return fmt.Errorf("invalid --%s value: %w", cs.flagName, err)
 		}
 	}
+
+	return nil
 }
 
 func warnInvalidConfigEntry[T any](source string, value T, err error) {
@@ -421,21 +418,24 @@ func boolFromString(s string) (bool, error) {
 
 // configSources is the single loop table for getConfig. Each row wires one
 // configurable setting: env var → parse → apply → flag override.
-var configSources = []func(*searxng.Config, *CLIFlags){
+var configSources = []func(*searxng.Config, *CLIFlags) error{
 	configSource[time.Duration]{
 		envVar:   "SEARXNG_TIMEOUT",
+		flagName: "timeout",
 		getFlag:  func(f *CLIFlags) *time.Duration { return f.Timeout },
 		parseEnv: time.ParseDuration,
 		setValue: (*searxng.Config).SetTimeout,
 	}.apply,
 	configSource[int]{
 		envVar:   "SEARXNG_MAX_RETRIES",
+		flagName: "max-retries",
 		getFlag:  func(f *CLIFlags) *int { return f.MaxRetries },
 		parseEnv: intFromString,
 		setValue: (*searxng.Config).SetMaxRetries,
 	}.apply,
 	configSource[bool]{
 		envVar:   "SEARXNG_ALLOW_GET_FALLBACK",
+		flagName: "allow-get-fallback",
 		getFlag:  allowGetFallbackFlagPtr,
 		parseEnv: boolFromString,
 		setValue: func(cfg *searxng.Config, v bool) error {
@@ -477,8 +477,14 @@ func getConfig(flags *CLIFlags, isCLIMode bool) (*searxng.Config, error) {
 	cfg.SearXNGURL = searxngURL
 
 	// Apply the data-driven config sources (env → flag override).
+	var errs error
+
 	for _, apply := range configSources {
-		apply(cfg, flags)
+		errs = errors.Join(errs, apply(cfg, flags))
+	}
+
+	if errs != nil {
+		return nil, errs
 	}
 
 	// Lightweight final validation. By this point each setter has already

@@ -107,11 +107,11 @@ func TestConcurrentContextCancellation(t *testing.T) {
 	const numGoroutines = 10
 
 	var (
-		successCount     int64
-		errorCount       int64
-		cancelledCount   int64
-		unexpectedErrors []error
-		mu               sync.Mutex
+		successCount         int64
+		errorCount           int64
+		contextCanceledCount int64
+		unexpectedErrors     []error
+		mu                   sync.Mutex
 	)
 
 	var wg sync.WaitGroup
@@ -126,7 +126,7 @@ func TestConcurrentContextCancellation(t *testing.T) {
 				atomic.AddInt64(&errorCount, 1)
 
 				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-					atomic.AddInt64(&cancelledCount, 1)
+					atomic.AddInt64(&contextCanceledCount, 1)
 
 					return
 				}
@@ -162,8 +162,8 @@ func TestConcurrentContextCancellation(t *testing.T) {
 		t.Fatalf("errorCount = %d, want %d", errorCount, numGoroutines)
 	}
 
-	if cancelledCount != numGoroutines {
-		t.Fatalf("cancelledCount = %d, want %d", cancelledCount, numGoroutines)
+	if contextCanceledCount != numGoroutines {
+		t.Fatalf("contextCanceledCount = %d, want %d", contextCanceledCount, numGoroutines)
 	}
 
 	if len(unexpectedErrors) > 0 {
@@ -290,6 +290,40 @@ func TestRaceConditionOnSharedState(t *testing.T) {
 
 // --- Graceful Shutdown and Signal Handling Tests ---
 
+// mustRecvOrFail waits for a value on ch with a timeout, or fails the test.
+func mustRecvOrFail(t *testing.T, ch <-chan struct{}, timeout time.Duration, msg string) {
+	t.Helper()
+
+	select {
+	case <-ch:
+	case <-time.After(timeout):
+		t.Fatalf("timed out waiting for %s", msg)
+	}
+}
+
+// newBlockingTransport creates a RoundTripper that blocks all HTTP requests until the
+// transport is active, then blocks until the request context is canceled. When the target
+// number of concurrent requests are all waiting, it closes allRequestsEntered.
+func newBlockingTransport(
+	requestCount *int64,
+	numGoroutines int64,
+	allRequestsEntered chan struct{},
+) http.RoundTripper {
+	var closeOnce sync.Once
+
+	return testhelper.RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		if atomic.AddInt64(requestCount, 1) == numGoroutines {
+			closeOnce.Do(func() {
+				close(allRequestsEntered)
+			})
+		}
+
+		<-r.Context().Done()
+
+		return nil, r.Context().Err()
+	})
+}
+
 // TestGracefulShutdownWithContextCancel tests that search operations respect context cancellation.
 // It uses a custom RoundTripper that blocks until context cancellation, simulating a slow SearXNG
 // instance that gets interrupted by a graceful shutdown. When the shared context is canceled,
@@ -302,28 +336,13 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 	requestCount := int64(0)
 	sentCount := int64(0)
 	successCount := int64(0)
-	cancelledCount := int64(0)
+	canceledCount := int64(0)
 	allRequestsEntered := make(chan struct{})
-
-	var closeOnce sync.Once
 
 	ctx, cancel := context.WithCancel(t.Context())
 
-	// Use a custom RoundTripper that blocks until context cancellation,
-	// simulating a slow SearXNG that gets interrupted. This ensures
-	// the HTTP client returns context.Canceled (not an HTTP-level error).
 	client := &http.Client{
-		Transport: testhelper.RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
-			if atomic.AddInt64(&requestCount, 1) == numGoroutines {
-				closeOnce.Do(func() {
-					close(allRequestsEntered)
-				})
-			}
-
-			<-r.Context().Done()
-
-			return nil, r.Context().Err()
-		}),
+		Transport: newBlockingTransport(&requestCount, numGoroutines, allRequestsEntered),
 	}
 
 	cfg := &searxng.Config{
@@ -341,7 +360,7 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 			_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-					atomic.AddInt64(&cancelledCount, 1)
+					atomic.AddInt64(&canceledCount, 1)
 
 					return
 				}
@@ -355,16 +374,10 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 		})
 	}
 
-	select {
-	case <-allRequestsEntered:
-	case <-time.After(2 * time.Second):
-		t.Fatalf("timed out waiting for all %d requests to enter transport; got %d",
-			numGoroutines, atomic.LoadInt64(&requestCount))
-	}
+	mustRecvOrFail(t, allRequestsEntered, 2*time.Second, "all requests to enter transport")
 
 	cancel()
 
-	// Wait with timeout
 	done := make(chan struct{})
 
 	go func() {
@@ -372,27 +385,12 @@ func TestGracefulShutdownWithContextCancel(t *testing.T) {
 		close(done)
 	}()
 
-	select {
-	case <-done:
-		// Normal shutdown
-	case <-time.After(5 * time.Second):
-		t.Fatal("Graceful shutdown timed out")
-	}
+	mustRecvOrFail(t, done, 5*time.Second, "goroutines to finish")
 
-	checkGracefulShutdownResults(t, numGoroutines, &requestCount, &sentCount, &successCount, &cancelledCount)
-}
-
-func checkGracefulShutdownResults(
-	t *testing.T,
-	numGoroutines int64,
-	requestCount, sentCount, successCount, cancelledCount *int64,
-) {
-	t.Helper()
-
-	reqCount := atomic.LoadInt64(requestCount)
-	sent := atomic.LoadInt64(sentCount)
-	success := atomic.LoadInt64(successCount)
-	canceled := atomic.LoadInt64(cancelledCount)
+	reqCount := atomic.LoadInt64(&requestCount)
+	sent := atomic.LoadInt64(&sentCount)
+	success := atomic.LoadInt64(&successCount)
+	canceled := atomic.LoadInt64(&canceledCount)
 	compCount := success + canceled
 
 	if sent != numGoroutines {
@@ -408,7 +406,7 @@ func checkGracefulShutdownResults(
 	}
 
 	if canceled != numGoroutines {
-		t.Fatalf("cancelledCount = %d, want %d", canceled, numGoroutines)
+		t.Fatalf("canceledCount = %d, want %d", canceled, numGoroutines)
 	}
 
 	if compCount != numGoroutines {
