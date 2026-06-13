@@ -99,6 +99,7 @@ configured SearXNG instance.
   all AI agents must run the non-E2E workflow checks listed in
   [docs/agents/verification.md](docs/agents/verification.md).
 - See [docs/agents/verification.md](docs/agents/verification.md) for build, test, lint, and E2E commands.
+- Pure documentation changes (`.md` files only) do not require the build, test, or lint gates above.
 
 ## GitHub and PR Work
 
