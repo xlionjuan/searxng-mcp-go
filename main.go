@@ -302,12 +302,17 @@ func extractPositionalArgs(args []string, fs *flag.FlagSet) ([]string, []string)
 // Main Entry Point
 // ============================================================================
 
+// printParseError writes an error message followed by CLI help text to w.
+func printParseError(err error, w io.Writer) {
+	fmt.Fprintf(w, "\033[31mERROR: %v\033[0m\n", err)
+	fmt.Fprintln(w, "")
+	printCLIHelp(w)
+}
+
 func main() {
 	isCLIMode, flags, positionalArgs, err := parseArgs(os.Args[1:])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "\033[31mERROR: %v\033[0m\n", err)
-		fmt.Fprintln(os.Stderr, "")
-		printCLIHelp(os.Stderr)
+		printParseError(err, os.Stderr)
 		os.Exit(exitCodeCLIError)
 	}
 
