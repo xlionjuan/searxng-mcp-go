@@ -153,7 +153,9 @@ jobs:
             - Before creating an Issue or PR, actively look for counterevidence in adjacent docs, tests, ADRs, workflows, and implementation code.
             - If line-level evidence is incomplete, list the item as a candidate in the final output only; do not create an Issue.
             - If the item depends on maintainer preference, product judgment, naming preference, or an interpretation not directly settled by repository evidence, do not create an Issue. List it as an open question or candidate instead.
-            - Low-severity findings should not become Issues unless they are repeated, systematic, or explicitly requested by `extra_instructions`.
+            - Low-severity findings should not become standalone Issues unless they are repeated, systematic, or explicitly requested by `extra_instructions`.
+            - Low-severity documentation findings may be grouped into one cleanup Issue when all are exact, mechanical fixes supported by line-level evidence, such as stale filenames, stale helper names, missing index entries, or wording that directly contradicts code.
+            - Do not group Low-severity findings that require maintainer judgment, product decisions, ADR interpretation, naming preference, or external verification; list those as open questions or candidates instead.
             - Do not claim "no documentation updates needed" unless each requested review dimension was inspected or explicitly ruled out by scope.
 
             Decision policy for Issues vs PR:
@@ -161,7 +163,7 @@ jobs:
             - Open one Issue per coherent finding or tightly related finding group.
             - Do not create a single omnibus Issue if findings are independent.
             - Before creating any Issue, run `gh issue list --state all --search "<key terms>"` to check for duplicates. If an existing Issue already covers the finding, do not create a new Issue; list the existing Issue in the final output.
-            - Cap newly created Issues to the highest-signal findings. If there are many candidates, create Issues for High and Medium findings first, then summarize the rest in the final output.
+            - Cap newly created Issues to the highest-signal findings. Create Issues for High and Medium findings first. If several Low-severity documentation-only findings are exact, mechanical, and suitable for one small PR, open one grouped cleanup Issue instead of leaving all of them as candidates.
             - Do not open a PR for findings that require maintainer judgment, product decisions, ADR changes, release policy changes, or broad cross-document rewrites.
             - Open a PR only when allow_pr is true and all of these are true:
               - the fix is narrow and unambiguous;
@@ -204,7 +206,8 @@ jobs:
             - List Issues created, if any, with links.
             - List duplicate or already-covered Issues found, if any.
             - List PRs created, if any, with links.
-            - List candidate findings not filed because evidence was incomplete, severity was low, or maintainer judgment was required.
+            - List actionable candidate findings not filed, grouped by reason: duplicate, incomplete evidence, low impact, maintainer judgment required, or outside interpreted scope.
+            - If Low-severity documentation-only findings were not grouped into a cleanup Issue, explain why they were not exact, mechanical, or suitable for one small PR.
             - If no Issues or PRs were created, explain why.
             - Explicitly state whether documentation updates are needed.
             - Include the final `git status --short` result.
