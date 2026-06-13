@@ -782,6 +782,40 @@ func TestGetConfig(t *testing.T) {
 		}
 	})
 
+	t.Run("env parse error still allows CLI flag override", func(t *testing.T) {
+		t.Setenv("SEARXNG_TIMEOUT", "not-a-duration")
+		t.Setenv("SEARXNG_MAX_RETRIES", "abc")
+		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "true")
+
+		_, flags, _, err := parseArgs([]string{
+			"--searxng-url", "https://flag.example.com",
+			"--timeout", "30s",
+			"--max-retries", "10",
+			"--allow-get-fallback",
+			"test query",
+		})
+		if err != nil {
+			t.Fatalf("parseArgs() error = %v, want nil", err)
+		}
+
+		cfg, err := getConfig(flags, true)
+		if err != nil {
+			t.Fatalf("getConfig() error = %v, want nil", err)
+		}
+
+		if cfg.Timeout != 30*time.Second {
+			t.Fatalf("Timeout = %v, want 30s", cfg.Timeout)
+		}
+
+		if cfg.MaxRetries != 10 {
+			t.Fatalf("MaxRetries = %d, want 10", cfg.MaxRetries)
+		}
+
+		if !cfg.AllowGETFallback {
+			t.Fatal("AllowGETFallback = false, want true (CLI flag overrides unparseable env)")
+		}
+	})
+
 	t.Run("max retries zero flag disables retries", func(t *testing.T) {
 		t.Setenv("SEARXNG_MAX_RETRIES", "7")
 
