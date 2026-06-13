@@ -12,13 +12,10 @@ import (
 
 // testPerformSearch is a test helper that creates a temporary SearXNGSearcher
 // from the provided Config and delegates to its Search method.
-// Optional searcherOpts functions are called on the searcher before Search,
-// enabling test-specific configuration (e.g., setting retry hooks).
 // It is only available in tests.
 func testPerformSearch(
 	ctx context.Context, tb testing.TB, cfg *searxng.Config,
 	args *searxng.SearchArgs,
-	searcherOpts ...func(*searxng.SearXNGSearcher),
 ) (*searxng.SearchResponse, error) {
 	tb.Helper()
 
@@ -34,10 +31,6 @@ func testPerformSearch(
 	}
 
 	defer func() { _ = s.Close() }() //nolint:errcheck // cleanup in defer; error is non-actionable
-
-	for _, opt := range searcherOpts {
-		opt(s)
-	}
 
 	return s.Search(ctx, args)
 }

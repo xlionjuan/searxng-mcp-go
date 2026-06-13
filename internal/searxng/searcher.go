@@ -38,12 +38,6 @@ type SearXNGSearcher struct {
 	retryStrategy    *exponentialBackoffStrategy
 	ownsTransport    bool // true if the searcher created its own transport (safe to close)
 	allowGETFallback bool
-
-	// TestOnlyBeforeRetryWait is a test-only hook. If non-nil, it is called
-	// each time the searcher is about to wait before a retry attempt.
-	// This field is always nil in production; setting it has no effect outside
-	// of tests that explicitly check for it.
-	TestOnlyBeforeRetryWait func()
 }
 
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
@@ -229,10 +223,6 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 		s.logDebugRetry(attempt, maxRetries+1, delay, lastErr)
 
 		closeResponseBody(resp, s.getLogger())
-
-		if s.TestOnlyBeforeRetryWait != nil {
-			s.TestOnlyBeforeRetryWait()
-		}
 
 		waitErr := retryWait(searchCtx, delay)
 		if waitErr != nil {
