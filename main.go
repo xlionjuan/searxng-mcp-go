@@ -305,7 +305,7 @@ func extractPositionalArgs(args []string, fs *flag.FlagSet) ([]string, []string)
 // printParseError writes an error message followed by CLI help text to w.
 func printParseError(err error, w io.Writer) {
 	fmt.Fprintf(w, "\033[31mERROR: %v\033[0m\n", err) //nolint:errcheck // best-effort write to stderr
-	fmt.Fprintln(w, "")                               //nolint:errcheck // best-effort write to stderr
+	fmt.Fprintln(w)                                   //nolint:errcheck // best-effort write to stderr
 	printCLIHelp(w)
 }
 

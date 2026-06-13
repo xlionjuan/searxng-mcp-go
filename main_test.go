@@ -77,7 +77,7 @@ func TestMainRoutesParseErrorToStderr(t *testing.T) {
 
 		_, readErr := buf.ReadFrom(stderrR)
 		if readErr != nil {
-			t.Errorf("failed to read from stderr pipe: %v", err)
+			t.Errorf("failed to read from stderr pipe: %v", readErr)
 		}
 
 		readCh <- buf.String()
