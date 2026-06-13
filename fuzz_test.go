@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"html"
 	"strings"
 	"testing"
 
@@ -125,6 +126,7 @@ func FuzzUnescapeIfNeeded(f *testing.F) {
 		"&notanentity;",                       // invalid entity-like
 		"&",                                   // just an ampersand
 		"hello&world",                         // ampersand in middle of word (no entity)
+		"&amp;amp;amp;amp;amp;amp;",           // nested entity: recursive unescaping is intentionally out of scope
 	}
 	for _, s := range seeds {
 		f.Add(s)
@@ -140,21 +142,13 @@ func FuzzUnescapeIfNeeded(f *testing.F) {
 			}
 		}
 
-		// Invariant: applying unescapeIfNeeded multiple times eventually stabilizes
-		// (html.UnescapeString is not strictly idempotent in Go, so we iterate to fixed point)
-		current := result
-		for range 10 {
-			next := searxng.UnescapeIfNeeded(current)
-			if next == current {
-				break
+		// Invariant: when trigger chars are present, result must match a single call to html.UnescapeString
+		// (UnescapeIfNeeded is intentionally single-pass; recursive unescaping is out of scope)
+		if strings.ContainsAny(s, "&<>\"") {
+			expected := html.UnescapeString(s)
+			if result != expected {
+				t.Errorf("searxng.UnescapeIfNeeded(%q)=%q, want %q (single-pass html.UnescapeString)", s, result, expected)
 			}
-
-			current = next
-		}
-		// After stabilization, one more pass should be identity
-		final := searxng.UnescapeIfNeeded(current)
-		if final != current {
-			t.Errorf("unescapeIfNeeded did not stabilize after 10 iterations: input=%q, stable=%q, final=%q", s, current, final)
 		}
 
 		// Invariant: result must not be longer than input * some reasonable factor
