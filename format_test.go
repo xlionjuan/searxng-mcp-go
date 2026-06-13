@@ -91,6 +91,31 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 	}
 }
 
+// TestTypedWeatherAnswerField is a regression assertion that the typed-weather
+// fixture produces a populated answer field after EnsureAnswerFallback.
+// This locks the docs/MCP_TOOLS.md example to the runtime.
+func TestTypedWeatherAnswerField(t *testing.T) {
+	t.Parallel()
+
+	var resp searxng.SearchResponse
+	testhelper.LoadJSONFixture(t, "testdata/typed_weather_answer.json", &resp)
+
+	if len(resp.Answers) == 0 {
+		t.Fatal("fixture has no answers")
+	}
+
+	searxng.EnsureAnswerFallback(&resp.Answers[0])
+
+	if resp.Answers[0].Answer == "" {
+		t.Fatal("EnsureAnswerFallback left Answer field empty for weather fixture")
+	}
+
+	want := "Weather: Berlin, 11.2 °C, partly cloudy"
+	if resp.Answers[0].Answer != want {
+		t.Fatalf("Answer = %q, want %q", resp.Answers[0].Answer, want)
+	}
+}
+
 func TestFormatResults_NilInput(t *testing.T) {
 	t.Parallel()
 

@@ -204,17 +204,20 @@ Typed-answer example (query `translate hello to french`):
 
 Typed-weather-answer example (query `weather Berlin`):
 
+The `answer` field is derived by the searcher; SearXNG's typed-answer payload includes only `engine`, `current`, `forecasts`, and `service`.
+
 ```json
 {
   "query": "weather Berlin",
   "warning": "Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.",
   "answers": [
     {
+      "answer": "Weather: Berlin, 18.4 °C, partly cloudy",
       "engine": "open-meteo",
       "current": {
         "location": {"name": "Berlin", "latitude": 52.52, "longitude": 13.41, "timezone": "Europe/Berlin"},
         "temperature": {"val": 18.4, "unit": "°C"},
-        "condition": "Partly cloudy",
+        "condition": "partly cloudy",
         "humidity": {"val": 62, "unit": "%"}
       },
       "forecasts": [],
