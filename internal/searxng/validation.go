@@ -110,6 +110,17 @@ func ValidateSearchArgs(args *SearchArgs) (*SearchArgs, error) {
 	// Shallow copy so mutation of the result does not affect the caller.
 	result := *args
 
+	// Deep-copy non-nil pointer fields to prevent aliasing the caller's
+	// pointers after the function returns.
+	if args.Pageno != nil {
+		pageno := *args.Pageno
+		result.Pageno = &pageno
+	}
+	if args.Limit != nil {
+		limit := *args.Limit
+		result.Limit = &limit
+	}
+
 	err := validateQuery(result.Query)
 	if err != nil {
 		return nil, err
