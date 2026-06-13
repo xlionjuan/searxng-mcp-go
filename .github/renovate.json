@@ -38,6 +38,11 @@
   ],
   "packageRules": [
     {
+      "description": "Require Dependency Dashboard approval for Python updates",
+      "matchCategories": ["python"],
+      "dependencyDashboardApproval": true
+    },
+    {
       "description": "Group Go minor and patch updates together",
       "matchManagers": ["gomod"],
       "matchUpdateTypes": ["minor", "patch"],
