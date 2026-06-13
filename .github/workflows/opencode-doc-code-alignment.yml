@@ -153,6 +153,9 @@ jobs:
             - Before creating an Issue or PR, actively look for counterevidence in adjacent docs, tests, ADRs, workflows, and implementation code.
             - If line-level evidence is incomplete, list the item as a candidate in the final output only; do not create an Issue.
             - If the item depends on maintainer preference, product judgment, naming preference, or an interpretation not directly settled by repository evidence, do not create an Issue. List it as an open question or candidate instead.
+            - Do not treat a documented human/operator policy as a CI or release workflow mismatch merely because automation does not enforce it.
+            - Report a policy-enforcement gap as an Issue only when repository docs explicitly claim automation enforces the policy, the workflow directly contradicts the policy, or missing enforcement is likely to cause a concrete accidental release, CI failure, or user-visible breakage.
+            - If the recommended action could be either "add automation" or "change the docs" and repository evidence does not clearly choose one, classify it as maintainer judgment and list it as an open question or candidate instead.
             - Low-severity findings should not become standalone Issues unless they are repeated, systematic, or explicitly requested by `extra_instructions`.
             - Low-severity documentation findings may be grouped into one cleanup Issue when all are exact, mechanical fixes supported by line-level evidence, such as stale filenames, stale helper names, missing index entries, or wording that directly contradicts code.
             - Do not group Low-severity findings that require maintainer judgment, product decisions, ADR interpretation, naming preference, or external verification; list those as open questions or candidates instead.
