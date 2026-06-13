@@ -211,113 +211,118 @@ func TestLogDebugMethods(t *testing.T) {
 func TestSearch_LogsWarningOnExhaustedEmptyRetries(t *testing.T) {
 	t.Parallel()
 
-	t.Run("exhausted retries on empty response logs warning with attempts", func(t *testing.T) {
-		t.Parallel()
+	t.Run("exhausted retries on empty response logs warning with attempts", testExhaustedRetriesLogsWarning)
+	t.Run("non-empty response on final attempt does not log warning", testNonEmptyResponseNoWarning)
+	t.Run("maxRetries=0 with empty response does not log warning", testMaxRetriesZeroNoWarning)
+	t.Run("exhausted retries does not log URL-encoded or special characters in query", testExhaustedRetriesNoURLEncoded)
+}
 
-		var buf bytes.Buffer
+func testExhaustedRetriesLogsWarning(t *testing.T) {
+	t.Parallel()
 
-		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-			return makeJSONResponse(minimalJSONBody), nil
-		}), 2)
-		s.logger = slog.New(slog.NewTextHandler(&buf, nil))
+	var buf bytes.Buffer
 
-		result, err := s.Search(t.Context(), &SearchArgs{Query: "my-secret-password"})
-		if err != nil {
-			t.Fatalf("Search() error = %v, want nil", err)
+	s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		return makeJSONResponse(minimalJSONBody), nil
+	}), 2)
+	s.logger = slog.New(slog.NewTextHandler(&buf, nil))
+
+	result, err := s.Search(t.Context(), &SearchArgs{Query: "my-secret-password"})
+	if err != nil {
+		t.Fatalf("Search() error = %v, want nil", err)
+	}
+
+	if result == nil {
+		t.Fatal("Search() result = nil, want non-nil")
+	}
+
+	if len(result.Results) != 0 {
+		t.Fatalf("len(Results) = %d, want 0", len(result.Results))
+	}
+
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "search returned empty after exhausting retries") {
+		t.Fatalf("log output = %q, want exhausted-retries warning", logOutput)
+	}
+
+	if !strings.Contains(logOutput, "attempts=3") {
+		t.Fatalf("log output = %q, want attempts=3 attribute", logOutput)
+	}
+
+	if strings.Contains(logOutput, "my-secret-password") {
+		t.Fatalf("log output = %q, must not contain raw query", logOutput)
+	}
+}
+
+func testNonEmptyResponseNoWarning(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		return makeJSONResponse(makeSearchResponseJSON(1)), nil
+	}), 2)
+	s.logger = slog.New(slog.NewTextHandler(&buf, nil))
+
+	_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+	if err != nil {
+		t.Fatalf("Search() error = %v, want nil", err)
+	}
+
+	if strings.Contains(buf.String(), "search returned empty after exhausting retries") {
+		t.Fatalf("log output = %q, want no exhausted-retries warning for non-empty response", buf.String())
+	}
+}
+
+func testMaxRetriesZeroNoWarning(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		return makeJSONResponse(minimalJSONBody), nil
+	}), 0)
+	s.logger = slog.New(slog.NewTextHandler(&buf, nil))
+
+	_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+	if err != nil {
+		t.Fatalf("Search() error = %v, want nil", err)
+	}
+
+	if strings.Contains(buf.String(), "search returned empty after exhausting retries") {
+		t.Fatalf("log output = %q, want no warning when maxRetries=0", buf.String())
+	}
+}
+
+func testExhaustedRetriesNoURLEncoded(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		return makeJSONResponse(minimalJSONBody), nil
+	}), 2)
+	s.logger = slog.New(slog.NewTextHandler(&buf, nil))
+
+	_, err := s.Search(t.Context(), &SearchArgs{Query: "%2F..%2Fsecret+ssh+key"})
+	if err != nil {
+		t.Fatalf("Search() error = %v, want nil", err)
+	}
+
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "search returned empty after exhausting retries") {
+		t.Fatalf("log output = %q, want exhausted-retries warning", logOutput)
+	}
+
+	if !strings.Contains(logOutput, "attempts=3") {
+		t.Fatalf("log output = %q, want attempts=3 attribute", logOutput)
+	}
+
+	for _, s := range []string{"%2F..%2Fsecret+ssh+key", "%2F", "ssh+key"} {
+		if strings.Contains(logOutput, s) {
+			t.Fatalf("log output = %q, must not contain %q", logOutput, s)
 		}
-
-		if result == nil {
-			t.Fatal("Search() result = nil, want non-nil")
-		}
-
-		if len(result.Results) != 0 {
-			t.Fatalf("len(Results) = %d, want 0", len(result.Results))
-		}
-
-		logOutput := buf.String()
-		if !strings.Contains(logOutput, "search returned empty after exhausting retries") {
-			t.Fatalf("log output = %q, want exhausted-retries warning", logOutput)
-		}
-
-		if !strings.Contains(logOutput, "attempts=3") {
-			t.Fatalf("log output = %q, want attempts=3 attribute", logOutput)
-		}
-
-		if strings.Contains(logOutput, "my-secret-password") {
-			t.Fatalf("log output = %q, must not contain raw query", logOutput)
-		}
-	})
-
-	t.Run("non-empty response on final attempt does not log warning", func(t *testing.T) {
-		t.Parallel()
-
-		var buf bytes.Buffer
-
-		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-			return makeJSONResponse(makeSearchResponseJSON(1)), nil
-		}), 2)
-		s.logger = slog.New(slog.NewTextHandler(&buf, nil))
-
-		_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
-		if err != nil {
-			t.Fatalf("Search() error = %v, want nil", err)
-		}
-
-		if strings.Contains(buf.String(), "search returned empty after exhausting retries") {
-			t.Fatalf("log output = %q, want no exhausted-retries warning for non-empty response", buf.String())
-		}
-	})
-
-	t.Run("maxRetries=0 with empty response does not log warning", func(t *testing.T) {
-		t.Parallel()
-
-		var buf bytes.Buffer
-
-		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-			return makeJSONResponse(minimalJSONBody), nil
-		}), 0)
-		s.logger = slog.New(slog.NewTextHandler(&buf, nil))
-
-		_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
-		if err != nil {
-			t.Fatalf("Search() error = %v, want nil", err)
-		}
-
-		if strings.Contains(buf.String(), "search returned empty after exhausting retries") {
-			t.Fatalf("log output = %q, want no warning when maxRetries=0", buf.String())
-		}
-	})
-
-	t.Run("exhausted retries does not log URL-encoded or special characters in query", func(t *testing.T) {
-		t.Parallel()
-
-		var buf bytes.Buffer
-
-		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-			return makeJSONResponse(minimalJSONBody), nil
-		}), 2)
-		s.logger = slog.New(slog.NewTextHandler(&buf, nil))
-
-		_, err := s.Search(t.Context(), &SearchArgs{Query: "%2F..%2Fsecret+ssh+key"})
-		if err != nil {
-			t.Fatalf("Search() error = %v, want nil", err)
-		}
-
-		logOutput := buf.String()
-		if !strings.Contains(logOutput, "search returned empty after exhausting retries") {
-			t.Fatalf("log output = %q, want exhausted-retries warning", logOutput)
-		}
-
-		if !strings.Contains(logOutput, "attempts=3") {
-			t.Fatalf("log output = %q, want attempts=3 attribute", logOutput)
-		}
-
-		for _, s := range []string{"%2F..%2Fsecret+ssh+key", "%2F", "ssh+key"} {
-			if strings.Contains(logOutput, s) {
-				t.Fatalf("log output = %q, must not contain %q", logOutput, s)
-			}
-		}
-	})
+	}
 }
 
 func TestAllowGETFallbackLogsWarnings(t *testing.T) {
