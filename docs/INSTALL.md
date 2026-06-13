@@ -78,7 +78,10 @@ non-negative integer, and `0`/`1`, respectively). When a value is set to
 something the server cannot parse — for example `SEARXNG_TIMEOUT=abc`,
 `SEARXNG_MAX_RETRIES=-1`, or `SEARXNG_ALLOW_GET_FALLBACK=true` — the server
 writes a warning line to stderr that names the offending variable and value,
-and then silently falls back to the built-in default. The process
+and then the server falls back to whichever value takes precedence:
+if a corresponding CLI flag is set (e.g. `--timeout 30s`,
+`--max-retries 10`, `--allow-get-fallback`), that value is used;
+otherwise the built-in default is used. The process
 **continues running** and does not exit. In MCP stdio mode, most MCP clients do
 not surface the stderr stream, so end users typically do not see the warning at
 all.
