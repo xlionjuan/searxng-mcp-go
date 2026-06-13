@@ -16,6 +16,7 @@ permissions:
 jobs:
   e2e:
     name: End-to-End
+    timeout-minutes: 300
     runs-on: ubuntu-latest
     env:
       SEARXNG_URL: http://127.0.0.1:8888

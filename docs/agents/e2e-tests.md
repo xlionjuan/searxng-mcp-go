@@ -37,5 +37,6 @@ meta-search against live third-party engines, not a code or SearXNG bug.
 
 Library-level retry (`SEARXNG_MAX_RETRIES=2`) covers single-request flakes;
 the CI retry wrapper recovers from whole-instance throttling by retrying the
-entire test run to land on a clean window. See the inline comment in
-`e2e.yml` for the worst-case budget.
+entire test run to land on a clean window. The job-level
+`timeout-minutes: 300` in `e2e.yml` is the explicit worst-case budget; the
+retry parameters documented in the inline comment must stay within it.

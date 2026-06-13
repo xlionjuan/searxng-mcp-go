@@ -9,6 +9,7 @@ permissions:
 jobs:
   e2e-stress:
     name: End-to-End Stress
+    timeout-minutes: 300
     runs-on: ubuntu-latest
     env:
       SEARXNG_URL: http://127.0.0.1:8888
