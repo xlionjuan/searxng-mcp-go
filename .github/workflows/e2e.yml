@@ -72,7 +72,7 @@ jobs:
         env:
           E2E_MCP_BINARY: ./searxng-mcp-go
         with:
-          command: go test -v -tags=e2e -run 'TestMCP' -count=1 -timeout=600s .
+          command: go test -v -tags=e2e -run 'TestMCP' -race -count=1 -timeout=600s .
           attempt_limit: 10
           attempt_delay: 10000 # 10 s (ms)
         #  time_out: 900000           # 900 s = 15 min (ms) : caused continued waiting after success
@@ -89,7 +89,7 @@ jobs:
         env:
           E2E_MCP_BINARY: ./searxng-mcp-go
         with:
-          command: go test -v -tags=e2e -run 'TestCLISmoke' -count=1 -timeout=600s .
+          command: go test -v -tags=e2e -run 'TestCLISmoke' -race -count=1 -timeout=600s .
           attempt_limit: 10
           attempt_delay: 10000 # 10 s (ms)
 

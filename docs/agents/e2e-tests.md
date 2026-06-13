@@ -39,3 +39,13 @@ Library-level retry (`SEARXNG_MAX_RETRIES=2`) covers single-request flakes;
 the CI retry wrapper recovers from whole-instance throttling by retrying the
 entire test run to land on a clean window. See the inline comment in
 `e2e.yml` for the worst-case budget.
+
+## Race Detector
+
+E2E workflows (`e2e.yml`, `e2e-stress.yml`) run with `-race`. The race
+detector adds non-trivial wall-clock overhead (typically 2–5× for a given
+test binary), but this is the expected cost of catching data races at the
+live-server layer — the only layer that exercises the real subprocess stdio
+boundary, real SearXNG integration, and real MCP `CommandTransport` lifecycle.
+The existing `-timeout` values include sufficient headroom for this overhead;
+if runs become timeout-limited, increase them as needed.
