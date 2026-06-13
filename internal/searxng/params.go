@@ -160,8 +160,8 @@ var SearchParams = []ParamDef{
 		CLIHelp: fmt.Sprintf(
 			"Maximum number of results to return (%d-%d) [default: %d]",
 			MinResultLimit, MaxResultLimit, DefaultResultLimit),
-		CLIType: "N",
-		MCPType: "integer",
+		CLIType:    "N",
+		MCPType:    "integer",
 		DefaultInt: &paramDefaultLimit,
 		Minimum:    &paramMinLimit,
 		Maximum:    &paramMaxLimit,
@@ -198,11 +198,12 @@ func (p ParamDef) JSONSchema() map[string]any {
 		prop["examples"] = examples
 	}
 
-	if p.DefaultInt != nil {
+	switch {
+	case p.DefaultInt != nil:
 		prop["default"] = *p.DefaultInt
-	} else if p.DefaultString != nil {
+	case p.DefaultString != nil:
 		prop["default"] = *p.DefaultString
-	} else if p.DefaultBool != nil {
+	case p.DefaultBool != nil:
 		prop["default"] = *p.DefaultBool
 	}
 
