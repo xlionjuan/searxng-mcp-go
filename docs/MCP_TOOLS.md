@@ -177,14 +177,19 @@ Legacy instant-answer example (query `ip`):
 
 Typed-answer example (query `translate hello to french`):
 
+The `answer` field is derived by the searcher; SearXNG's typed-answer payload
+includes only `engine`, `template`, and `translations`. The searcher prefixes
+the joined translations with `Translation: ` to match the legacy instant-answer
+shape.
+
 ```json
 {
   "query": "translate hello to french",
   "warning": "Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.",
   "answers": [
     {
-      "answer": "bonjour",
-      "engine": "lingva",
+      "answer": "Translation: bonjour",
+      "engine": "libretranslate",
       "translations": [
         {
           "text": "bonjour",
