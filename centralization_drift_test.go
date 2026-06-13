@@ -162,8 +162,8 @@ func TestMCPSearchSchemaLimitDefaultDerivesFromConstant(t *testing.T) {
 	verifyJSONNumber(t, rawLimit, "default", float64(searxng.DefaultResultLimit))
 }
 
-// TestMCPSearchSchemaSafeSearchBoundsDeriveFromConstant guards the MCP
-// JSON Schema for the `safesearch` parameter.
+// TestMCPSearchSchemaSafeSearchDerivesFromConstant guards the MCP JSON
+// Schema for the `safesearch` parameter.
 func TestMCPSearchSchemaSafeSearchDerivesFromConstant(t *testing.T) {
 	t.Parallel()
 
@@ -194,8 +194,8 @@ func TestMCPSearchSchemaSafeSearchDerivesFromConstant(t *testing.T) {
 	verifyJSONNumber(t, raw, "default", float64(searxng.MinSafeSearch))
 }
 
-// TestMCPSearchSchemaPagenoBoundsDeriveFromConstant guards the MCP JSON
-// Schema for the `pageno` parameter.
+// TestMCPSearchSchemaPagenoDerivesFromConstant guards the MCP JSON Schema
+// for the `pageno` parameter.
 func TestMCPSearchSchemaPagenoDerivesFromConstant(t *testing.T) {
 	t.Parallel()
 
