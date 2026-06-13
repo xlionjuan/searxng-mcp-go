@@ -157,11 +157,14 @@ func TestMCPSearchSchemaLimitDefaultDerivesFromConstant(t *testing.T) {
 	// Schema must declare minimum/maximum equal to the shared bounds.
 	verifyJSONNumber(t, rawLimit, "minimum", float64(searxng.MinResultLimit))
 	verifyJSONNumber(t, rawLimit, "maximum", float64(searxng.MaxResultLimit))
+
+	// Schema must declare default equal to DefaultResultLimit.
+	verifyJSONNumber(t, rawLimit, "default", float64(searxng.DefaultResultLimit))
 }
 
-// TestMCPSearchSchemaSafeSearchBoundsDeriveFromConstant guards the MCP
-// JSON Schema for the `safesearch` parameter.
-func TestMCPSearchSchemaSafeSearchBoundsDeriveFromConstant(t *testing.T) {
+// TestMCPSearchSchemaSafeSearchDerivesFromConstant guards the MCP JSON
+// Schema for the `safesearch` parameter.
+func TestMCPSearchSchemaSafeSearchDerivesFromConstant(t *testing.T) {
 	t.Parallel()
 
 	data, err := buildSearchSchema()
@@ -188,11 +191,12 @@ func TestMCPSearchSchemaSafeSearchBoundsDeriveFromConstant(t *testing.T) {
 
 	verifyJSONNumber(t, raw, "minimum", float64(searxng.MinSafeSearch))
 	verifyJSONNumber(t, raw, "maximum", float64(searxng.MaxSafeSearch))
+	verifyJSONNumber(t, raw, "default", float64(searxng.MinSafeSearch))
 }
 
-// TestMCPSearchSchemaPagenoBoundsDeriveFromConstant guards the MCP JSON
-// Schema for the `pageno` parameter.
-func TestMCPSearchSchemaPagenoBoundsDeriveFromConstant(t *testing.T) {
+// TestMCPSearchSchemaPagenoDerivesFromConstant guards the MCP JSON Schema
+// for the `pageno` parameter.
+func TestMCPSearchSchemaPagenoDerivesFromConstant(t *testing.T) {
 	t.Parallel()
 
 	data, err := buildSearchSchema()
@@ -218,6 +222,7 @@ func TestMCPSearchSchemaPagenoBoundsDeriveFromConstant(t *testing.T) {
 	}
 
 	verifyJSONNumber(t, raw, "minimum", float64(searxng.MinPageno))
+	verifyJSONNumber(t, raw, "default", float64(searxng.MinPageno))
 }
 
 // TestParseArgsDefaultLimitMatchesConstant guards the CLI defaulting policy:

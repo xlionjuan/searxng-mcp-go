@@ -48,6 +48,10 @@ type ParamDef struct {
 	// Examples is an optional list of example values for JSON Schema examples.
 	Examples []string
 
+	// DefaultInt is the typed integer default for the JSON Schema "default" keyword.
+	// Populate this when the GoType is "int" and a default exists.
+	DefaultInt *int
+
 	// Required indicates whether the parameter is required.
 	Required bool
 }
@@ -58,6 +62,7 @@ var (
 	paramMinPage       = MinPageno
 	paramMinLimit      = MinResultLimit
 	paramMaxLimit      = MaxResultLimit
+	paramDefaultLimit  = DefaultResultLimit
 )
 
 // errUnexpectedGoType is a sentinel error for FlagDefault when a ParamDef
@@ -98,6 +103,7 @@ var SearchParams = []ParamDef{
 		CLIHelp:     fmt.Sprintf("SafeSearch level: 0=Off, 1=Moderate, 2=Strict [default: %d]", MinSafeSearch),
 		CLIType:     "0-2",
 		MCPType:     "integer",
+		DefaultInt:  &paramMinSafeSearch,
 		Minimum:     &paramMinSafeSearch,
 		Maximum:     &paramMaxSafeSearch,
 	},
@@ -137,6 +143,7 @@ var SearchParams = []ParamDef{
 		CLIType:     "N",
 		MCPType:     "integer",
 		Nullable:    true,
+		DefaultInt:  &paramMinPage,
 		Minimum:     &paramMinPage,
 	},
 	{
@@ -145,10 +152,11 @@ var SearchParams = []ParamDef{
 		CLIHelp: fmt.Sprintf(
 			"Maximum number of results to return (%d-%d) [default: %d]",
 			MinResultLimit, MaxResultLimit, DefaultResultLimit),
-		CLIType: "N",
-		MCPType: "integer",
-		Minimum: &paramMinLimit,
-		Maximum: &paramMaxLimit,
+		CLIType:    "N",
+		MCPType:    "integer",
+		DefaultInt: &paramDefaultLimit,
+		Minimum:    &paramMinLimit,
+		Maximum:    &paramMaxLimit,
 	},
 }
 
@@ -180,6 +188,10 @@ func (p ParamDef) JSONSchema() map[string]any {
 		examples := make([]string, len(p.Examples))
 		copy(examples, p.Examples)
 		prop["examples"] = examples
+	}
+
+	if p.DefaultInt != nil {
+		prop["default"] = *p.DefaultInt
 	}
 
 	if p.Nullable {
