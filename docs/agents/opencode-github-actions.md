@@ -110,6 +110,14 @@ controlled, treat the title as an Action limitation, not a task failure. Do not
 spend the run fighting generated titles unless the user explicitly asked to
 rename the PR and the runtime provides a reliable edit path.
 
+When the user explicitly asks OpenCode to fix, rename, or update an existing PR
+title, the title is no longer an uncontrollable creation-time artifact. Read
+`docs/agents/pull-requests.md#pr-title-policy`, then set a concise English
+title with an allowed semantic prefix. Do not update a PR title to a filename,
+issue fragment, agent status, or title without a semantic prefix. If the request
+was triggered by a title-related status check, inspect the check message before
+editing and make the new title satisfy that policy.
+
 Automatically appended OpenCode session links, social-card images, and GitHub
 Actions run links are allowed as supplemental metadata. They must not replace
 the normal PR body sections.

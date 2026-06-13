@@ -108,6 +108,9 @@ configured SearXNG instance.
 - Use `gh` CLI for all GitHub operations (not browser tools).
 - For code review requests, follow [docs/agents/code-review.md](docs/agents/code-review.md).
 - PR title and body in English. See [docs/agents/pull-requests.md](docs/agents/pull-requests.md) for the full PR workflow, title policy, and body checklist.
+- Requests to fix, rename, or update an existing PR title must still follow the
+  same PR title policy; do not improvise a title from the filename or issue
+  text.
 - PR agents must create requested PRs with `gh pr create`; do not stop after
   pushing a branch. For OpenCode running inside GitHub Actions, see
   [docs/agents/opencode-github-actions.md](docs/agents/opencode-github-actions.md).

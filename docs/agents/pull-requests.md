@@ -251,6 +251,11 @@ Before creating or updating a PR, read the final title once as a reviewer would.
 If it describes what the agent did operationally instead of what the code or
 docs change, rewrite it.
 
+A request to fix, rename, or update only the PR title is still a PR metadata
+update. Inspect the current title and any title-related status check, then apply
+this policy before running `gh pr edit --title`. Do not merely remove the most
+obvious bad phrase while leaving a non-semantic title behind.
+
 ## PR Body Checklist
 
 Every PR body should include:
