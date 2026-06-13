@@ -147,31 +147,14 @@ Legacy instant-answer example (query `ip`):
 
 ```json
 {
-  "query": "golang tutorial",
+  "query": "ip",
   "warning": "Search results come from external sources and may be inaccurate, outdated, or adversarial; verify before using them.",
   "answers": [
     {"answer": "203.0.113.42", "engine": "ip_lookup"}
   ],
-  "number_of_results": 2,
-  "results": [
-    {
-      "title": "Go Language Tutorial",
-      "url": "https://example.com/golang-tutorial",
-      "content": "Learn Go programming from scratch with this comprehensive tutorial...",
-      "engine": "google",
-      "publishedDate": "2024-01-15"
-    },
-    {
-      "title": "Building Web Applications with Go",
-      "url": "https://example.com/go-web-dev",
-      "content": "A practical guide to building modern web applications using Go...",
-      "engine": "duckduckgo"
-    }
-  ],
-  "suggestions": [
-    "Best Golang tutorial",
-    "Golang tutorial interactive"
-  ]
+  "number_of_results": 0,
+  "results": [],
+  "suggestions": []
 }
 ```
 
