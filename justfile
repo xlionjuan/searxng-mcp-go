@@ -136,6 +136,18 @@ test-server-logs:
 # Restart the background SearXNG test server
 test-server-restart: test-server-stop test-server-start
 
+# Check that documented release steps match release.yml step names
+# Fails if a documented step name cannot be found in .github/workflows/release.yml.
+# Run after editing either the doc or the workflow.
+check-release-doc:
+    @echo "Checking release.md steps match release.yml..."
+    @grep -q "go mod download.*go mod verify" docs/agents/release.md || { echo "FAIL: missing 'go mod download' step in doc"; exit 1; }
+    @grep -q "Check module files are tidy" docs/agents/release.md || { echo "FAIL: missing 'Check module files are tidy' in doc"; exit 1; }
+    @grep -q "go build -o /tmp/searxng-mcp-go" docs/agents/release.md || { echo "FAIL: missing build step in doc"; exit 1; }
+    @grep -q "go test -race -shuffle=on" docs/agents/release.md || { echo "FAIL: missing test step in doc"; exit 1; }
+    @grep -q "golangci-lint run" docs/agents/release.md || { echo "FAIL: missing lint step in doc"; exit 1; }
+    @echo "OK — all steps documented."
+
 # Unit-test the is_searxng_pid helper (PID ownership contract)
 test-server-pid-helper:
     bash searxng-server-test/test-pid-helper.sh
