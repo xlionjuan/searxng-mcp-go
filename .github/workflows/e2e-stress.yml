@@ -47,7 +47,7 @@ jobs:
       - name: E2E stress test
         env:
           E2E_MCP_BINARY: ./searxng-mcp-go
-        run: go test -v -tags='e2e stress' -run 'TestMCPStress' -count=1 -timeout=900s .
+        run: go test -v -tags='e2e stress' -run 'TestMCPStress' -race -count=1 -timeout=900s .
 
       - name: Cleanup
         if: always()
