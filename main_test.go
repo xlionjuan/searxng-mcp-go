@@ -71,13 +71,20 @@ func TestMainRoutesParseErrorToStderr(t *testing.T) {
 	os.Stderr = stderrW
 
 	readCh := make(chan string)
+
 	go func() {
 		var buf bytes.Buffer
-		_, _ = buf.ReadFrom(stderrR)
+
+		_, readErr := buf.ReadFrom(stderrR)
+		if readErr != nil {
+			t.Errorf("failed to read from stderr pipe: %v", err)
+		}
+
 		readCh <- buf.String()
 	}()
 
 	// Call printParseError with os.Stderr — same routing as main().
+	//nolint:dogsled // parseArgs returns 4 values; only error is needed
 	_, _, _, parseErr := parseArgs([]string{"--unknown"})
 	if parseErr == nil {
 		t.Fatal("expected parse error, got nil")
@@ -88,7 +95,11 @@ func TestMainRoutesParseErrorToStderr(t *testing.T) {
 		printParseError(parseErr, os.Stderr)
 	})
 
-	_ = stderrW.Close()
+	err = stderrW.Close()
+	if err != nil {
+		t.Errorf("failed to close stderr pipe: %v", err)
+	}
+
 	os.Stderr = oldStderr
 
 	stderrOutput := <-readCh
