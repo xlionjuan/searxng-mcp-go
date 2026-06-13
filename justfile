@@ -88,7 +88,7 @@ mod-verify:
 
 # Run govulncheck
 vulncheck:
-    go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+    go tool govulncheck ./...
 
 # Remove build artifacts and coverage files
 clean:
