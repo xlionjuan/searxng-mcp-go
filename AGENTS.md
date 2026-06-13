@@ -96,8 +96,10 @@ configured SearXNG instance.
 
 - Code changes must be verified with the narrowest meaningful build/test command before committing.
 - Before opening or updating a PR, or reporting a code-changing task complete,
-  all AI agents must run the non-E2E workflow checks listed in
-  [docs/agents/verification.md](docs/agents/verification.md).
+  all AI agents must select and run the verification gate described in
+  [docs/agents/verification.md](docs/agents/verification.md) for the affected
+  surface. Do not run the Go completion gate for changes that cannot affect Go
+  code, dependencies, build, test, lint, or release behavior.
 - See [docs/agents/verification.md](docs/agents/verification.md) for build, test, lint, and E2E commands.
 - Pure documentation changes (`.md` files only) do not require the build, test, or lint gates above.
 

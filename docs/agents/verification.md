@@ -4,8 +4,15 @@
   commands before committing. Broaden verification for shared behavior, public
   interfaces, test infrastructure, or release/CI changes.
 - PR agents must run local verification before opening or updating a PR or
-  reporting the task complete. For Go code, test, CI, or script changes, the
-  minimum completion gate is the non-E2E workflow checks listed below.
+  reporting the task complete. Choose the gate by the affected surface. For Go
+  code, Go tests, dependencies, Go-related scripts, or workflows that execute or
+  configure Go build/test/lint/release behavior, the minimum completion gate is
+  the non-E2E workflow checks listed below.
+- Do not run the Go completion gate for changes that cannot affect Go code,
+  dependencies, build, test, lint, or release behavior. For example, pure
+  documentation changes and GitHub Actions metadata or prompt-only changes
+  should use narrow validation such as diff checks, YAML parsing, or actionlint
+  when available.
 - If `golangci-lint` is unavailable, run `go vet ./...` as the fallback static
   check and state in the PR body that the linter itself could not be run.
 - If a subagent made code changes, the coordinating agent must review and verify
@@ -33,11 +40,12 @@ Root benchmarks live in `bench_test.go`; internal benchmarks live in
 ## Completion Gate for AI Agents
 
 Before any AI agent opens a PR, updates a PR, or reports a code-changing task
-complete, it must run the non-E2E checks that are listed in this repository's
-workflows and are executable in the agent environment.
+complete, it must run the gate that matches the touched surface.
 
-For Go code changes, run the `.github/workflows/test.yml` checks except the E2E
-workflow:
+For Go code, Go tests, Go dependencies, Go-related scripts, or workflow changes
+that alter Go setup, Go commands, test/lint commands, release builds, or
+required environment for Go execution, run the `.github/workflows/test.yml`
+checks except the E2E workflow:
 
 - `go mod verify`
 - `go mod download`
@@ -51,6 +59,15 @@ Also run the `.github/workflows/lint.yml` checks:
 
 - `golangci-lint run --timeout 5m`
 - `golangci-lint fmt --diff`
+
+For workflow-only changes that do not affect Go execution, use targeted
+workflow validation instead of the Go completion gate. Examples include trigger
+metadata, concurrency groups, permissions that do not enable code mutation,
+manual-dispatch inputs, OpenCode prompts, labels, comments, or job names. At
+minimum, inspect the diff and run `git diff --check`; also run `actionlint` or a
+YAML parser when available. If the workflow change can change Go commands,
+toolchain versions, dependency behavior, test coverage, linting, release
+artifacts, or generated files, use the Go completion gate above.
 
 Do not treat the E2E workflow as a pre-completion requirement for AI agents.
 E2E requires the SearXNG test server and remains a pull-request status check.
