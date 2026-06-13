@@ -157,6 +157,9 @@ func TestMCPSearchSchemaLimitDefaultDerivesFromConstant(t *testing.T) {
 	// Schema must declare minimum/maximum equal to the shared bounds.
 	verifyJSONNumber(t, rawLimit, "minimum", float64(searxng.MinResultLimit))
 	verifyJSONNumber(t, rawLimit, "maximum", float64(searxng.MaxResultLimit))
+
+	// Schema must declare default equal to DefaultResultLimit.
+	verifyJSONNumber(t, rawLimit, "default", float64(searxng.DefaultResultLimit))
 }
 
 // TestMCPSearchSchemaSafeSearchBoundsDeriveFromConstant guards the MCP
@@ -188,6 +191,7 @@ func TestMCPSearchSchemaSafeSearchBoundsDeriveFromConstant(t *testing.T) {
 
 	verifyJSONNumber(t, raw, "minimum", float64(searxng.MinSafeSearch))
 	verifyJSONNumber(t, raw, "maximum", float64(searxng.MaxSafeSearch))
+	verifyJSONNumber(t, raw, "default", float64(searxng.MinSafeSearch))
 }
 
 // TestMCPSearchSchemaPagenoBoundsDeriveFromConstant guards the MCP JSON
@@ -218,6 +222,7 @@ func TestMCPSearchSchemaPagenoBoundsDeriveFromConstant(t *testing.T) {
 	}
 
 	verifyJSONNumber(t, raw, "minimum", float64(searxng.MinPageno))
+	verifyJSONNumber(t, raw, "default", float64(searxng.MinPageno))
 }
 
 // TestParseArgsDefaultLimitMatchesConstant guards the CLI defaulting policy:

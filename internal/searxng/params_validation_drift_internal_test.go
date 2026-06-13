@@ -460,7 +460,7 @@ func TestParamDefJSONSchema(t *testing.T) {
 		},
 		{
 			name: "safesearch", param: findParam(t, "safesearch"),
-			wantType: "integer", wantKeys: []string{"type", "description", "minimum", "maximum"},
+			wantType: "integer", wantKeys: []string{"type", "description", "default", "minimum", "maximum"},
 		},
 		{
 			name: "time_range", param: findParam(t, "time_range"),
@@ -472,11 +472,11 @@ func TestParamDefJSONSchema(t *testing.T) {
 		},
 		{
 			name: "pageno", param: findParam(t, "pageno"),
-			wantType: []string{"null", "integer"}, wantKeys: []string{"type", "description", "minimum"},
+			wantType: []string{"null", "integer"}, wantKeys: []string{"type", "description", "default", "minimum"},
 		},
 		{
 			name: "limit", param: findParam(t, "limit"),
-			wantType: "integer", wantKeys: []string{"type", "description", "minimum", "maximum"},
+			wantType: "integer", wantKeys: []string{"type", "description", "default", "minimum", "maximum"},
 		},
 	}
 
@@ -497,6 +497,47 @@ func TestParamDefJSONSchema(t *testing.T) {
 				if _, ok := got[key]; !ok {
 					t.Errorf("missing key %q", key)
 				}
+			}
+		})
+	}
+}
+
+// TestJSONSchemaDefaultDerivesFromConstant verifies that every int-typed
+// parameter with a DefaultInt carries a JSON Schema "default" that matches
+// its source constant. This guards against drift between the schema and the
+// canonical default value.
+func TestJSONSchemaDefaultDerivesFromConstant(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		paramName string
+		want      int
+	}{
+		{name: "limit", paramName: "limit", want: DefaultResultLimit},
+		{name: "safesearch", paramName: "safesearch", want: MinSafeSearch},
+		{name: "pageno", paramName: "pageno", want: MinPageno},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			p := findParam(t, tt.paramName)
+			schema := p.JSONSchema()
+
+			raw, ok := schema["default"]
+			if !ok {
+				t.Fatal("JSONSchema() missing \"default\" key")
+			}
+
+			got, ok := raw.(int)
+			if !ok {
+				t.Fatalf("JSONSchema() default = %v (%T), want int", raw, raw)
+			}
+
+			if got != tt.want {
+				t.Errorf("JSONSchema() default = %d, want %d", got, tt.want)
 			}
 		})
 	}
