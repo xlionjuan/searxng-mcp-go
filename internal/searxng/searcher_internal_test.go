@@ -221,7 +221,7 @@ func TestSearch_LogsWarningOnExhaustedEmptyRetries(t *testing.T) {
 		}), 2)
 		s.logger = slog.New(slog.NewTextHandler(&buf, nil))
 
-		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "my-secret-password"})
 		if err != nil {
 			t.Fatalf("Search() error = %v, want nil", err)
 		}
@@ -239,12 +239,12 @@ func TestSearch_LogsWarningOnExhaustedEmptyRetries(t *testing.T) {
 			t.Fatalf("log output = %q, want exhausted-retries warning", logOutput)
 		}
 
-		if !strings.Contains(logOutput, "query=test") {
-			t.Fatalf("log output = %q, want query attribute", logOutput)
-		}
-
 		if !strings.Contains(logOutput, "attempts=3") {
 			t.Fatalf("log output = %q, want attempts=3 attribute", logOutput)
+		}
+
+		if strings.Contains(logOutput, "my-secret-password") {
+			t.Fatalf("log output = %q, must not contain raw query", logOutput)
 		}
 	})
 
@@ -285,6 +285,37 @@ func TestSearch_LogsWarningOnExhaustedEmptyRetries(t *testing.T) {
 
 		if strings.Contains(buf.String(), "search returned empty after exhausting retries") {
 			t.Fatalf("log output = %q, want no warning when maxRetries=0", buf.String())
+		}
+	})
+
+	t.Run("exhausted retries does not log URL-encoded or special characters in query", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			return makeJSONResponse(minimalJSONBody), nil
+		}), 2)
+		s.logger = slog.New(slog.NewTextHandler(&buf, nil))
+
+		_, err := s.Search(t.Context(), &SearchArgs{Query: "%2F..%2Fsecret+ssh+key"})
+		if err != nil {
+			t.Fatalf("Search() error = %v, want nil", err)
+		}
+
+		logOutput := buf.String()
+		if !strings.Contains(logOutput, "search returned empty after exhausting retries") {
+			t.Fatalf("log output = %q, want exhausted-retries warning", logOutput)
+		}
+
+		if !strings.Contains(logOutput, "attempts=3") {
+			t.Fatalf("log output = %q, want attempts=3 attribute", logOutput)
+		}
+
+		for _, s := range []string{"%2F..%2Fsecret+ssh+key", "%2F", "ssh+key"} {
+			if strings.Contains(logOutput, s) {
+				t.Fatalf("log output = %q, must not contain %q", logOutput, s)
+			}
 		}
 	})
 }
