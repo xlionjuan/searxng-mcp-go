@@ -150,7 +150,8 @@ func TestMCPErrors_DebugMode(t *testing.T) {
 
 	text := toolText(t, result)
 	if !strings.Contains(text, `"unresponsive_engines":[`) {
-		t.Fatalf("debug response JSON unresponsive_engines is missing or not an array (was it null?)\ntext:\n%s\nstderr:\n%s", text, stderr.String())
+		t.Fatalf("debug response JSON unresponsive_engines is missing or "+
+			"not an array (was it null?)\ntext:\n%s\nstderr:\n%s", text, stderr.String())
 	}
 
 	response := parseSearchResponse(t, result, stderr)
