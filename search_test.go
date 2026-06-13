@@ -469,10 +469,13 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := searcher.Close(); err != nil {
+		err = searcher.Close()
+		if err != nil {
 			t.Fatalf("first Close() = %v, want nil", err)
 		}
-		if err := searcher.Close(); err != nil {
+
+		err = searcher.Close()
+		if err != nil {
 			t.Fatalf("second Close() = %v, want nil", err)
 		}
 	})
@@ -485,10 +488,13 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := searcher.Close(); err != nil {
+		err = searcher.Close()
+		if err != nil {
 			t.Fatalf("first Close() = %v, want nil", err)
 		}
-		if err := searcher.Close(); err != nil {
+
+		err = searcher.Close()
+		if err != nil {
 			t.Fatalf("second Close() = %v, want nil", err)
 		}
 	})
@@ -504,10 +510,13 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := searcher.Close(); err != nil {
+		err = searcher.Close()
+		if err != nil {
 			t.Fatalf("first Close() = %v, want nil", err)
 		}
-		if err := searcher.Close(); err != nil {
+
+		err = searcher.Close()
+		if err != nil {
 			t.Fatalf("second Close() = %v, want nil", err)
 		}
 	})
