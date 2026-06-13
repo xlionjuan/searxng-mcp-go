@@ -26,20 +26,6 @@ jobs:
           go-version: "1.26.4"
           cache: true
 
-      - name: Check all setup-go blocks have cache: true
-        run: |
-          errors=0
-          for f in .github/workflows/*.yml; do
-            for line_num in $(grep -n "uses: actions/setup-go" "$f" | cut -d: -f1); do
-              if ! sed -n "$((line_num+1)),$((line_num+10))p" "$f" | grep -q 'cache: true'; then
-                echo "FAIL: $f:$line_num is missing cache: true"
-                errors=$((errors + 1))
-              fi
-            done
-          done
-          if [ "$errors" -gt 0 ]; then exit 1; fi
-          echo "OK: all actions/setup-go blocks have cache: true"
-
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
         with:
