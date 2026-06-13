@@ -149,8 +149,8 @@ func TestMCPErrors_DebugMode(t *testing.T) {
 	}
 
 	text := toolText(t, result)
-	if !strings.Contains(text, `"unresponsive_engines"`) {
-		t.Fatalf("debug response JSON does not contain unresponsive_engines\ntext:\n%s\nstderr:\n%s", text, stderr.String())
+	if !strings.Contains(text, `"unresponsive_engines":[`) {
+		t.Fatalf("debug response JSON unresponsive_engines is missing or not an array (was it null?)\ntext:\n%s\nstderr:\n%s", text, stderr.String())
 	}
 
 	response := parseSearchResponse(t, result, stderr)
@@ -158,10 +158,11 @@ func TestMCPErrors_DebugMode(t *testing.T) {
 		t.Logf("debug mode response fields returned no results\nresponse: %#v\nstderr:\n%s", response, stderr.String())
 	}
 
-	if response.UnresponsiveEngines == nil {
-		t.Fatalf("response.UnresponsiveEngines is nil, "+
-			"want debug JSON field to unmarshal as empty or populated slice\ntext:\n%s\nstderr:\n%s",
-			text, stderr.String())
+	if len(response.UnresponsiveEngines) == 0 {
+		warnings.Addf("debug mode response has no unresponsive engines; " +
+			"live server may not have produced any, but the wire-format contract is preserved")
+		t.Logf("response.UnresponsiveEngines is empty, want at least one entry\nstderr:\n%s",
+			stderr.String())
 	}
 
 	// Verify the response is valid JSON and contains expected fields.

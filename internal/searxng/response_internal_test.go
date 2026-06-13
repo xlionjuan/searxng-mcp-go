@@ -977,6 +977,36 @@ func TestNormalizeResponse(t *testing.T) {
 	})
 }
 
+// --- MarshalJSON tests ---
+
+func TestMarshalSearchResponse_DebugUnresponsiveEngines(t *testing.T) {
+	t.Parallel()
+
+	resp := SearchResponse{
+		Query:               "test",
+		Warning:             ExternalContentWarning,
+		Results:             []SearchResult{},
+		Suggestions:         []string{},
+		UnresponsiveEngines: [][]string{{"brave", "msg"}},
+		Debug:               true,
+	}
+
+	data, err := resp.MarshalJSON()
+	if err != nil {
+		t.Fatalf("MarshalJSON() error = %v", err)
+	}
+
+	jsonStr := string(data)
+
+	if !strings.Contains(jsonStr, `"brave","msg"`) {
+		t.Fatalf("MarshalJSON() output does not contain unresponsive engine entries\njson:\n%s", jsonStr)
+	}
+
+	if !strings.Contains(jsonStr, `"unresponsive_engines":[`) {
+		t.Fatalf("MarshalJSON() unresponsive_engines field is not an array\njson:\n%s", jsonStr)
+	}
+}
+
 // --- Logger routing regression tests ---
 // These tests verify that response-processing diagnostics route through
 // the configured Config.Logger rather than the package-global slog.
