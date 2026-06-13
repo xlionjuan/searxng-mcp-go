@@ -36,6 +36,7 @@ func validateSearchArgsErr(args *SearchArgs) error {
 	return err
 }
 
+//nolint:gocognit // test exercises many branches across subtests
 func TestValidateSearchArgs(t *testing.T) {
 	t.Parallel()
 
@@ -121,6 +122,41 @@ func TestValidateSearchArgs(t *testing.T) {
 
 		limit := 21
 		requireValidationError(t, validateSearchArgsErr(&SearchArgs{Query: "test", Limit: &limit}), "limit")
+	})
+
+	t.Run("deep copy prevents pointer aliasing for Pageno and Limit", func(t *testing.T) {
+		t.Parallel()
+
+		pageno := 2
+		limit := 10
+		origPageno := pageno
+		origLimit := limit
+
+		args := &SearchArgs{Query: "test", Pageno: &pageno, Limit: &limit}
+
+		got, err := ValidateSearchArgs(args)
+		if err != nil {
+			t.Fatalf("ValidateSearchArgs() error = %v, want nil", err)
+		}
+
+		if got.Pageno == args.Pageno {
+			t.Fatal("Pageno pointer was not deep-copied: got.Pageno == args.Pageno")
+		}
+
+		if got.Limit == args.Limit {
+			t.Fatal("Limit pointer was not deep-copied: got.Limit == args.Limit")
+		}
+
+		*got.Pageno = 99
+		*got.Limit = 99
+
+		if *args.Pageno != origPageno {
+			t.Fatalf("original Pageno mutated by result: got %d, want %d", *args.Pageno, origPageno)
+		}
+
+		if *args.Limit != origLimit {
+			t.Fatalf("original Limit mutated by result: got %d, want %d", *args.Limit, origLimit)
+		}
 	})
 
 	t.Run("Language auto normalized to empty", func(t *testing.T) {
