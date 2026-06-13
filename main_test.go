@@ -1211,11 +1211,14 @@ func TestRunCLIMode_VersionFlag(t *testing.T) {
 func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
 	t.Parallel()
 
-	flags := &CLIFlags{Query: "test", SearXNGURL: "http://localhost:99999", Language: "", SafeSearch: 0, Pageno: nil}
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
+	server.Close()
+
+	flags := &CLIFlags{Query: "test", SearXNGURL: server.URL, Language: "", SafeSearch: 0, Pageno: nil}
 
 	err := runCLIMode(false, flags, []string{})
 	if err == nil {
-		t.Fatal("expected error for invalid URL, got nil")
+		t.Fatal("expected error for connection refused, got nil")
 	}
 
 	if !strings.Contains(err.Error(), "search error") {
