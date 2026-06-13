@@ -107,11 +107,11 @@ func TestConcurrentContextCancellation(t *testing.T) {
 	const numGoroutines = 10
 
 	var (
-		successCount     int64
-		errorCount       int64
-		contextCanceledCount   int64
+		successCount         int64
+		errorCount           int64
+		contextCanceledCount int64
 		unexpectedErrors     []error
-		mu               sync.Mutex
+		mu                   sync.Mutex
 	)
 
 	var wg sync.WaitGroup
