@@ -469,8 +469,12 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		_ = searcher.Close() //nolint:errcheck // test cleanup; error is non-actionable
-		_ = searcher.Close() //nolint:errcheck // test cleanup; double-close is intentional; error is non-actionable
+		if err := searcher.Close(); err != nil {
+			t.Fatalf("first Close() = %v, want nil", err)
+		}
+		if err := searcher.Close(); err != nil {
+			t.Fatalf("second Close() = %v, want nil", err)
+		}
 	})
 
 	t.Run("shared default client", func(t *testing.T) {
@@ -481,8 +485,12 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		_ = searcher.Close() //nolint:errcheck // test cleanup; error is non-actionable
-		_ = searcher.Close() //nolint:errcheck // test cleanup; double-close is intentional; error is non-actionable
+		if err := searcher.Close(); err != nil {
+			t.Fatalf("first Close() = %v, want nil", err)
+		}
+		if err := searcher.Close(); err != nil {
+			t.Fatalf("second Close() = %v, want nil", err)
+		}
 	})
 
 	t.Run("custom client", func(t *testing.T) {
@@ -496,8 +504,12 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		_ = searcher.Close() //nolint:errcheck // test cleanup; error is non-actionable
-		_ = searcher.Close() //nolint:errcheck // test cleanup; double-close is intentional; error is non-actionable
+		if err := searcher.Close(); err != nil {
+			t.Fatalf("first Close() = %v, want nil", err)
+		}
+		if err := searcher.Close(); err != nil {
+			t.Fatalf("second Close() = %v, want nil", err)
+		}
 	})
 }
 
