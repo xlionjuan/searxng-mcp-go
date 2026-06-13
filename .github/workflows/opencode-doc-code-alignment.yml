@@ -18,7 +18,7 @@ on:
         default: ""
 
 concurrency:
-  group: ${{ github.event.comment.id }}
+  group: ${{ github.workflow }}-${{ github.run_id }}
 
 jobs:
   opencode-doc-code-alignment:
