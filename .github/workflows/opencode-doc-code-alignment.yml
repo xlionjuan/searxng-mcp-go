@@ -80,9 +80,19 @@ jobs:
             - allow_pr: ${{ inputs.allow_pr }}
             - extra_instructions: ${{ inputs.extra_instructions }}
 
+            Mandatory execution gates:
+            - First, run `git status --short --branch` and record whether the worktree was clean.
+            - Interpret `review_scope` before reviewing:
+              - `all` means inspect all review dimensions.
+              - A path or topic hint limits the primary review to that scope plus directly referenced code, docs, tests, and workflows.
+              - State the interpreted scope in the final output.
+            - `extra_instructions` may narrow scope or add checks. If it conflicts with AGENTS.md, protected repository rules, Git identity rules, or this workflow's `allow_pr` policy, follow the stricter repository/workflow rule and mention the conflict in the final output.
+            - Read AGENTS.md and every repository document directly referenced by this prompt before creating Issues or PRs.
+
             Use a subagent-based workflow when the environment supports it:
             - Assign independent read-only subagents to inspect different review dimensions.
             - Each subagent should gather evidence only and avoid file changes.
+            - Subagents must not create Issues, PRs, comments, commits, or file changes.
             - The coordinating agent must merge overlapping findings, remove duplicates, and calibrate severity.
             - Use external verification only for time-sensitive or upstream-dependent facts, and cite authoritative sources when such verification is used.
             - If subagents are not available, perform the same review dimensions sequentially in a single agent run.
@@ -134,10 +144,24 @@ jobs:
                  - Medium: likely to mislead contributors or cause wrong usage.
                  - Low: clarity, completeness, or maintenance improvement.
 
+            False-positive control:
+            - Prefer precision over recall. It is acceptable to report fewer findings.
+            - Do not create an Issue or PR from intuition alone.
+            - Every actionable finding must cite exact repository evidence with file paths and line numbers.
+            - For stale-documentation findings, cite both the documentation claim and the code, test, workflow, or ADR evidence that contradicts it.
+            - For missing-documentation findings, cite both the code, test, workflow, or ADR behavior and the expected documentation location that was searched.
+            - Before creating an Issue or PR, actively look for counterevidence in adjacent docs, tests, ADRs, workflows, and implementation code.
+            - If line-level evidence is incomplete, list the item as a candidate in the final output only; do not create an Issue.
+            - If the item depends on maintainer preference, product judgment, naming preference, or an interpretation not directly settled by repository evidence, do not create an Issue. List it as an open question or candidate instead.
+            - Low-severity findings should not become Issues unless they are repeated, systematic, or explicitly requested by `extra_instructions`.
+            - Do not claim "no documentation updates needed" unless each requested review dimension was inspected or explicitly ruled out by scope.
+
             Decision policy for Issues vs PR:
             - Default to opening GitHub Issues, not PRs, for audit findings.
             - Open one Issue per coherent finding or tightly related finding group.
             - Do not create a single omnibus Issue if findings are independent.
+            - Before creating any Issue, run `gh issue list --state all --search "<key terms>"` to check for duplicates. If an existing Issue already covers the finding, do not create a new Issue; list the existing Issue in the final output.
+            - Cap newly created Issues to the highest-signal findings. If there are many candidates, create Issues for High and Medium findings first, then summarize the rest in the final output.
             - Do not open a PR for findings that require maintainer judgment, product decisions, ADR changes, release policy changes, or broad cross-document rewrites.
             - Open a PR only when allow_pr is true and all of these are true:
               - the fix is narrow and unambiguous;
@@ -148,6 +172,8 @@ jobs:
             - If allow_pr is false, do not modify files and do not open PRs.
             - If opening a PR, keep the PR title and body in English and include summary, docs impact, tests run, linked issues, and limitations.
             - If only Issues are opened, do not modify files.
+            - If allow_pr is false, do not run formatters, `go mod tidy`, generated-code commands, or other commands known to rewrite files.
+            - Before final output, run `git status --short`. If allow_pr is false and the worktree is dirty, restore only changes created during this run if safe; otherwise stop and report the dirty files.
 
             Issue labeling:
             - Before applying labels, run `gh label list` and follow docs/agents/triage-labels.md.
@@ -161,7 +187,8 @@ jobs:
             - severity
             - category
             - affected files
-            - evidence from code/docs/tests
+            - evidence from code/docs/tests with file paths and line numbers
+            - counterevidence checked
             - why it matters
             - recommended action
             - whether it should be an Issue or PR
@@ -170,11 +197,17 @@ jobs:
             - if PR: exact intended scope and required verification
 
             Final output:
+            - State the interpreted scope.
+            - List the main files and documents inspected.
+            - List commands run.
             - Summarize the number of findings by severity and category.
             - List Issues created, if any, with links.
+            - List duplicate or already-covered Issues found, if any.
             - List PRs created, if any, with links.
+            - List candidate findings not filed because evidence was incomplete, severity was low, or maintainer judgment was required.
             - If no Issues or PRs were created, explain why.
             - Explicitly state whether documentation updates are needed.
+            - Include the final `git status --short` result.
         env:
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
