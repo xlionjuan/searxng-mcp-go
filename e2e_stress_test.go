@@ -252,7 +252,7 @@ func TestMCPStress_Stability(t *testing.T) {
 		t.Skip("SEARXNG_URL not set")
 	}
 
-	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
 	defer cancel()
 
 	binaryPath := os.Getenv("E2E_MCP_BINARY")
@@ -302,12 +302,16 @@ func TestMCPStress_Stability(t *testing.T) {
 				}
 			}
 
-			// Wait 3 seconds between searches (but not after the last one)
+			// 3s inter-search delay gives rate-limited engines time to recover.
+			// The test server's engine config should eventually make this
+			// unnecessary; see docs/agents/e2e-tests.md and searxng-server-test/.
 			if i < len(queries)-1 {
+				timer := time.NewTimer(3 * time.Second)
+				defer timer.Stop()
 				select {
 				case <-ctx.Done():
 					t.Fatalf("context cancelled during inter-search delay")
-				case <-time.After(3 * time.Second):
+				case <-timer.C:
 				}
 			}
 		})
