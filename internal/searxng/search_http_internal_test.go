@@ -6,11 +6,30 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"searxng-mcp-go/internal/testhelper"
 )
+
+// closeCounter wraps an io.ReadCloser and counts Close calls into a shared
+// counter. Use in regression tests to detect double-close bugs — each HTTP
+// response body should be closed exactly once.
+type closeCounter struct {
+	io.ReadCloser
+
+	mu    *sync.Mutex
+	total *int
+}
+
+func (c *closeCounter) Close() error {
+	c.mu.Lock()
+	*c.total++
+	c.mu.Unlock()
+
+	return c.ReadCloser.Close()
+}
 
 // ---------------------------------------------------------------------------
 // Search function tests (full flow via mock HTTP client)
@@ -657,6 +676,89 @@ func TestSearch_EmptyResponseRetryDoesNotSpin(t *testing.T) {
 			t.Fatal("Search() result = nil, want non-nil")
 
 			return
+		}
+	})
+}
+
+// Regression test: the empty-response retry path must not close a response
+// body that finishResponse already closed. Each HTTP response body should be
+// closed exactly once.
+func TestSearch_EmptyResponseRetryClosesBodyOnce(t *testing.T) {
+	t.Parallel()
+
+	t.Run("each empty body is closed exactly once across retries", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			mu              sync.Mutex
+			totalCloseCalls int
+		)
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			body := &closeCounter{
+				ReadCloser: io.NopCloser(strings.NewReader(minimalJSONBody)),
+				mu:         &mu,
+				total:      &totalCloseCalls,
+			}
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       body,
+			}, nil
+		}), 2)
+
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err != nil {
+			t.Fatalf("Search() error = %v, want nil", err)
+		}
+
+		if result == nil {
+			t.Fatal("Search() result = nil, want non-nil")
+		}
+
+		// 3 HTTP requests (initial + 2 retries of empty responses).
+		// Without the fix, attempts 0 and 1 each get double-closed
+		// (finishResponse + retry loop), producing 5 total Close calls.
+		// With the fix each body is closed exactly once → 3 calls.
+		if totalCloseCalls != 3 {
+			t.Fatalf("total body Close() calls = %d, want 3 (one per HTTP request)", totalCloseCalls)
+		}
+	})
+
+	t.Run("zero retries closes body once", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			mu              sync.Mutex
+			totalCloseCalls int
+		)
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			body := &closeCounter{
+				ReadCloser: io.NopCloser(strings.NewReader(minimalJSONBody)),
+				mu:         &mu,
+				total:      &totalCloseCalls,
+			}
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       body,
+			}, nil
+		}), 0)
+
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err != nil {
+			t.Fatalf("Search() error = %v, want nil", err)
+		}
+
+		if result == nil {
+			t.Fatal("Search() result = nil, want non-nil")
+		}
+
+		if totalCloseCalls != 1 {
+			t.Fatalf("total body Close() calls = %d, want 1", totalCloseCalls)
 		}
 	})
 }
