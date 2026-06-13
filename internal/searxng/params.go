@@ -52,14 +52,6 @@ type ParamDef struct {
 	// Populate this when the GoType is "int" and a default exists.
 	DefaultInt *int
 
-	// DefaultString is the typed string default for the JSON Schema "default" keyword.
-	// Populate this when the GoType is "string" and the default should appear in the schema.
-	DefaultString *string
-
-	// DefaultBool is the typed boolean default for the JSON Schema "default" keyword.
-	// Populate this when the GoType is "bool" and a default exists.
-	DefaultBool *bool
-
 	// Required indicates whether the parameter is required.
 	Required bool
 }
@@ -198,13 +190,8 @@ func (p ParamDef) JSONSchema() map[string]any {
 		prop["examples"] = examples
 	}
 
-	switch {
-	case p.DefaultInt != nil:
+	if p.DefaultInt != nil {
 		prop["default"] = *p.DefaultInt
-	case p.DefaultString != nil:
-		prop["default"] = *p.DefaultString
-	case p.DefaultBool != nil:
-		prop["default"] = *p.DefaultBool
 	}
 
 	if p.Nullable {

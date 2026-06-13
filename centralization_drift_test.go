@@ -164,7 +164,7 @@ func TestMCPSearchSchemaLimitDefaultDerivesFromConstant(t *testing.T) {
 
 // TestMCPSearchSchemaSafeSearchBoundsDeriveFromConstant guards the MCP
 // JSON Schema for the `safesearch` parameter.
-func TestMCPSearchSchemaSafeSearchBoundsDeriveFromConstant(t *testing.T) {
+func TestMCPSearchSchemaSafeSearchDerivesFromConstant(t *testing.T) {
 	t.Parallel()
 
 	data, err := buildSearchSchema()
@@ -196,7 +196,7 @@ func TestMCPSearchSchemaSafeSearchBoundsDeriveFromConstant(t *testing.T) {
 
 // TestMCPSearchSchemaPagenoBoundsDeriveFromConstant guards the MCP JSON
 // Schema for the `pageno` parameter.
-func TestMCPSearchSchemaPagenoBoundsDeriveFromConstant(t *testing.T) {
+func TestMCPSearchSchemaPagenoDerivesFromConstant(t *testing.T) {
 	t.Parallel()
 
 	data, err := buildSearchSchema()
