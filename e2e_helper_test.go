@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -17,6 +18,32 @@ import (
 
 	"searxng-mcp-go/internal/searxng"
 )
+
+// stderrBuffer is the interface for capturing stderr output from a running
+// MCP subprocess. Both *bytes.Buffer and *safeBuffer satisfy it.
+type stderrBuffer interface {
+	String() string
+	io.Writer
+}
+
+// safeBuffer is a thread-safe wrapper around bytes.Buffer for use when a
+// subprocess writes to the buffer concurrently with test goroutines.
+type safeBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *safeBuffer) Write(p []byte) (n int, err error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *safeBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
 
 // =============================================================================
 // Session lifecycle helpers
@@ -67,7 +94,7 @@ func removeEnv(env []string, key string) []string {
 // session. The caller is responsible for cleanup.
 func newMCPSession(
 	ctx context.Context, t *testing.T, cmd *exec.Cmd,
-	stderr *bytes.Buffer, clientName string,
+	stderr stderrBuffer, clientName string,
 ) *mcp.ClientSession {
 	t.Helper()
 
@@ -93,7 +120,7 @@ func newMCPSession(
 func startMCPSession(
 	ctx context.Context, t *testing.T, searxngURL string,
 	extraEnv ...string,
-) (*mcp.ClientSession, *bytes.Buffer, *exec.Cmd) { //nolint:unparam // test helper returns cmd for optional caller use
+) (*mcp.ClientSession, stderrBuffer, *exec.Cmd) { //nolint:unparam // test helper returns cmd for optional caller use
 	t.Helper()
 
 	binaryPath := os.Getenv("E2E_MCP_BINARY")
@@ -103,7 +130,7 @@ func startMCPSession(
 
 	t.Logf("using MCP binary: %s", binaryPath)
 
-	var stderr bytes.Buffer
+	var stderr safeBuffer
 
 	cmd := exec.CommandContext(ctx, binaryPath) //nolint:gosec // test runs built binary
 	cmd.Env = e2eMCPEnv(searxngURL, extraEnv...)
@@ -136,7 +163,7 @@ func startMCPSession(
 // =============================================================================
 
 // findSearchTool lists tools and returns the "search" tool, verifying its schema.
-func findSearchTool(ctx context.Context, t *testing.T, session *mcp.ClientSession, stderr *bytes.Buffer) *mcp.Tool {
+func findSearchTool(ctx context.Context, t *testing.T, session *mcp.ClientSession, stderr stderrBuffer) *mcp.Tool {
 	t.Helper()
 
 	tools, err := session.ListTools(ctx, nil)
@@ -167,7 +194,7 @@ func callSearchTool(
 	t *testing.T,
 	session *mcp.ClientSession,
 	arguments map[string]any,
-	stderr *bytes.Buffer,
+	stderr stderrBuffer,
 ) *mcp.CallToolResult {
 	t.Helper()
 
@@ -189,7 +216,7 @@ func requireSearchResponse(
 	t *testing.T,
 	session *mcp.ClientSession,
 	arguments map[string]any,
-	stderr *bytes.Buffer,
+	stderr stderrBuffer,
 	name string,
 ) searxng.SearchResponse {
 	t.Helper()
@@ -212,7 +239,7 @@ func requireSearchResponse(
 }
 
 // parseSearchResponse unmarshals the tool result text into a SearchResponse.
-func parseSearchResponse(t *testing.T, result *mcp.CallToolResult, stderr *bytes.Buffer) searxng.SearchResponse {
+func parseSearchResponse(t *testing.T, result *mcp.CallToolResult, stderr stderrBuffer) searxng.SearchResponse {
 	t.Helper()
 
 	text := toolText(t, result)
@@ -259,7 +286,7 @@ func toolTextFromResult(result *mcp.CallToolResult) (string, bool) {
 // =============================================================================
 
 // requireSearchToolSchema verifies the search tool's JSON Schema constraints.
-func requireSearchToolSchema(t *testing.T, tool *mcp.Tool, stderr *bytes.Buffer) {
+func requireSearchToolSchema(t *testing.T, tool *mcp.Tool, stderr stderrBuffer) {
 	t.Helper()
 
 	schema := requireSchemaMap(t, tool.InputSchema, stderr)
@@ -307,7 +334,7 @@ func requireSearchToolSchema(t *testing.T, tool *mcp.Tool, stderr *bytes.Buffer)
 	requireStringEnum(t, timeRange, "enum", append([]string{""}, searxng.ValidTimeRanges()...), stderr)
 }
 
-func requireSchemaMap(t *testing.T, schema any, stderr *bytes.Buffer) map[string]any {
+func requireSchemaMap(t *testing.T, schema any, stderr stderrBuffer) map[string]any {
 	t.Helper()
 
 	if schemaMap, ok := schema.(map[string]any); ok {
@@ -329,7 +356,7 @@ func requireSchemaMap(t *testing.T, schema any, stderr *bytes.Buffer) map[string
 	return schemaMap
 }
 
-func requireProperty(t *testing.T, props map[string]any, name string, stderr *bytes.Buffer) map[string]any {
+func requireProperty(t *testing.T, props map[string]any, name string, stderr stderrBuffer) map[string]any {
 	t.Helper()
 
 	prop, ok := props[name].(map[string]any)
@@ -341,7 +368,7 @@ func requireProperty(t *testing.T, props map[string]any, name string, stderr *by
 	return prop
 }
 
-func requirePropertyType(t *testing.T, prop map[string]any, want string, stderr *bytes.Buffer) {
+func requirePropertyType(t *testing.T, prop map[string]any, want string, stderr stderrBuffer) {
 	t.Helper()
 
 	if got := prop["type"]; got != want {
@@ -349,7 +376,7 @@ func requirePropertyType(t *testing.T, prop map[string]any, want string, stderr 
 	}
 }
 
-func requirePropertyUnionType(t *testing.T, prop map[string]any, want []string, stderr *bytes.Buffer) {
+func requirePropertyUnionType(t *testing.T, prop map[string]any, want []string, stderr stderrBuffer) {
 	t.Helper()
 
 	got, ok := prop["type"].([]any)
@@ -368,7 +395,7 @@ func requirePropertyUnionType(t *testing.T, prop map[string]any, want []string, 
 	}
 }
 
-func requireNumber(t *testing.T, prop map[string]any, field string, want float64, stderr *bytes.Buffer) {
+func requireNumber(t *testing.T, prop map[string]any, field string, want float64, stderr stderrBuffer) {
 	t.Helper()
 
 	got, ok := prop[field].(float64)
@@ -381,7 +408,7 @@ func requireNumber(t *testing.T, prop map[string]any, field string, want float64
 	}
 }
 
-func requireStringEnum(t *testing.T, prop map[string]any, field string, want []string, stderr *bytes.Buffer) {
+func requireStringEnum(t *testing.T, prop map[string]any, field string, want []string, stderr stderrBuffer) {
 	t.Helper()
 
 	got, ok := prop[field].([]any)
