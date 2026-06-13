@@ -92,16 +92,20 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 	}
 }
 
-// TestFormatResults_TypedAnswerFixtureJSONPath guards the typed-translation
+// TestTypedAnswerFixture_EnsureAnswerFallback guards the typed-translation
 // example in docs/MCP_TOOLS.md. After EnsureAnswerFallback, the JSON
 // serialization of the fixture must contain "answer":"Translation: bonjour"
 // and "engine":"libretranslate".
-func TestFormatResults_TypedAnswerFixtureJSONPath(t *testing.T) {
+func TestTypedAnswerFixture_EnsureAnswerFallback(t *testing.T) {
 	t.Parallel()
 
 	var resp searxng.SearchResponse
 
 	testhelper.LoadJSONFixture(t, "testdata/typed_translation_answer.json", &resp)
+
+	if len(resp.Answers) == 0 {
+		t.Fatal("fixture must contain at least one answer")
+	}
 
 	for i := range resp.Answers {
 		searxng.EnsureAnswerFallback(&resp.Answers[i])
