@@ -140,7 +140,8 @@ But `NewInMemoryTransports()` is preferred — it uses `net.Pipe()` internally a
 
 In-memory transports prove the protocol surface and tool wiring, but they do
 not exercise the real stdio boundary, the binary's startup environment, or
-process lifecycle. The E2E tests in `e2e_*_test.go` (build tag `e2e`) use the
+process lifecycle. Most E2E tests in `e2e_*_test.go` use build tag `e2e`; the
+stress tests in `e2e_stress_test.go` require `e2e && stress`. They use the
 SDK's `mcp.CommandTransport`, which spawns the built binary as a subprocess
 and talks JSON-RPC over its stdin/stdout. This is the only layer that catches
 issues like wrong env-var parsing on startup, missing stderr flushing on
@@ -262,7 +263,7 @@ verify.
 
 | Layer | Method | Files | What it catches |
 |-------|--------|-------|-----------------|
-| Unit | direct handler call (`NewSearchToolHandler()`) | `mcp_test.go`, `internal/searxng/*_test.go` | Search logic, input validation, JSON response shape |
+| Unit | direct handler call (`NewSearchToolHandler()`) | `mcp_tool_test.go`, `internal/searxng/*_test.go` | Search logic, input validation, JSON response shape |
 | MCP integration | `mcp.NewInMemoryTransports()` (`net.Pipe` in-process) | (unit-style tests of the MCP server surface) | MCP protocol wiring, tool registration, schema, session lifecycle |
 | CLI subprocess (default `go test ./...`) | raw `exec.Command` on the built binary | `e2e_exitcode_test.go` | CLI exit code contract, stderr/stdout split, flag parsing |
 | MCP E2E (stdio, `-tags=e2e`) | `exec.Command` + `mcp.CommandTransport` (subprocess) | `e2e_mcp_test.go`, `e2e_functional_test.go`, `e2e_error_test.go`, `e2e_stress_test.go` | Real stdio framing, env-var startup, process lifecycle, live SearXNG behavior |

@@ -25,7 +25,7 @@
 ## Build and Test Commands
 
 Root benchmarks live in `bench_test.go`; internal benchmarks live in
-`internal/searxng/bench_test.go`.
+`internal/searxng/bench_internal_test.go`.
 
 | Command | Scope |
 |---------|-------|
