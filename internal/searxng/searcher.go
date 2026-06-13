@@ -308,6 +308,10 @@ func (s *SearXNGSearcher) classifyAttempt(
 		return nil, finishErr
 	}
 
+	// finishResponse closed resp.Body via defer; nil it so the retry
+	// loop does not close the same body a second time.
+	resp.Body = nil
+
 	isEmpty := s.isEmptyResponse(result)
 	outcome := classifyOutcome(ctx, attempt, maxRetries, resp, nil, isEmpty)
 
