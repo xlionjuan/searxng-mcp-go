@@ -736,7 +736,7 @@ func TestGetConfig(t *testing.T) {
 	t.Run("env parse error still allows CLI flag override", func(t *testing.T) {
 		t.Setenv("SEARXNG_TIMEOUT", "not-a-duration")
 		t.Setenv("SEARXNG_MAX_RETRIES", "abc")
-		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "2")
+		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "true")
 
 		_, flags, _, err := parseArgs([]string{
 			"--searxng-url", "https://flag.example.com",
