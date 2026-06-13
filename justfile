@@ -102,6 +102,21 @@ ci: mod-verify fmt vet lint
     just test-cover
     just test-stress
 
+# Assert every actions/setup-go block across all workflows has cache: true
+check-setup-go-cache:
+    #!/usr/bin/env bash
+    errors=0
+    for f in .github/workflows/*.yml; do
+        for line_num in $(grep -n "uses: actions/setup-go" "$f" | cut -d: -f1); do
+            if ! sed -n "$((line_num+1)),$((line_num+10))p" "$f" | grep -q 'cache: true'; then
+                echo "FAIL: $f:$line_num is missing cache: true"
+                errors=$((errors + 1))
+            fi
+        done
+    done
+    if [ "$errors" -gt 0 ]; then exit 1; fi
+    echo "OK: all actions/setup-go blocks have cache: true"
+
 # Quick check (no formatting, just vet + lint + test)
 quick:
     just vet lint test
