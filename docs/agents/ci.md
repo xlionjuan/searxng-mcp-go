@@ -1,7 +1,10 @@
 # CI Workflow Rules
 
 - GitHub Actions `uses:` entries must pin to SHA with a `# vX.Y.Z` version
-  comment.
+  comment when the upstream action publishes version tags or releases.
+- If the upstream action does not publish version tags or releases, pin to a
+  SHA and add a short comment explaining the no-tag exception instead of
+  inventing a version.
 - CI `go-version` must use a fixed version, not `stable`; step/job names must
   not contain version numbers.
 - MCP stdin mode does not accept CLI args; use env vars only. See

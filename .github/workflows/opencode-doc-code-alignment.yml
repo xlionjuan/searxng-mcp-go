@@ -69,7 +69,7 @@ jobs:
           git -C "$HOME/.agents/skills/cc-skills-golang" checkout --detach "$CC_SKILLS_GOLANG_SHA"
 
       - name: Run OpenCode documentation/code alignment review
-        uses: xlionjuan/opencode-github-actions@cf2b7c47d962be045c1d9b7d024906a6f61983cb
+        uses: xlionjuan/opencode-github-actions@cf2b7c47d962be045c1d9b7d024906a6f61983cb # upstream has no version tags
         with:
           model: opencode-go/deepseek-v4-flash
           prompt: |
@@ -128,7 +128,7 @@ jobs:
 
             4. CI/release/agent workflow alignment
                - Check .github/workflows/ against AGENTS.md, docs/agents/pull-requests.md, docs/agents/release.md, and docs/agents/issue-tracker.md.
-               - Verify that documented constraints are reflected in workflows where applicable, including pinned GitHub Actions uses entries with version comments, fixed Go version, and env-only MCP stdin mode.
+               - Verify that documented constraints are reflected in workflows where applicable, including pinned GitHub Actions uses entries with version comments, documented no-tag exceptions for upstream actions without tags/releases, fixed Go version, and env-only MCP stdin mode.
 
             5. Risk and prioritization
                - Classify each finding as one of:
@@ -182,10 +182,22 @@ jobs:
 
             Issue labeling:
             - Before applying labels, run `gh label list` and follow docs/agents/triage-labels.md.
-            - Apply labels only when they are unambiguous.
-            - Prefer topical labels such as `documentation`, `bug`, `enhancement`, `question`, or `security` when appropriate.
+            - Every created Issue should receive at least one live topical label unless no available label matches.
+            - Use this mapping unless evidence says otherwise:
+              - stale documentation, missing documentation, ambiguous documentation, or ADR/domain documentation drift -> `documentation`
+              - correctness bug or behavior that is broken -> `bug`
+              - non-bug workflow, configuration, tooling, or maintenance improvement -> `enhancement`
+              - request for maintainer clarification -> `question`
+              - security-relevant issue -> `security`
+            - For CI/release workflow mismatch:
+              - use `bug` only when CI, release, or required automation is likely broken;
+              - otherwise use `enhancement`;
+              - also add `documentation` only when the fix is documentation-only or primarily documentation cleanup.
+            - Pass labels with `gh issue create --label ...` when creating the Issue.
+            - After creating each Issue, run `gh issue view <number> --json labels` and verify labels were applied.
+            - If an intended label was not applied, run `gh issue edit <number> --add-label ...`.
             - Do not apply human-only decision labels such as `accepted`, `needs-explain`, `rejected`, or `wontfix` unless explicitly instructed by the user.
-            - If no label clearly applies, leave the Issue unlabeled and mention the suggested label in the Issue body.
+            - If an Issue is intentionally left unlabeled, state the exact reason in the final output.
 
             For each finding, provide:
             - title
