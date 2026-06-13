@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"searxng-mcp-go/internal/searxng"
+	"searxng-mcp-go/internal/testhelper"
 )
 
 func TestSearch_TimeoutZeroWithBackgroundContext(t *testing.T) {
@@ -747,71 +749,94 @@ func TestSearch_RetriesEmptySearchResponse(t *testing.T) {
 	}
 }
 
-func TestSearch_EmptySearchResponseRetryCanceled(t *testing.T) {
+func TestSearch_CanceledDuringRequest(t *testing.T) {
 	t.Parallel()
 
-	var attempts atomic.Int32
-
-	firstResponseWritten := make(chan struct{})
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		if attempts.Add(1) == 1 {
-			defer close(firstResponseWritten)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		//nolint:errcheck // test fixture write best-effort
-		_, _ = w.Write([]byte(`{"query":"test","results":[],"suggestions":[]}`))
-	}))
-	defer server.Close()
-
-	cfg := &searxng.Config{
-		SearXNGURL:    server.URL,
-		Timeout:       30 * time.Second,
-		MaxRetries:    1,
-		RetryDelay:    500 * time.Millisecond,
-		MaxRetryDelay: 500 * time.Millisecond,
-	}
-
-	retryAboutToWait := make(chan struct{})
+	var callCount atomic.Int32
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-
-		// Wait until the client has received the first response and
-		// is about to enter the retry wait. The TestOnlyBeforeRetryWait
-		// hook fires right before retryWait, which is after the client
-		// has parsed the empty response and decided to retry — this is
-		// the precise moment we want to cancel so the test exercises
-		// the retry-cancellation path reliably.
-		<-firstResponseWritten
-		<-retryAboutToWait
-
+	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		callCount.Add(1)
 		cancel()
-	}()
 
-	_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"}, func(s *searxng.SearXNGSearcher) {
-		s.TestOnlyBeforeRetryWait = func() {
-			close(retryAboutToWait)
-		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body: io.NopCloser(strings.NewReader(
+				`{"query":"test","results":[],"suggestions":[],"answers":[],"infoboxes":[]}`)),
+		}, nil
 	})
 
-	<-done
+	cfg := &searxng.Config{
+		SearXNGURL:    "https://search.example.com",
+		Timeout:       30 * time.Second,
+		MaxRetries:    1,
+		RetryDelay:    500 * time.Millisecond,
+		MaxRetryDelay: 500 * time.Millisecond,
+		HTTPClient:    &http.Client{Transport: transport},
+	}
 
+	_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
 		t.Fatal("Search() error = nil, want context cancellation error")
 	}
 
-	if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("Search() error = %v, want context.Canceled or context.DeadlineExceeded", err)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Search() error = %v, want context.Canceled", err)
 	}
 
-	if got := attempts.Load(); got != 1 {
+	if got := callCount.Load(); got != 1 {
+		t.Fatalf("attempts = %d, want 1", got)
+	}
+}
+
+func TestSearch_RetryWaitCanceled(t *testing.T) {
+	t.Parallel()
+
+	var callCount atomic.Int32
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		callCount.Add(1)
+
+		// Cancel the context after a brief delay so the retry machinery
+		// reaches retryWait before the cancellation fires.
+		go func() {
+			time.Sleep(10 * time.Millisecond)
+			cancel()
+		}()
+
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body: io.NopCloser(strings.NewReader(
+				`{"query":"test","results":[],"suggestions":[],"answers":[],"infoboxes":[]}`)),
+		}, nil
+	})
+
+	cfg := &searxng.Config{
+		SearXNGURL:    "https://search.example.com",
+		Timeout:       30 * time.Second,
+		MaxRetries:    1,
+		RetryDelay:    500 * time.Millisecond,
+		MaxRetryDelay: 500 * time.Millisecond,
+		HTTPClient:    &http.Client{Transport: transport},
+	}
+
+	_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
+	if err == nil {
+		t.Fatal("Search() error = nil, want context cancellation error")
+	}
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Search() error = %v, want context.Canceled", err)
+	}
+
+	if got := callCount.Load(); got != 1 {
 		t.Fatalf("attempts = %d, want 1", got)
 	}
 }
