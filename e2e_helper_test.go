@@ -33,15 +33,17 @@ type safeBuffer struct {
 	buf bytes.Buffer
 }
 
-func (b *safeBuffer) Write(p []byte) (n int, err error) {
+func (b *safeBuffer) Write(p []byte) (int, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
 	return b.buf.Write(p)
 }
 
 func (b *safeBuffer) String() string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
 	return b.buf.String()
 }
 
@@ -120,7 +122,7 @@ func newMCPSession(
 func startMCPSession(
 	ctx context.Context, t *testing.T, searxngURL string,
 	extraEnv ...string,
-) (*mcp.ClientSession, stderrBuffer, *exec.Cmd) { //nolint:unparam // test helper returns cmd for optional caller use
+) (*mcp.ClientSession, *safeBuffer, *exec.Cmd) { //nolint:unparam // test helper returns cmd for optional caller use
 	t.Helper()
 
 	binaryPath := os.Getenv("E2E_MCP_BINARY")
