@@ -296,6 +296,7 @@ func TestShouldRetry_StatusCodes(t *testing.T) {
 	})
 }
 
+//nolint:gocognit // sequential subtests covering edge cases of retryBackoff
 func TestRetryBackoff_EdgeCases(t *testing.T) {
 	t.Parallel()
 
@@ -343,6 +344,28 @@ func TestRetryBackoff_EdgeCases(t *testing.T) {
 			delay := retryBackoff(attempt, 100*time.Millisecond, time.Second)
 			if delay > time.Second {
 				t.Fatalf("retryBackoff(%d, 100ms, 1s) = %v, want <= 1s", attempt, delay)
+			}
+		}
+	})
+
+	t.Run("sub-millisecond base and max capped at maxDelay", func(t *testing.T) {
+		t.Parallel()
+
+		for attempt := range 5 {
+			delay := retryBackoff(attempt, time.Nanosecond, time.Nanosecond)
+			if delay > time.Nanosecond {
+				t.Fatalf("retryBackoff(%d, 1ns, 1ns) = %v, want <= 1ns", attempt, delay)
+			}
+		}
+	})
+
+	t.Run("sub-millisecond base with millisecond max still respects cap", func(t *testing.T) {
+		t.Parallel()
+
+		for attempt := range 5 {
+			delay := retryBackoff(attempt, time.Nanosecond, 100*time.Microsecond)
+			if delay > 100*time.Microsecond {
+				t.Fatalf("retryBackoff(%d, 1ns, 100µs) = %v, want <= 100µs", attempt, delay)
 			}
 		}
 	})
