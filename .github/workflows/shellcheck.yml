@@ -8,6 +8,10 @@ on:
     paths:
       - 'searxng-server-test/*.sh'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

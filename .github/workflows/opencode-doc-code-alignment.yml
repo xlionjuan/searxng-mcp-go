@@ -17,6 +17,9 @@ on:
         required: false
         default: ""
 
+concurrency:
+  group: ${{ github.event.comment.id }}
+
 jobs:
   opencode-doc-code-alignment:
     name: Documentation and code alignment review
