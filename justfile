@@ -106,6 +106,25 @@ ci: mod-verify fmt vet lint
 quick:
     just vet lint test
 
+# Verify per-submodule git config matches .gitmodules (prevents shallow=true drift)
+check-submodule-config:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    errors=0
+    for key in $(git config --file .gitmodules --get-regexp '\.shallow$' | cut -d' ' -f1); do
+        name=${key#submodule.}
+        name=${name%.shallow}
+        if ! git config --local "submodule.$name.shallow" >/dev/null 2>&1; then
+            echo "ERROR: submodule '$name' has shallow=true in .gitmodules but no matching config in .git/config"
+            echo "  Run: git submodule sync --recursive && git config --local submodule.$name.shallow true"
+            errors=$((errors + 1))
+        fi
+    done
+    if [ "$errors" -gt 0 ]; then
+        exit 1
+    fi
+    echo "OK: all per-submodule configs match .gitmodules"
+
 # Real server test related
 
 # Setup SearXNG test server (venv, deps, config)

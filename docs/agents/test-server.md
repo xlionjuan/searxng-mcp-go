@@ -10,6 +10,9 @@ the shell scripts under `searxng-server-test/` are implementation details.
 # One-time submodule initialization
 git submodule update --init --depth 1 searxng-server-test/searxng
 
+# Sync submodule config so per-submodule settings (shallow, etc.) match .gitmodules
+git submodule sync --recursive
+
 # One-time setup: creates venv, installs deps, generates settings.yml
 just test-server-setup
 
