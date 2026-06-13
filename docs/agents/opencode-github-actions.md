@@ -104,19 +104,19 @@ Write PR bodies in English and include durable review context:
 - Linked issue(s), when applicable
 - Known limitations or follow-up work
 
-Apply the repository PR title policy when the runtime exposes enough control to
-do so. If the OpenCode GitHub Action produces a PR title that cannot be reliably
-controlled, treat the title as an Action limitation, not a task failure. Do not
-spend the run fighting generated titles unless the user explicitly asked to
-rename the PR and the runtime provides a reliable edit path.
+PR titles must follow the repository PR title policy whenever the runtime
+exposes enough control to create or update PR metadata. Read
+`docs/agents/pull-requests.md#pr-title-policy` before setting or editing a PR
+title. Do not use filenames, issue fragments, agent status, session names, or
+titles without an allowed semantic prefix as PR titles.
 
-When the user explicitly asks OpenCode to fix, rename, or update an existing PR
-title, the title is no longer an uncontrollable creation-time artifact. Read
-`docs/agents/pull-requests.md#pr-title-policy`, then set a concise English
-title with an allowed semantic prefix. Do not update a PR title to a filename,
-issue fragment, agent status, or title without a semantic prefix. If the request
-was triggered by a title-related status check, inspect the check message before
-editing and make the new title satisfy that policy.
+If the OpenCode GitHub Action produces an initial PR title that cannot be
+reliably controlled, treat that specific creation-time title as an Action
+limitation, not a task failure. This exception is narrow: when a reliable edit
+path exists, or when the agent is already updating PR metadata, the agent must
+bring the PR title back into compliance before reporting the metadata work
+complete. If a title-related status check is failing, inspect the check message
+and make the new title satisfy that policy.
 
 Automatically appended OpenCode session links, social-card images, and GitHub
 Actions run links are allowed as supplemental metadata. They must not replace
