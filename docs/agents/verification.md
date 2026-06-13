@@ -32,7 +32,7 @@ Root benchmarks live in `bench_test.go`; internal benchmarks live in
 | `go build ./...` | Build all packages |
 | `go test ./...` | Run unit tests, excluding e2e and stress |
 | `go test -race -shuffle=on ./...` | CI-style test run with race detector |
-| `go test -tags=stress -race ./...` | Include stress/concurrency tests |
+| `go test -race -tags=stress -shuffle=on ./...` | Include stress/concurrency tests |
 | `go test -tags=e2e -run TestMCPStdioE2E -count=1 .` | E2E test; requires `SEARXNG_URL` and a running test server. `E2E_MCP_BINARY` skips per-test `go build`; see `docs/MCP_TESTING.md`. |
 | `golangci-lint run ./...` | Lint; CI uses v2.12.2 |
 | `go vet ./...` | Static analysis fallback |
@@ -58,6 +58,8 @@ checks except the E2E workflow:
 Also run the `.github/workflows/lint.yml` checks:
 
 - `golangci-lint run --timeout 5m`
+- `golangci-lint run --timeout 5m --build-tags=stress`
+- `golangci-lint run --timeout 5m --build-tags=e2e`
 - `golangci-lint fmt --diff`
 
 For workflow-only changes that do not affect Go execution, use targeted
