@@ -161,7 +161,10 @@ jobs:
             Decision policy for Issues vs PR:
             - Default to opening GitHub Issues, not PRs, for audit findings.
             - Open one Issue per coherent finding or tightly related finding group.
+            - Group closely related findings into one Issue when they share the same root cause, same affected document, same user workflow, same repository rule, or can reasonably be fixed in one small PR.
+            - Do not split mechanical documentation cleanup, such as stale filenames, stale helper names, missing index entries, or matching wording fixes, into many small Issues when one cleanup Issue would be clearer.
             - Do not create a single omnibus Issue if findings are independent.
+            - Keep findings separate when they have different severities, different owners, unrelated affected areas, different required decisions, or would make one Issue too broad to verify and close.
             - Before creating any Issue, run `gh issue list --state all --search "<key terms>"` to check for duplicates. If an existing Issue already covers the finding, do not create a new Issue; list the existing Issue in the final output.
             - Cap newly created Issues to the highest-signal findings. Create Issues for High and Medium findings first. If several Low-severity documentation-only findings are exact, mechanical, and suitable for one small PR, open one grouped cleanup Issue instead of leaving all of them as candidates.
             - Do not open a PR for findings that require maintainer judgment, product decisions, ADR changes, release policy changes, or broad cross-document rewrites.
