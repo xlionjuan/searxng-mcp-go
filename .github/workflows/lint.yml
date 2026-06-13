@@ -26,11 +26,14 @@ jobs:
           go-version: "1.26.4"
           cache: true
 
-      - name: golangci-lint
+      - name: Install golangci-lint
         uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
         with:
           version: v2.12.2
-          args: --timeout 5m
+          install-only: true
+
+      - name: golangci-lint
+        run: golangci-lint run --timeout 5m
 
       - name: golangci-lint (stress build tag)
         run: golangci-lint run --timeout 5m --build-tags=stress
