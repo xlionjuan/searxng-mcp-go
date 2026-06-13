@@ -239,8 +239,21 @@ func (r SearchResponse) MarshalJSON() ([]byte, error) {
 		Results:         r.Results,
 		Suggestions:     r.Suggestions,
 	}
+	if r.Results == nil {
+		base.Results = []SearchResult{}
+	}
+
+	if r.Suggestions == nil {
+		base.Suggestions = []string{}
+	}
+
 	if r.Debug {
-		base.UnresponsiveEngines = &r.UnresponsiveEngines
+		if r.UnresponsiveEngines == nil {
+			empty := [][]string{}
+			base.UnresponsiveEngines = &empty
+		} else {
+			base.UnresponsiveEngines = &r.UnresponsiveEngines
+		}
 	}
 
 	return json.Marshal(base)
