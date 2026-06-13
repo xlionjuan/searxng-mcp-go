@@ -36,6 +36,7 @@ func validateSearchArgsErr(args *SearchArgs) error {
 	return err
 }
 
+//nolint:gocognit // test exercises many branches across subtests
 func TestValidateSearchArgs(t *testing.T) {
 	t.Parallel()
 
@@ -141,6 +142,7 @@ func TestValidateSearchArgs(t *testing.T) {
 		if got.Pageno == args.Pageno {
 			t.Fatal("Pageno pointer was not deep-copied: got.Pageno == args.Pageno")
 		}
+
 		if got.Limit == args.Limit {
 			t.Fatal("Limit pointer was not deep-copied: got.Limit == args.Limit")
 		}
@@ -151,6 +153,7 @@ func TestValidateSearchArgs(t *testing.T) {
 		if *args.Pageno != origPageno {
 			t.Fatalf("original Pageno mutated by result: got %d, want %d", *args.Pageno, origPageno)
 		}
+
 		if *args.Limit != origLimit {
 			t.Fatalf("original Limit mutated by result: got %d, want %d", *args.Limit, origLimit)
 		}

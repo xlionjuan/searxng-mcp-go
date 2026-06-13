@@ -116,6 +116,7 @@ func ValidateSearchArgs(args *SearchArgs) (*SearchArgs, error) {
 		pageno := *args.Pageno
 		result.Pageno = &pageno
 	}
+
 	if args.Limit != nil {
 		limit := *args.Limit
 		result.Limit = &limit
