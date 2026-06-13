@@ -116,6 +116,15 @@ In MCP mode, `searxng-mcp-go` is meant to be launched by an MCP client host (suc
 
 The server uses stdio transport, meaning it communicates via stdin/stdout after the MCP client starts it.
 
+#### Stdin Validation
+
+The server reads the first line of stdin and validates it is a JSON-RPC 2.0 `initialize` message before starting:
+
+- **Invalid input** (non-MCP input, empty stdin, malformed JSON): the server prints `ERROR: stdin does not contain a valid MCP initialize message` to stderr and exits with code 2.
+- **Oversized input** (first line exceeds 1 MB): treated as invalid — same error and exit code 2.
+
+MCP clients that correctly send the `initialize` message are not affected.
+
 ### MCP Client Configuration
 
 Configure the MCP server by adding it to your client's `mcpServers`. Use the **absolute path** to the binary — MCP clients often don't inherit your shell PATH.

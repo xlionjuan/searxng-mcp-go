@@ -271,10 +271,21 @@ Search error examples — the response format depends on whether the error is a 
 | Network failure (wrapped as `SearXNGError`) | `Search error: searxng error (status 0): <error description>` (full error logged server-side) |
 | SearXNG HTTP error (4xx/5xx, wrapped as `SearXNGError`) | `Search error: searxng error (status <N>) - content-type <type>: <error description>` (full error logged server-side) |
 | POST `/search` rejected with 405/501 | `Search error: searxng error (status 405/501) - content-type <type>: search method rejected` (full error logged server-side; fix the reverse proxy or opt in with `SEARXNG_ALLOW_GET_FALLBACK=1`) |
+| GET fallback enabled but fails | `Search error: searxng error (status 405/501) - content-type <type>: search method rejected` — underlying `errGETFallbackUsed` + failure details logged server-side |
+| Empty results after exhausting retries | `Search error: searxng error (status 0): failed to execute search request: search returned empty results after all retries` |
 | Invalid JSON from SearXNG | `Search error: searxng error (status <N>) - content-type <type>: <error description>` (full error logged server-side) |
 | HTML response (JSON disabled) | `Search error: request failed` (full error logged server-side) |
 | Other unexpected errors | `Search error: request failed` (full error logged server-side) |
 | Response marshal failure | `Search error: failed to format results` (full error logged server-side) |
+
+### Startup Errors
+
+The server validates the MCP initialization message on stdin before starting. If validation fails, the process exits immediately with code 2 and prints the error to stderr (no MCP error response is sent).
+
+| Error Condition | Stderr Output | Exit Code |
+|-----------------|---------------|-----------|
+| No valid MCP `initialize` message on stdin (non-MCP input, empty stdin, or invalid JSON) | `ERROR: stdin does not contain a valid MCP initialize message` | 2 |
+| First line of stdin exceeds 1 MB | `ERROR: stdin does not contain a valid MCP initialize message` | 2 |
 
 ### Implementation Details
 
@@ -285,3 +296,33 @@ Search error examples — the response format depends on whether the error is a 
 - **MaxRetries**: 5 retries after the initial search attempt by default; set `SEARXNG_MAX_RETRIES` or, in CLI mode, `--max-retries`
 - **POST→GET fallback**: Disabled by default. If POST `/search` returns 405 or 501, the server returns an error so operators can fix the SearXNG or reverse-proxy configuration. Set `SEARXNG_ALLOW_GET_FALLBACK=1` to opt in; this sends search parameters in the URL and may expose queries in upstream logs. In CLI mode, `--allow-get-fallback` overrides the environment variable.
 - **Initialize message size limit**: The first line of stdin (the MCP `initialize` JSON-RPC message) is capped at 1 MB; oversized input causes the server to exit instead of hanging
+
+### Retry Behavior
+
+When a search attempt fails, the server classifies the outcome and decides whether to retry.
+
+**Retryable status codes** (trigger a retry with exponential backoff):
+
+| HTTP Status | Reason |
+|-------------|--------|
+| 429 Too Many Requests | Rate-limited; waiting may succeed |
+| 408 Request Timeout | Transient server-side timeout |
+| 5xx (all) | Server-side errors that may be transient |
+
+**Abort triggers** (no retry — the error is returned immediately):
+
+| Condition | Reason |
+|-----------|--------|
+| Non-retryable 4xx (400, 403, 404, etc.) | Client error or resource not found; retrying would produce the same result |
+| `SearXNGError` (including `HTMLResponseError`) | SearXNG returned an error response (HTML instead of JSON, method rejected, etc.) |
+| Redirect policy errors (redirect to different host, scheme downgrade, too many redirects) | Deterministic failures — retrying would hit the same blocked redirect |
+| Context canceled or deadline exceeded | Parent context signaled completion or timeout |
+
+**Exponential backoff algorithm:**
+
+```
+delay = baseDelay * 2^attempt (capped at maxDelay, minimum 1 ms)
+jitter = delay/2 + random(0, delay/2)
+```
+
+The base delay defaults to 1 second; the maximum delay defaults to 30 seconds. A 1 ms floor prevents zero-duration backoffs with very small base values.
