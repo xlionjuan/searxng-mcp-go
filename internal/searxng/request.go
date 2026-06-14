@@ -23,6 +23,7 @@ func computeSearchEndpoint(baseURL string) (*url.URL, error) {
 	}
 
 	parsed.RawQuery = ""
+	parsed.Fragment = ""
 	trimmedPath := strings.TrimRight(parsed.Path, "/")
 
 	lastSegment := trimmedPath
