@@ -121,8 +121,8 @@ var SearchParams = []ParamDef{
 	{
 		Name: "categories", GoType: "string", Default: "",
 		Description: `Comma-separated list of SearXNG categories (CSV format). ` +
-			`"general" covers most queries. Common values: general, news, images, videos, music, files, map, social media, science, it. ` +
-			`Note that "social media" is a single category name (with a space); pass it as "social media" in the CSV, not "social,media". ` +
+			`Common values: general, news, images, videos, music, files, map, social media, science, it. ` +
+			`"social media" is a single category (with a space); pass it as "social media" in CSV, not "social,media". ` +
 			`Unknown categories are silently ignored by SearXNG.`,
 		CLIHelp:  "Comma-separated list of categories to search [max 4096 bytes]",
 		CLIType:  "CAT",
