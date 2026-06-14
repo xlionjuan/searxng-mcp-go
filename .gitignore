@@ -24,6 +24,7 @@ __pycache__/
 .vscode/
 *.swp
 *.swo
+.claude
 
 # Backup files
 *.bak
