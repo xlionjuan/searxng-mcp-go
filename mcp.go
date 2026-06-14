@@ -175,9 +175,9 @@ func NewSearchToolHandler(searcher searcher) func(
 	context.Context, *mcp.CallToolRequest, searxng.SearchArgs,
 ) (*mcp.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcp.CallToolRequest, args searxng.SearchArgs) (*mcp.CallToolResult, any, error) {
-		normalized, errMsg := prepareAndValidate(args)
-		if errMsg != "" {
-			return mcpErrorResult(errMsg), nil, nil
+		normalized, err := prepareAndValidate(args)
+		if err != nil {
+			return mcpErrorResult("Validation error: " + err.Error()), nil, nil //nolint:nilerr // error in CallToolResult
 		}
 
 		return searchAndBuildResult(ctx, searcher, normalized)
@@ -204,17 +204,15 @@ func mcpSuccessResult(data []byte) *mcp.CallToolResult {
 }
 
 // prepareAndValidate applies defaults and validates search arguments.
-// Returns the normalized args and an empty string on success, or nil and an
-// error message string on failure.
-func prepareAndValidate(args searxng.SearchArgs) (*searxng.SearchArgs, string) {
+func prepareAndValidate(args searxng.SearchArgs) (*searxng.SearchArgs, error) {
 	args.ApplyDefaults()
 
 	normalized, err := searxng.ValidateSearchArgs(&args)
 	if err != nil {
-		return nil, "Validation error: " + err.Error()
+		return nil, err
 	}
 
-	return normalized, ""
+	return normalized, nil
 }
 
 // searchAndBuildResult performs the search and builds the MCP result.
@@ -231,12 +229,7 @@ func searchAndBuildResult(ctx context.Context, s searcher, args *searxng.SearchA
 		return mcpErrorResult("Search error: request failed"), nil, nil
 	}
 
-	jsonBytes, err := json.Marshal(resp)
-	if err != nil {
-		slog.Error("failed to marshal search response", "error", err)
-
-		return mcpErrorResult("Search error: failed to format results"), nil, nil
-	}
+	jsonBytes, _ := json.Marshal(resp) //nolint:errcheck,errchkjson // all concrete types; cannot fail
 
 	return mcpSuccessResult(jsonBytes), nil, nil
 }
