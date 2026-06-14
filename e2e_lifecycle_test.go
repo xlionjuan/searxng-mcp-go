@@ -56,8 +56,12 @@ func TestMCPLifecycle_SIGINTGracefulShutdown(t *testing.T) {
 	session, stderr, cmd := startMCPLifecycleSession(ctx, t, searxngURL)
 
 	defer func() {
-		if session != nil {
-			_ = session.Close() //nolint:errcheck // best-effort cleanup
+		// Kill the subprocess only if it is still running (test failed).
+		// Do NOT call session.Close or cmd.Wait here: the SDK's cleanup
+		// goroutine calls pipeRWC.Close → cmd.Wait internally when the
+		// process exits; we must not race with that.
+		if cmd.Process != nil && cmd.ProcessState == nil {
+			_ = cmd.Process.Kill() //nolint:errcheck // best-effort cleanup
 		}
 	}()
 
@@ -66,10 +70,12 @@ func TestMCPLifecycle_SIGINTGracefulShutdown(t *testing.T) {
 		t.Fatalf("send SIGINT to MCP process: %v\nstderr:\n%s", err, stderr.String())
 	}
 
-	closeErr := session.Close()
-	session = nil
-
-	assertCleanSessionClose(t, closeErr, stderr, "SIGINT")
+	// Wait for the session to close naturally.  The signal causes the server
+	// to exit; the SDK picks up EOF on stdout, runs pipeRWC.Close (which
+	// calls cmd.Wait), and closes the connection.  session.Wait returns the
+	// result — without us calling cmd.Wait or session.Close from the test.
+	waitErr := waitForSessionClose(ctx, t, session, stderr)
+	assertCleanSessionClose(t, waitErr, stderr, "SIGINT")
 }
 
 func TestMCPLifecycle_SIGTERMGracefulShutdown(t *testing.T) {
@@ -84,8 +90,8 @@ func TestMCPLifecycle_SIGTERMGracefulShutdown(t *testing.T) {
 	session, stderr, cmd := startMCPLifecycleSession(ctx, t, searxngURL)
 
 	defer func() {
-		if session != nil {
-			_ = session.Close() //nolint:errcheck // best-effort cleanup
+		if cmd.Process != nil && cmd.ProcessState == nil {
+			_ = cmd.Process.Kill() //nolint:errcheck // best-effort cleanup
 		}
 	}()
 
@@ -94,10 +100,8 @@ func TestMCPLifecycle_SIGTERMGracefulShutdown(t *testing.T) {
 		t.Fatalf("send SIGTERM to MCP process: %v\nstderr:\n%s", err, stderr.String())
 	}
 
-	closeErr := session.Close()
-	session = nil
-
-	assertCleanSessionClose(t, closeErr, stderr, "SIGTERM")
+	waitErr := waitForSessionClose(ctx, t, session, stderr)
+	assertCleanSessionClose(t, waitErr, stderr, "SIGTERM")
 }
 
 func TestMCPLifecycle_InvalidJSONAfterInitialize(t *testing.T) {
@@ -196,6 +200,29 @@ func waitForRawProcessExit(
 		return err
 	case <-ctx.Done():
 		t.Fatalf("timeout waiting for process to exit\nstderr:\n%s", stderr.String())
+
+		return nil
+	}
+}
+
+// waitForSessionClose waits for the MCP session to close naturally — the
+// server exits (e.g. due to a signal), the SDK picks up EOF on stdout and
+// cleans up the connection, then session.Wait returns.  Unlike
+// waitForRawProcessExit this does NOT call cmd.Wait, avoiding a data race
+// with the SDK's internal pipeRWC.Close → cmd.Wait path.
+func waitForSessionClose(
+	ctx context.Context, t *testing.T, session *mcp.ClientSession, stderr *safeBuffer,
+) error {
+	t.Helper()
+
+	done := make(chan error, 1)
+	go func() { done <- session.Wait() }()
+
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		t.Fatalf("timeout waiting for session close after signal\nstderr:\n%s", stderr.String())
 
 		return nil
 	}
