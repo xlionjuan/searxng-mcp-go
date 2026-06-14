@@ -113,6 +113,13 @@ jobs:
           fi
           echo "OK: empty query correctly exited with code 1"
 
+      - name: Disconnect Wireguard so runner log can work
+        if: always()
+        run: |
+          sudo wg-quick down wg0
+          echo "Sleeping 10 sec"
+          sleep 10
+
       - name: Cleanup
         if: always()
         working-directory: searxng-server-test
