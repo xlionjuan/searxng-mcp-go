@@ -28,6 +28,8 @@ const getFallbackLogRisk = "Search query parameters may be sent in upstream URLs
 	"SearXNG, proxy, CDN, or access logs"
 
 // SearXNGSearcher performs web searches via a SearXNG instance.
+//
+//nolint:containedctx // lifecycle context canceled on Close(), propagated via AfterFunc
 type SearXNGSearcher struct {
 	client           *http.Client // Configurable HTTP client
 	searchEndpoint   *url.URL     // Precomputed /search endpoint URL; cloned per request
