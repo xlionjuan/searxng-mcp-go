@@ -48,29 +48,24 @@ signature blobs; if you add a step that signs release artifacts with
 Cosign, document the key material, signing identity, and verification
 instructions in this file in the same change.
 
-## Pre-Release Verification and Dirty-Module Check
+## Pre-Release Gates
 
-`.github/workflows/release.yml` runs the same gates that `test.yml` and
-`lint.yml` run on `main` / pull requests, *inside the release job* and
-before GoReleaser publishes anything:
+`.github/workflows/release.yml` runs the following gates *inside the
+release job* and before GoReleaser publishes anything:
 
-1. `go mod verify` and `go mod download`
-2. `go build -o searxng-mcp-go .`
-3. `go test -race -shuffle=on ./...`
-4. `golangci-lint run` (v2.12.2)
+1. `go mod download` and `go mod verify`
+2. `go mod tidy` and `git diff --exit-code -- go.mod go.sum` (dirty-module check)
+3. `go build -o /tmp/searxng-mcp-go .`
+4. `go test -race -shuffle=on ./...`
+5. `go tool govulncheck ./...`
+6. `golangci-lint run` (v2.12.2)
 
 If any of these fail, the job stops before GoReleaser runs, so a broken
 tag cannot publish a release.
 
-After GoReleaser, the "Check for dirty module files" step runs
-`git diff --exit-code -- go.mod go.sum`. The release job uses
-`actions/checkout` with `fetch-depth: 0`, so the working tree is
-compared against the tag itself. GoReleaser's `before.hooks` runs
-`go mod tidy` (`.goreleaser.yaml:6-8`); if that hook modified
-`go.mod` or `go.sum`, the release fails with a clear error pointing
-the maintainer at the local `go mod tidy` + re-tag flow. This catches
-dependency drift that would otherwise be silently baked into the
-release tarball.
+GoReleaser's `before.hooks` runs `go mod download`
+(`.goreleaser.yaml:6-8`). After GoReleaser finishes, the job cleans up
+the imported GPG key.
 
 ## Version Rules
 
