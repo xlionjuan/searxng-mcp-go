@@ -480,7 +480,7 @@ func TestSearchRedirectPolicyNotRetried(t *testing.T) {
 				retryStrategy:  newExponentialBackoffStrategy(2, time.Microsecond, time.Microsecond),
 				debug:          false,
 			}
-			s.done = make(chan struct{})
+			s.searcherCtx, s.searcherCancel = context.WithCancel(context.Background())
 
 			_, err = s.Search(t.Context(), &SearchArgs{Query: "test"})
 			if err == nil {

@@ -1,6 +1,7 @@
 package searxng
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -60,7 +61,7 @@ func newTestSearcher(t *testing.T, rt testhelper.RoundTripperFunc, maxRetries in
 		retryStrategy:  newExponentialBackoffStrategy(maxRetries, time.Microsecond, time.Microsecond),
 		ownsTransport:  true,
 	}
-	s.done = make(chan struct{})
+	s.searcherCtx, s.searcherCancel = context.WithCancel(context.Background())
 
 	return s
 }
@@ -80,7 +81,7 @@ func newRequestTestSearcher(t *testing.T, baseURL string) *SearXNGSearcher {
 		searchEndpoint: endpoint,
 		client:         http.DefaultClient,
 	}
-	s.done = make(chan struct{})
+	s.searcherCtx, s.searcherCancel = context.WithCancel(context.Background())
 
 	return s
 }
