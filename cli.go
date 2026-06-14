@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"searxng-mcp-go/internal/searxng"
 )
@@ -89,8 +90,6 @@ For more information, see: https://github.com/xlionjuan/searxng-mcp-go
 }
 
 // runCLIMode executes the CLI-mode search flow.
-//
-//nolint:gocyclo // CLI dispatch (help/debug/search/format) is inherently sequential; extracting adds layers
 func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 	if flags.Help {
 		printCLIHelp(os.Stdout)
@@ -151,12 +150,30 @@ func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 
 	defer func() { _ = searcher.Close() }() //nolint:errcheck // cleanup in defer; error is non-actionable
 
-	resp, err := searcher.Search(context.Background(), args)
+	ctx, cancel := contextWithTimeoutOrDefault(context.Background(), cfg.Timeout)
+	defer cancel()
+
+	resp, err := searcher.Search(ctx, args)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errSearchFailed, err)
 	}
 
-	if flags.JSON {
+	return outputSearchResult(resp, flags.JSON, debug)
+}
+
+// contextWithTimeoutOrDefault returns a derived context with the given timeout
+// when timeout > 0, or the original context (with a no-op cancel) otherwise.
+func contextWithTimeoutOrDefault(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if timeout > 0 {
+		return context.WithTimeout(ctx, timeout)
+	}
+
+	return ctx, func() {}
+}
+
+// outputSearchResult formats and writes the search result to stdout.
+func outputSearchResult(resp *searxng.SearchResponse, jsonOutput, debug bool) error {
+	if jsonOutput {
 		if debug {
 			fmt.Println()
 		}
@@ -168,10 +185,12 @@ func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 		if err != nil {
 			return fmt.Errorf("%w: %w", errJSONEncodeFailed, err)
 		}
-	} else {
-		logUnresponsiveEngines(slog.Default(), resp)
-		fmt.Print(formatResults(resp))
+
+		return nil
 	}
+
+	logUnresponsiveEngines(slog.Default(), resp)
+	fmt.Print(formatResults(resp))
 
 	return nil
 }
