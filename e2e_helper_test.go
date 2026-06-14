@@ -374,7 +374,10 @@ func requireSearchToolSchema(t *testing.T, tool *mcp.Tool, stderr stderrBuffer) 
 			"\nschema: %#v\nstderr:\n%s", schema["properties"], schema, stderr.String())
 	}
 
-	for _, name := range []string{"query", "limit", "safesearch", "pageno", "time_range", "categories", "engines", "language"} {
+	for _, name := range []string{
+		"query", "limit", "safesearch", "pageno", "time_range",
+		"categories", "engines", "language",
+	} {
 		if _, ok := props[name]; !ok {
 			t.Fatalf("search schema missing property %q\nschema: %#v\nstderr:\n%s", name, schema, stderr.String())
 		}
