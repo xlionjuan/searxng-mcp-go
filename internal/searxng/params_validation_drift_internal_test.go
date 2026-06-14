@@ -456,7 +456,7 @@ func TestParamDefJSONSchema(t *testing.T) {
 	}{
 		{
 			name: "query", param: findParam(t, "query"),
-			wantType: "string", wantKeys: []string{"type", "description"},
+			wantType: "string", wantKeys: []string{"type", "description", "maxLength"},
 		},
 		{
 			name: "safesearch", param: findParam(t, "safesearch"),

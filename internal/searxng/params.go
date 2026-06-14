@@ -45,6 +45,9 @@ type ParamDef struct {
 	// Maximum is an optional JSON Schema maximum constraint.
 	Maximum *int
 
+	// MaxLength is an optional JSON Schema maxLength constraint for strings.
+	MaxLength *int
+
 	// Examples is an optional list of example values for JSON Schema examples.
 	Examples []string
 
@@ -57,12 +60,13 @@ type ParamDef struct {
 }
 
 var (
-	paramMinSafeSearch = MinSafeSearch
-	paramMaxSafeSearch = MaxSafeSearch
-	paramMinPage       = MinPageno
-	paramMinLimit      = MinResultLimit
-	paramMaxLimit      = MaxResultLimit
-	paramDefaultLimit  = DefaultResultLimit
+	paramMinSafeSearch   = MinSafeSearch
+	paramMaxSafeSearch   = MaxSafeSearch
+	paramMinPage         = MinPageno
+	paramMinLimit        = MinResultLimit
+	paramMaxLimit        = MaxResultLimit
+	paramDefaultLimit    = DefaultResultLimit
+	paramMaxQueryLength  = MaxQueryLength
 )
 
 // errUnexpectedGoType is a sentinel error for FlagDefault when a ParamDef
@@ -89,6 +93,7 @@ var SearchParams = []ParamDef{
 		CLIHelp:     "Search query string (alternative to positional argument)",
 		CLIType:     "string",
 		MCPType:     "string",
+		MaxLength:   &paramMaxQueryLength,
 	},
 	{
 		Name: "language", GoType: "string", Default: "",
@@ -182,6 +187,10 @@ func (p ParamDef) JSONSchema() map[string]any {
 
 	if p.Maximum != nil {
 		prop["maximum"] = *p.Maximum
+	}
+
+	if p.MaxLength != nil {
+		prop["maxLength"] = *p.MaxLength
 	}
 
 	if len(p.Examples) > 0 {
