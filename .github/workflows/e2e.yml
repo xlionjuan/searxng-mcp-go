@@ -10,9 +10,10 @@ on:
     paths-ignore:
       - "**.md"
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+# DO NOT CREATE ISSUES FOR THIS
+# concurrency:
+#   group: ${{ github.workflow }}-${{ github.ref }}
+#   cancel-in-progress: true
 
 permissions:
   contents: read
