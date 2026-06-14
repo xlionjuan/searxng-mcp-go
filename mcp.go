@@ -175,57 +175,68 @@ func NewSearchToolHandler(searcher searcher) func(
 	context.Context, *mcp.CallToolRequest, searxng.SearchArgs,
 ) (*mcp.CallToolResult, any, error) {
 	return func(ctx context.Context, _ *mcp.CallToolRequest, args searxng.SearchArgs) (*mcp.CallToolResult, any, error) {
-		args.ApplyDefaults()
-
-		normalized, err := searxng.ValidateSearchArgs(&args)
-		if err != nil {
-			//nolint:nilerr // MCP handler packs error into tool result
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Validation error: " + err.Error()},
-				},
-				IsError: true,
-			}, nil, nil
+		normalized, errMsg := prepareAndValidate(args)
+		if errMsg != "" {
+			return mcpErrorResult(errMsg), nil, nil
 		}
 
-		resp, err := searcher.Search(ctx, normalized)
-		if err != nil {
-			slog.Error("search failed", "error", err)
-
-			var searxngErr *searxng.SearXNGError
-			if errors.As(err, &searxngErr) {
-				return &mcp.CallToolResult{
-					Content: []mcp.Content{
-						&mcp.TextContent{Text: "Search error: " + searxngErr.Error()},
-					},
-					IsError: true,
-				}, nil, nil
-			}
-
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Search error: request failed"},
-				},
-				IsError: true,
-			}, nil, nil
-		}
-
-		jsonBytes, err := json.Marshal(resp)
-		if err != nil {
-			slog.Error("failed to marshal search response", "error", err)
-
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Search error: failed to format results"},
-				},
-				IsError: true,
-			}, nil, nil
-		}
-
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{Text: string(jsonBytes)},
-			},
-		}, nil, nil
+		return searchAndBuildResult(ctx, searcher, normalized)
 	}
+}
+
+// mcpErrorResult builds an MCP tool error result with the given text.
+func mcpErrorResult(text string) *mcp.CallToolResult {
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: text},
+		},
+		IsError: true,
+	}
+}
+
+// mcpSuccessResult builds an MCP tool success result from marshaled JSON bytes.
+func mcpSuccessResult(data []byte) *mcp.CallToolResult {
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: string(data)},
+		},
+	}
+}
+
+// prepareAndValidate applies defaults and validates search arguments.
+// Returns the normalized args and an empty string on success, or nil and an
+// error message string on failure.
+func prepareAndValidate(args searxng.SearchArgs) (*searxng.SearchArgs, string) {
+	args.ApplyDefaults()
+
+	normalized, err := searxng.ValidateSearchArgs(&args)
+	if err != nil {
+		return nil, "Validation error: " + err.Error()
+	}
+
+	return normalized, ""
+}
+
+// searchAndBuildResult performs the search and builds the MCP result.
+func searchAndBuildResult(ctx context.Context, s searcher, args *searxng.SearchArgs) (*mcp.CallToolResult, any, error) {
+	resp, err := s.Search(ctx, args)
+	if err != nil {
+		slog.Error("search failed", "error", err)
+
+		var searxngErr *searxng.SearXNGError
+		if errors.As(err, &searxngErr) {
+			return mcpErrorResult("Search error: " + searxngErr.Error()), nil, nil
+		}
+
+		return mcpErrorResult("Search error: request failed"), nil, nil
+	}
+
+	jsonBytes, err := json.Marshal(resp)
+	if err != nil {
+		slog.Error("failed to marshal search response", "error", err)
+
+		return mcpErrorResult("Search error: failed to format results"), nil, nil
+	}
+
+	return mcpSuccessResult(jsonBytes), nil, nil
 }
