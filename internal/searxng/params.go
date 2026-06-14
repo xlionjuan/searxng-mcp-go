@@ -98,10 +98,15 @@ var SearchParams = []ParamDef{
 	{
 		Name: "language", GoType: "string", Default: "",
 		Description: "Language code for results (e.g., en, zh-tw, ja). Leave empty or pass \"auto\" to let SearXNG decide",
-		CLIHelp:     "Language code for results (e.g., en, zh-tw, ja) [default: \"\"]",
-		CLIType:     "LANG",
-		MCPType:     "string",
-		DefaultStr:  &paramDefaultLanguage,
+		// DefaultStr is set only for language because empty string is the
+		// semantically meaningful "auto-detect" default that schema-aware
+		// MCP clients should see. Other string params with Default: ""
+		// (time_range, categories, engines) represent "no filter" which
+		// is an absence of constraint, not an explicit default.
+		CLIHelp:    "Language code for results (e.g., en, zh-tw, ja) [default: \"\"]",
+		CLIType:    "LANG",
+		MCPType:    "string",
+		DefaultStr: &paramDefaultLanguage,
 	},
 	{
 		Name: "safesearch", GoType: "int", Default: strconv.Itoa(MinSafeSearch),
@@ -198,9 +203,7 @@ func (p ParamDef) JSONSchema() map[string]any {
 
 	if p.DefaultStr != nil {
 		prop["default"] = *p.DefaultStr
-	}
-
-	if p.DefaultInt != nil {
+	} else if p.DefaultInt != nil {
 		prop["default"] = *p.DefaultInt
 	}
 
