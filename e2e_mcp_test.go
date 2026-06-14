@@ -131,7 +131,8 @@ func TestMCPStdioE2E_ParameterForwarding(t *testing.T) {
 	}, stderr, "optional parameter forwarding")
 
 	if response.Query != "framework computer inc" {
-		t.Fatalf("query = %q, want %q\nresponse: %#v\nstderr:\n%s", response.Query, "framework computer inc", response, stderr.String())
+		t.Fatalf("query = %q, want %q\nresponse: %#v\nstderr:\n%s",
+			response.Query, "framework computer inc", response, stderr.String())
 	}
 
 	if len(response.Results) == 0 || len(response.Results) > 5 {
