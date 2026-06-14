@@ -192,6 +192,90 @@ func writeInfoboxes(buf *strings.Builder, infoboxes []searxng.Infobox) {
 	buf.WriteByte('\n')
 }
 
+// writeSuggestions writes formatted search suggestions to buf.
+func writeSuggestions(buf *strings.Builder, suggestions []string) {
+	if len(suggestions) == 0 {
+		return
+	}
+
+	buf.WriteString("=== Search Suggestions ===\n\n")
+
+	for _, sug := range suggestions {
+		buf.WriteString("  - ")
+		buf.WriteString(sanitizeTerminalControl(sug))
+		buf.WriteByte('\n')
+	}
+}
+
+// writeSingleResult writes a single search result entry to buf.
+func writeSingleResult(buf *strings.Builder, idx int, res searxng.SearchResult) {
+	title := searxng.UnescapeIfNeeded(res.Title)
+
+	buf.WriteString(strconv.Itoa(idx))
+	buf.WriteString(". ")
+	buf.WriteString(sanitizeTerminalControl(title))
+	buf.WriteByte('\n')
+	buf.WriteString("   URL: ")
+	buf.WriteString(sanitizeTerminalControl(res.URL))
+	buf.WriteByte('\n')
+
+	if res.Content != "" {
+		content := searxng.UnescapeIfNeeded(res.Content)
+		content = searxng.TruncateRunes(content, searxng.MaxContentRunes)
+		content = sanitizeTerminalControl(content)
+
+		buf.WriteString("   Summary: ")
+		buf.WriteString(content)
+		buf.WriteByte('\n')
+	}
+
+	if res.PublishedDate != nil && *res.PublishedDate != "" {
+		buf.WriteString("   Published date: ")
+		buf.WriteString(sanitizeTerminalControl(*res.PublishedDate))
+		buf.WriteByte('\n')
+	}
+
+	buf.WriteString("   Engine: ")
+	buf.WriteString(sanitizeTerminalControl(res.Engine))
+	buf.WriteString("\n\n")
+}
+
+// writeResultsSection writes the formatted results header and individual
+// result entries to buf. It is a no-op when results is empty.
+func writeResultsSection(buf *strings.Builder, results []searxng.SearchResult, query string, numberOfResults int) {
+	if len(results) == 0 {
+		return
+	}
+
+	buf.WriteString("=== Results ===\n\n")
+
+	nResults := len(results)
+	total := numberOfResults
+
+	if total == 0 {
+		total = nResults
+	}
+
+	buf.WriteString("Found ")
+
+	if total != nResults {
+		buf.WriteString(strconv.Itoa(total))
+		buf.WriteString(" total (showing ")
+		buf.WriteString(strconv.Itoa(nResults))
+		buf.WriteString(") results for '")
+	} else {
+		buf.WriteString(strconv.Itoa(total))
+		buf.WriteString(" results for '")
+	}
+
+	buf.WriteString(sanitizeTerminalControl(searxng.UnescapeIfNeeded(query)))
+	buf.WriteString("':\n\n")
+
+	for idx, res := range results {
+		writeSingleResult(buf, idx+1, res)
+	}
+}
+
 func logUnresponsiveEngines(logger *slog.Logger, resp *searxng.SearchResponse) {
 	if resp == nil || !resp.Debug || len(resp.UnresponsiveEngines) == 0 {
 		return
@@ -211,11 +295,7 @@ func logUnresponsiveEngines(logger *slog.Logger, resp *searxng.SearchResponse) {
 }
 
 // formatResults formats search results as a readable string.
-//
-//nolint:gocognit,gocyclo,cyclop // formatResults has conditional sections for answers/infoboxes/results/suggestions
 func formatResults(resp *searxng.SearchResponse) string {
-	// Build the header prefix that appears on every output path,
-	// including the early no-results return.
 	prefix := "=== Web Search Results ===\nWarning: " + searxng.ExternalContentWarning + "\n\n"
 
 	if resp == nil {
@@ -235,81 +315,10 @@ func formatResults(resp *searxng.SearchResponse) string {
 
 	buf.WriteString(prefix)
 
-	// Answers first (direct answers like IP, hash, timezone)
 	writeAnswers(&buf, resp.Answers)
-
-	// Infoboxes
 	writeInfoboxes(&buf, resp.Infoboxes)
-
-	// Results
-	if len(resp.Results) > 0 {
-		buf.WriteString("=== Results ===\n\n")
-
-		nResults := len(resp.Results)
-		total := resp.NumberOfResults
-
-		if total == 0 {
-			total = nResults
-		}
-
-		buf.WriteString("Found ")
-
-		if total != nResults {
-			buf.WriteString(strconv.Itoa(total))
-			buf.WriteString(" total (showing ")
-			buf.WriteString(strconv.Itoa(nResults))
-			buf.WriteString(") results for '")
-		} else {
-			buf.WriteString(strconv.Itoa(total))
-			buf.WriteString(" results for '")
-		}
-
-		buf.WriteString(sanitizeTerminalControl(searxng.UnescapeIfNeeded(resp.Query)))
-		buf.WriteString("':\n\n")
-
-		for idx, res := range resp.Results {
-			title := searxng.UnescapeIfNeeded(res.Title)
-
-			buf.WriteString(strconv.Itoa(idx + 1))
-			buf.WriteString(". ")
-			buf.WriteString(sanitizeTerminalControl(title))
-			buf.WriteByte('\n')
-			buf.WriteString("   URL: ")
-			buf.WriteString(sanitizeTerminalControl(res.URL))
-			buf.WriteByte('\n')
-
-			if res.Content != "" {
-				content := searxng.UnescapeIfNeeded(res.Content)
-				content = searxng.TruncateRunes(content, searxng.MaxContentRunes)
-				content = sanitizeTerminalControl(content)
-
-				buf.WriteString("   Summary: ")
-				buf.WriteString(content)
-				buf.WriteByte('\n')
-			}
-
-			if res.PublishedDate != nil && *res.PublishedDate != "" {
-				buf.WriteString("   Published date: ")
-				buf.WriteString(sanitizeTerminalControl(*res.PublishedDate))
-				buf.WriteByte('\n')
-			}
-
-			buf.WriteString("   Engine: ")
-			buf.WriteString(sanitizeTerminalControl(res.Engine))
-			buf.WriteString("\n\n")
-		}
-	}
-
-	// Suggestions last
-	if len(resp.Suggestions) > 0 {
-		buf.WriteString("=== Search Suggestions ===\n\n")
-
-		for _, sug := range resp.Suggestions {
-			buf.WriteString("  - ")
-			buf.WriteString(sanitizeTerminalControl(sug))
-			buf.WriteByte('\n')
-		}
-	}
+	writeResultsSection(&buf, resp.Results, resp.Query, resp.NumberOfResults)
+	writeSuggestions(&buf, resp.Suggestions)
 
 	return buf.String()
 }
