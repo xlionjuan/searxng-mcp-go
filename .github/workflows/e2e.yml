@@ -58,13 +58,14 @@ jobs:
 
       # Used to try increase success rate for the E2E
       - name: Connect Cloudflare WARP
-        uses: egor-tensin/setup-wireguard@9ada23fc4805ad705d54ef854c1477920c01ad31 #v1.2.0
-        with:
-          endpoint: engage.cloudflareclient.com:2408
-          endpoint_public_key: '${{ secrets.CFWARP_ENDPOINT_PUBLIC }}'
-          ips: '${{ secrets.CFWARP_IPS }}'
-          allowed_ips: 0.0.0.0/0, ::/0
-          private_key: '${{ secrets.CFWARP_PRIVATE }}'
+        env:
+          WG_CONFIG: ${{ secrets.CFWARP_CONFIG }}
+        run: |
+          sudo apt-get update && sudo apt-get install wireguard-tools -y
+          sudo mkdir -p /etc/wireguard
+          sudo install -m 600 /dev/null /etc/wireguard/wg0.conf
+          printf '%s\n' "$WG_CONFIG" | sudo tee /etc/wireguard/wg0.conf > /dev/null
+          sudo wg-quick up wg0
 
       # wretry.action rationale: upstream search engines (Google, Bing, etc.)
       # probabilistically rate-limit or ban the CI SearXNG instance during
