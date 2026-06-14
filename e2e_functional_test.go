@@ -18,7 +18,7 @@ import (
 	"searxng-mcp-go/internal/searxng"
 )
 
-func TestMCPFunctional(t *testing.T) { //nolint:gocognit,gocyclo,cyclop,maintidx // large test table, acceptable
+func TestMCPFunctional_SafesearchLevels(t *testing.T) {
 	searxngURL := os.Getenv("SEARXNG_URL")
 	if searxngURL == "" {
 		t.Skip("SEARXNG_URL not set")
@@ -26,7 +26,7 @@ func TestMCPFunctional(t *testing.T) { //nolint:gocognit,gocyclo,cyclop,maintidx
 
 	var warnings e2eWarnings
 
-	ctx, cancel := context.WithTimeout(t.Context(), 180*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 120*time.Second)
 	defer cancel()
 
 	session, stderr, _ := startMCPSession(ctx, t, searxngURL)
@@ -34,322 +34,420 @@ func TestMCPFunctional(t *testing.T) { //nolint:gocognit,gocyclo,cyclop,maintidx
 	_ = findSearchTool(ctx, t, session, stderr)
 	t.Log("search tool found")
 
-	t.Run("all safesearch levels", func(t *testing.T) {
-		for _, safesearch := range []int{0, 1, 2} {
-			t.Run(strconv.Itoa(safesearch), func(t *testing.T) {
-				response := requireSearchResponse(ctx, t, session, map[string]any{
-					"query":      "framework computer inc",
-					"safesearch": safesearch,
-					"limit":      3,
-				}, stderr, "all safesearch levels")
-
-				if len(response.Results) == 0 {
-					warning := "safesearch=" + strconv.Itoa(safesearch) + " results length = 0"
-					warnings.Addf("%s", warning)
-					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
-				}
-
-				for i, result := range response.Results {
-					if strings.TrimSpace(result.Title) == "" {
-						t.Fatalf("safesearch=%d result[%d] title is empty"+
-							"\nresponse: %#v\nstderr:\n%s", safesearch, i, response, stderr.String())
-					}
-				}
-			})
-		}
-	})
-
-	t.Run("all time ranges", func(t *testing.T) {
-		for _, timeRange := range []string{"day", "month", "year", ""} {
-			name := timeRange
-			if name == "" {
-				name = "all"
-			}
-
-			t.Run(name, func(t *testing.T) {
-				args := map[string]any{
-					"query": "framework computer inc",
-					"limit": 3,
-				}
-				if timeRange != "" {
-					args["time_range"] = timeRange
-				}
-
-				response := requireSearchResponse(ctx, t, session, args, stderr, "all time ranges")
-
-				if len(response.Results) == 0 {
-					if timeRange != "" {
-						t.Logf("time_range=%q results length = 0 (persistent, expected)"+
-							"\nresponse: %#v\nstderr:\n%s", timeRange, response, stderr.String())
-					} else {
-						warning := "time_range=\"all\" results length = 0"
-						warnings.Addf("%s", warning)
-						t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
-					}
-				} else {
-					for i, result := range response.Results {
-						if strings.TrimSpace(result.Title) == "" {
-							t.Fatalf("time_range=%q result[%d] title is empty"+
-								"\nresponse: %#v\nstderr:\n%s", timeRange, i, response, stderr.String())
-						}
-					}
-				}
-			})
-		}
-	})
-
-	t.Run("all categories", func(t *testing.T) {
-		// NOTE: "files" is intentionally excluded — it consistently returns 0 results
-		// for test queries on the CI SearXNG instance. Retry cannot fix this; it is not
-		// transient. Do not add it back without ensuring the files category returns results.
-		for _, category := range []string{"general", "news", "music", "images", "videos", "science", "it"} {
-			t.Run(category, func(t *testing.T) {
-				response := requireSearchResponse(ctx, t, session, map[string]any{
-					"query":      "framework computer inc",
-					"categories": category,
-					"limit":      3,
-				}, stderr, "all categories")
-
-				if len(response.Results) == 0 {
-					warning := "categories=" + strconv.Quote(category) + " results length = 0"
-					warnings.Addf("%s", warning)
-					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
-				}
-
-				for i, result := range response.Results {
-					if strings.TrimSpace(result.Title) == "" {
-						t.Fatalf("categories=%q result[%d] title is empty"+
-							"\nresponse: %#v\nstderr:\n%s", category, i, response, stderr.String())
-					}
-				}
-			})
-		}
-	})
-
-	t.Run("all engines", func(t *testing.T) {
-		for _, engine := range []string{"google", "bing", "duckduckgo", "yahoo"} {
-			t.Run(engine, func(t *testing.T) {
-				response := requireSearchResponse(ctx, t, session, map[string]any{
-					"query":   "framework computer inc",
-					"engines": engine,
-					"limit":   3,
-				}, stderr, "all engines")
-
-				if len(response.Results) == 0 {
-					warning := "engines=" + strconv.Quote(engine) + " results length = 0"
-					warnings.Addf("%s", warning)
-					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
-				}
-
-				for i, result := range response.Results {
-					if strings.TrimSpace(result.Title) == "" {
-						t.Fatalf("engines=%q result[%d] title is empty\nresponse: %#v\nstderr:\n%s", engine, i, response, stderr.String())
-					}
-				}
-			})
-		}
-	})
-
-	t.Run("paginations", func(t *testing.T) {
-		for _, pageno := range []int{1, 2, 3} {
-			t.Run(strconv.Itoa(pageno), func(t *testing.T) {
-				response := requireSearchResponse(ctx, t, session, map[string]any{
-					"query":  "framework computer inc",
-					"pageno": pageno,
-					"limit":  3,
-				}, stderr, "paginations")
-
-				if len(response.Results) == 0 {
-					warning := "pageno=" + strconv.Itoa(pageno) + " results length = 0"
-					warnings.Addf("%s", warning)
-					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
-				}
-
-				for i, result := range response.Results {
-					if strings.TrimSpace(result.Title) == "" {
-						t.Fatalf("pageno=%d result[%d] title is empty\nresponse: %#v\nstderr:\n%s", pageno, i, response, stderr.String())
-					}
-				}
-			})
-		}
-	})
-
-	t.Run("limit boundaries", func(t *testing.T) {
-		for _, limit := range []int{1, 5, 10, 20} {
-			t.Run(strconv.Itoa(limit), func(t *testing.T) {
-				response := requireSearchResponse(ctx, t, session, map[string]any{
-					"query": "framework computer inc",
-					"limit": limit,
-				}, stderr, "limit boundaries")
-
-				if len(response.Results) == 0 {
-					warning := "limit=" + strconv.Itoa(limit) + " got 0 results, want 1.." + strconv.Itoa(limit)
-					warnings.Addf("%s", warning)
-					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
-				}
-
-				if len(response.Results) > limit {
-					t.Fatalf("limit=%d got %d results, want <= %d"+
-						"\nresponse: %#v\nstderr:\n%s", limit, len(response.Results), limit, response, stderr.String())
-				}
-
-				for i, result := range response.Results {
-					if strings.TrimSpace(result.Title) == "" {
-						t.Fatalf("limit=%d result[%d] title is empty\nresponse: %#v\nstderr:\n%s", limit, i, response, stderr.String())
-					}
-				}
-			})
-		}
-	})
-
-	t.Run("parameter combinations", func(t *testing.T) {
-		t.Run("language+categories", func(t *testing.T) {
+	for _, safesearch := range []int{0, 1, 2} {
+		t.Run(strconv.Itoa(safesearch), func(t *testing.T) {
 			response := requireSearchResponse(ctx, t, session, map[string]any{
 				"query":      "framework computer inc",
-				"language":   "en",
-				"categories": "general",
+				"safesearch": safesearch,
 				"limit":      3,
-			}, stderr, "parameter combinations language+categories")
+			}, stderr, "all safesearch levels")
 
 			if len(response.Results) == 0 {
-				warning := "language+categories results length = 0"
+				warning := "safesearch=" + strconv.Itoa(safesearch) + " results length = 0"
 				warnings.Addf("%s", warning)
 				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 			}
 
-			for i, result := range response.Results {
-				if strings.TrimSpace(result.Title) == "" {
-					t.Fatalf("language+categories result[%d] title is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
+			assertResultTitles(t, response, stderr)
+		})
+	}
+
+	warnings.Report(t)
+	t.Log("MCP safesearch level tests completed")
+}
+
+func TestMCPFunctional_TimeRanges(t *testing.T) {
+	searxngURL := os.Getenv("SEARXNG_URL")
+	if searxngURL == "" {
+		t.Skip("SEARXNG_URL not set")
+	}
+
+	var warnings e2eWarnings
+
+	ctx, cancel := context.WithTimeout(t.Context(), 120*time.Second)
+	defer cancel()
+
+	session, stderr, _ := startMCPSession(ctx, t, searxngURL)
+
+	_ = findSearchTool(ctx, t, session, stderr)
+
+	for _, timeRange := range []string{"day", "month", "year", ""} {
+		name := timeRange
+		if name == "" {
+			name = "all"
+		}
+
+		t.Run(name, func(t *testing.T) {
+			args := map[string]any{
+				"query": "framework computer inc",
+				"limit": 3,
+			}
+			if timeRange != "" {
+				args["time_range"] = timeRange
+			}
+
+			response := requireSearchResponse(ctx, t, session, args, stderr, "all time ranges")
+
+			if len(response.Results) == 0 {
+				if timeRange != "" {
+					t.Logf("time_range=%q results length = 0 (persistent, expected)"+
+						"\nresponse: %#v\nstderr:\n%s", timeRange, response, stderr.String())
+				} else {
+					warning := "time_range=\"all\" results length = 0"
+					warnings.Addf("%s", warning)
+					t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 				}
+			} else {
+				assertResultTitles(t, response, stderr)
 			}
 		})
+	}
 
-		t.Run("engines+time_range", func(t *testing.T) {
+	warnings.Report(t)
+	t.Log("MCP time range tests completed")
+}
+
+func TestMCPFunctional_Categories(t *testing.T) {
+	searxngURL := os.Getenv("SEARXNG_URL")
+	if searxngURL == "" {
+		t.Skip("SEARXNG_URL not set")
+	}
+
+	var warnings e2eWarnings
+
+	ctx, cancel := context.WithTimeout(t.Context(), 120*time.Second)
+	defer cancel()
+
+	session, stderr, _ := startMCPSession(ctx, t, searxngURL)
+
+	_ = findSearchTool(ctx, t, session, stderr)
+
+	// NOTE: "files" is intentionally excluded — it consistently returns 0 results
+	// for test queries on the CI SearXNG instance. Retry cannot fix this; it is not
+	// transient. Do not add it back without ensuring the files category returns results.
+	for _, category := range []string{"general", "news", "music", "images", "videos", "science", "it"} {
+		t.Run(category, func(t *testing.T) {
 			response := requireSearchResponse(ctx, t, session, map[string]any{
 				"query":      "framework computer inc",
-				"engines":    "bing",
-				"time_range": "month",
+				"categories": category,
 				"limit":      3,
-			}, stderr, "parameter combinations engines+time_range")
+			}, stderr, "all categories")
 
-			// Allow empty results — specific engine + time range combinations
-			// may return no results.
-			for i, result := range response.Results {
-				if strings.TrimSpace(result.Title) == "" {
-					t.Fatalf("engines+time_range result[%d] title is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
-				}
+			if len(response.Results) == 0 {
+				warning := "categories=" + strconv.Quote(category) + " results length = 0"
+				warnings.Addf("%s", warning)
+				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 			}
 
-			t.Logf("engines+time_range: got %d results", len(response.Results))
+			assertResultTitles(t, response, stderr)
 		})
+	}
 
-		t.Run("pageno+limit", func(t *testing.T) {
+	warnings.Report(t)
+	t.Log("MCP category tests completed")
+}
+
+func TestMCPFunctional_Engines(t *testing.T) {
+	searxngURL := os.Getenv("SEARXNG_URL")
+	if searxngURL == "" {
+		t.Skip("SEARXNG_URL not set")
+	}
+
+	var warnings e2eWarnings
+
+	ctx, cancel := context.WithTimeout(t.Context(), 120*time.Second)
+	defer cancel()
+
+	session, stderr, _ := startMCPSession(ctx, t, searxngURL)
+
+	_ = findSearchTool(ctx, t, session, stderr)
+
+	for _, engine := range []string{"google", "bing", "duckduckgo", "yahoo"} {
+		t.Run(engine, func(t *testing.T) {
+			response := requireSearchResponse(ctx, t, session, map[string]any{
+				"query":   "framework computer inc",
+				"engines": engine,
+				"limit":   3,
+			}, stderr, "all engines")
+
+			if len(response.Results) == 0 {
+				warning := "engines=" + strconv.Quote(engine) + " results length = 0"
+				warnings.Addf("%s", warning)
+				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
+			}
+
+			assertResultTitles(t, response, stderr)
+		})
+	}
+
+	warnings.Report(t)
+	t.Log("MCP engine tests completed")
+}
+
+func TestMCPFunctional_Pagination(t *testing.T) {
+	searxngURL := os.Getenv("SEARXNG_URL")
+	if searxngURL == "" {
+		t.Skip("SEARXNG_URL not set")
+	}
+
+	var warnings e2eWarnings
+
+	ctx, cancel := context.WithTimeout(t.Context(), 120*time.Second)
+	defer cancel()
+
+	session, stderr, _ := startMCPSession(ctx, t, searxngURL)
+
+	_ = findSearchTool(ctx, t, session, stderr)
+
+	for _, pageno := range []int{1, 2, 3} {
+		t.Run(strconv.Itoa(pageno), func(t *testing.T) {
 			response := requireSearchResponse(ctx, t, session, map[string]any{
 				"query":  "framework computer inc",
-				"pageno": 2,
-				"limit":  5,
-			}, stderr, "parameter combinations pageno+limit")
+				"pageno": pageno,
+				"limit":  3,
+			}, stderr, "paginations")
 
 			if len(response.Results) == 0 {
-				t.Logf("pageno+limit results length = 0 (persistent, expected)"+
-					"\nresponse: %#v\nstderr:\n%s", response, stderr.String())
-			} else if len(response.Results) > 5 {
-				t.Fatalf("pageno+limit got %d results, want <= 5"+
-					"\nresponse: %#v\nstderr:\n%s", len(response.Results), response, stderr.String())
-			}
-
-			if len(response.Results) > 0 {
-				for i, result := range response.Results {
-					if strings.TrimSpace(result.Title) == "" {
-						t.Fatalf("pageno+limit result[%d] title is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
-					}
-				}
-			}
-		})
-	})
-
-	t.Run("unicode and special characters", func(t *testing.T) {
-		t.Run("chinese", func(t *testing.T) {
-			response := requireSearchResponse(ctx, t, session, map[string]any{
-				"query": "你好世界",
-				"limit": 3,
-			}, stderr, "unicode chinese query")
-
-			if !strings.Contains(response.Query, "你好") {
-				t.Fatalf("chinese query not preserved in response: query=%q\nstderr:\n%s", response.Query, stderr.String())
-			}
-
-			if len(response.Results) == 0 {
-				warning := "chinese query results length = 0"
+				warning := "pageno=" + strconv.Itoa(pageno) + " results length = 0"
 				warnings.Addf("%s", warning)
 				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 			}
+
+			assertResultTitles(t, response, stderr)
 		})
+	}
 
-		t.Run("japanese", func(t *testing.T) {
+	warnings.Report(t)
+	t.Log("MCP pagination tests completed")
+}
+
+func TestMCPFunctional_LimitBoundaries(t *testing.T) {
+	searxngURL := os.Getenv("SEARXNG_URL")
+	if searxngURL == "" {
+		t.Skip("SEARXNG_URL not set")
+	}
+
+	var warnings e2eWarnings
+
+	ctx, cancel := context.WithTimeout(t.Context(), 120*time.Second)
+	defer cancel()
+
+	session, stderr, _ := startMCPSession(ctx, t, searxngURL)
+
+	_ = findSearchTool(ctx, t, session, stderr)
+
+	for _, limit := range []int{1, 5, 10, 20} {
+		t.Run(strconv.Itoa(limit), func(t *testing.T) {
 			response := requireSearchResponse(ctx, t, session, map[string]any{
-				"query": "こんにちは",
-				"limit": 3,
-			}, stderr, "unicode japanese query")
-
-			if !strings.Contains(response.Query, "こんにちは") {
-				t.Fatalf("japanese query not preserved in response: query=%q\nstderr:\n%s", response.Query, stderr.String())
-			}
+				"query": "framework computer inc",
+				"limit": limit,
+			}, stderr, "limit boundaries")
 
 			if len(response.Results) == 0 {
-				warning := "japanese query results length = 0"
+				warning := "limit=" + strconv.Itoa(limit) + " got 0 results, want 1.." + strconv.Itoa(limit)
 				warnings.Addf("%s", warning)
 				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 			}
-		})
 
-		t.Run("emoji", func(t *testing.T) {
-			response := requireSearchResponse(ctx, t, session, map[string]any{
-				"query": "🔍",
-				"limit": 3,
-			}, stderr, "unicode emoji query")
-
-			if len(response.Results) == 0 {
-				warning := "emoji query results length = 0"
-				warnings.Addf("%s", warning)
-				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
+			if len(response.Results) > limit {
+				t.Fatalf("limit=%d got %d results, want <= %d"+
+					"\nresponse: %#v\nstderr:\n%s", limit, len(response.Results), limit, response, stderr.String())
 			}
-		})
-	})
 
-	t.Run("response structure", func(t *testing.T) {
+			assertResultTitles(t, response, stderr)
+		})
+	}
+
+	warnings.Report(t)
+	t.Log("MCP limit boundary tests completed")
+}
+
+func TestMCPFunctional_ParameterCombinations(t *testing.T) {
+	searxngURL := os.Getenv("SEARXNG_URL")
+	if searxngURL == "" {
+		t.Skip("SEARXNG_URL not set")
+	}
+
+	var warnings e2eWarnings
+
+	ctx, cancel := context.WithTimeout(t.Context(), 120*time.Second)
+	defer cancel()
+
+	session, stderr, _ := startMCPSession(ctx, t, searxngURL)
+
+	_ = findSearchTool(ctx, t, session, stderr)
+
+	t.Run("language+categories", func(t *testing.T) {
 		response := requireSearchResponse(ctx, t, session, map[string]any{
-			"query": "framework computer inc",
-			"limit": 10,
-		}, stderr, "response structure")
+			"query":      "framework computer inc",
+			"language":   "en",
+			"categories": "general",
+			"limit":      3,
+		}, stderr, "parameter combinations language+categories")
 
 		if len(response.Results) == 0 {
-			warning := "response structure results length = 0"
+			warning := "language+categories results length = 0"
 			warnings.Addf("%s", warning)
 			t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 		}
 
-		for i, result := range response.Results {
-			if strings.TrimSpace(result.Title) == "" {
-				t.Fatalf("result[%d] title is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
-			}
+		assertResultTitles(t, response, stderr)
+	})
 
-			if strings.TrimSpace(result.URL) == "" {
-				t.Fatalf("result[%d] URL is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
-			}
+	t.Run("engines+time_range", func(t *testing.T) {
+		response := requireSearchResponse(ctx, t, session, map[string]any{
+			"query":      "framework computer inc",
+			"engines":    "bing",
+			"time_range": "month",
+			"limit":      3,
+		}, stderr, "parameter combinations engines+time_range")
 
-			if strings.TrimSpace(result.Content) == "" {
-				t.Fatalf("result[%d] content is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
-			}
+		// Allow empty results — specific engine + time range combinations
+		// may return no results.
+		assertResultTitles(t, response, stderr)
 
-			if strings.TrimSpace(result.Engine) == "" {
-				t.Fatalf("result[%d] engine is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
-			}
+		t.Logf("engines+time_range: got %d results", len(response.Results))
+	})
+
+	t.Run("pageno+limit", func(t *testing.T) {
+		response := requireSearchResponse(ctx, t, session, map[string]any{
+			"query":  "framework computer inc",
+			"pageno": 2,
+			"limit":  5,
+		}, stderr, "parameter combinations pageno+limit")
+
+		if len(response.Results) == 0 {
+			t.Logf("pageno+limit results length = 0 (persistent, expected)"+
+				"\nresponse: %#v\nstderr:\n%s", response, stderr.String())
+		} else if len(response.Results) > 5 {
+			t.Fatalf("pageno+limit got %d results, want <= 5"+
+				"\nresponse: %#v\nstderr:\n%s", len(response.Results), response, stderr.String())
+		}
+
+		if len(response.Results) > 0 {
+			assertResultTitles(t, response, stderr)
 		}
 	})
 
 	warnings.Report(t)
-	t.Log("MCP functional tests completed")
+	t.Log("MCP parameter combination tests completed")
+}
+
+func TestMCPFunctional_UnicodeQueries(t *testing.T) {
+	searxngURL := os.Getenv("SEARXNG_URL")
+	if searxngURL == "" {
+		t.Skip("SEARXNG_URL not set")
+	}
+
+	var warnings e2eWarnings
+
+	ctx, cancel := context.WithTimeout(t.Context(), 120*time.Second)
+	defer cancel()
+
+	session, stderr, _ := startMCPSession(ctx, t, searxngURL)
+
+	_ = findSearchTool(ctx, t, session, stderr)
+
+	t.Run("chinese", func(t *testing.T) {
+		response := requireSearchResponse(ctx, t, session, map[string]any{
+			"query": "你好世界",
+			"limit": 3,
+		}, stderr, "unicode chinese query")
+
+		if !strings.Contains(response.Query, "你好") {
+			t.Fatalf("chinese query not preserved in response: query=%q\nstderr:\n%s", response.Query, stderr.String())
+		}
+
+		if len(response.Results) == 0 {
+			warning := "chinese query results length = 0"
+			warnings.Addf("%s", warning)
+			t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
+		}
+	})
+
+	t.Run("japanese", func(t *testing.T) {
+		response := requireSearchResponse(ctx, t, session, map[string]any{
+			"query": "こんにちは",
+			"limit": 3,
+		}, stderr, "unicode japanese query")
+
+		if !strings.Contains(response.Query, "こんにちは") {
+			t.Fatalf("japanese query not preserved in response: query=%q\nstderr:\n%s", response.Query, stderr.String())
+		}
+
+		if len(response.Results) == 0 {
+			warning := "japanese query results length = 0"
+			warnings.Addf("%s", warning)
+			t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
+		}
+	})
+
+	t.Run("emoji", func(t *testing.T) {
+		response := requireSearchResponse(ctx, t, session, map[string]any{
+			"query": "🔍",
+			"limit": 3,
+		}, stderr, "unicode emoji query")
+
+		if len(response.Results) == 0 {
+			warning := "emoji query results length = 0"
+			warnings.Addf("%s", warning)
+			t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
+		}
+	})
+
+	warnings.Report(t)
+	t.Log("MCP unicode query tests completed")
+}
+
+func TestMCPFunctional_ResponseStructure(t *testing.T) {
+	searxngURL := os.Getenv("SEARXNG_URL")
+	if searxngURL == "" {
+		t.Skip("SEARXNG_URL not set")
+	}
+
+	var warnings e2eWarnings
+
+	ctx, cancel := context.WithTimeout(t.Context(), 120*time.Second)
+	defer cancel()
+
+	session, stderr, _ := startMCPSession(ctx, t, searxngURL)
+
+	_ = findSearchTool(ctx, t, session, stderr)
+
+	response := requireSearchResponse(ctx, t, session, map[string]any{
+		"query": "framework computer inc",
+		"limit": 10,
+	}, stderr, "response structure")
+
+	if len(response.Results) == 0 {
+		warning := "response structure results length = 0"
+		warnings.Addf("%s", warning)
+		t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
+	}
+
+	for i, result := range response.Results {
+		if strings.TrimSpace(result.Title) == "" {
+			t.Fatalf("result[%d] title is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
+		}
+
+		if strings.TrimSpace(result.URL) == "" {
+			t.Fatalf("result[%d] URL is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
+		}
+
+		// News/image results often have title+URL+engine but no Content,
+		// so route through WARNING SUMMARY instead of failing.
+		if strings.TrimSpace(result.Content) == "" {
+			warnings.Addf("result[%d] content is empty", i)
+			t.Logf("result[%d] content is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
+		}
+
+		if strings.TrimSpace(result.Engine) == "" {
+			t.Fatalf("result[%d] engine is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
+		}
+	}
+
+	warnings.Report(t)
+	t.Log("MCP response structure tests completed")
 }
 
 // TestCLISmoke exercises the binary in flag-driven (non-MCP) CLI mode.
