@@ -46,6 +46,18 @@ func TestClassifyOutcome(t *testing.T) {
 		}
 	})
 
+	t.Run("HTMLResponseError returns OutcomeAbort", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		err := &HTMLResponseError{Body: "<html><body>error</body></html>"}
+		outcome := classifyOutcome(ctx, 0, 2, nil, err, false)
+
+		if outcome != OutcomeAbort {
+			t.Fatalf("classifyOutcome() = %v, want OutcomeAbort for HTMLResponseError", outcome)
+		}
+	})
+
 	t.Run("plain error returns OutcomeRetry", func(t *testing.T) {
 		t.Parallel()
 

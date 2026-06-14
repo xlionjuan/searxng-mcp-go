@@ -425,6 +425,35 @@ func TestSearch_NonOKStatus(t *testing.T) {
 			t.Fatalf("error type = %T, want *HTMLResponseError", err)
 		}
 	})
+
+	t.Run("HTML response with retries enabled does not retry", func(t *testing.T) {
+		t.Parallel()
+
+		callCount := 0
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			callCount++
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"text/html"}},
+				Body:       io.NopCloser(strings.NewReader("<html><body>JSON not enabled</body></html>")),
+			}, nil
+		}), 2)
+
+		_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("Search() error = nil, want HTMLResponseError")
+		}
+
+		var htmlErr *HTMLResponseError
+		if !errors.As(err, &htmlErr) {
+			t.Fatalf("error type = %T, want *HTMLResponseError", err)
+		}
+
+		if callCount != 1 {
+			t.Fatalf("callCount = %d, want 1 (no retry for HTML response)", callCount)
+		}
+	})
 }
 
 func TestSearch_DebugMode(t *testing.T) {
