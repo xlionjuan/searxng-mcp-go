@@ -74,6 +74,10 @@ func e2eMCPBinaryPath(t *testing.T) string {
 	}
 
 	e2eBinaryOnce.Do(func() {
+		// This temp directory is intentionally leaked — it is a package-level
+		// build cache that persists across all E2E tests to avoid rebuilding
+		// the binary for every top-level test. The OS temp cleaner will
+		// eventually reclaim it.
 		//nolint:usetesting // package-level cache must outlive individual tests
 		dir, err := os.MkdirTemp("", "searxng-mcp-go-e2e-*")
 		if err != nil {
