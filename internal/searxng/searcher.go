@@ -153,8 +153,6 @@ func (s *SearXNGSearcher) Close() error {
 // Search executes the search query against SearXNG with retry support.
 // Returns SearXNGError wrapping the last error if all retries are exhausted.
 // Returns ValidationError if args are invalid.
-//
-//nolint:gocognit,gocyclo,cyclop // orchestrates distinct concerns; extracting adds indirection
 func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	normalized, err := ValidateSearchArgs(args)
 	if err != nil {
@@ -167,14 +165,21 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 	searchCtx, searchCancel := s.searchContext(ctx)
 	defer searchCancel()
 
+	return s.searchWithRetries(searchCtx, args)
+}
+
+// searchWithRetries runs the retry loop for a single search.
+//
+//nolint:gocognit,gocyclo // retry orchestration: attempt, classification, error tracking, and wait
+func (s *SearXNGSearcher) searchWithRetries(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	var lastErr error
 
 	maxRetries := s.retryStrategy.MaxRetries()
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
-		resp, _, err := s.doSearchAttempt(searchCtx, args)
+		resp, _, err := s.doSearchAttempt(ctx, args)
 
-		ar, classifyErr := s.classifyAttempt(searchCtx, attempt, maxRetries, resp, err, args)
+		ar, classifyErr := s.classifyAttempt(ctx, attempt, maxRetries, resp, err, args)
 		if classifyErr != nil {
 			return nil, classifyErr
 		}
@@ -196,11 +201,11 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 			trackErr = errSearchEmptyResults
 		}
 
-		shouldRetry, delay := s.retryStrategy.ShouldRetry(searchCtx, attempt, ar.outcome)
+		shouldRetry, delay := s.retryStrategy.ShouldRetry(ctx, attempt, ar.outcome)
 
 		if !shouldRetry {
-			if trackErr == nil && searchCtx.Err() != nil {
-				trackErr = searchCtx.Err()
+			if trackErr == nil && ctx.Err() != nil {
+				trackErr = ctx.Err()
 			}
 
 			if trackErr != nil {
@@ -223,7 +228,7 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 
 		closeResponseBody(resp, s.getLogger())
 
-		waitErr := retryWait(searchCtx, delay)
+		waitErr := retryWait(ctx, delay)
 		if waitErr != nil {
 			lastErr = waitErr
 
