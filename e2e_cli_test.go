@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"strings"
@@ -10,8 +12,8 @@ import (
 	"time"
 )
 
-// removeEnv returns a copy of env with the variable named key removed.
-func removeEnv(env []string, key string) []string {
+// removeEnvVar returns a copy of env with the variable named key removed.
+func removeEnvVar(env []string, key string) []string {
 	var result []string
 
 	prefix := key + "="
@@ -24,12 +26,52 @@ func removeEnv(env []string, key string) []string {
 	return result
 }
 
+// unreachableSearXNGURL is an intentionally invalid endpoint. Port 1 is
+// reserved and will not accept connections, so any test using this URL is
+// guaranteed to fail at the network layer if it ever gets that far. Tests
+// use it when they only need a syntactically valid URL to pass configuration
+// parsing or to trigger a validation error before the actual HTTP request.
+// It must never be used for tests that require a real SearXNG response.
+const unreachableSearXNGURL = "http://127.0.0.1:1"
+
+// newMockSearXNGServer starts a local httptest server that returns a minimal
+// valid SearXNG JSON response. Callers must close the server when done.
+func newMockSearXNGServer(t *testing.T) *httptest.Server {
+	t.Helper()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		_, err := w.Write([]byte(`{
+			"query": "test",
+			"number_of_results": 1,
+			"results": [
+				{
+					"title": "Mock Result",
+					"url": "https://example.com/mock",
+					"content": "This is a mock result from the local test server.",
+					"engine": "mock"
+				}
+			],
+			"answers": [],
+			"infoboxes": [],
+			"suggestions": [],
+			"unresponsive_engines": []
+		}`))
+		if err != nil {
+			t.Logf("mock server write error: %v", err)
+		}
+	}))
+
+	return server
+}
+
 // envWithout returns a copy of the current environment with the given keys removed.
 func envWithout(keys ...string) []string {
 	env := os.Environ()
 
 	for _, key := range keys {
-		env = removeEnv(env, key)
+		env = removeEnvVar(env, key)
 	}
 
 	return env
@@ -159,21 +201,21 @@ func TestCLIEnvFlagPrecedence(t *testing.T) {
 		{
 			name:     "timeout flag overrides env",
 			env:      []string{"SEARXNG_TIMEOUT=30s"},
-			args:     []string{"--timeout", "10s", "--pageno", "0", "--searxng-url", "http://localhost:9999", "test"},
+			args:     []string{"--timeout", "10s", "--pageno", "0", "--searxng-url", unreachableSearXNGURL, "test"},
 			wantCode: 1,
 			wantOut:  "validation error",
 		},
 		{
 			name:     "max-retries flag overrides env",
 			env:      []string{"SEARXNG_MAX_RETRIES=5"},
-			args:     []string{"--max-retries", "1", "--pageno", "0", "--searxng-url", "http://localhost:9999", "test"},
+			args:     []string{"--max-retries", "1", "--pageno", "0", "--searxng-url", unreachableSearXNGURL, "test"},
 			wantCode: 1,
 			wantOut:  "validation error",
 		},
 		{
 			name:     "allow-get-fallback flag overrides env",
 			env:      []string{"SEARXNG_ALLOW_GET_FALLBACK=0"},
-			args:     []string{"--allow-get-fallback", "--pageno", "0", "--searxng-url", "http://localhost:9999", "test"},
+			args:     []string{"--allow-get-fallback", "--pageno", "0", "--searxng-url", unreachableSearXNGURL, "test"},
 			wantCode: 1,
 			wantOut:  "validation error",
 		},
@@ -211,35 +253,41 @@ func TestCLIEnvFlagPrecedence(t *testing.T) {
 	}
 }
 
-// TestCLINonJSONOutputFormat verifies that a CLI run without --json does not
-// emit JSON-formatted output on failure. Because this test has no live SearXNG
-// server, it fails at the HTTP layer; the practical assertion is that the
-// captured output is human-readable error text rather than JSON.
+// TestCLINonJSONOutputFormat verifies that a CLI run without --json emits
+// human-readable output when the search succeeds. A local httptest server
+// provides a deterministic SearXNG response so the test does not depend on a
+// live external instance.
 func TestCLINonJSONOutputFormat(t *testing.T) {
 	t.Parallel()
+
+	server := newMockSearXNGServer(t)
+	defer server.Close()
 
 	binPath, cleanup := buildTestBinary(t)
 	defer cleanup()
 
 	env := envWithout("SEARXNG_URL")
-	// Use a short timeout and no retries so the failure is deterministic and
-	// fast even when the test environment resolves localhost slowly.
-	out, code := runCLI(t, binPath, env,
-		"--searxng-url", "http://localhost:9999",
-		"--timeout", "2s",
+	out, code := runCLI(
+		t, binPath, env,
+		"--searxng-url", server.URL,
+		"--timeout", "5s",
 		"--max-retries", "0",
 		"test",
 	)
 
-	if code != 1 {
-		t.Errorf("exit code = %d, want 1\noutput: %s", code, out)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0\noutput: %s", code, out)
 	}
 
 	if strings.HasPrefix(strings.TrimSpace(out), "{") {
-		t.Errorf("human-readable failure output should not look like JSON, got: %s", out)
+		t.Errorf("human-readable output should not look like JSON, got: %s", out)
 	}
 
-	if !strings.Contains(out, "search error") {
-		t.Errorf("expected a search/HTTP error without live server, got: %s", out)
+	if !strings.Contains(out, "Results") {
+		t.Errorf("human-readable output should contain 'Results' heading, got: %s", out)
+	}
+
+	if !strings.Contains(out, "Mock Result") {
+		t.Errorf("human-readable output should contain result title, got: %s", out)
 	}
 }
