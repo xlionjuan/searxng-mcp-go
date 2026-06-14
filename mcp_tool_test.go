@@ -160,12 +160,12 @@ func TestSearchInputSchema(t *testing.T) {
 	}
 
 	required, ok := schema["required"].([]any)
-	if !ok || len(required) == 0 {
+	if !ok {
 		t.Fatalf("expected non-empty required list, got %T: %#v", schema["required"], schema["required"])
 	}
 
-	if required[0] != "query" {
-		t.Fatalf("required[0] = %v, want query", required[0])
+	if len(required) != 1 || required[0] != "query" {
+		t.Fatalf("required = %#v, want [query]", required)
 	}
 }
 

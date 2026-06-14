@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -340,9 +339,10 @@ func toolTextFromResult(result *mcp.CallToolResult) (string, bool) {
 // =============================================================================
 
 // requireSearchToolSchema verifies the search tool's JSON Schema constraints.
-// It intentionally avoids strict checks on enum ordering, required field
-// membership beyond "query", and exact bound values so that adding a new
-// optional parameter does not require updating E2E tests.
+// It intentionally avoids strict checks on enum ordering and exact bound values
+// so that adding a new optional parameter does not require updating E2E tests.
+// The required set remains exact because extra required fields break existing
+// MCP clients that send only a query.
 func requireSearchToolSchema(t *testing.T, tool *mcp.Tool, stderr stderrBuffer) {
 	t.Helper()
 
@@ -363,9 +363,9 @@ func requireSearchToolSchema(t *testing.T, tool *mcp.Tool, stderr stderrBuffer) 
 			"\nschema: %#v\nstderr:\n%s", schema["required"], schema, stderr.String())
 	}
 
-	if !slices.Contains(required, "query") {
-		t.Fatalf("search schema required = %#v, want it to contain \"query\""+
-			"\nschema: %#v\nstderr:\n%s", required, schema, stderr.String())
+	if len(required) != 1 || required[0] != "query" {
+		t.Fatalf("search schema required = %#v, want [query]\nschema: %#v\nstderr:\n%s",
+			required, schema, stderr.String())
 	}
 
 	props, ok := schema["properties"].(map[string]any)
