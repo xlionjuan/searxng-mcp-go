@@ -386,6 +386,16 @@ func TestComputeSearchEndpoint(t *testing.T) {
 			baseURL: "https://search.example.com/?foo=bar",
 			want:    "https://search.example.com/search",
 		},
+		{
+			name:    "strips fragment",
+			baseURL: "https://search.example.com/search#section",
+			want:    "https://search.example.com/search",
+		},
+		{
+			name:    "strips fragment with path and query",
+			baseURL: "https://search.example.com/searxng/?q=test#section",
+			want:    "https://search.example.com/searxng/search",
+		},
 	}
 
 	for _, tt := range tests {
