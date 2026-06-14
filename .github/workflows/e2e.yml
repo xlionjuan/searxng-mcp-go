@@ -66,6 +66,7 @@ jobs:
           sudo mkdir -p /etc/wireguard
           sudo install -m 600 /dev/null /etc/wireguard/wg0.conf
           printf '%s\n' "$WG_CONFIG" | sudo tee /etc/wireguard/wg0.conf > /dev/null
+          echo "WARNING! Runner log will stop updating after connection established, wait the disconnect step done and it should show up again."
           sudo wg-quick up wg0
 
       # wretry.action rationale: upstream search engines (Google, Bing, etc.)
