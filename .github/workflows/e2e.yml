@@ -58,7 +58,7 @@ jobs:
 
       # Used to try increase success rate for the E2E
       - name: Connect Cloudflare WARP
-        uses: egor-tensin/setup-wireguard@9ada23fc4805ad705d54ef854c1477920c01ad31 @v1.2.0
+        uses: egor-tensin/setup-wireguard@9ada23fc4805ad705d54ef854c1477920c01ad31 #v1.2.0
         with:
           endpoint: engage.cloudflareclient.com:2408
           endpoint_public_key: '${{ secrets.CFWARP_ENDPOINT_PUBLIC }}'
