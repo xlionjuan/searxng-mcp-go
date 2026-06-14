@@ -87,6 +87,11 @@ func classifyOutcome(
 			return OutcomeAbort
 		}
 
+		var he *HTMLResponseError
+		if errors.As(err, &he) {
+			return OutcomeAbort
+		}
+
 		// Redirect policy failures are deterministic — retrying would submit
 		// the same request to the same blocked redirect on every attempt.
 		if errors.Is(err, errRedirectDifferentHost) ||
