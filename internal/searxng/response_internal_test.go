@@ -1206,6 +1206,69 @@ func TestDecodeSearchResponseLoggerRouting(t *testing.T) {
 	})
 }
 
+// FuzzDecodeSearchResponse feeds arbitrary bytes through the JSON response
+// decoding and normalization path. It is intentionally bounded: inputs larger
+// than MaxResponseBodySize are ignored to avoid excessive memory use during
+// fuzzing, and no I/O or sleeps are performed.
+func FuzzDecodeSearchResponse(f *testing.F) {
+	seeds := [][]byte{
+		[]byte(`{}`),
+		[]byte(`{"query":"fuzz"}`),
+		[]byte(`{"results":[]}`),
+		[]byte(`{"results":[{"title":"t","url":"https://example.com","content":"c","engine":"e"}]}`),
+		[]byte(`{"suggestions":[]}`),
+		[]byte(`{"number_of_results":42}`),
+		[]byte(`{"answers":[{"answer":"a"}]}`),
+		[]byte(`{"infoboxes":[{"infobox":"i","content":"c"}]}`),
+		[]byte(`{`),
+		[]byte(`{invalid}`),
+		[]byte(`[]`),
+		[]byte(`""`),
+		[]byte(`null`),
+		[]byte(`{"results":null}`),
+		[]byte(`<html></html>`),
+		[]byte(`{"results":[{"title":"` + strings.Repeat("a", 1000) + `"}]}`),
+	}
+	for _, seed := range seeds {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, body []byte) {
+		// Keep the fuzz target bounded: decoding huge payloads can allocate
+		// disproportionate memory without meaningfully increasing coverage.
+		if len(body) > MaxResponseBodySize {
+			return
+		}
+
+		resp := &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+		}
+		logger := slog.New(slog.DiscardHandler)
+		searcher := &SearXNGSearcher{logger: logger}
+
+		result, err := decodeSearchResponse(resp, "application/json", body, logger)
+		if err != nil {
+			return
+		}
+
+		// normalizeResponse must not panic on arbitrarily decoded data.
+		searcher.normalizeResponse(result, &SearchArgs{})
+
+		if result.Results == nil {
+			t.Errorf("Results is nil after normalization")
+		}
+
+		if result.Suggestions == nil {
+			t.Errorf("Suggestions is nil after normalization")
+		}
+
+		if result.Warning != ExternalContentWarning {
+			t.Errorf("Warning = %q, want %q", result.Warning, ExternalContentWarning)
+		}
+	})
+}
+
 var errMockClose = errors.New("mock close error")
 
 // errorCloseReader implements io.ReadCloser and returns an error on Close.
