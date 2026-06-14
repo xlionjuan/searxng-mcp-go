@@ -115,3 +115,5 @@ _Avoid_: POSTtoGETFallback (internal test function name)
 4. **`corrections` explicitly excluded**: The SearXNG response includes a `corrections` string array (spelling corrections from search engines), but this field is intentionally absent from `SearchResponse` per ADR-005 — it is not exposed in any output mode.
 
 5. **`UnresponsiveEngines` conditional exposure**: This field is always captured in the Go struct but is only serialized to JSON when `Debug` is true. In CLI text mode, it is never printed to stdout — it is only logged via `slog.Debug` (visible in stderr with debug logging).
+
+6. **Unknown engines/categories silently ignored by SearXNG**: When `engines` or `categories` contains unknown names, SearXNG silently falls back to defaults (`wikipedia` for engines, `general` for categories) and returns results with `warnings: []` — no error or warning is emitted. The MCP server has no way to detect this, so consumers should not treat the presence of results as confirmation that a requested engine or category was used.
