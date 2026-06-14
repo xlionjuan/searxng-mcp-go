@@ -60,13 +60,13 @@ type ParamDef struct {
 }
 
 var (
-	paramMinSafeSearch   = MinSafeSearch
-	paramMaxSafeSearch   = MaxSafeSearch
-	paramMinPage         = MinPageno
-	paramMinLimit        = MinResultLimit
-	paramMaxLimit        = MaxResultLimit
-	paramDefaultLimit    = DefaultResultLimit
-	paramMaxQueryLength  = MaxQueryLength
+	paramMinSafeSearch  = MinSafeSearch
+	paramMaxSafeSearch  = MaxSafeSearch
+	paramMinPage        = MinPageno
+	paramMinLimit       = MinResultLimit
+	paramMaxLimit       = MaxResultLimit
+	paramDefaultLimit   = DefaultResultLimit
+	paramMaxQueryLength = MaxQueryLength
 )
 
 // errUnexpectedGoType is a sentinel error for FlagDefault when a ParamDef
