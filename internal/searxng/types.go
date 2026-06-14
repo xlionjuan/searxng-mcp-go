@@ -24,9 +24,13 @@ var (
 
 // Config controls SearXNG client behavior.
 type Config struct {
-	SearXNGURL       string
+	SearXNGURL string
+	// Timeout is the per-request HTTP timeout for each individual SearXNG
+	// request attempt. It does not bound the overall Search operation, which
+	// is governed by the caller-provided context. When HTTPClient is set,
+	// Timeout is ignored and the custom client controls HTTP timing.
 	Timeout          time.Duration
-	HTTPClient       *http.Client // Optional custom HTTP client. When set, Timeout is ignored.
+	HTTPClient       *http.Client
 	MaxRetries       int
 	RetryDelay       time.Duration
 	MaxRetryDelay    time.Duration

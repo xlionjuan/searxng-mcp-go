@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1269,11 +1270,13 @@ func TestRunCLIMode_TimeoutExceeded(t *testing.T) {
 	defer server.Close()
 
 	timeout := 1 * time.Millisecond
+	maxRetries := 0
 	flags := &CLIFlags{
 		Query:      "test",
 		SearXNGURL: server.URL,
 		Pageno:     nil,
 		Timeout:    &timeout,
+		MaxRetries: &maxRetries,
 	}
 
 	err := runCLIMode(false, flags, []string{})
@@ -1284,6 +1287,61 @@ func TestRunCLIMode_TimeoutExceeded(t *testing.T) {
 	errStr := err.Error()
 	if !strings.Contains(errStr, "search error") {
 		t.Fatalf("expected 'search error' in error, got: %v", err)
+	}
+}
+
+func TestRunCLIMode_TimeoutIsPerRequestNotOverall(t *testing.T) {
+	t.Parallel()
+
+	var attempts atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		n := attempts.Add(1)
+		if n == 1 {
+			// Exceed the per-request timeout so the first attempt is
+			// canceled. Under the old CLI behavior this would also have
+			// exhausted the overall search deadline, preventing retries.
+			time.Sleep(100 * time.Millisecond)
+
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		//nolint:errcheck // test fixture write best-effort
+		_, _ = w.Write([]byte(
+			`{"query":"test","number_of_results":1,` +
+				`"results":[{"title":"OK","url":"https://example.com","content":"ok","engine":"test"}],` +
+				`"suggestions":[]}`))
+	}))
+	defer server.Close()
+
+	// Per-request timeout is shorter than the first request sleep, but the
+	// overall search is bounded by context.Background() (no deadline), so
+	// retries can still succeed.
+	timeout := 50 * time.Millisecond
+	maxRetries := 1
+	flags := &CLIFlags{
+		Query:      "test",
+		SearXNGURL: server.URL,
+		Pageno:     nil,
+		Timeout:    &timeout,
+		MaxRetries: &maxRetries,
+	}
+
+	output := captureStdout(t, func() {
+		err := runCLIMode(false, flags, []string{})
+		if err != nil {
+			t.Fatalf("runCLIMode() error = %v, want nil (timeout is per-request, retries should not be preempted)", err)
+		}
+	})
+
+	if got := attempts.Load(); got != 2 {
+		t.Fatalf("attempts = %d, want 2 (1 request timeout + 1 success)", got)
+	}
+
+	if !strings.Contains(output, "=== Results ===") {
+		t.Fatalf("expected results output, got: %q", output)
 	}
 }
 

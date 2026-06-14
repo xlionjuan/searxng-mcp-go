@@ -55,7 +55,7 @@ The default retry count is 5 retries after the initial search attempt. Set `SEAR
 
 ### Timeout
 
-The default timeout for search requests is 8 seconds. Set `SEARXNG_TIMEOUT` to a Go duration such as `8s`; in CLI mode, `--timeout` overrides the environment variable.
+The default per-request HTTP timeout is 8 seconds. Set `SEARXNG_TIMEOUT` to a Go duration such as `8s`; in CLI mode, `--timeout` overrides the environment variable. The timeout applies to each individual HTTP request attempt, not to the overall search operation including retries.
 
 ### POST to GET Fallback
 
