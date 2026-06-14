@@ -448,7 +448,7 @@ func TestSearch_DebugMode(t *testing.T) {
 			debug:          true,
 			retryStrategy:  newExponentialBackoffStrategy(0, time.Microsecond, time.Microsecond),
 		}
-		s.done = make(chan struct{})
+		s.searcherCtx, s.searcherCancel = context.WithCancel(context.Background())
 
 		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {

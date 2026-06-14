@@ -33,7 +33,8 @@ type SearXNGSearcher struct {
 	searchEndpoint   *url.URL     // Precomputed /search endpoint URL; cloned per request
 	debug            bool         // When true, enables verbose HTTP request/response logging
 	logger           *slog.Logger // Logger for warnings and debug output; nil = slog.Default()
-	done             chan struct{}
+	searcherCtx      context.Context
+	searcherCancel   context.CancelFunc
 	closeOnce        sync.Once
 	retryStrategy    *exponentialBackoffStrategy
 	ownsTransport    bool // true if the searcher created its own transport (safe to close)
@@ -126,7 +127,7 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		ownsTransport:    ownsTransport,
 		allowGETFallback: cfg.AllowGETFallback,
 	}
-	s.done = make(chan struct{})
+	s.searcherCtx, s.searcherCancel = context.WithCancel(context.Background())
 
 	return s, nil
 }
@@ -136,8 +137,8 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 // it will skip closing idle connections on transports it does not own.
 func (s *SearXNGSearcher) Close() error {
 	s.closeOnce.Do(func() {
-		if s.done != nil {
-			close(s.done)
+		if s.searcherCancel != nil {
+			s.searcherCancel()
 		}
 	})
 
@@ -239,15 +240,15 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 func (s *SearXNGSearcher) searchContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	searchCtx, cancel := context.WithCancel(ctx)
 
-	go func() {
-		select {
-		case <-s.done:
-			cancel()
-		case <-searchCtx.Done():
-		}
-	}()
+	// When the searcher is closed, cancel the search context.
+	// AfterFunc runs f in a goroutine only when s.searcherCtx is done,
+	// so this is a no-op (just bookkeeping) in the happy path.
+	stop := context.AfterFunc(s.searcherCtx, cancel)
 
-	return searchCtx, cancel
+	return searchCtx, func() {
+		stop()
+		cancel()
+	}
 }
 
 // wrapSearchError wraps the last error for the Search return value.
