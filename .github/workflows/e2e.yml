@@ -39,6 +39,12 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
 
+      - name: Install just
+        uses: taiki-e/install-action@59012be0884e296ca2da49b530610e72c49039ad # v2.81.6
+        with:
+          tool: just@1.51.0
+          fallback: none
+
       - name: Setup SearXNG test server
         working-directory: searxng-server-test
         run: bash 00-setup.sh
@@ -47,14 +53,18 @@ jobs:
         working-directory: searxng-server-test
         run: bash 01-start-bg.sh
 
-      - name: Install just
-        uses: taiki-e/install-action@59012be0884e296ca2da49b530610e72c49039ad # v2.81.6
-        with:
-          tool: just@1.51.0
-          fallback: none
-
       - name: Build binary
         run: go build -o searxng-mcp-go .
+
+      # Used to try increase success rate for the E2E
+      - name: Connect Cloudflare WARP
+        uses: egor-tensin/setup-wireguard@9ada23fc4805ad705d54ef854c1477920c01ad31 @v1.2.0
+        with:
+          endpoint: engage.cloudflareclient.com:2408
+          endpoint_public_key: '${{ secrets.CFWARP_ENDPOINT_PUBLIC }}'
+          ips: '${{ secrets.CFWARP_IPS }}'
+          allowed_ips: 0.0.0.0/0, ::/0
+          private_key: '${{ secrets.CFWARP_PRIVATE }}'
 
       # wretry.action rationale: upstream search engines (Google, Bing, etc.)
       # probabilistically rate-limit or ban the CI SearXNG instance during
