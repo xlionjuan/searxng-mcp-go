@@ -9,7 +9,7 @@ A Model Context Protocol (MCP) server and CLI tool that proxies web search reque
 **SearXNGSearcher**: The HTTP client that holds a base URL and an `*http.Client` and communicates with a SearXNG instance to execute search queries. Its `Close()` method releases owned idle HTTP connections and cancels in-flight `Search()` calls; see ADR-012.
 _Avoid_: Searcher (ambiguous — appears only in docstrings, not as a separate exported type)
 
-**Config**: The connection parameters for a SearXNG instance — a base URL, a timeout duration, retry configuration (MaxRetries, RetryDelay, MaxRetryDelay), an optional custom HTTP client, and the opt-in GET Fallback flag.
+**Config**: The connection parameters for a SearXNG instance — a base URL, a per-request HTTP timeout duration, retry configuration (MaxRetries, RetryDelay, MaxRetryDelay), an optional custom HTTP client, and the opt-in GET Fallback flag.
 
 **SearchArgs**: All input parameters for a search operation — the search query, language code, SafeSearch level, time range, categories, engines, page number, and result limit.
 _Avoid_: SearchParams

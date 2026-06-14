@@ -93,6 +93,46 @@ func TestSearch_RetryAfterRequestTimeout(t *testing.T) {
 	}
 }
 
+func TestSearch_CallerContextCancellationStopsRetries(t *testing.T) {
+	t.Parallel()
+
+	var attempts atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		attempts.Add(1)
+		// Block longer than the caller context timeout; cancellation should
+		// abort the retry loop even though per-request and retry budgets remain.
+		time.Sleep(5 * time.Second)
+	}))
+	defer server.Close()
+
+	cfg := &searxng.Config{
+		SearXNGURL:    server.URL,
+		Timeout:       30 * time.Second,
+		MaxRetries:    10,
+		RetryDelay:    time.Nanosecond,
+		MaxRetryDelay: time.Nanosecond,
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+
+	_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
+	if err == nil {
+		t.Fatal("Search() error = nil, want context-canceled error")
+	}
+
+	if got := attempts.Load(); got < 1 {
+		t.Fatalf("attempts = %d, want at least 1", got)
+	}
+
+	// The caller context deadline is much shorter than any retry budget, so
+	// only a small number of attempts should run before cancellation.
+	if got := attempts.Load(); got > 3 {
+		t.Fatalf("attempts = %d, want <= 3 (caller context should stop retries early)", got)
+	}
+}
+
 func TestSearch_Success(t *testing.T) {
 	t.Parallel()
 

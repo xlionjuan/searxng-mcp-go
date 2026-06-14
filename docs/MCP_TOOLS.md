@@ -292,7 +292,7 @@ The server validates the MCP initialization message on stdin before starting. If
 - **Transport**: Stdio (stdin/stdout)
 - **Protocol**: MCP (Model Context Protocol)
 - **SearXNG Format**: JSON (`format=json`)
-- **Timeout**: 8 seconds by default; set `SEARXNG_TIMEOUT` or, in CLI mode, `--timeout`
+- **Timeout**: 8 seconds by default; set `SEARXNG_TIMEOUT` or, in CLI mode, `--timeout`. This is a per-request HTTP timeout, not an overall search-operation deadline.
 - **MaxRetries**: 5 retries after the initial search attempt by default; set `SEARXNG_MAX_RETRIES` or, in CLI mode, `--max-retries`
 - **POST→GET fallback**: Disabled by default. If POST `/search` returns 405 or 501, the server returns an error so operators can fix the SearXNG or reverse-proxy configuration. Set `SEARXNG_ALLOW_GET_FALLBACK=1` to opt in; this sends search parameters in the URL and may expose queries in upstream logs. In CLI mode, `--allow-get-fallback` overrides the environment variable.
 - **Initialize message size limit**: The first line of stdin (the MCP `initialize` JSON-RPC message) is capped at 1 MB; oversized input causes the server to exit instead of hanging

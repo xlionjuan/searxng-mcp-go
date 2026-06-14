@@ -170,6 +170,28 @@ func TestConfigAndDefaultConfig(t *testing.T) {
 	})
 }
 
+func TestNewSearXNGSearcher_CustomHTTPClientTimeoutNotOverridden(t *testing.T) {
+	t.Parallel()
+
+	customClient := &http.Client{Timeout: 250 * time.Millisecond}
+
+	searcher, err := NewSearXNGSearcher(&Config{
+		SearXNGURL: "https://example.com",
+		Timeout:    5 * time.Second,
+		HTTPClient: customClient,
+	}, false)
+	if err != nil {
+		t.Fatalf("NewSearXNGSearcher() error = %v, want nil", err)
+	}
+
+	defer func() { _ = searcher.Close() }() //nolint:errcheck // test cleanup
+
+	if searcher.client.Timeout != 250*time.Millisecond {
+		t.Fatalf("custom client Timeout = %v, want 250ms (Config.Timeout must not override custom client)",
+			searcher.client.Timeout)
+	}
+}
+
 //nolint:gocognit,gocyclo,cyclop // table-driven test covering JSON marshal cases for SearchResponse
 func TestSearchResponseMarshalJSON(t *testing.T) {
 	t.Parallel()

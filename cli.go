@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"time"
 
 	"searxng-mcp-go/internal/searxng"
 )
@@ -48,7 +47,7 @@ OPTIONS:
 
 	fmt.Fprintf(&b, `  --debug            Enable verbose HTTP request/response logging
                      Can also be enabled via DEBUG=1 environment variable
-  --timeout DURATION HTTP client timeout (e.g., 8s) [default: %s]
+  --timeout DURATION Per-request HTTP client timeout (e.g., 8s) [default: %s]
                      Can also be set via SEARXNG_TIMEOUT environment variable
   --max-retries N    Max retries after initial search attempt [default: %d]
                      Can also be set via SEARXNG_MAX_RETRIES environment variable
@@ -150,25 +149,12 @@ func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 
 	defer func() { _ = searcher.Close() }() //nolint:errcheck // cleanup in defer; error is non-actionable
 
-	ctx, cancel := contextWithTimeoutOrDefault(context.Background(), cfg.Timeout)
-	defer cancel()
-
-	resp, err := searcher.Search(ctx, args)
+	resp, err := searcher.Search(context.Background(), args)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errSearchFailed, err)
 	}
 
 	return outputSearchResult(resp, flags.JSON, debug)
-}
-
-// contextWithTimeoutOrDefault returns a derived context with the given timeout
-// when timeout > 0, or the original context (with a no-op cancel) otherwise.
-func contextWithTimeoutOrDefault(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
-	if timeout > 0 {
-		return context.WithTimeout(ctx, timeout)
-	}
-
-	return ctx, func() {}
 }
 
 // outputSearchResult formats and writes the search result to stdout.
