@@ -48,6 +48,10 @@ type ParamDef struct {
 	// Examples is an optional list of example values for JSON Schema examples.
 	Examples []string
 
+	// DefaultStr is the typed string default for the JSON Schema "default" keyword.
+	// Populate this when the GoType is "string" and a default exists.
+	DefaultStr *string
+
 	// DefaultInt is the typed integer default for the JSON Schema "default" keyword.
 	// Populate this when the GoType is "int" and a default exists.
 	DefaultInt *int
@@ -57,12 +61,13 @@ type ParamDef struct {
 }
 
 var (
-	paramMinSafeSearch = MinSafeSearch
-	paramMaxSafeSearch = MaxSafeSearch
-	paramMinPage       = MinPageno
-	paramMinLimit      = MinResultLimit
-	paramMaxLimit      = MaxResultLimit
-	paramDefaultLimit  = DefaultResultLimit
+	paramMinSafeSearch   = MinSafeSearch
+	paramMaxSafeSearch   = MaxSafeSearch
+	paramMinPage         = MinPageno
+	paramMinLimit        = MinResultLimit
+	paramMaxLimit        = MaxResultLimit
+	paramDefaultLimit    = DefaultResultLimit
+	paramDefaultLanguage = ""
 )
 
 // errUnexpectedGoType is a sentinel error for FlagDefault when a ParamDef
@@ -96,6 +101,7 @@ var SearchParams = []ParamDef{
 		CLIHelp:     "Language code for results (e.g., en, zh-tw, ja) [default: \"\"]",
 		CLIType:     "LANG",
 		MCPType:     "string",
+		DefaultStr:  &paramDefaultLanguage,
 	},
 	{
 		Name: "safesearch", GoType: "int", Default: strconv.Itoa(MinSafeSearch),
@@ -188,6 +194,10 @@ func (p ParamDef) JSONSchema() map[string]any {
 		examples := make([]string, len(p.Examples))
 		copy(examples, p.Examples)
 		prop["examples"] = examples
+	}
+
+	if p.DefaultStr != nil {
+		prop["default"] = *p.DefaultStr
 	}
 
 	if p.DefaultInt != nil {
