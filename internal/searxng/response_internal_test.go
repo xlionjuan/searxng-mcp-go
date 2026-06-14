@@ -1206,6 +1206,101 @@ func TestDecodeSearchResponseLoggerRouting(t *testing.T) {
 	})
 }
 
+// FuzzDecodeSearchResponse feeds arbitrary bytes through the full SearXNG
+// response parsing path (body reading, HTML detection, content-type handling,
+// JSON decoding, and normalization). The fuzz input encodes a content-type
+// string and a body separated by a single null byte (0x00). If no null byte
+// is present, the entire input is treated as the body with a default content
+// type of "application/json". Inputs larger than MaxResponseBodySize are
+// ignored to keep memory bounded.
+func FuzzDecodeSearchResponse(f *testing.F) {
+	// Seed corpus entries are content-type + null byte + body.
+	addSeed := func(ct, body string) {
+		f.Add([]byte(ct + "\x00" + body))
+	}
+
+	addSeed("application/json", `{}`)
+	addSeed("application/json", `{"query":"fuzz"}`)
+	addSeed("application/json", `{"results":[]}`)
+	addSeed("application/json",
+		`{"results":[{"title":"t","url":"https://example.com","content":"c","engine":"e"}]}`)
+	addSeed("application/json", `{"suggestions":[]}`)
+	addSeed("application/json", `{"number_of_results":42}`)
+	addSeed("application/json", `{"answers":[{"answer":"a"}]}`)
+	addSeed("application/json", `{"infoboxes":[{"infobox":"i","content":"c"}]}`)
+	addSeed("application/json", `{`)
+	addSeed("application/json", `{invalid}`)
+	addSeed("application/json", `[]`)
+	addSeed("application/json", `""`)
+	addSeed("application/json", `null`)
+	addSeed("application/json", `{"results":null}`)
+	addSeed("application/json", `<html></html>`)
+	addSeed("application/json", `{"results":[{"title":"`+strings.Repeat("a", 1000)+`"}]}`)
+
+	// Content-type seeds.
+	addSeed("application/json; charset=utf-8", `{"query":"charset"}`)
+	addSeed("text/html", `<html></html>`)
+	addSeed("text/plain", `not json`)
+	addSeed("", `{"query":"empty-ct"}`)
+
+	// High-value seeds: duplicate JSON keys.
+	addSeed("application/json",
+		`{"results":[{"title":"a"}], "results":[{"title":"b"}]}`)
+
+	// High-value seeds: very large numeric values.
+	addSeed("application/json", `{"number_of_results": 999999999999999999999}`)
+
+	// High-value seeds: Unicode control characters / null bytes in strings.
+	addSeed("application/json", `{"query":"hello\u0000world"}`)
+
+	// High-value seeds: nested JSON payload.
+	addSeed("application/json",
+		`{"results":[{"title":"a"}],"infoboxes":[{"infobox":"i","content":"c","attributes":[{"key":"k","value":"v"}]}]}`)
+
+	// Seed with an actual null byte (not just JSON \u0000 escape) in the body.
+	f.Add([]byte("application/json\x00{\"query\":\"hello\x00world\"}"))
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		if len(data) > MaxResponseBodySize {
+			return
+		}
+
+		// Split on first null byte to separate content-type from body.
+		ctBytes, body, ok := bytes.Cut(data, []byte{0})
+		if !ok {
+			ctBytes = nil
+			body = data
+		}
+
+		contentType := string(ctBytes)
+
+		resp := &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{contentType}},
+			Body:       io.NopCloser(bytes.NewReader(body)),
+		}
+		logger := slog.New(slog.DiscardHandler)
+		searcher := &SearXNGSearcher{logger: logger}
+
+		result, err := searcher.parseSearchResponse(resp, &SearchArgs{})
+		if err != nil {
+			return
+		}
+
+		if result.Results == nil {
+			t.Errorf("Results is nil after normalization")
+		}
+
+		if result.Suggestions == nil {
+			t.Errorf("Suggestions is nil after normalization")
+		}
+
+		if result.Warning != ExternalContentWarning {
+			t.Errorf("Warning = %q, want %q", result.Warning, ExternalContentWarning)
+		}
+	})
+}
+
 var errMockClose = errors.New("mock close error")
 
 // errorCloseReader implements io.ReadCloser and returns an error on Close.
