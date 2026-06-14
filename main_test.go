@@ -1260,6 +1260,33 @@ func TestRunCLIMode_TimeoutZeroSucceeds(t *testing.T) {
 	}
 }
 
+func TestRunCLIMode_TimeoutExceeded(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		time.Sleep(5 * time.Second)
+	}))
+	defer server.Close()
+
+	timeout := 1 * time.Millisecond
+	flags := &CLIFlags{
+		Query:      "test",
+		SearXNGURL: server.URL,
+		Pageno:     nil,
+		Timeout:    &timeout,
+	}
+
+	err := runCLIMode(false, flags, []string{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	errStr := err.Error()
+	if !strings.Contains(errStr, "search error") {
+		t.Fatalf("expected 'search error' in error, got: %v", err)
+	}
+}
+
 func TestRunCLIMode_FlagOnlyInvocations(t *testing.T) {
 	t.Parallel()
 
