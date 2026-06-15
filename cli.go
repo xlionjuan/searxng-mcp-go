@@ -154,11 +154,11 @@ func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 		return fmt.Errorf("%w: %w", errSearchFailed, err)
 	}
 
-	return outputSearchResult(resp, flags.JSON, debug)
+	return outputSearchResult(resp, flags.JSON)
 }
 
 // outputSearchResult formats and writes the search result to stdout.
-func outputSearchResult(resp *searxng.SearchResponse, jsonOutput, debug bool) error {
+func outputSearchResult(resp *searxng.SearchResponse, jsonOutput bool) error {
 	if jsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
