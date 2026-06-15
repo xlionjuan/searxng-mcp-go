@@ -51,6 +51,10 @@ type ParamDef struct {
 	// Examples is an optional list of example values for JSON Schema examples.
 	Examples []string
 
+	// DefaultStr is the typed string default for the JSON Schema "default" keyword.
+	// Populate this when the GoType is "string" and a default exists.
+	DefaultStr *string
+
 	// DefaultInt is the typed integer default for the JSON Schema "default" keyword.
 	// Populate this when the GoType is "int" and a default exists.
 	DefaultInt *int
@@ -58,6 +62,8 @@ type ParamDef struct {
 	// Required indicates whether the parameter is required.
 	Required bool
 }
+
+var paramDefaultLanguage = ""
 
 // errUnexpectedGoType is a sentinel error for FlagDefault when a ParamDef
 // declares an unsupported GoType.
@@ -88,9 +94,15 @@ var SearchParams = []ParamDef{
 	{
 		Name: "language", GoType: "string", Default: "",
 		Description: "Language code for results (e.g., en, zh-tw, ja). Leave empty or pass \"auto\" to let SearXNG decide",
-		CLIHelp:     "Language code for results (e.g., en, zh-tw, ja) [default: \"\"]",
-		CLIType:     "LANG",
-		MCPType:     "string",
+		// DefaultStr is set only for language because empty string is the
+		// semantically meaningful "auto-detect" default that schema-aware
+		// MCP clients should see. Other string params with Default: ""
+		// (time_range, categories, engines) represent "no filter" which
+		// is an absence of constraint, not an explicit default.
+		CLIHelp:    "Language code for results (e.g., en, zh-tw, ja) [default: \"\"]",
+		CLIType:    "LANG",
+		MCPType:    "string",
+		DefaultStr: &paramDefaultLanguage,
 	},
 	{
 		Name: "safesearch", GoType: "int", Default: strconv.Itoa(MinSafeSearch),
@@ -115,13 +127,14 @@ var SearchParams = []ParamDef{
 	},
 	{
 		Name: "categories", GoType: "string", Default: "",
-		Description: `Comma-separated list of SearXNG categories. "general" covers most queries. ` +
-			`Other values (it, science, news, map, music, files, social media — note the space) ` +
-			`also work but are rarely needed.`,
+		Description: `Comma-separated list of SearXNG categories (CSV format). ` +
+			`Common values: general, news, images, videos, music, files, map, social media, science, it. ` +
+			`"social media" is a single category (with a space); pass it as "social media" in CSV, not "social,media". ` +
+			`Unknown categories are silently ignored by SearXNG.`,
 		CLIHelp:  "Comma-separated list of categories to search [max 4096 bytes]",
 		CLIType:  "CAT",
 		MCPType:  "string",
-		Examples: []string{"general", "images", "videos"},
+		Examples: []string{"general", "news", "social media", "images,videos"},
 	},
 	{
 		Name: "engines", GoType: "string", Default: "",
@@ -189,7 +202,9 @@ func (p ParamDef) JSONSchema() map[string]any {
 		prop["examples"] = examples
 	}
 
-	if p.DefaultInt != nil {
+	if p.DefaultStr != nil {
+		prop["default"] = *p.DefaultStr
+	} else if p.DefaultInt != nil {
 		prop["default"] = *p.DefaultInt
 	}
 
