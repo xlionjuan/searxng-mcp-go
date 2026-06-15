@@ -59,16 +59,6 @@ type ParamDef struct {
 	Required bool
 }
 
-var (
-	paramMinSafeSearch  = MinSafeSearch
-	paramMaxSafeSearch  = MaxSafeSearch
-	paramMinPage        = MinPageno
-	paramMinLimit       = MinResultLimit
-	paramMaxLimit       = MaxResultLimit
-	paramDefaultLimit   = DefaultResultLimit
-	paramMaxQueryLength = MaxQueryLength
-)
-
 // errUnexpectedGoType is a sentinel error for FlagDefault when a ParamDef
 // declares an unsupported GoType.
 var errUnexpectedGoType = errors.New("unexpected GoType")
@@ -81,11 +71,11 @@ const cliHelpPadding = 18
 // and MCP layers. Adding or changing a parameter here propagates to flag
 // registration, help text, and MCP schema generation automatically.
 //
-// The Default, Minimum, Maximum, and Enum fields must agree with the runtime
-// validators in validation.go. The single source of truth for those
-// constraints lives in bounds.go; the drift tests in
-// params_validation_drift_test.go verify that schema and validator stay in
-// sync.
+// The Minimum, Maximum, MaxLength, and DefaultInt fields reference the same
+// package-level variables used by the runtime validators in validation.go,
+// making schema/validator consistency structurally guaranteed. The Default
+// string and Enum fields are still verified by drift tests in
+// params_validation_drift_test.go.
 var SearchParams = []ParamDef{
 	{
 		Name: "query", GoType: "string", Default: "", Required: true,
@@ -93,7 +83,7 @@ var SearchParams = []ParamDef{
 		CLIHelp:     "Search query string (alternative to positional argument)",
 		CLIType:     "string",
 		MCPType:     "string",
-		MaxLength:   &paramMaxQueryLength,
+		MaxLength:   &MaxQueryLength,
 	},
 	{
 		Name: "language", GoType: "string", Default: "",
@@ -108,9 +98,9 @@ var SearchParams = []ParamDef{
 		CLIHelp:     fmt.Sprintf("SafeSearch level: 0=Off, 1=Moderate, 2=Strict [default: %d]", MinSafeSearch),
 		CLIType:     "0-2",
 		MCPType:     "integer",
-		DefaultInt:  &paramMinSafeSearch,
-		Minimum:     &paramMinSafeSearch,
-		Maximum:     &paramMaxSafeSearch,
+		DefaultInt:  &MinSafeSearch,
+		Minimum:     &MinSafeSearch,
+		Maximum:     &MaxSafeSearch,
 	},
 	{
 		Name: "time_range", GoType: "string", Default: "",
@@ -148,8 +138,8 @@ var SearchParams = []ParamDef{
 		CLIType:     "N",
 		MCPType:     "integer",
 		Nullable:    true,
-		DefaultInt:  &paramMinPage,
-		Minimum:     &paramMinPage,
+		DefaultInt:  &MinPageno,
+		Minimum:     &MinPageno,
 	},
 	{
 		Name: "limit", GoType: "int", Default: strconv.Itoa(DefaultResultLimit),
@@ -159,9 +149,9 @@ var SearchParams = []ParamDef{
 			MinResultLimit, MaxResultLimit, DefaultResultLimit),
 		CLIType:    "N",
 		MCPType:    "integer",
-		DefaultInt: &paramDefaultLimit,
-		Minimum:    &paramMinLimit,
-		Maximum:    &paramMaxLimit,
+		DefaultInt: &DefaultResultLimit,
+		Minimum:    &MinResultLimit,
+		Maximum:    &MaxResultLimit,
 	},
 }
 

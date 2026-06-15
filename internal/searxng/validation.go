@@ -8,7 +8,7 @@ import (
 )
 
 // MaxQueryLength is the maximum allowed length (in runes) for search queries.
-const MaxQueryLength = 500
+var MaxQueryLength = 500
 
 // validTimeRanges is the package-private set-lookup form of the shared
 // validTimeRangesList (bounds.go). The empty string is intentionally
