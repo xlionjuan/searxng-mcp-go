@@ -205,9 +205,10 @@ func TestMCPErrors_InvalidInputs(t *testing.T) {
 			WantField: "query",
 		},
 		invalidInputCase{
-			Name:      "long query",
-			Arguments: map[string]any{"query": strings.Repeat("a", 501)},
-			WantField: "query",
+			Name:          "long query",
+			Arguments:     map[string]any{"query": strings.Repeat("a", 501)},
+			WantField:     "query",
+			WantSchemaErr: true,
 		},
 		invalidInputCase{
 			Name:          "limit too low",

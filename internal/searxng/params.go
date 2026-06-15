@@ -45,6 +45,9 @@ type ParamDef struct {
 	// Maximum is an optional JSON Schema maximum constraint.
 	Maximum *int
 
+	// MaxLength is an optional JSON Schema maxLength constraint for strings.
+	MaxLength *int
+
 	// Examples is an optional list of example values for JSON Schema examples.
 	Examples []string
 
@@ -68,6 +71,7 @@ var (
 	paramMaxLimit        = MaxResultLimit
 	paramDefaultLimit    = DefaultResultLimit
 	paramDefaultLanguage = ""
+	paramMaxQueryLength  = MaxQueryLength
 )
 
 // errUnexpectedGoType is a sentinel error for FlagDefault when a ParamDef
@@ -94,6 +98,7 @@ var SearchParams = []ParamDef{
 		CLIHelp:     "Search query string (alternative to positional argument)",
 		CLIType:     "string",
 		MCPType:     "string",
+		MaxLength:   &paramMaxQueryLength,
 	},
 	{
 		Name: "language", GoType: "string", Default: "",
@@ -131,13 +136,14 @@ var SearchParams = []ParamDef{
 	},
 	{
 		Name: "categories", GoType: "string", Default: "",
-		Description: `Comma-separated list of SearXNG categories. "general" covers most queries. ` +
-			`Other values (it, science, news, map, music, files, social media — note the space) ` +
-			`also work but are rarely needed.`,
+		Description: `Comma-separated list of SearXNG categories (CSV format). ` +
+			`Common values: general, news, images, videos, music, files, map, social media, science, it. ` +
+			`"social media" is a single category (with a space); pass it as "social media" in CSV, not "social,media". ` +
+			`Unknown categories are silently ignored by SearXNG.`,
 		CLIHelp:  "Comma-separated list of categories to search [max 4096 bytes]",
 		CLIType:  "CAT",
 		MCPType:  "string",
-		Examples: []string{"general", "images", "videos"},
+		Examples: []string{"general", "news", "social media", "images,videos"},
 	},
 	{
 		Name: "engines", GoType: "string", Default: "",
@@ -193,6 +199,10 @@ func (p ParamDef) JSONSchema() map[string]any {
 
 	if p.Maximum != nil {
 		prop["maximum"] = *p.Maximum
+	}
+
+	if p.MaxLength != nil {
+		prop["maxLength"] = *p.MaxLength
 	}
 
 	if len(p.Examples) > 0 {

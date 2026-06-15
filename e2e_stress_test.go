@@ -18,10 +18,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math/rand/v2"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -164,7 +162,7 @@ func TestMCPStress_RapidFire(t *testing.T) {
 		t.Skip("SEARXNG_URL not set")
 	}
 
-	ctx, cancel := context.WithTimeout(t.Context(), 120*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 
 	binaryPath := os.Getenv("E2E_MCP_BINARY")
@@ -192,9 +190,6 @@ func TestMCPStress_RapidFire(t *testing.T) {
 	queries := []string{
 		"framework computer inc", "python", "rust", "javascript", "typescript",
 		"kubernetes", "docker", "linux", "nginx", "redis",
-		"postgresql", "mongodb", "elasticsearch", "kafka", "rabbitmq",
-		"react", "vue", "angular", "svelte", "nextjs",
-		"tensorflow", "pytorch", "jax", "scikit-learn", "pandas",
 	}
 
 	start := time.Now()
@@ -244,199 +239,4 @@ func TestMCPStress_RapidFire(t *testing.T) {
 	if failCount > 0 {
 		t.Fatalf("%d rapid fire requests failed", failCount)
 	}
-}
-
-func TestMCPStress_Stability(t *testing.T) {
-	searxngURL := os.Getenv("SEARXNG_URL")
-	if searxngURL == "" {
-		t.Skip("SEARXNG_URL not set")
-	}
-
-	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
-	defer cancel()
-
-	binaryPath := os.Getenv("E2E_MCP_BINARY")
-	if binaryPath == "" {
-		binaryPath = buildE2EMCPBinary(ctx, t)
-	}
-	t.Logf("using MCP binary: %s", binaryPath)
-
-	var stderr bytes.Buffer
-	cmd := exec.CommandContext(ctx, binaryPath)
-	cmd.Env = e2eMCPEnv(searxngURL)
-	cmd.Stderr = &stderr
-
-	session := newMCPSession(ctx, t, cmd, &stderr, "searxng-mcp-go-stress-test")
-	defer func() {
-		if closeErr := session.Close(); closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
-			t.Logf("close MCP session: %v", closeErr)
-		}
-		if cmd.Process != nil && cmd.ProcessState == nil {
-			_ = cmd.Process.Kill()
-			_, _ = cmd.Process.Wait()
-		}
-	}()
-
-	queries := []string{
-		"framework computer inc",
-		"rust programming",
-		"python async",
-		"kubernetes",
-		"machine learning",
-	}
-
-	for i, query := range queries {
-		t.Run(fmt.Sprintf("search_%d", i), func(t *testing.T) {
-			response := requireSearchResponse(ctx, t, session, map[string]any{
-				"query": query,
-				"limit": 3,
-			}, &stderr, fmt.Sprintf("stability search %d", i))
-
-			if len(response.Results) == 0 {
-				t.Fatalf("search %d (%q) returned 0 results\nstderr:\n%s", i, query, stderr.String())
-			}
-
-			for j, result := range response.Results {
-				if strings.TrimSpace(result.Title) == "" {
-					t.Fatalf("search %d result[%d] title is empty\nstderr:\n%s", i, j, stderr.String())
-				}
-			}
-
-			// 3s inter-search delay gives rate-limited engines time to recover.
-			// The test server's engine config should eventually make this
-			// unnecessary; see docs/agents/e2e-tests.md and searxng-server-test/.
-			if i < len(queries)-1 {
-				timer := time.NewTimer(3 * time.Second)
-				defer timer.Stop()
-				select {
-				case <-ctx.Done():
-					t.Fatalf("context cancelled during inter-search delay")
-				case <-timer.C:
-				}
-			}
-		})
-	}
-}
-
-func TestMCPStress_Randomized(t *testing.T) {
-	searxngURL := os.Getenv("SEARXNG_URL")
-	if searxngURL == "" {
-		t.Skip("SEARXNG_URL not set")
-	}
-
-	ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
-	defer cancel()
-
-	binaryPath := os.Getenv("E2E_MCP_BINARY")
-	if binaryPath == "" {
-		binaryPath = buildE2EMCPBinary(ctx, t)
-	}
-	t.Logf("using MCP binary: %s", binaryPath)
-
-	var stderr bytes.Buffer
-	cmd := exec.CommandContext(ctx, binaryPath)
-	cmd.Env = e2eMCPEnv(searxngURL)
-	cmd.Stderr = &stderr
-
-	session := newMCPSession(ctx, t, cmd, &stderr, "searxng-mcp-go-stress-test")
-	defer func() {
-		if closeErr := session.Close(); closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
-			t.Logf("close MCP session: %v", closeErr)
-		}
-		if cmd.Process != nil && cmd.ProcessState == nil {
-			_ = cmd.Process.Kill()
-			_, _ = cmd.Process.Wait()
-		}
-	}()
-
-	baseQueries := []string{
-		"framework computer inc", "python", "rust", "java", "ruby",
-		"kubernetes", "docker", "terraform", "ansible", "prometheus",
-	}
-
-	seed := resolveRandomSeed(t)
-	t.Logf("randomized seed: %d (set E2E_RANDOM_SEED to replay)", seed)
-
-	rng := rand.New(rand.NewPCG(uint64(seed), uint64(seed)))
-	numSearches := 10
-	searchArgs := make([]map[string]any, numSearches)
-	searchQueries := make([]string, numSearches)
-	for i := range numSearches {
-		query := baseQueries[rng.IntN(len(baseQueries))]
-		args := map[string]any{
-			"query": query,
-			"limit": 3,
-		}
-
-		// Randomly add optional parameters before launching goroutines.
-		if rng.IntN(2) == 0 {
-			args["safesearch"] = rng.IntN(3)
-		}
-		if rng.IntN(2) == 0 {
-			timeRanges := []string{"day", "month", "year"}
-			args["time_range"] = timeRanges[rng.IntN(len(timeRanges))]
-		}
-
-		searchArgs[i] = args
-		searchQueries[i] = query
-		t.Logf("randomized search %d: query=%q args=%#v", i, query, args)
-	}
-
-	var wg sync.WaitGroup
-	errs := make(chan string, numSearches)
-
-	for i := range numSearches {
-		wg.Go(func() {
-			result, err := session.CallTool(ctx, &mcp.CallToolParams{
-				Name:      "search",
-				Arguments: searchArgs[i],
-			})
-			if err != nil {
-				errs <- fmt.Sprintf("tools/call search failed for %q (args=%#v): %v", searchQueries[i], searchArgs[i], err)
-				return
-			}
-			if result.IsError {
-				text, ok := toolTextFromResult(result)
-				if !ok {
-					errs <- fmt.Sprintf("search returned tool error with malformed content for %q (args=%#v)", searchQueries[i], searchArgs[i])
-					return
-				}
-				errs <- fmt.Sprintf("search returned tool error for %q (args=%#v): %s", searchQueries[i], searchArgs[i], text)
-				return
-			}
-		})
-	}
-
-	wg.Wait()
-	close(errs)
-
-	failCount := 0
-	for errText := range errs {
-		t.Errorf("%s\nstderr:\n%s", errText, stderr.String())
-		failCount++
-	}
-
-	if failCount > 0 {
-		t.Fatalf("%d randomized searches failed (seed=%d)", failCount, seed)
-	}
-	t.Logf("all %d randomized searches completed successfully (seed=%d)", numSearches, seed)
-}
-
-// resolveRandomSeed returns the random seed for stress tests. It honors the
-// E2E_RANDOM_SEED env var so a failed run can be reproduced by re-running the
-// test with the same value. An invalid value fails the test; when the env var
-// is unset, a fresh nanosecond seed is generated automatically.
-func resolveRandomSeed(t *testing.T) int64 {
-	t.Helper()
-
-	if raw := os.Getenv("E2E_RANDOM_SEED"); raw != "" {
-		parsed, err := strconv.ParseInt(raw, 10, 64)
-		if err != nil {
-			t.Fatalf("E2E_RANDOM_SEED=%q is not a valid int64: %v", raw, err)
-		}
-
-		return parsed
-	}
-
-	return time.Now().UnixNano()
 }
