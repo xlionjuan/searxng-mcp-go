@@ -16,7 +16,7 @@ var (
 	MaxSafeSearch = 2
 )
 
-// Pageno bounds: page numbers start at 1.
+// MinPageno is the minimum (and default) page number.
 var MinPageno = 1
 
 // ResultLimit bounds: inclusive minimum and maximum number of results.
