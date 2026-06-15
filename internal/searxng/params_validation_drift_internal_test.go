@@ -459,6 +459,10 @@ func TestParamDefJSONSchema(t *testing.T) {
 			wantType: "string", wantKeys: []string{"type", "description", "maxLength"},
 		},
 		{
+			name: "language", param: findParam(t, "language"),
+			wantType: "string", wantKeys: []string{"type", "description", "default"},
+		},
+		{
 			name: "safesearch", param: findParam(t, "safesearch"),
 			wantType: "integer", wantKeys: []string{"type", "description", "default", "minimum", "maximum"},
 		},
@@ -538,6 +542,45 @@ func TestJSONSchemaDefaultDerivesFromConstant(t *testing.T) {
 
 			if got != tt.want {
 				t.Errorf("JSONSchema() default = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestJSONSchemaStringDefaultDerivesFromConstant verifies that every
+// string-typed parameter with a DefaultStr carries a JSON Schema "default"
+// that matches its source constant. This guards against drift between the
+// schema and the canonical default value.
+func TestJSONSchemaStringDefaultDerivesFromConstant(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		paramName string
+		want      string
+	}{
+		{name: "language", paramName: "language", want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			p := findParam(t, tt.paramName)
+			schema := p.JSONSchema()
+
+			raw, ok := schema["default"]
+			if !ok {
+				t.Fatal("JSONSchema() missing \"default\" key")
+			}
+
+			got, ok := raw.(string)
+			if !ok {
+				t.Fatalf("JSONSchema() default = %v (%T), want string", raw, raw)
+			}
+
+			if got != tt.want {
+				t.Errorf("JSONSchema() default = %q, want %q", got, tt.want)
 			}
 		})
 	}
