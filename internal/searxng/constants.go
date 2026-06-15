@@ -18,7 +18,7 @@ const DefaultMaxRetryDelay = 30 * time.Second
 // DefaultResultLimit is the default value applied when callers omit a result
 // limit. It is the single source of truth used by CLI flag defaulting, MCP
 // handler defaulting, and the canonical ParamDef metadata in params.go.
-const DefaultResultLimit = 10
+var DefaultResultLimit = 10
 
 // MaxContentRunes is the CLI text-mode formatting limit, in Unicode runes,
 // applied to result `content` and infobox `content` fields by

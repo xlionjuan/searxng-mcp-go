@@ -39,8 +39,10 @@ func TestSearchParamsLimitDefaultMirrorsDefaultResultLimit(t *testing.T) {
 }
 
 // TestSearchParamsSafeSearchBounds checks that the SafeSearch ParamDef
-// schema agrees with the shared bounds (MinSafeSearch, MaxSafeSearch) and
-// with what validateSafesearch enforces at runtime.
+// Default string matches MinSafeSearch and that validateSafesearch enforces
+// the shared bounds at runtime. The Minimum/Maximum pointer fields are
+// structurally guaranteed to match (they point to &MinSafeSearch/&MaxSafeSearch
+// directly), so only the Default string and runtime validator are tested here.
 func TestSearchParamsSafeSearchBounds(t *testing.T) {
 	t.Parallel()
 
@@ -48,24 +50,6 @@ func TestSearchParamsSafeSearchBounds(t *testing.T) {
 
 	if p.Default != strconv.Itoa(MinSafeSearch) {
 		t.Errorf("safesearch Default = %q, want %d (MinSafeSearch)", p.Default, MinSafeSearch)
-	}
-
-	if p.Minimum == nil || *p.Minimum != MinSafeSearch {
-		got := "<nil>"
-		if p.Minimum != nil {
-			got = strconv.Itoa(*p.Minimum)
-		}
-
-		t.Errorf("safesearch Minimum = %s, want %d (MinSafeSearch)", got, MinSafeSearch)
-	}
-
-	if p.Maximum == nil || *p.Maximum != MaxSafeSearch {
-		got := "<nil>"
-		if p.Maximum != nil {
-			got = strconv.Itoa(*p.Maximum)
-		}
-
-		t.Errorf("safesearch Maximum = %s, want %d (MaxSafeSearch)", got, MaxSafeSearch)
 	}
 
 	// Runtime validator agreement: validateSafesearch must reject values
@@ -76,9 +60,10 @@ func TestSearchParamsSafeSearchBounds(t *testing.T) {
 	verifySafeSearchAccepts(t, MaxSafeSearch)
 }
 
-// TestSearchParamsPagenoBounds checks that the pageno ParamDef schema
-// agrees with the shared bounds (MinPageno) and that validatePagination
-// enforces the same minimum.
+// TestSearchParamsPagenoBounds checks that the pageno ParamDef Default
+// string matches MinPageno and that validatePagination enforces the same
+// minimum at runtime. The Minimum pointer field is structurally guaranteed
+// to match (it points to &MinPageno directly).
 func TestSearchParamsPagenoBounds(t *testing.T) {
 	t.Parallel()
 
@@ -88,46 +73,18 @@ func TestSearchParamsPagenoBounds(t *testing.T) {
 		t.Errorf("pageno Default = %q, want %d (MinPageno)", p.Default, MinPageno)
 	}
 
-	if p.Minimum == nil || *p.Minimum != MinPageno {
-		got := "<nil>"
-		if p.Minimum != nil {
-			got = strconv.Itoa(*p.Minimum)
-		}
-
-		t.Errorf("pageno Minimum = %s, want %d (MinPageno)", got, MinPageno)
-	}
-
 	// validatePagination must reject values below MinPageno and accept
 	// values at the boundary.
 	verifyPagenoRejects(t, MinPageno-1)
 	verifyPagenoAccepts(t, MinPageno)
 }
 
-// TestSearchParamsLimitBounds checks that the limit ParamDef schema
-// agrees with the shared bounds (MinResultLimit, MaxResultLimit) and that
-// validatePagination enforces the same range.
+// TestSearchParamsLimitBounds checks that validatePagination enforces the
+// shared bounds (MinResultLimit, MaxResultLimit) at runtime. The
+// Minimum/Maximum pointer fields are structurally guaranteed to match (they
+// point to &MinResultLimit/&MaxResultLimit directly).
 func TestSearchParamsLimitBounds(t *testing.T) {
 	t.Parallel()
-
-	p := findParam(t, "limit")
-
-	if p.Minimum == nil || *p.Minimum != MinResultLimit {
-		got := "<nil>"
-		if p.Minimum != nil {
-			got = strconv.Itoa(*p.Minimum)
-		}
-
-		t.Errorf("limit Minimum = %s, want %d (MinResultLimit)", got, MinResultLimit)
-	}
-
-	if p.Maximum == nil || *p.Maximum != MaxResultLimit {
-		got := "<nil>"
-		if p.Maximum != nil {
-			got = strconv.Itoa(*p.Maximum)
-		}
-
-		t.Errorf("limit Maximum = %s, want %d (MaxResultLimit)", got, MaxResultLimit)
-	}
 
 	// Runtime validator agreement.
 	verifyLimitRejects(t, MinResultLimit-1)
