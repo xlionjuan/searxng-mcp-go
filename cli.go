@@ -160,10 +160,6 @@ func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 // outputSearchResult formats and writes the search result to stdout.
 func outputSearchResult(resp *searxng.SearchResponse, jsonOutput, debug bool) error {
 	if jsonOutput {
-		if debug {
-			fmt.Println()
-		}
-
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 
