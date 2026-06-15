@@ -58,7 +58,7 @@ OPTIONS:
   --version          Show version information
 
 ARGUMENTS:
-  QUERY              Search query string (if --query not specified)
+  QUERY              Search query string (alternative to --query)
 
 OUTPUT:
   Results include title, URL, summary, publication date (if available), and engine source.
