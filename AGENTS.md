@@ -92,6 +92,11 @@ configured SearXNG instance.
   and read the review-relevant skills named there before producing findings.
 - Repository rules and local project context override generic skill advice.
 
+### Go Toolchain
+
+Never manually install Go. Run `which go` before any Go command.
+If `which go` fails, report and stop — do not install, download, or work around it.
+
 ### Verification
 
 - Code changes must be verified with the narrowest meaningful build/test command before committing.
