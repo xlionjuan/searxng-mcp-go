@@ -133,10 +133,16 @@ func runMCPMode(debug bool, flags *CLIFlags, stdin io.Reader) error {
 		Version: version,
 	}, nil)
 
+	openWorldHint := true
+
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search",
 		Description: buildToolDescription(),
 		InputSchema: schema,
+		Annotations: &mcp.ToolAnnotations{
+			ReadOnlyHint:  true,
+			OpenWorldHint: &openWorldHint,
+		},
 	}, NewSearchToolHandler(searcher))
 
 	slog.Info("starting SearXNG MCP server")
