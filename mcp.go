@@ -58,6 +58,23 @@ func buildToolDescription() string {
 		"Returns web results with titles, URLs, summaries, published dates, and engine source information."
 }
 
+// newSearchTool creates the search tool definition with annotations marking it
+// as read-only and open-world, signaling to clients that it does not modify
+// state and returns untrusted external content.
+func newSearchTool(schema json.RawMessage) *mcp.Tool {
+	openWorldHint := true
+
+	return &mcp.Tool{
+		Name:        "search",
+		Description: buildToolDescription(),
+		InputSchema: schema,
+		Annotations: &mcp.ToolAnnotations{
+			ReadOnlyHint:  true,
+			OpenWorldHint: &openWorldHint,
+		},
+	}
+}
+
 type mcpInitializeMessage struct {
 	JSONRPC string `json:"jsonrpc"`
 	Method  string `json:"method"`
@@ -133,17 +150,7 @@ func runMCPMode(debug bool, flags *CLIFlags, stdin io.Reader) error {
 		Version: version,
 	}, nil)
 
-	openWorldHint := true
-
-	mcp.AddTool(server, &mcp.Tool{
-		Name:        "search",
-		Description: buildToolDescription(),
-		InputSchema: schema,
-		Annotations: &mcp.ToolAnnotations{
-			ReadOnlyHint:  true,
-			OpenWorldHint: &openWorldHint,
-		},
-	}, NewSearchToolHandler(searcher))
+	mcp.AddTool(server, newSearchTool(schema), NewSearchToolHandler(searcher))
 
 	slog.Info("starting SearXNG MCP server")
 
