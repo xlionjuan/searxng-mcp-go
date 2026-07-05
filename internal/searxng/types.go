@@ -8,7 +8,25 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"searxng-mcp-go/internal/searxng/answer"
 )
+
+// Answer is a type alias for the answer subpackage type kept for backward
+// compatibility. The canonical definition lives in the answer subpackage.
+type Answer = answer.Answer
+
+// TranslationItem is a type alias kept for backward compatibility.
+type TranslationItem = answer.TranslationItem
+
+// WeatherItem is a type alias kept for backward compatibility.
+type WeatherItem = answer.WeatherItem
+
+// WeatherLocation is a type alias kept for backward compatibility.
+type WeatherLocation = answer.WeatherLocation
+
+// WeatherMeasure is a type alias kept for backward compatibility.
+type WeatherMeasure = answer.WeatherMeasure
 
 const errTimeoutNegativeMessage = "timeout cannot be negative"
 

@@ -1,4 +1,4 @@
-package searxng
+package answer
 
 import "strconv"
 

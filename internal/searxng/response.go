@@ -10,8 +10,9 @@ import (
 	"mime"
 	"net/http"
 	"slices"
-	"strings"
 	"unicode/utf8"
+
+	"searxng-mcp-go/internal/searxng/answer"
 )
 
 var (
@@ -190,93 +191,6 @@ func decodeSearchResponse(
 	return &result, nil
 }
 
-const maxWeatherSummaryParts = 3
-
-// Answer represents a direct answer from SearXNG.
-//
-// SearXNG has legacy string answers and typed answers. Typed answers such as
-// translations and weather use template-specific fields and may omit the
-// legacy "answer" string entirely. Display text derivation for typed answers
-// is handled by the normalization layer.
-type Answer struct {
-	Answer       string            `json:"answer"`
-	Engine       string            `json:"engine"`
-	Template     string            `json:"template,omitempty"`
-	URL          string            `json:"url,omitempty"`
-	Translations []TranslationItem `json:"translations,omitempty"`
-	Current      *WeatherItem      `json:"current,omitempty"`
-	Forecasts    []WeatherItem     `json:"forecasts,omitempty"`
-	Service      string            `json:"service,omitempty"`
-}
-
-// EnsureAnswerFallback derives a human-readable Answer string for known typed
-// answers (translation, weather) that may omit the legacy "answer" field.
-func EnsureAnswerFallback(a *Answer) {
-	if strings.TrimSpace(a.Answer) != "" {
-		return
-	}
-
-	if fallback := translationAnswerFallback(a); fallback != "" {
-		a.Answer = fallback
-
-		return
-	}
-
-	if fallback := weatherAnswerFallback(a); fallback != "" {
-		a.Answer = fallback
-	}
-}
-
-func translationAnswerFallback(a *Answer) string {
-	if len(a.Translations) == 0 {
-		return ""
-	}
-
-	parts := make([]string, 0, len(a.Translations))
-	for _, item := range a.Translations {
-		text := strings.TrimSpace(item.Text)
-		if text != "" {
-			parts = append(parts, text)
-		}
-	}
-
-	if len(parts) == 0 {
-		return ""
-	}
-
-	return "Translation: " + strings.Join(parts, "; ")
-}
-
-func weatherAnswerFallback(a *Answer) string {
-	if a.Current == nil {
-		return ""
-	}
-
-	current := a.Current
-	if summary := strings.TrimSpace(current.Summary); summary != "" {
-		return summary
-	}
-
-	parts := make([]string, 0, maxWeatherSummaryParts)
-	if location := strings.TrimSpace(current.Location.Name); location != "" {
-		parts = append(parts, location)
-	}
-
-	if temperature := current.Temperature.String(); temperature != "" {
-		parts = append(parts, temperature)
-	}
-
-	if condition := strings.TrimSpace(current.Condition); condition != "" {
-		parts = append(parts, condition)
-	}
-
-	if len(parts) == 0 {
-		return ""
-	}
-
-	return "Weather: " + strings.Join(parts, ", ")
-}
-
 func (s *SearXNGSearcher) normalizeResponse(result *SearchResponse, args *SearchArgs) {
 	result.Warning = ExternalContentWarning
 
@@ -329,4 +243,18 @@ func (s *SearXNGSearcher) normalizeResponse(result *SearchResponse, args *Search
 	if s.debug && result.UnresponsiveEngines == nil {
 		result.UnresponsiveEngines = [][]string{}
 	}
+}
+
+// EnsureAnswerFallback derives a human-readable Answer string for known typed
+// answers (translation, weather) that may omit the legacy "answer" field.
+func EnsureAnswerFallback(a *Answer) {
+	answer.EnsureAnswerFallback(a)
+}
+
+func translationAnswerFallback(a *Answer) string {
+	return answer.TranslationAnswerFallback(a)
+}
+
+func weatherAnswerFallback(a *Answer) string {
+	return answer.WeatherAnswerFallback(a)
 }

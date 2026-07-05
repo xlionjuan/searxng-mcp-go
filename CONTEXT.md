@@ -54,7 +54,7 @@ _Avoid_: DeadEngines, FailedEngines
 
 ### Search Behavior
 
-**Deduplicate**: The process of filtering out `Answer` entries whose text overlaps with `Infobox` content (specifically, DuckDuckGo returning the same Wikipedia summary in both answers and infoboxes), using prefix matching on the first 200 characters with a lowercase fallback.
+**Deduplicate**: The process of filtering out `Answer` entries whose text overlaps with `Infobox` content (specifically, DuckDuckGo returning the same Wikipedia summary in both answers and infoboxes), using prefix matching on the first 200 characters with a lowercase fallback. The implementation lives in `internal/searxng/answer`.
 _Avoid_: Dedup (internal function name; prefer the full term in docs)
 
 **setBrowserHeaders**: The function that applies Chrome-like HTTP headers (User-Agent, Accept, Sec-* family, Priority) to every search request to bypass SearXNG's limiter / bot-detection mechanism.
