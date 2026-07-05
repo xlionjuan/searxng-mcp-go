@@ -28,9 +28,10 @@ var DefaultResultLimit = 10
 // consumers always see the full upstream text.
 //
 // The rune-safe truncation itself is implemented by `TruncateRunes`
-// (truncate.go) so the searxng deduplication prefix match and the CLI
-// formatter share a single helper. See docs/adr/011-max-content-runes-cli-only.md
-// for the scope decision.
+// (truncate.go, with the implementation in the answer subpackage) so the
+// answer deduplication prefix match and the CLI formatter share a single
+// helper. See docs/adr/011-max-content-runes-cli-only.md for the scope
+// decision.
 const MaxContentRunes = 4000
 
 // MaxErrorBodySize is the maximum response body size read for error handling.

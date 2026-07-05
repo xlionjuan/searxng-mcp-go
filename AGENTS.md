@@ -8,6 +8,7 @@ configured SearXNG instance.
 
 - Entry points: `main.go`, `cli.go`, `mcp.go`, `format.go`
 - Core package: `internal/searxng/`
+- Answer types and deduplication: `internal/searxng/answer/`
 - Shared test helpers: `internal/testhelper/`
 - Unit and integration tests: root `*_test.go` plus `internal/searxng/*_test.go`
 - E2E and stress tests: `e2e_*_test.go`, build tags `e2e` and `stress`
