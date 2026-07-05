@@ -153,3 +153,7 @@ update-searxng-submodule:
     git add searxng-server-test/searxng
     git commit -m "Update SearXNG submodule that for test"
     git log -5
+
+# git pull + submodule
+pull:
+    git pull --recurse-submodules
