@@ -7,7 +7,11 @@ import (
 )
 
 func TestWeatherMeasure_String(t *testing.T) {
+	t.Parallel()
+
 	t.Run("zero value returns empty", func(t *testing.T) {
+		t.Parallel()
+
 		m := answer.WeatherMeasure{}
 
 		if got := m.String(); got != "" {
@@ -16,6 +20,8 @@ func TestWeatherMeasure_String(t *testing.T) {
 	})
 
 	t.Run("value only", func(t *testing.T) {
+		t.Parallel()
+
 		m := answer.WeatherMeasure{Val: 42.5}
 
 		if got := m.String(); got != "42.5" {
@@ -24,6 +30,8 @@ func TestWeatherMeasure_String(t *testing.T) {
 	})
 
 	t.Run("value with unit", func(t *testing.T) {
+		t.Parallel()
+
 		m := answer.WeatherMeasure{Val: 11.2, Unit: "°C"}
 
 		if got := m.String(); got != "11.2 °C" {
@@ -32,6 +40,8 @@ func TestWeatherMeasure_String(t *testing.T) {
 	})
 
 	t.Run("value zero with unit", func(t *testing.T) {
+		t.Parallel()
+
 		m := answer.WeatherMeasure{Val: 0, Unit: "°C"}
 
 		if got := m.String(); got != "0 °C" {
@@ -40,6 +50,8 @@ func TestWeatherMeasure_String(t *testing.T) {
 	})
 
 	t.Run("negative value", func(t *testing.T) {
+		t.Parallel()
+
 		m := answer.WeatherMeasure{Val: -5.0, Unit: "°C"}
 
 		if got := m.String(); got != "-5 °C" {
@@ -48,6 +60,8 @@ func TestWeatherMeasure_String(t *testing.T) {
 	})
 
 	t.Run("integer value", func(t *testing.T) {
+		t.Parallel()
+
 		m := answer.WeatherMeasure{Val: 25, Unit: "°C"}
 
 		if got := m.String(); got != "25 °C" {

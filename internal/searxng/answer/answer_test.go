@@ -7,6 +7,8 @@ import (
 )
 
 func TestTranslationAnswerFallback_NoTranslations(t *testing.T) {
+	t.Parallel()
+
 	a := &answer.Answer{}
 
 	if got := answer.TranslationAnswerFallback(a); got != "" {
@@ -15,6 +17,8 @@ func TestTranslationAnswerFallback_NoTranslations(t *testing.T) {
 }
 
 func TestTranslationAnswerFallback_WithTranslations(t *testing.T) {
+	t.Parallel()
+
 	a := &answer.Answer{
 		Translations: []answer.TranslationItem{
 			{Text: "bonjour"},
@@ -29,7 +33,11 @@ func TestTranslationAnswerFallback_WithTranslations(t *testing.T) {
 }
 
 func TestTranslationAnswerFallback_SkipsEmptyText(t *testing.T) {
+	t.Parallel()
+
 	t.Run("some empty", func(t *testing.T) {
+		t.Parallel()
+
 		a := &answer.Answer{
 			Translations: []answer.TranslationItem{
 				{Text: ""},
@@ -44,6 +52,8 @@ func TestTranslationAnswerFallback_SkipsEmptyText(t *testing.T) {
 	})
 
 	t.Run("all empty", func(t *testing.T) {
+		t.Parallel()
+
 		a := &answer.Answer{
 			Translations: []answer.TranslationItem{
 				{Text: "   "},
@@ -57,6 +67,8 @@ func TestTranslationAnswerFallback_SkipsEmptyText(t *testing.T) {
 }
 
 func TestWeatherAnswerFallback_NilCurrent(t *testing.T) {
+	t.Parallel()
+
 	a := &answer.Answer{}
 
 	if got := answer.WeatherAnswerFallback(a); got != "" {
@@ -65,6 +77,8 @@ func TestWeatherAnswerFallback_NilCurrent(t *testing.T) {
 }
 
 func TestWeatherAnswerFallback_WithSummary(t *testing.T) {
+	t.Parallel()
+
 	a := &answer.Answer{
 		Current: &answer.WeatherItem{
 			Summary: "Partly cloudy throughout the day.",
@@ -78,6 +92,8 @@ func TestWeatherAnswerFallback_WithSummary(t *testing.T) {
 }
 
 func TestWeatherAnswerFallback_BuildsFromComponents(t *testing.T) {
+	t.Parallel()
+
 	a := &answer.Answer{
 		Current: &answer.WeatherItem{
 			Location:    answer.WeatherLocation{Name: "Berlin"},
@@ -93,6 +109,8 @@ func TestWeatherAnswerFallback_BuildsFromComponents(t *testing.T) {
 }
 
 func TestWeatherAnswerFallback_EmptyLocation(t *testing.T) {
+	t.Parallel()
+
 	a := &answer.Answer{
 		Current: &answer.WeatherItem{
 			Temperature: answer.WeatherMeasure{Val: 25.0, Unit: "°C"},
@@ -107,6 +125,8 @@ func TestWeatherAnswerFallback_EmptyLocation(t *testing.T) {
 }
 
 func TestWeatherAnswerFallback_EmptyComponents(t *testing.T) {
+	t.Parallel()
+
 	a := &answer.Answer{
 		Current: &answer.WeatherItem{
 			Location:    answer.WeatherLocation{Name: ""},
@@ -121,6 +141,8 @@ func TestWeatherAnswerFallback_EmptyComponents(t *testing.T) {
 }
 
 func TestEnsureAnswerFallback_NonEmptyNotOverwritten(t *testing.T) {
+	t.Parallel()
+
 	a := &answer.Answer{Answer: "existing answer"}
 	answer.EnsureAnswerFallback(a)
 
@@ -130,6 +152,8 @@ func TestEnsureAnswerFallback_NonEmptyNotOverwritten(t *testing.T) {
 }
 
 func TestEnsureAnswerFallback_TranslationFallback(t *testing.T) {
+	t.Parallel()
+
 	a := &answer.Answer{
 		Translations: []answer.TranslationItem{{Text: "bonjour"}},
 	}
@@ -141,6 +165,8 @@ func TestEnsureAnswerFallback_TranslationFallback(t *testing.T) {
 }
 
 func TestEnsureAnswerFallback_WeatherFallback(t *testing.T) {
+	t.Parallel()
+
 	a := &answer.Answer{
 		Current: &answer.WeatherItem{
 			Location:    answer.WeatherLocation{Name: "Paris"},
@@ -158,6 +184,8 @@ func TestEnsureAnswerFallback_WeatherFallback(t *testing.T) {
 }
 
 func TestEnsureAnswerFallback_NoFallbackStaysEmpty(t *testing.T) {
+	t.Parallel()
+
 	a := &answer.Answer{}
 	answer.EnsureAnswerFallback(a)
 
@@ -167,6 +195,8 @@ func TestEnsureAnswerFallback_NoFallbackStaysEmpty(t *testing.T) {
 }
 
 func TestEnsureAnswerFallback_WhitespaceOnlyTreatedAsEmpty(t *testing.T) {
+	t.Parallel()
+
 	a := &answer.Answer{
 		Answer:       "   ",
 		Translations: []answer.TranslationItem{{Text: "hola"}},

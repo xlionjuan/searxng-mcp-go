@@ -8,7 +8,11 @@ import (
 )
 
 func TestDeduplicateAnswers_EmptyInputs(t *testing.T) {
+	t.Parallel()
+
 	t.Run("both empty", func(t *testing.T) {
+		t.Parallel()
+
 		result := answer.DeduplicateAnswers(nil, nil)
 
 		if len(result) != 0 {
@@ -17,6 +21,8 @@ func TestDeduplicateAnswers_EmptyInputs(t *testing.T) {
 	})
 
 	t.Run("empty answers", func(t *testing.T) {
+		t.Parallel()
+
 		result := answer.DeduplicateAnswers(nil, []string{"content"})
 
 		if len(result) != 0 {
@@ -25,6 +31,8 @@ func TestDeduplicateAnswers_EmptyInputs(t *testing.T) {
 	})
 
 	t.Run("empty infoboxes", func(t *testing.T) {
+		t.Parallel()
+
 		answers := []answer.Answer{{Answer: "test", Engine: "duckduckgo"}}
 		result := answer.DeduplicateAnswers(answers, nil)
 
@@ -35,6 +43,8 @@ func TestDeduplicateAnswers_EmptyInputs(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_RemovesDuplicateWikipedia(t *testing.T) {
+	t.Parallel()
+
 	wikiSummary := "Apple Inc. is an American multinational technology company headquartered in Cupertino, California."
 	answers := []answer.Answer{
 		{Answer: wikiSummary, Engine: "duckduckgo"},
@@ -47,6 +57,8 @@ func TestDeduplicateAnswers_RemovesDuplicateWikipedia(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_RemovesPrefixMatch(t *testing.T) {
+	t.Parallel()
+
 	answers := []answer.Answer{
 		{Answer: "Apple Inc. is an American multinational technology company", Engine: "duckduckgo"},
 	}
@@ -60,6 +72,8 @@ func TestDeduplicateAnswers_RemovesPrefixMatch(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_KeepsDistinctAnswer(t *testing.T) {
+	t.Parallel()
+
 	answers := []answer.Answer{
 		{Answer: "203.0.113.42", Engine: "ip"},
 	}
@@ -75,6 +89,8 @@ func TestDeduplicateAnswers_KeepsDistinctAnswer(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_CaseInsensitive(t *testing.T) {
+	t.Parallel()
+
 	answers := []answer.Answer{
 		{Answer: "apple inc. is an american company", Engine: "duckduckgo"},
 	}
@@ -87,6 +103,8 @@ func TestDeduplicateAnswers_CaseInsensitive(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_FiltersEmptyInfoboxContent(t *testing.T) {
+	t.Parallel()
+
 	answers := []answer.Answer{
 		{Answer: "test answer", Engine: "test"},
 	}
@@ -98,6 +116,8 @@ func TestDeduplicateAnswers_FiltersEmptyInfoboxContent(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_MultipleAnswersMixed(t *testing.T) {
+	t.Parallel()
+
 	wikiSummary := "Apple Inc. is an American multinational technology company."
 	answers := []answer.Answer{
 		{Answer: wikiSummary, Engine: "duckduckgo"},
@@ -115,6 +135,8 @@ func TestDeduplicateAnswers_MultipleAnswersMixed(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_DDGSuffixMoreAtWikipedia(t *testing.T) {
+	t.Parallel()
+
 	infoboxContent := "Apple Inc. is an American multinational technology company headquartered in Cupertino, " +
 		"California. Apple is one of the Big Tech companies, alongside Amazon, Google, Meta, and Microsoft."
 	a := infoboxContent + " More at Wikipedia"
@@ -129,6 +151,8 @@ func TestDeduplicateAnswers_DDGSuffixMoreAtWikipedia(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_EmptyAnswerSkipped(t *testing.T) {
+	t.Parallel()
+
 	answers := []answer.Answer{
 		{Answer: "", Engine: "duckduckgo"},
 		{Answer: "valid answer", Engine: "test"},
@@ -145,6 +169,8 @@ func TestDeduplicateAnswers_EmptyAnswerSkipped(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_LowercaseLazyBuild(t *testing.T) {
+	t.Parallel()
+
 	answers := []answer.Answer{
 		{Answer: "Apple Inc. Uses Swift", Engine: "duckduckgo"},
 		{Answer: "Apple Inc. Is Great", Engine: "duckduckgo"},
@@ -159,6 +185,8 @@ func TestDeduplicateAnswers_LowercaseLazyBuild(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_TruncationBoundary(t *testing.T) {
+	t.Parallel()
+
 	var sb strings.Builder
 	for range 300 {
 		sb.WriteByte('x')
@@ -179,6 +207,8 @@ func TestDeduplicateAnswers_TruncationBoundary(t *testing.T) {
 }
 
 func TestDeduplicateAnswers_NonMatchingTruncation(t *testing.T) {
+	t.Parallel()
+
 	var sb strings.Builder
 	for range 300 {
 		sb.WriteByte('x')
