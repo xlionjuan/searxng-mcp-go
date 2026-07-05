@@ -104,6 +104,8 @@ func TestIsPrivateHost(t *testing.T) {
 		{name: "10.0.0.1 with port", host: "10.0.0.1:9090", want: true},
 		{name: "bracketed IPv6 loopback with port", host: "[::1]:8080", want: true},
 		{name: "public with port", host: "example.com:443", want: false},
+		{name: "IPv6 link-local with raw zone id", host: "fe80::1%eth0", want: true},
+		{name: "bracketed IPv6 with raw zone id and port", host: "[fe80::1%eth0]:8080", want: true},
 		{name: "non-RFC suffix with port", host: "printer.local:8080", want: false},
 	}
 
@@ -134,10 +136,31 @@ func TestIsPrivateIPv4(t *testing.T) {
 		{name: "192.168.255.255", ip: "192.168.255.255", want: true},
 		{name: "127.0.0.0/8 loopback", ip: "127.0.0.1", want: true},
 		{name: "127.255.255.255", ip: "127.255.255.255", want: true},
+		// Additional IPv4 private ranges
+		{name: "0.0.0.0/8 current network", ip: "0.0.0.1", want: true},
+		{name: "100.64.0.0/10 CGNAT start", ip: "100.64.0.1", want: true},
+		{name: "100.127.255.255 CGNAT end", ip: "100.127.255.255", want: true},
+		{name: "169.254.0.0/16 link-local", ip: "169.254.1.1", want: true},
+		{name: "192.0.0.0/24 IETF", ip: "192.0.0.1", want: true},
+		{name: "192.0.2.0/24 TEST-NET-1", ip: "192.0.2.1", want: true},
+		{name: "192.88.99.0/24 relay anycast", ip: "192.88.99.1", want: true},
+		{name: "198.18.0.0/15 benchmarking start", ip: "198.18.0.1", want: true},
+		{name: "198.19.255.255 benchmarking end", ip: "198.19.255.255", want: true},
+		{name: "198.51.100.0/24 TEST-NET-2", ip: "198.51.100.1", want: true},
+		{name: "203.0.113.0/24 TEST-NET-3", ip: "203.0.113.1", want: true},
+		{name: "224.0.0.0/4 multicast start", ip: "224.0.0.1", want: true},
+		{name: "239.255.255.255 multicast end", ip: "239.255.255.255", want: true},
+		{name: "255.255.255.255/32 limited broadcast", ip: "255.255.255.255", want: true},
+		// Public IPs that exercise false-return paths
 		{name: "172.15.x.x is public", ip: "172.15.0.1", want: false},
 		{name: "172.32.x.x is public", ip: "172.32.0.1", want: false},
 		{name: "192.167.x.x is public", ip: "192.167.0.1", want: false},
 		{name: "8.8.8.8 is public", ip: "8.8.8.8", want: false},
+		{name: "1.1.1.1 is public", ip: "1.1.1.1", want: false},
+		{name: "192.0.1.1 is public", ip: "192.0.1.1", want: false},
+		{name: "192.0.3.1 is public", ip: "192.0.3.1", want: false},
+		{name: "192.88.98.1 is public", ip: "192.88.98.1", want: false},
+		{name: "192.88.100.1 is public", ip: "192.88.100.1", want: false},
 	}
 
 	for _, tt := range tests {
@@ -169,6 +192,9 @@ func TestIsPrivateIPv6(t *testing.T) {
 		{name: "unique-local fd00::", ip: "fd12:3456:789a::1", want: true},
 		{name: "link-local fe80::", ip: "fe80::1", want: true},
 		{name: "link-local fe81::", ip: "fe81::1", want: true},
+		{name: "unspecified ::", ip: "::", want: true},
+		{name: "multicast ff02::1", ip: "ff02::1", want: true},
+		{name: "multicast ff00::", ip: "ff00::", want: true},
 		{name: "global 2001::", ip: "2001:4860:4860::8888", want: false},
 		{name: "global 2607::", ip: "2607:f8b0::1", want: false},
 	}
