@@ -10,15 +10,15 @@ import (
 	"strings"
 )
 
-// DefaultChromeVersion is the Chrome major version used in browser-emulation
+// defaultChromeVersion is the Chrome major version used in browser-emulation
 // headers. Bump this when SearXNG's limiter starts blocking the current version.
-var DefaultChromeVersion = "147"
+var defaultChromeVersion = "147"
 
-// DefaultUserAgent is the full User-Agent string, composed from
-// DefaultChromeVersion so that a version bump keeps UA and Sec-Ch-Ua in sync.
-var DefaultUserAgent = "Mozilla/5.0 (X11; Linux x86_64)" +
+// defaultUserAgent is the full User-Agent string, composed from
+// defaultChromeVersion so that a version bump keeps UA and Sec-Ch-Ua in sync.
+var defaultUserAgent = "Mozilla/5.0 (X11; Linux x86_64)" +
 	" AppleWebKit/537.36 (KHTML, like Gecko)" +
-	" Chrome/" + DefaultChromeVersion + ".0.0.0 Safari/537.36"
+	" Chrome/" + defaultChromeVersion + ".0.0.0 Safari/537.36"
 
 var errSearchEndpointNotPrecomputed = errors.New("search endpoint not precomputed")
 
@@ -109,7 +109,7 @@ func (s *SearXNGSearcher) buildSearchRequest(ctx context.Context, args *SearchAr
 
 // setBrowserHeaders sets browser-like HTTP headers to bypass SearXNG bot detection.
 func setBrowserHeaders(req *http.Request) {
-	req.Header.Set("User-Agent", DefaultUserAgent)
+	req.Header.Set("User-Agent", defaultUserAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,"+
 		"image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
@@ -118,7 +118,7 @@ func setBrowserHeaders(req *http.Request) {
 	req.Header.Set("Sec-Fetch-Site", "none")
 	req.Header.Set("Sec-Fetch-User", "?1")
 	req.Header.Set("Sec-Ch-Ua",
-		`"Google Chrome";v="`+DefaultChromeVersion+`", "Not.A/Brand";v="8", "Chromium";v="`+DefaultChromeVersion+`"`)
+		`"Google Chrome";v="`+defaultChromeVersion+`", "Not.A/Brand";v="8", "Chromium";v="`+defaultChromeVersion+`"`)
 	req.Header.Set("Sec-Ch-Ua-Mobile", "?0")
 	req.Header.Set("Sec-Ch-Ua-Platform", `"Linux"`)
 	req.Header.Set("Priority", "u=0, i")
