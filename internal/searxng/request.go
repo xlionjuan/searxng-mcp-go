@@ -10,6 +10,16 @@ import (
 	"strings"
 )
 
+// DefaultChromeVersion is the Chrome major version used in browser-emulation
+// headers. Bump this when SearXNG's limiter starts blocking the current version.
+var DefaultChromeVersion = "147"
+
+// DefaultUserAgent is the full User-Agent string, composed from
+// DefaultChromeVersion so that a version bump keeps UA and Sec-Ch-Ua in sync.
+var DefaultUserAgent = "Mozilla/5.0 (X11; Linux x86_64)" +
+	" AppleWebKit/537.36 (KHTML, like Gecko)" +
+	" Chrome/" + DefaultChromeVersion + ".0.0.0 Safari/537.36"
+
 var errSearchEndpointNotPrecomputed = errors.New("search endpoint not precomputed")
 
 // computeSearchEndpoint parses the baseURL and normalizes its path so the
@@ -99,10 +109,7 @@ func (s *SearXNGSearcher) buildSearchRequest(ctx context.Context, args *SearchAr
 
 // setBrowserHeaders sets browser-like HTTP headers to bypass SearXNG bot detection.
 func setBrowserHeaders(req *http.Request) {
-	ua := "Mozilla/5.0 (X11; Linux x86_64)" +
-		" AppleWebKit/537.36 (KHTML, like Gecko)" +
-		" Chrome/147.0.0.0 Safari/537.36"
-	req.Header.Set("User-Agent", ua)
+	req.Header.Set("User-Agent", DefaultUserAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,"+
 		"image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
@@ -110,7 +117,8 @@ func setBrowserHeaders(req *http.Request) {
 	req.Header.Set("Sec-Fetch-Dest", "document")
 	req.Header.Set("Sec-Fetch-Site", "none")
 	req.Header.Set("Sec-Fetch-User", "?1")
-	req.Header.Set("Sec-Ch-Ua", `"Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"`)
+	req.Header.Set("Sec-Ch-Ua",
+		`"Google Chrome";v="`+DefaultChromeVersion+`", "Not.A/Brand";v="8", "Chromium";v="`+DefaultChromeVersion+`"`)
 	req.Header.Set("Sec-Ch-Ua-Mobile", "?0")
 	req.Header.Set("Sec-Ch-Ua-Platform", `"Linux"`)
 	req.Header.Set("Priority", "u=0, i")
