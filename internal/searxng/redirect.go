@@ -17,7 +17,7 @@ var (
 const maxSearchRedirects = 10
 
 func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
-	// Note: This policy preserves the original scheme for same-host redirects.
+	// This policy preserves the original scheme for same-host redirects.
 	// An https → http downgrade is rejected so that configuring an HTTPS
 	// SearXNG URL keeps subsequent request and response traffic on TLS.
 	// An http → https upgrade is allowed because it strengthens, rather
@@ -33,7 +33,6 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 			}
 
 			prevScheme := strings.ToLower(prev.URL.Scheme)
-
 			nextScheme := strings.ToLower(req.URL.Scheme)
 
 			if prevScheme == "https" && nextScheme == "http" {

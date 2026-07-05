@@ -39,6 +39,9 @@ func isPrivateHost(host string) bool {
 	}
 
 	// Strip IPv6 zone ID (e.g., "fe80::1%eth0" → "fe80::1") before parsing.
+	// The host at this point has been decoded by url.Parse (called during
+	// searcher construction), so percent-encoded %25 has already been
+	// decoded to bare %. Any remaining % is a genuine zone ID separator.
 	if i := strings.Index(host, "%"); i >= 0 {
 		host = host[:i]
 	}
