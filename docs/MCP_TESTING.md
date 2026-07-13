@@ -206,7 +206,7 @@ func TestE2E(t *testing.T) {
 
 `E2E_MCP_BINARY` is an optional environment variable read by every E2E test
 that uses `mcp.CommandTransport` (`e2e_mcp_test.go`, `e2e_functional_test.go`,
-`e2e_error_test.go`, `e2e_stress_test.go`). When set, the test reuses that
+`e2e_error_test.go`, `e2e_lifecycle_test.go`, `e2e_stress_test.go`). When set, the test reuses that
 binary instead of running `go build` on every test invocation. CI sets it to
 `./searxng-mcp-go` after a single explicit build step (see
 `.github/workflows/e2e.yml`), which makes the in-workflow retry loop cheap.
@@ -265,8 +265,8 @@ verify.
 |-------|--------|-------|-----------------|
 | Unit | direct handler call (`NewSearchToolHandler()`) | `mcp_tool_test.go`, `internal/searxng/*_test.go` | Search logic, input validation, JSON response shape |
 | MCP integration | `mcp.NewInMemoryTransports()` (`net.Pipe` in-process) | (unit-style tests of the MCP server surface) | MCP protocol wiring, tool registration, schema, session lifecycle |
-| CLI subprocess (default `go test ./...`) | raw `exec.Command` on the built binary | `e2e_exitcode_test.go` | CLI exit code contract, stderr/stdout split, flag parsing |
-| MCP E2E (stdio, `-tags=e2e`) | `exec.Command` + `mcp.CommandTransport` (subprocess) | `e2e_mcp_test.go`, `e2e_functional_test.go`, `e2e_error_test.go`, `e2e_stress_test.go` | Real stdio framing, env-var startup, process lifecycle, live SearXNG behavior |
+| CLI subprocess (default `go test ./...`) | raw `exec.Command` on the built binary | `e2e_exitcode_test.go`, `e2e_cli_test.go`, `e2e_mockserver_test.go` | CLI exit code contract, stderr/stdout split, flag parsing |
+| MCP E2E (stdio, `-tags=e2e`) | `exec.Command` + `mcp.CommandTransport` (subprocess) | `e2e_mcp_test.go`, `e2e_functional_test.go`, `e2e_error_test.go`, `e2e_lifecycle_test.go`, `e2e_stress_test.go` | Real stdio framing, env-var startup, process lifecycle, live SearXNG behavior |
 | Manual / smoke | MCP Inspector, CI shell smoke | `.github/workflows/e2e.yml` | Interactive verification, deterministic exit-code smoke |
 
 Rule of thumb:
