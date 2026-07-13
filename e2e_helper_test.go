@@ -271,6 +271,20 @@ func requireSearchResponse(
 		t.Fatalf("%s returned tool error: %s\nstderr:\n%s", name, toolText(t, result), stderr.String())
 	}
 
+	return searchResponseFromResult(t, result, stderr, name)
+}
+
+// searchResponseFromResult parses and logs a search result that is known to
+// have IsError == false. It is the shared tail of requireSearchResponse and
+// requireSearchResponseAllowEmptyResults.
+func searchResponseFromResult(
+	t *testing.T,
+	result *mcp.CallToolResult,
+	stderr stderrBuffer,
+	name string,
+) searxng.SearchResponse {
+	t.Helper()
+
 	response := parseSearchResponse(t, result, stderr)
 	t.Logf("%s parsed: query=%q, results=%d, answers=%d, "+
 		"infoboxes=%d, suggestions=%d",
@@ -278,6 +292,42 @@ func requireSearchResponse(
 		len(response.Infoboxes), len(response.Suggestions))
 
 	return response
+}
+
+// requireSearchResponseAllowEmptyResults calls the search tool. If the tool
+// returns a success response, it parses and returns it as normal. If the tool
+// returns an IsError result whose text contains "search returned empty results
+// after all retries", logs a warning through the warnings collector and returns
+// a zero SearchResponse with isEmptyResults=true. Any other tool error fails
+// the test. name is used for logging.
+func requireSearchResponseAllowEmptyResults(
+	ctx context.Context,
+	t *testing.T,
+	session *mcp.ClientSession,
+	arguments map[string]any,
+	stderr stderrBuffer,
+	warnings *e2eWarnings,
+	name string,
+) (searxng.SearchResponse, bool) {
+	t.Helper()
+
+	t.Logf("%s: sending arguments %#v", name, arguments)
+
+	result := callSearchTool(ctx, t, session, arguments, stderr)
+
+	if result.IsError {
+		text := toolText(t, result)
+		if strings.Contains(text, "search returned empty results after all retries") {
+			warnings.Addf("%s: empty results from SearXNG", name)
+			t.Logf("%s: empty results from SearXNG (allowed)\nstderr:\n%s", name, stderr.String())
+
+			return searxng.SearchResponse{}, true
+		}
+
+		t.Fatalf("%s returned unexpected tool error: %s\nstderr:\n%s", name, text, stderr.String())
+	}
+
+	return searchResponseFromResult(t, result, stderr, name), false
 }
 
 // parseSearchResponse unmarshals the tool result text into a SearchResponse.

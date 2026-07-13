@@ -176,8 +176,8 @@ func TestChannelDeadlockDetection(t *testing.T) {
 	t.Parallel()
 
 	searchResp := searxng.SearchResponse{
-		Results:         []searxng.SearchResult{},
-		NumberOfResults: 0,
+		Results:         []searxng.SearchResult{{Title: "x", URL: "https://x"}},
+		NumberOfResults: 1,
 		Query:           "test",
 	}
 	server := newJSONTestServer(t, searchResp)
@@ -457,8 +457,8 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 	t.Parallel()
 
 	searchResp := searxng.SearchResponse{
-		Results:         []searxng.SearchResult{},
-		NumberOfResults: 0,
+		Results:         []searxng.SearchResult{{Title: "x", URL: "https://x"}},
+		NumberOfResults: 1,
 		Query:           "test",
 	}
 	server := newJSONTestServer(t, searchResp)
@@ -523,8 +523,8 @@ func TestSearchCloseDuringInFlightSearch(t *testing.T) {
 	started := make(chan struct{})
 	release := make(chan struct{})
 	searchResp := searxng.SearchResponse{
-		Results:         []searxng.SearchResult{},
-		NumberOfResults: 0,
+		Results:         []searxng.SearchResult{{Title: "x", URL: "https://x"}},
+		NumberOfResults: 1,
 		Query:           "test",
 		Suggestions:     []string{},
 	}

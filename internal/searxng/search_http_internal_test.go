@@ -64,7 +64,7 @@ func TestSearch_Success(t *testing.T) {
 		t.Parallel()
 
 		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-			return makeJSONResponse(minimalJSONBody), nil
+			return makeJSONResponse(makeSearchResponseJSON(1)), nil
 		}), 0)
 
 		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
@@ -351,7 +351,7 @@ func TestSearch_RetryOnEmptyResponse(t *testing.T) {
 		}
 	})
 
-	t.Run("empty response with no retries left returns empty", func(t *testing.T) {
+	t.Run("empty response with no retries left returns error", func(t *testing.T) {
 		t.Parallel()
 
 		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
@@ -359,18 +359,16 @@ func TestSearch_RetryOnEmptyResponse(t *testing.T) {
 		}), 0)
 
 		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
-		if err != nil {
-			t.Fatalf("Search() error = %v, want nil", err)
+		if err == nil {
+			t.Fatal("Search() error = nil, want empty-results error")
 		}
 
-		if result == nil {
-			t.Fatal("Search() result = nil, want non-nil")
-
-			return
+		if !errors.Is(err, errSearchEmptyResults) {
+			t.Fatalf("Search() error = %v, want errSearchEmptyResults in chain", err)
 		}
 
-		if len(result.Results) != 0 {
-			t.Fatalf("len(Results) = %d, want 0 (no retries for empty)", len(result.Results))
+		if result != nil {
+			t.Fatalf("Search() result = %#v, want nil", result)
 		}
 	})
 }
@@ -470,7 +468,7 @@ func TestSearch_DebugMode(t *testing.T) {
 		s := &SearXNGSearcher{
 			client: &http.Client{
 				Transport: testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-					return makeJSONResponse(minimalJSONBody), nil
+					return makeJSONResponse(makeSearchResponseJSON(1)), nil
 				}),
 			},
 			searchEndpoint: endpoint,
@@ -515,7 +513,7 @@ func TestSearch_GETFallbackFlow(t *testing.T) {
 			}
 
 			// GET fallback succeeds
-			return makeJSONResponse(minimalJSONBody), nil
+			return makeJSONResponse(makeSearchResponseJSON(1)), nil
 		}), 0)
 		s.allowGETFallback = true
 
@@ -604,23 +602,21 @@ func TestSearch_RetryWithEmptyResponseFallback(t *testing.T) {
 		}), 2)
 
 		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
-		if err != nil {
-			t.Fatalf("Search() error = %v, want nil", err)
+		if err == nil {
+			t.Fatal("Search() error = nil, want empty-results error")
 		}
 
-		if result == nil {
-			t.Fatal("Search() result = nil, want non-nil")
-
-			return
+		if !errors.Is(err, errSearchEmptyResults) {
+			t.Fatalf("Search() error = %v, want errSearchEmptyResults in chain", err)
 		}
 
-		// attempt=0: error -> retry; attempt=1: empty -> retry; attempt=2: empty -> return empty
+		if result != nil {
+			t.Fatalf("Search() result = %#v, want nil", result)
+		}
+
+		// attempt=0: error -> retry; attempt=1: empty -> retry; attempt=2: empty -> error
 		if callCount != 3 {
 			t.Fatalf("callCount = %d, want 3 (attempt 0=err, attempt 1=empty+retry, attempt 2=empty)", callCount)
-		}
-
-		if len(result.Results) != 0 {
-			t.Fatalf("len(Results) = %d, want 0 (empty response returned on last attempt)", len(result.Results))
 		}
 	})
 }
@@ -682,7 +678,7 @@ func TestSearch_SearXNGErrorIsRetryable(t *testing.T) {
 func TestSearch_EmptyResponseRetryDoesNotSpin(t *testing.T) {
 	t.Parallel()
 
-	t.Run("empty response with 0 retries returns empty immediately", func(t *testing.T) {
+	t.Run("empty response with 0 retries returns error immediately", func(t *testing.T) {
 		t.Parallel()
 
 		callCount := 0
@@ -693,18 +689,20 @@ func TestSearch_EmptyResponseRetryDoesNotSpin(t *testing.T) {
 		}), 0)
 
 		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
-		if err != nil {
-			t.Fatalf("Search() error = %v, want nil", err)
+		if err == nil {
+			t.Fatal("Search() error = nil, want empty-results error")
+		}
+
+		if !errors.Is(err, errSearchEmptyResults) {
+			t.Fatalf("Search() error = %v, want errSearchEmptyResults in chain", err)
 		}
 
 		if callCount != 1 {
 			t.Fatalf("callCount = %d, want 1", callCount)
 		}
 
-		if result == nil {
-			t.Fatal("Search() result = nil, want non-nil")
-
-			return
+		if result != nil {
+			t.Fatalf("Search() result = %#v, want nil", result)
 		}
 	})
 }
@@ -738,12 +736,16 @@ func TestSearch_EmptyResponseRetryClosesBodyOnce(t *testing.T) {
 		}), 2)
 
 		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
-		if err != nil {
-			t.Fatalf("Search() error = %v, want nil", err)
+		if err == nil {
+			t.Fatal("Search() error = nil, want empty-results error")
 		}
 
-		if result == nil {
-			t.Fatal("Search() result = nil, want non-nil")
+		if !errors.Is(err, errSearchEmptyResults) {
+			t.Fatalf("Search() error = %v, want errSearchEmptyResults in chain", err)
+		}
+
+		if result != nil {
+			t.Fatalf("Search() result = %#v, want nil", result)
 		}
 
 		// 3 HTTP requests (initial + 2 retries of empty responses).
@@ -778,12 +780,16 @@ func TestSearch_EmptyResponseRetryClosesBodyOnce(t *testing.T) {
 		}), 0)
 
 		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
-		if err != nil {
-			t.Fatalf("Search() error = %v, want nil", err)
+		if err == nil {
+			t.Fatal("Search() error = nil, want empty-results error")
 		}
 
-		if result == nil {
-			t.Fatal("Search() result = nil, want non-nil")
+		if !errors.Is(err, errSearchEmptyResults) {
+			t.Fatalf("Search() error = %v, want errSearchEmptyResults in chain", err)
+		}
+
+		if result != nil {
+			t.Fatalf("Search() result = %#v, want nil", result)
 		}
 
 		if totalCloseCalls != 1 {

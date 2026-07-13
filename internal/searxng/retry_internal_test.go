@@ -105,7 +105,7 @@ func TestClassifyOutcome(t *testing.T) {
 		}
 	})
 
-	t.Run("empty on last attempt returns OutcomeSuccess", func(t *testing.T) {
+	t.Run("empty on last attempt returns OutcomeEmptyExhausted", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
@@ -113,8 +113,8 @@ func TestClassifyOutcome(t *testing.T) {
 		// attempt == maxRetries means no retries left
 		outcome := classifyOutcome(ctx, 2, 2, resp, nil, true)
 
-		if outcome != OutcomeSuccess {
-			t.Fatalf("classifyOutcome() = %v, want OutcomeSuccess for empty on last attempt", outcome)
+		if outcome != OutcomeEmptyExhausted {
+			t.Fatalf("classifyOutcome() = %v, want OutcomeEmptyExhausted for empty on last attempt", outcome)
 		}
 	})
 
@@ -261,6 +261,18 @@ func TestShouldRetry_ErrorTypes(t *testing.T) {
 		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, OutcomeAbort)
 		if shouldRetry {
 			t.Fatal("ShouldRetry() = true, want false for OutcomeAbort")
+		}
+	})
+
+	t.Run("OutcomeEmptyExhausted does not retry", func(t *testing.T) {
+		t.Parallel()
+
+		strategy := newExponentialBackoffStrategy(2, time.Millisecond, time.Millisecond)
+		ctx := t.Context()
+
+		shouldRetry, _ := strategy.ShouldRetry(ctx, 0, OutcomeEmptyExhausted)
+		if shouldRetry {
+			t.Fatal("ShouldRetry() = true, want false for OutcomeEmptyExhausted")
 		}
 	})
 }

@@ -30,6 +30,18 @@ func requireValidationError(t *testing.T, err error, field string) {
 	}
 }
 
+// requireValidationErrorMsg asserts that err is a ValidationError for the given
+// field and that its error message contains wantMsg.
+func requireValidationErrorMsg(t *testing.T, err error, field, wantMsg string) {
+	t.Helper()
+
+	requireValidationError(t, err, field)
+
+	if !strings.Contains(err.Error(), wantMsg) {
+		t.Fatalf("ValidationError message = %q, want containing %q", err.Error(), wantMsg)
+	}
+}
+
 func validateSearchArgsErr(args *SearchArgs) error {
 	_, err := ValidateSearchArgs(args)
 
@@ -315,12 +327,18 @@ func TestValidateCategories(t *testing.T) {
 		name       string
 		categories string
 		wantErr    bool
+		wantMsg    string // expected substring in error message
 	}{
 		{name: "empty", categories: ""},
 		{name: "valid categories", categories: "general,news,science-technology,software wikis"},
-		{name: "path separator", categories: "general/news", wantErr: true},
-		{name: "control characters", categories: "general\nnews", wantErr: true},
-		{name: "empty segment", categories: "general,,news", wantErr: true},
+		{name: "path separator", categories: "general/news", wantErr: true, wantMsg: "slash not allowed in category name"},
+		{name: "control characters", categories: "general\nnews", wantErr: true, wantMsg: "control characters"},
+		{name: "empty segment", categories: "general,,news", wantErr: true, wantMsg: "empty item in comma-separated list"},
+		{
+			name:       "long category",
+			categories: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz",
+			wantErr:    true, wantMsg: "exceeds 50 runes",
+		},
 	}
 
 	for _, tt := range tests {
@@ -329,7 +347,7 @@ func TestValidateCategories(t *testing.T) {
 
 			err := validateCSVIdentifiers(tt.categories, "categories", "category")
 			if tt.wantErr {
-				requireValidationError(t, err, "categories")
+				requireValidationErrorMsg(t, err, "categories", tt.wantMsg)
 
 				return
 			}
@@ -348,12 +366,13 @@ func TestValidateEngines(t *testing.T) {
 		name    string
 		engines string
 		wantErr bool
+		wantMsg string
 	}{
 		{name: "empty", engines: ""},
 		{name: "valid engines", engines: "google,bing,duckduckgo-lite,docker hub,google news,Torznab EZTV"},
-		{name: "path separator", engines: "google/bing", wantErr: true},
-		{name: "control characters", engines: "google\tbing", wantErr: true},
-		{name: "empty segment", engines: "google,,bing", wantErr: true},
+		{name: "path separator", engines: "google/bing", wantErr: true, wantMsg: "slash not allowed in engine name"},
+		{name: "control characters", engines: "google	bing", wantErr: true, wantMsg: "control characters"},
+		{name: "empty segment", engines: "google,,bing", wantErr: true, wantMsg: "empty item in comma-separated list"},
 	}
 
 	for _, tt := range tests {
@@ -362,7 +381,7 @@ func TestValidateEngines(t *testing.T) {
 
 			err := validateCSVIdentifiers(tt.engines, "engines", "engine")
 			if tt.wantErr {
-				requireValidationError(t, err, "engines")
+				requireValidationErrorMsg(t, err, "engines", tt.wantMsg)
 
 				return
 			}

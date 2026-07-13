@@ -84,6 +84,8 @@ Replace `/home/linuxbrew/.linuxbrew/bin/searxng-mcp-go` with the actual path fro
 ## CLI Usage
 
 When you pass a query or flags, the server runs as a one-shot CLI tool and exits.
+Any argument activates CLI mode, including standalone flags such as `--json`,
+`--help`, or `--version`. Run without arguments for MCP server mode.
 
 ```bash
 # Basic search
