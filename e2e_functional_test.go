@@ -164,11 +164,11 @@ func TestMCPFunctional_Engines(t *testing.T) {
 
 	for _, engine := range []string{"google", "bing", "duckduckgo", "yahoo"} {
 		t.Run(engine, func(t *testing.T) {
-			response := requireSearchResponse(ctx, t, session, map[string]any{
+			response := requireSearchResponseAllowEmptyResults(ctx, t, session, map[string]any{
 				"query":   "framework computer inc",
 				"engines": engine,
 				"limit":   3,
-			}, stderr, "all engines")
+			}, stderr, &warnings, "all engines")
 
 			if len(response.Results) == 0 {
 				warning := "engines=" + strconv.Quote(engine) + " results length = 0"
@@ -176,7 +176,9 @@ func TestMCPFunctional_Engines(t *testing.T) {
 				t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
 			}
 
-			assertResultTitles(t, response, stderr)
+			if len(response.Results) > 0 {
+				assertResultTitles(t, response, stderr)
+			}
 		})
 	}
 
@@ -295,16 +297,18 @@ func TestMCPFunctional_ParameterCombinations(t *testing.T) {
 	})
 
 	t.Run("engines+time_range", func(t *testing.T) {
-		response := requireSearchResponse(ctx, t, session, map[string]any{
+		response := requireSearchResponseAllowEmptyResults(ctx, t, session, map[string]any{
 			"query":      "framework computer inc",
 			"engines":    "bing",
 			"time_range": "month",
 			"limit":      3,
-		}, stderr, "parameter combinations engines+time_range")
+		}, stderr, &warnings, "parameter combinations engines+time_range")
 
 		// Allow empty results — specific engine + time range combinations
 		// may return no results.
-		assertResultTitles(t, response, stderr)
+		if len(response.Results) > 0 {
+			assertResultTitles(t, response, stderr)
+		}
 
 		t.Logf("engines+time_range: got %d results", len(response.Results))
 	})

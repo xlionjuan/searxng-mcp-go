@@ -21,6 +21,8 @@ Issue #247 documented the fragility: `errEmptyResponse` **must** remain a bare
 
 ## Decision
 
+### Original decision (2026-06-12)
+
 Introduce an `Outcome` enum type with four values — `OutcomeSuccess`,
 `OutcomeRetry`, `OutcomeEmptyRetry`, `OutcomeAbort` — and a pure
 `classifyOutcome` function that determines the outcome from
@@ -37,6 +39,31 @@ Changes:
 - Three helpers (`searchContext`, `wrapSearchError`, `classifyAttempt`) are
   extracted to keep `Search()` focused on orchestration.
 
+### Extension (2026-07-13): `OutcomeEmptyExhausted`
+
+The original design treated empty responses on the final attempt as
+`OutcomeSuccess`, returning a successful `SearchResponse` with zero results
+and only logging a `slog.Warn`. This was a vestige of the pre-ADR-014 era
+where `errEmptyResponse` could not be the final return value.
+
+Issue #475 identified the contradiction between the documented error path
+("search returned empty results after all retries") and the actual success
+response. The behaviour was corrected by adding a fifth outcome value,
+`OutcomeEmptyExhausted`, that causes the retry loop to return a wrapped
+`errSearchEmptyResults` error instead of silently succeeding.
+
+Changes:
+- Adds `OutcomeEmptyExhausted` to the `Outcome` enum.
+- `classifyOutcome` returns `OutcomeEmptyExhausted` when `isEmpty && attempt >= maxRetries` (empty response with no retries remaining).
+- `ShouldRetry` treats `OutcomeEmptyExhausted` as non-retryable (returns
+  `false`), consistent with its final-attempt semantics.
+- `Search()` checks `OutcomeEmptyExhausted` before `OutcomeSuccess` and
+  returns `nil, wrapSearchError(errSearchEmptyResults)`.
+- `errSearchEmptyResults` is promoted from internal tracking error to the
+  actual terminal error returned to callers.
+- The `slog.Warn("search returned empty after exhausting retries")` log is
+  removed; the error itself communicates the exhausted-retries condition.
+
 ## Consequences
 
 - **Explicit contract.** The empty-response retry path no longer relies on an
@@ -44,12 +71,19 @@ Changes:
     `Outcome` switch.
 - **Simpler Search loop.** Single `ShouldRetry` call instead of two. No fake
     error, no duplicated wait/continue logic.
-- **New exported type.** `Outcome` is exported from `searxng` package. Four
+- **New exported type.** `Outcome` is exported from `searxng` package. Five
     values: `OutcomeSuccess`, `OutcomeRetry`, `OutcomeEmptyRetry`,
-    `OutcomeAbort`.
+    `OutcomeAbort`, `OutcomeEmptyExhausted`.
 - **Backward compatible behavior.** Retry behaviour is preserved for all
     existing scenarios: plain network errors retry, `SearXNGError` does not,
     retryable status codes (429, 5xx) retry, empty responses retry on
     non-final attempts, non-retryable status codes abort.
+- **Non-backward compatible terminal behaviour.** The original decision
+    returned an empty success response when all retries were exhausted on an
+    empty SearXNG reply. This extension changes that to a terminal error. MCP
+    callers now receive an error instead of a zero-result success. E2E tests
+    that relied on the old success-with-empty contract have been updated to
+    expect the error or to tolerate empty results via the warning-summary
+    path.
 - **Resolves #247.** The fragile `errEmptyResponse` sentinel is no longer used
     for retry decisions.

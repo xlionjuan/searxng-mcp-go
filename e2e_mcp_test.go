@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -304,32 +303,36 @@ func TestMCPStdioE2E_UnicodeQueryRoundTrip(t *testing.T) {
 	t.Logf("found tool: %s", searchTool.Name)
 
 	query := "日本 golang \"type parameters\" site:go.dev"
-	response := requireSearchResponse(ctx, t, session, map[string]any{
+	response := requireSearchResponseAllowEmptyResults(ctx, t, session, map[string]any{
 		"query":      query,
 		"language":   "ja",
 		"engines":    "bing",
 		"categories": "general",
 		"limit":      5,
-	}, stderr, "unicode query round trip")
+	}, stderr, &warnings, "unicode query round trip")
 
-	if response.Query != query {
-		t.Fatalf("query = %q, want %q\nresponse: %#v\nstderr:\n%s", response.Query, query, response, stderr.String())
-	}
+	// Only validate response fields when we got actual results; empty-results
+	// error returns a zero-value SearchResponse.
+	if response.Query != "" {
+		if response.Query != query {
+			t.Fatalf("query = %q, want %q\nresponse: %#v\nstderr:\n%s", response.Query, query, response, stderr.String())
+		}
 
-	if len(response.Results) == 0 {
-		warning := "unicode query round trip results length = 0, want > 0"
-		warnings.Addf("%s", warning)
-		t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
-	}
+		if len(response.Results) == 0 {
+			warning := "unicode query round trip results length = 0, want > 0"
+			warnings.Addf("%s", warning)
+			t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
+		}
 
-	if len(response.Results) > 5 {
-		t.Fatalf("results length = %d, want <= 5"+
-			"\nresponse: %#v\nstderr:\n%s", len(response.Results), response, stderr.String())
-	}
+		if len(response.Results) > 5 {
+			t.Fatalf("results length = %d, want <= 5"+
+				"\nresponse: %#v\nstderr:\n%s", len(response.Results), response, stderr.String())
+		}
 
-	for i, result := range response.Results {
-		if strings.TrimSpace(result.URL) == "" {
-			t.Fatalf("result[%d] URL is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
+		for i, result := range response.Results {
+			if strings.TrimSpace(result.URL) == "" {
+				t.Fatalf("result[%d] URL is empty\nresponse: %#v\nstderr:\n%s", i, response, stderr.String())
+			}
 		}
 	}
 
@@ -357,44 +360,16 @@ func TestMCPStdioE2E_ResponseFormatInvariants(t *testing.T) {
 		"categories": "general",
 		"limit":      3,
 	}, stderr)
+
+	if !result.IsError {
+		t.Fatal("expected tool error for empty search results, got success response")
+	}
+
 	text := toolText(t, result)
 
-	if result.IsError {
-		t.Fatalf("response format query returned tool error: %s\nstderr:\n%s", text, stderr.String())
+	if !strings.Contains(text, "search returned empty results after all retries") {
+		t.Fatalf("error text does not mention empty-results exhaustion\ntext:\n%s\nstderr:\n%s", text, stderr.String())
 	}
 
-	if !strings.Contains(text, `"results":[]`) {
-		t.Fatalf("raw JSON does not contain empty results array\ntext:\n%s\nstderr:\n%s", text, stderr.String())
-	}
-
-	if !strings.Contains(text, `"suggestions":[]`) {
-		t.Fatalf("raw JSON does not contain empty suggestions array\ntext:\n%s\nstderr:\n%s", text, stderr.String())
-	}
-
-	var raw map[string]json.RawMessage
-
-	err := json.Unmarshal([]byte(text), &raw)
-	if err != nil {
-		t.Fatalf("response is not JSON: %v\ntext:\n%s\nstderr:\n%s", err, text, stderr.String())
-	}
-
-	for _, field := range []string{"answers", "infoboxes", "unresponsive_engines"} {
-		if _, ok := raw[field]; ok {
-			t.Fatalf("field %q present, want omitted when empty/debug-off"+
-				"\ntext:\n%s\nstderr:\n%s", field, text, stderr.String())
-		}
-	}
-
-	response := parseSearchResponse(t, result, stderr)
-	if len(response.Results) != 0 {
-		t.Fatalf("results length = %d, want 0"+
-			"\nresponse: %#v\nstderr:\n%s", len(response.Results), response, stderr.String())
-	}
-
-	if len(response.Suggestions) != 0 {
-		t.Fatalf("suggestions length = %d, want 0"+
-			"\nresponse: %#v\nstderr:\n%s", len(response.Suggestions), response, stderr.String())
-	}
-
-	t.Log("MCP stdio response format invariants verified")
+	t.Log("MCP stdio response format invariants verified: empty results correctly return error")
 }
