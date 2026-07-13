@@ -14,8 +14,8 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 
 | Parameter    | Type    | Required | Default | Description                                      |
 |--------------|---------|----------|---------|--------------------------------------------------|
-| `query`      | string  | Yes      | -       | The search query string                          |
-| `language`   | string  | No       |         | Language code for results (e.g., en, zh-tw, ja). Empty or `"auto"` = SearXNG decides |
+| `query`      | string  | Yes      | -       | The search query string. Max 500 runes.          |
+| `language`   | string  | No       |         | Language code for results (e.g., en, zh-tw, ja). Max 35 runes. Empty or `"auto"` = SearXNG decides |
 | `safesearch` | integer | No       | 0       | SafeSearch filtering level:                     |
 |              |         |          |         | - `0` = Off (show all results)                   |
 |              |         |          |         | - `1` = Moderate (filter some adult content)    |
@@ -276,7 +276,7 @@ Search error examples — the response format depends on whether the error is a 
 | Invalid JSON from SearXNG | `Search error: searxng error (status <N>) - content-type <type>: <error description>` (full error logged server-side) |
 | HTML response (JSON disabled) | `Search error: request failed` (full error logged server-side) |
 | Other unexpected errors | `Search error: request failed` (full error logged server-side) |
-| Response marshal failure | `Search error: failed to format results` (full error logged server-side) |
+
 
 ### Startup Errors
 
@@ -296,6 +296,7 @@ The server validates the MCP initialization message on stdin before starting. If
 - **MaxRetries**: 5 retries after the initial search attempt by default; set `SEARXNG_MAX_RETRIES` or, in CLI mode, `--max-retries`
 - **POST→GET fallback**: Disabled by default. If POST `/search` returns 405 or 501, the server returns an error so operators can fix the SearXNG or reverse-proxy configuration. Set `SEARXNG_ALLOW_GET_FALLBACK=1` to opt in; this sends search parameters in the URL and may expose queries in upstream logs. In CLI mode, `--allow-get-fallback` overrides the environment variable.
 - **Initialize message size limit**: The first line of stdin (the MCP `initialize` JSON-RPC message) is capped at 1 MB; oversized input causes the server to exit instead of hanging
+- **Schema**: `additionalProperties: false` — unrecognized parameters are rejected at the schema level before handler validation runs
 
 ### Retry Behavior
 
