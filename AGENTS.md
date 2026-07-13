@@ -100,14 +100,14 @@ If `which go` fails, report and stop — do not install, download, or work aroun
 
 ### Verification
 
-- Code changes must be verified with the narrowest meaningful build/test command before committing.
-- Before opening or updating a PR, or reporting a code-changing task complete,
-  all AI agents must select and run the verification gate described in
-  [docs/agents/verification.md](docs/agents/verification.md) for the affected
-  surface. Do not run the Go completion gate for changes that cannot affect Go
-  code, dependencies, build, test, lint, or release behavior.
-- See [docs/agents/verification.md](docs/agents/verification.md) for build, test, lint, and E2E commands.
-- Pure documentation changes (`.md` files only) do not require the build, test, or lint gates above.
+- **Before every commit that touches Go code, tests, dependencies, or Go-related
+  scripts/workflows, the committing agent must run `just verify` locally.** This
+  is the canonical verification gate defined in
+  [docs/agents/verification.md](docs/agents/verification.md). Do not guess or
+  compose a custom verification command — use `just verify`.
+- `just verify` covers build, vet, lint, test (with race detector), stress tests,
+  mod tidy, and coverage. It mirrors the non-E2E CI pipeline.
+- Pure documentation changes (`.md` files only) do not require `just verify`.
 
 ## GitHub and PR Work
 
