@@ -58,7 +58,7 @@ release job* and before GoReleaser publishes anything:
 3. `go build -o /tmp/searxng-mcp-go .`
 4. `go test -race -shuffle=on ./...`
 5. `go tool govulncheck ./...`
-6. `golangci-lint run` (v2.12.2)
+6. `golangci/golangci-lint-action` runs golangci-lint v2.12.2
 
 If any of these fail, the job stops before GoReleaser runs, so a broken
 tag cannot publish a release.

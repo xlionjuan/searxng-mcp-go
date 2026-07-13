@@ -178,6 +178,8 @@ searxng-mcp-go "query" --timeout=8s --max-retries=5
 searxng-mcp-go "query" --allow-get-fallback
 ```
 
+> **Note:** When GET fallback is enabled and the request fails, the `q` search parameter is redacted to `[REDACTED]` in error messages to prevent query leakage.
+
 ---
 
 ## Related Documentation
