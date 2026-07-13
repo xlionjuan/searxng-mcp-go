@@ -4,7 +4,7 @@
 #   just           — run default (test)
 #   just build     — build binary
 #   just test      — run tests with race detector
-#   just check     — full pre-PR gate (mod verify → fmt check → vet → lint → tidy → build → test-cover → test-stress)
+#   just verify   — full CI pipeline (fmt-check → vet → lint → tidy → build → test-cover → test-stress)
 #   just clean     — remove build artifacts
 
 binary := "searxng-mcp-go"
@@ -54,28 +54,35 @@ cover-text:
     go tool cover -func={{ coverfile }}
 
 # Check formatting (non-mutating diff, matches CI)
-fmt:
+fmt-check:
     golangci-lint fmt --diff
 
 # Apply formatting (mutating)
-fmt-apply:
+fmt:
     golangci-lint fmt
 
 # Run go vet
 vet:
     go vet ./...
 
-# Run golangci-lint
+# Run golangci-lint (all build-tag variants matching CI)
 lint:
     golangci-lint run --timeout 5m
+    golangci-lint run --timeout 5m --build-tags=stress
+    golangci-lint run --timeout 5m --build-tags=e2e
 
-# Full pre-PR gate (matches the non-E2E verification gate)
-check: mod-verify fmt vet lint
+# Full CI pipeline (matches the non-E2E verification gate).
+# Mirrors test.yml + lint.yml steps in fail-fast order.
+verify: mod-verify fmt-check vet lint
     go mod download
     just mod-tidy
     go build -o {{ binary }} .
     just test-cover
     just test-stress
+
+# Aliases for verify
+alias ci := verify
+alias check := verify
 
 # Verify and tidy dependencies
 mod-tidy:
@@ -93,14 +100,6 @@ vulncheck:
 # Remove build artifacts and coverage files
 clean:
     rm -f {{ binary }} {{ coverfile }}
-
-# CI pipeline (matches the non-E2E verification gate)
-ci: mod-verify fmt vet lint
-    go mod download
-    just mod-tidy
-    go build -o {{ binary }} .
-    just test-cover
-    just test-stress
 
 # Quick check (no formatting, just vet + lint + test)
 quick:
