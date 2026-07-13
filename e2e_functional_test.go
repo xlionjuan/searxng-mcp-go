@@ -310,11 +310,12 @@ func TestMCPFunctional_ParameterCombinations(t *testing.T) {
 
 		// Allow empty results — specific engine + time range combinations
 		// may return no results.
-		if !isEmptyResults && len(response.Results) > 0 {
+		switch {
+		case !isEmptyResults && len(response.Results) > 0:
 			assertResultTitles(t, response, stderr)
-		} else if isEmptyResults {
+		case isEmptyResults:
 			t.Log("engines+time_range: empty results (tolerated)")
-		} else {
+		default:
 			warning := "engines+time_range results length = 0 (non-error empty)"
 			warnings.Addf("%s", warning)
 			t.Logf("%s\nresponse: %#v\nstderr:\n%s", warning, response, stderr.String())
