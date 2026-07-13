@@ -729,7 +729,9 @@ func TestSearch_CustomHTTPClientSameHostRedirectAllowed(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/search/redirected" {
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"query":"test","number_of_results":1,"results":[{"title":"x","url":"https://x"}],"suggestions":[]}`))
+			//nolint:errcheck // test fixture write best-effort
+			_, _ = w.Write([]byte(`{"query":"test","number_of_results":1,` +
+				`"results":[{"title":"x","url":"https://x"}],"suggestions":[]}`))
 
 			return
 		}
