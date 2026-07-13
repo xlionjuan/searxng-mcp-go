@@ -30,7 +30,7 @@
 `.github/workflows/e2e.yml` wraps all E2E test suites — those matching
 `-run 'TestMCP'` (which includes `TestMCPFunctional`, `TestMCPStdioE2E`,
 and `TestMCPErrors_InvalidInputs`) and `-run 'TestCLISmoke'` — in
-`Wandalen/wretry.action` with `attempt_limit=10`.
+`Wandalen/wretry.action` with `attempt_limit=3`.
 This is because upstream search engines probabilistically rate-limit or ban
 the CI SearXNG instance during automated runs — a characteristic inherent to
 meta-search against live third-party engines, not a code or SearXNG bug.
