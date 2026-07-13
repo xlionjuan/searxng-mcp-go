@@ -57,8 +57,9 @@ Changes:
 - `classifyOutcome` returns `OutcomeEmptyExhausted` when `isEmpty && attempt >= maxRetries` (empty response with no retries remaining).
 - `ShouldRetry` treats `OutcomeEmptyExhausted` as non-retryable (returns
   `false`), consistent with its final-attempt semantics.
-- `Search()` checks `OutcomeEmptyExhausted` before `OutcomeSuccess` and
-  returns `nil, wrapSearchError(errSearchEmptyResults)`.
+- `Search()` handles `OutcomeEmptyExhausted` after `OutcomeSuccess`. The two
+  values are mutually exclusive (a response cannot be both exhausted and
+  successful), so the check order is just a convention.
 - `errSearchEmptyResults` is promoted from internal tracking error to the
   actual terminal error returned to callers.
 - The `slog.Warn("search returned empty after exhausting retries")` log is

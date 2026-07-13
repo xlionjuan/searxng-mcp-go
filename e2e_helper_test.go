@@ -298,8 +298,8 @@ func searchResponseFromResult(
 // returns a success response, it parses and returns it as normal. If the tool
 // returns an IsError result whose text contains "search returned empty results
 // after all retries", logs a warning through the warnings collector and returns
-// a SearchResponse with zero results. Any other tool error fails the test.
-// name is used for logging.
+// a zero SearchResponse with isEmptyResults=true. Any other tool error fails
+// the test. name is used for logging.
 func requireSearchResponseAllowEmptyResults(
 	ctx context.Context,
 	t *testing.T,
@@ -308,7 +308,7 @@ func requireSearchResponseAllowEmptyResults(
 	stderr stderrBuffer,
 	warnings *e2eWarnings,
 	name string,
-) searxng.SearchResponse {
+) (searxng.SearchResponse, bool) {
 	t.Helper()
 
 	t.Logf("%s: sending arguments %#v", name, arguments)
@@ -321,13 +321,13 @@ func requireSearchResponseAllowEmptyResults(
 			warnings.Addf("%s: empty results from SearXNG", name)
 			t.Logf("%s: empty results from SearXNG (allowed)\nstderr:\n%s", name, stderr.String())
 
-			return searxng.SearchResponse{}
+			return searxng.SearchResponse{}, true
 		}
 
 		t.Fatalf("%s returned unexpected tool error: %s\nstderr:\n%s", name, text, stderr.String())
 	}
 
-	return searchResponseFromResult(t, result, stderr, name)
+	return searchResponseFromResult(t, result, stderr, name), false
 }
 
 // parseSearchResponse unmarshals the tool result text into a SearchResponse.

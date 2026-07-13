@@ -303,7 +303,7 @@ func TestMCPStdioE2E_UnicodeQueryRoundTrip(t *testing.T) {
 	t.Logf("found tool: %s", searchTool.Name)
 
 	query := "日本 golang \"type parameters\" site:go.dev"
-	response := requireSearchResponseAllowEmptyResults(ctx, t, session, map[string]any{
+	response, isEmptyResults := requireSearchResponseAllowEmptyResults(ctx, t, session, map[string]any{
 		"query":      query,
 		"language":   "ja",
 		"engines":    "bing",
@@ -311,9 +311,9 @@ func TestMCPStdioE2E_UnicodeQueryRoundTrip(t *testing.T) {
 		"limit":      5,
 	}, stderr, &warnings, "unicode query round trip")
 
-	// Only validate response fields when we got actual results; empty-results
-	// error returns a zero-value SearchResponse.
-	if response.Query != "" {
+	if isEmptyResults {
+		t.Log("unicode query round trip: empty results (tolerated)")
+	} else {
 		if response.Query != query {
 			t.Fatalf("query = %q, want %q\nresponse: %#v\nstderr:\n%s", response.Query, query, response, stderr.String())
 		}
