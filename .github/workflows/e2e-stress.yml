@@ -41,7 +41,7 @@ jobs:
         run: bash 01-start-bg.sh
 
       - name: Install just
-        uses: taiki-e/install-action@bffeee26d4db9be238a4ea78d8826604ebcb594d # v2.82.5
+        uses: taiki-e/install-action@c7eb1735f09259a5035e8e5d44b1406b1cddc0fb # v2.83.0
         with:
           tool: just@1.51.0
           fallback: none
