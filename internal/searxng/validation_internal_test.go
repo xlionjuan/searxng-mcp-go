@@ -321,6 +321,7 @@ func TestValidateCategories(t *testing.T) {
 		{name: "path separator", categories: "general/news", wantErr: true},
 		{name: "control characters", categories: "general\nnews", wantErr: true},
 		{name: "empty segment", categories: "general,,news", wantErr: true},
+		{name: "long category", categories: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz", wantErr: true},
 	}
 
 	for _, tt := range tests {

@@ -452,6 +452,30 @@ func TestIsValidMCPInitializeMessage(t *testing.T) {
 	}
 }
 
+func TestPrintParseErrorNoColor(t *testing.T) {
+	// Not t.Parallel(): modifies global env.
+	t.Setenv("NO_COLOR", "1")
+
+	//nolint:dogsled // parseArgs returns 4 values; only error is needed
+	_, _, _, err := parseArgs([]string{"--unknown"})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var buf bytes.Buffer
+	printParseError(err, &buf)
+
+	output := buf.String()
+
+	if !strings.Contains(output, "ERROR:") {
+		t.Error("output should contain error message")
+	}
+
+	if strings.Contains(output, "\033[31m") {
+		t.Error("output should not contain ANSI escape codes when NO_COLOR is set")
+	}
+}
+
 func TestPrepareMCPStdin(t *testing.T) {
 	t.Parallel()
 
