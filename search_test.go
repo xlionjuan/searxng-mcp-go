@@ -284,7 +284,7 @@ func TestSearch_RequestParameters(t *testing.T) {
 			t.Parallel()
 
 			capturedParams := make(chan url.Values, 1)
-			searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
+			searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{{Title: "test", URL: "https://example.com"}}, NumberOfResults: 1, Query: "test"}
 			body := mustMarshalJSON(t, searchResp)
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -354,7 +354,7 @@ func TestSearch_SearchPathNormalization(t *testing.T) {
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotPath = r.URL.Path
-				searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
+				searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{{Title: "x", URL: "https://x"}}, NumberOfResults: 1, Query: "test"}
 				body := mustMarshalJSON(t, searchResp)
 
 				w.Header().Set("Content-Type", "application/json")
@@ -393,8 +393,8 @@ func TestSearch_QueryEncoding(t *testing.T) {
 		}
 
 		searchResp := searxng.SearchResponse{
-			Results:         []searxng.SearchResult{},
-			NumberOfResults: 0,
+			Results:         []searxng.SearchResult{{Title: "x", URL: "https://x"}},
+			NumberOfResults: 1,
 			Query:           capturedQuery,
 		}
 		body := mustMarshalJSON(t, searchResp)
@@ -638,7 +638,7 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 				getReq  *http.Request
 			)
 
-			searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
+			searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{{Title: "fallback", URL: "https://example.com"}}, NumberOfResults: 1, Query: "test"}
 			body := mustMarshalJSON(t, searchResp)
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -939,7 +939,7 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 
 		var capturedHeaders http.Header
 
-		searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
+		searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{{Title: "x", URL: "https://x"}}, NumberOfResults: 1, Query: "test"}
 		body := mustMarshalJSON(t, searchResp)
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -965,7 +965,7 @@ func TestSearch_BrowserHeaders(t *testing.T) {
 
 		var capturedHeaders http.Header
 
-		searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{}, NumberOfResults: 0, Query: "test"}
+		searchResp := searxng.SearchResponse{Results: []searxng.SearchResult{{Title: "x", URL: "https://x"}}, NumberOfResults: 1, Query: "test"}
 		body := mustMarshalJSON(t, searchResp)
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

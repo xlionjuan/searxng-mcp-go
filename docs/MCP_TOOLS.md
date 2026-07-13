@@ -259,10 +259,15 @@ Handler validation error examples:
 | Missing or whitespace `query` | `Validation error: validation error on "query": search query cannot be only whitespace` |
 | Query too long (>500 runes)   | `Validation error: validation error on "query": must be 500 runes or less` |
 | Query control characters      | `Validation error: validation error on "query": contains invalid control characters` |
-| Invalid `categories` value    | `Validation error: validation error on "categories": contains invalid category` |
-| Invalid `engines` value       | `Validation error: validation error on "engines": contains invalid engine` |
+| Invalid `categories` value    | `Validation error: validation error on "categories": <specific rejection reason>` |
+| Invalid `engines` value       | `Validation error: validation error on "engines": <specific rejection reason>` |
 | Invalid `language` value      | `Validation error: validation error on "language": must be a valid language code (e.g., en, zh-tw, ja, en-US)` |
 | Language too long (>35 runes) | `Validation error: validation error on "language": must be 35 runes or less` |
+
+For `categories` and `engines`, the specific rejection reason identifies an
+empty CSV item, a name longer than 50 runes, a slash, or an ASCII control
+character. Name-specific errors include `category` or `engine` and quote the
+rejected item when it is safe to display.
 
 Search error examples — the response format depends on whether the error is a `SearXNGError` (includes status code, content type, and underlying cause) or another error type:
 

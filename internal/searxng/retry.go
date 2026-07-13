@@ -12,7 +12,7 @@ import (
 type Outcome int
 
 const (
-	// OutcomeSuccess indicates a successful response, including empty results on the final attempt.
+	// OutcomeSuccess indicates a successful response containing search data.
 	OutcomeSuccess Outcome = iota
 	// OutcomeRetry indicates a transient error or retryable HTTP status.
 	OutcomeRetry
@@ -20,6 +20,8 @@ const (
 	OutcomeEmptyRetry
 	// OutcomeAbort indicates a non-retryable outcome: SearXNGError, non-retryable HTTP status, or canceled context.
 	OutcomeAbort
+	// OutcomeEmptyExhausted indicates an empty response with no retries remaining.
+	OutcomeEmptyExhausted
 )
 
 // jitterHalfDivisor is the divisor used to compute half the delay for jitter range.
@@ -111,8 +113,12 @@ func classifyOutcome(
 		return OutcomeAbort
 	}
 
-	if isEmpty && attempt < maxRetries {
-		return OutcomeEmptyRetry
+	if isEmpty {
+		if attempt < maxRetries {
+			return OutcomeEmptyRetry
+		}
+
+		return OutcomeEmptyExhausted
 	}
 
 	return OutcomeSuccess

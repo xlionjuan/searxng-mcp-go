@@ -135,20 +135,14 @@ func TestSearch_EmptyJSONObject(t *testing.T) {
 	args := &searxng.SearchArgs{Query: "test"}
 
 	ctx := t.Context()
-	result, err := testPerformSearch(ctx, t, cfg, args)
-	// Empty JSON object is technically valid but has no results
-	if err != nil {
-		t.Errorf("expected no error for empty but valid JSON, got: %v", err)
+	_, err := testPerformSearch(ctx, t, cfg, args)
+	// Empty JSON object is valid but has no results — now returns an error
+	if err == nil {
+		t.Fatal("expected error for empty JSON response, got nil")
 	}
 
-	if result == nil {
-		t.Fatal("expected result, got nil")
-
-		return
-	}
-
-	if len(result.Results) != 0 {
-		t.Errorf("expected 0 results, got %d", len(result.Results))
+	if !strings.Contains(err.Error(), "empty results") {
+		t.Errorf("error = %q, want empty-results error", err.Error())
 	}
 }
 
@@ -735,8 +729,7 @@ func TestSearch_CustomHTTPClientSameHostRedirectAllowed(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/search/redirected" {
 			w.Header().Set("Content-Type", "application/json")
-			//nolint:errcheck // test fixture write best-effort
-			_, _ = w.Write([]byte(`{"query":"test","number_of_results":0,"results":[],"suggestions":[]}`))
+			_, _ = w.Write([]byte(`{"query":"test","number_of_results":1,"results":[{"title":"x","url":"https://x"}],"suggestions":[]}`))
 
 			return
 		}

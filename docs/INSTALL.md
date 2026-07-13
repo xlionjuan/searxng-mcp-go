@@ -178,6 +178,9 @@ searxng-mcp-go "query" --timeout=8s --max-retries=5
 searxng-mcp-go "query" --allow-get-fallback
 ```
 
+Set `NO_COLOR` to any non-empty value, or set `TERM=dumb`, to print errors
+without ANSI color escape sequences.
+
 > **Note:** When GET fallback is enabled and the request fails, the `q` search parameter is redacted to `[REDACTED]` in error messages to prevent query leakage.
 
 ---

@@ -50,29 +50,6 @@ func containsASCIIControlCharacters(s string) bool {
 
 const maxIdentifierLength = 50
 
-func isValidCategoryOrEngine(value string) bool {
-	trimmed := strings.TrimSpace(value)
-	if len(trimmed) == 0 {
-		return false
-	}
-
-	if utf8.RuneCountInString(trimmed) > maxIdentifierLength {
-		return false
-	}
-
-	for _, r := range trimmed {
-		if r < 32 || r == 127 {
-			return false
-		}
-
-		if r == '/' || r == '\\' {
-			return false
-		}
-	}
-
-	return true
-}
-
 func validateCSVIdentifiers(value, field, noun string) error {
 	if value == "" {
 		return nil
@@ -85,12 +62,27 @@ func validateCSVIdentifiers(value, field, noun string) error {
 	}
 
 	for item := range strings.SplitSeq(value, ",") {
-		if strings.TrimSpace(item) == "" {
-			return NewValidationError(field, "contains invalid "+noun)
+		trimmed := strings.TrimSpace(item)
+		if containsASCIIControlCharacters(item) {
+			return NewValidationError(
+				field,
+				fmt.Sprintf("control characters (ASCII <32 or 127) not allowed in %s name", noun),
+			)
 		}
 
-		if !isValidCategoryOrEngine(item) {
-			return NewValidationError(field, "contains invalid "+noun)
+		if trimmed == "" {
+			return NewValidationError(field, "empty item in comma-separated list")
+		}
+
+		if utf8.RuneCountInString(trimmed) > maxIdentifierLength {
+			return NewValidationError(
+				field,
+				fmt.Sprintf("%s name exceeds %d runes: %q", noun, maxIdentifierLength, trimmed),
+			)
+		}
+
+		if strings.ContainsAny(trimmed, `/\\`) {
+			return NewValidationError(field, fmt.Sprintf("slash not allowed in %s name: %q", noun, trimmed))
 		}
 	}
 

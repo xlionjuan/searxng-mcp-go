@@ -188,14 +188,11 @@ func (s *SearXNGSearcher) searchWithRetries(ctx context.Context, args *SearchArg
 		}
 
 		if ar.outcome == OutcomeSuccess {
-			if maxRetries > 0 && s.isEmptyResponse(ar.result) {
-				s.getLogger().Warn(
-					"search returned empty after exhausting retries",
-					"attempts", attempt+1,
-				)
-			}
-
 			return ar.result, nil
+		}
+
+		if ar.outcome == OutcomeEmptyExhausted {
+			return nil, wrapSearchError(errSearchEmptyResults)
 		}
 
 		// Determine the error to track for this attempt

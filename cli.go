@@ -15,7 +15,9 @@ import (
 
 var (
 	errMultipleQueries     = errors.New("only one query is accepted; use quotes for multi-word queries")
-	errSearchQueryRequired = errors.New("search query is required; use --help for usage information")
+	errSearchQueryRequired = errors.New(
+		`search query is required; use --query "..." to search, or run without arguments for MCP server mode`,
+	)
 	errConfigurationFailed = errors.New("configuration error")
 	errSearchValidation    = errors.New("validation error")
 	errSearcherCreation    = errors.New("failed to create searcher")
