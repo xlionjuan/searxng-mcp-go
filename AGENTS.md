@@ -42,7 +42,8 @@ configured SearXNG instance.
 
 ## Local Review Reports
 
-- `REPORT.md` is local-only scratch (`.gitignore`d). See [docs/agents/local-reports.md](docs/agents/local-reports.md).
+- `REPORT.md` is local-only scratch (`.gitignore`d). See
+  [docs/agents/local-reports.md](docs/agents/local-reports.md).
 
 ## Project Rules
 
@@ -54,7 +55,8 @@ configured SearXNG instance.
 ### CI and Release
 
 - Run the release workflow only when the user explicitly asks for a release and
-  the target version is known or confirmed. See [docs/agents/release.md](docs/agents/release.md).
+  the target version is known or confirmed. See
+  [docs/agents/release.md](docs/agents/release.md).
 - CI workflow rules: [docs/agents/ci.md](docs/agents/ci.md).
 - In GitHub Actions OpenCode, any dirty worktree may be committed and pushed by
   the action infrastructure. For read-only requests, do not leave local changes;
@@ -62,16 +64,19 @@ configured SearXNG instance.
 
 ### E2E Tests
 
-- Core functional E2E tests assert non-zero results, with a WARNING SUMMARY path for live-server edge cases.
+- Core functional E2E tests assert non-zero results, with a WARNING SUMMARY
+  path for live-server edge cases.
 - Owner-approved exceptions must not be broadened without approval. See
   [docs/agents/e2e-tests.md](docs/agents/e2e-tests.md).
 - For local server setup, use `just test-server-start`; never run
-  `searxng-server-test/01-start-fg.sh` from agents or CI. See [docs/agents/test-server.md](docs/agents/test-server.md).
+  `searxng-server-test/01-start-fg.sh` from agents or CI. See
+  [docs/agents/test-server.md](docs/agents/test-server.md).
 
 ### Documentation
 
 - All docs (`docs/*.md`, README, CONTEXT, AGENTS) must be in English.
-- Pull requests must update related documentation; see [docs/agents/pull-requests.md](docs/agents/pull-requests.md).
+- Pull requests must update related documentation; see
+  [docs/agents/pull-requests.md](docs/agents/pull-requests.md).
 
 ### Editing
 
@@ -89,14 +94,16 @@ configured SearXNG instance.
   security, dependencies, or performance. Then read the matching
   `cc-skills-golang` skill files. Do not limit coding work to the
   review-focused skill subset.
-- For code review tasks, follow [docs/agents/code-review.md](docs/agents/code-review.md)
-  and read the review-relevant skills named there before producing findings.
+- For code review tasks, follow
+  [docs/agents/code-review.md](docs/agents/code-review.md) and read the
+  review-relevant skills named there before producing findings.
 - Repository rules and local project context override generic skill advice.
 
 ### Go Toolchain
 
 Never manually install Go. Run `which go` before any Go command.
-If `which go` fails, report and stop — do not install, download, or work around it.
+If `which go` fails, report and stop — do not install, download, or work around
+it.
 
 ### Verification
 
@@ -105,14 +112,15 @@ If `which go` fails, report and stop — do not install, download, or work aroun
   is the canonical verification gate defined in
   [docs/agents/verification.md](docs/agents/verification.md). Do not guess or
   compose a custom verification command — use `just verify`.
-- `just verify` covers build, vet, lint, test (with race detector), stress tests,
-  mod tidy, and coverage. It mirrors the non-E2E CI pipeline.
+- `just verify` covers build, vet, lint, test (with race detector), stress
+  tests, mod tidy, and coverage. It mirrors the non-E2E CI pipeline.
 - Pure documentation changes (`.md` files only) do not require `just verify`.
 
 ## GitHub and PR Work
 
 - Use `gh` CLI for all GitHub operations (not browser tools).
-- For code review requests, follow [docs/agents/code-review.md](docs/agents/code-review.md).
+- For code review requests, follow
+  [docs/agents/code-review.md](docs/agents/code-review.md).
 - PR title and body must be in English and follow the repository PR title
   policy whenever an agent creates or updates PR metadata. See
   [docs/agents/pull-requests.md](docs/agents/pull-requests.md) for the full PR
@@ -136,13 +144,15 @@ If `which go` fails, report and stop — do not install, download, or work aroun
   `git config --get user.name` / `git config --get user.email`. Do not set,
   override, or hard-code author/committer identity.
 - A commit with known wrong author metadata is tainted: do not make it the tip
-  of any branch. See [docs/agents/pull-requests.md#git-identity](docs/agents/pull-requests.md#git-identity).
+  of any branch. See
+  [docs/agents/pull-requests.md#git-identity](docs/agents/pull-requests.md#git-identity).
 
 ## Agent Workflows
 
 - Issues: [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md)
 - Pull requests: [docs/agents/pull-requests.md](docs/agents/pull-requests.md)
 - Code review: [docs/agents/code-review.md](docs/agents/code-review.md)
-- GitHub Actions OpenCode runtime: [docs/agents/opencode-github-actions.md](docs/agents/opencode-github-actions.md)
+- GitHub Actions OpenCode runtime:
+  [docs/agents/opencode-github-actions.md](docs/agents/opencode-github-actions.md)
 - Release: [docs/agents/release.md](docs/agents/release.md)
 - Domain and ADR: [docs/agents/domain.md](docs/agents/domain.md)
