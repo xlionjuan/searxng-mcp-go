@@ -111,7 +111,7 @@ The server exposes a single **`search`** tool. For full parameter details, respo
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `SEARXNG_URL` | **Yes** | — | SearXNG instance URL |
-| `SEARXNG_TIMEOUT` | No | `8s` | Per-request HTTP client timeout (e.g., `8s`) |
+| `SEARXNG_TIMEOUT` | No | `8s` | Per-request HTTP client timeout (e.g., `8s`). Must be positive; zero is rejected. |
 | `SEARXNG_MAX_RETRIES` | No | `5` | Max retries after initial search attempt |
 | `SEARXNG_ALLOW_GET_FALLBACK` | No | `0` | Set to `1` to opt in to POST→GET fallback when POST `/search` returns 405/501. This sends search parameters in the URL and may expose queries in upstream logs. |
 | `DEBUG` | No | — | Set to `1` to log search queries and HTTP request/response details in plain text. The server emits a warning to stderr on startup; most MCP clients do not surface it. Avoid using it with sensitive queries. |

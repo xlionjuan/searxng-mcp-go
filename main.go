@@ -210,7 +210,7 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 		timeout: fs.Duration(
 			"timeout",
 			searxng.DefaultTimeout,
-			"HTTP client timeout (e.g., 8s); overrides SEARXNG_TIMEOUT env var",
+			"HTTP client timeout (e.g., 8s); must be positive; overrides SEARXNG_TIMEOUT env var",
 		),
 		maxRetries: fs.Int(
 			"max-retries",

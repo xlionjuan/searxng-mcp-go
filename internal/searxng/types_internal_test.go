@@ -17,6 +17,7 @@ func TestDefaultConfig(t *testing.T) {
 
 // --- Config.Validate tests ---
 
+//nolint:gocognit // validates many config fields across parallel subtests
 func TestConfigValidate(t *testing.T) {
 	t.Parallel()
 
@@ -92,10 +93,120 @@ func TestConfigValidate(t *testing.T) {
 			t.Fatal("Validate() error = nil, want error")
 		}
 	})
+
+	t.Run("sub-second RetryDelay", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{SearXNGURL: "https://example.com", RetryDelay: 500 * time.Millisecond}
+
+		err := cfg.Validate()
+		if err == nil {
+			t.Fatal("Validate() error = nil, want error for sub-second RetryDelay")
+		}
+	})
+
+	t.Run("sub-second MaxRetryDelay", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{SearXNGURL: "https://example.com", MaxRetryDelay: 999 * time.Millisecond}
+
+		err := cfg.Validate()
+		if err == nil {
+			t.Fatal("Validate() error = nil, want error for sub-second MaxRetryDelay")
+		}
+	})
+
+	t.Run("zero RetryDelay accepted by Validate", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{SearXNGURL: "https://example.com", RetryDelay: 0}
+
+		err := cfg.Validate()
+		if err != nil {
+			t.Fatalf("Validate() with zero RetryDelay = %v, want nil (normalized later)", err)
+		}
+	})
+
+	t.Run("zero MaxRetryDelay accepted by Validate", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{SearXNGURL: "https://example.com", MaxRetryDelay: 0}
+
+		err := cfg.Validate()
+		if err != nil {
+			t.Fatalf("Validate() with zero MaxRetryDelay = %v, want nil (normalized later)", err)
+		}
+	})
+
+	t.Run("zero Timeout accepted by Validate (struct literal path)", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{SearXNGURL: "https://example.com", Timeout: 0}
+
+		err := cfg.Validate()
+		if err != nil {
+			t.Fatalf("Validate() with zero Timeout = %v, want nil (normalized later)", err)
+		}
+	})
+
+	t.Run("second-exact RetryDelay accepted", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{SearXNGURL: "https://example.com", RetryDelay: time.Second}
+
+		err := cfg.Validate()
+		if err != nil {
+			t.Fatalf("Validate() with 1s RetryDelay = %v, want nil", err)
+		}
+	})
+}
+
+// --- Config.SetTimeout tests ---
+
+func TestConfigSetTimeout(t *testing.T) {
+	t.Parallel()
+
+	t.Run("negative rejected", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{SearXNGURL: "https://example.com"}
+
+		err := cfg.SetTimeout(-1)
+		if err == nil {
+			t.Fatal("SetTimeout(-1) error = nil, want error")
+		}
+	})
+
+	t.Run("zero rejected via SetTimeout (CLI/env path)", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{SearXNGURL: "https://example.com"}
+
+		err := cfg.SetTimeout(0)
+		if err == nil {
+			t.Fatal("SetTimeout(0) error = nil, want error")
+		}
+	})
+
+	t.Run("positive accepted", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{SearXNGURL: "https://example.com"}
+
+		err := cfg.SetTimeout(30 * time.Second)
+		if err != nil {
+			t.Fatalf("SetTimeout(30s) error = %v, want nil", err)
+		}
+
+		if cfg.Timeout != 30*time.Second {
+			t.Fatalf("Timeout = %v, want 30s", cfg.Timeout)
+		}
+	})
 }
 
 // --- Config.Normalize tests ---
 
+//nolint:gocognit // validates many normalize cases across parallel subtests
 func TestConfigNormalize(t *testing.T) {
 	t.Parallel()
 
@@ -160,6 +271,50 @@ func TestConfigNormalize(t *testing.T) {
 
 		if normalized.MaxRetryDelay != 5*time.Second {
 			t.Fatalf("MaxRetryDelay = %v, want %v (clamped to RetryDelay)", normalized.MaxRetryDelay, 5*time.Second)
+		}
+	})
+
+	t.Run("normalizes zero Timeout to DefaultTimeout", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Timeout: 0}
+		normalized := cfg.Normalize()
+
+		if normalized.Timeout != DefaultTimeout {
+			t.Fatalf("Timeout = %v, want %v", normalized.Timeout, DefaultTimeout)
+		}
+	})
+
+	t.Run("preserves positive Timeout", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Timeout: 30 * time.Second}
+		normalized := cfg.Normalize()
+
+		if normalized.Timeout != 30*time.Second {
+			t.Fatalf("Timeout = %v, want 30s", normalized.Timeout)
+		}
+	})
+
+	t.Run("does not normalize negative Timeout (Validate must catch)", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Timeout: -1}
+		normalized := cfg.Normalize()
+
+		if normalized.Timeout != -1 {
+			t.Fatalf("Timeout = %v, want -1 (Normalize should not touch negative)", normalized.Timeout)
+		}
+	})
+
+	t.Run("does not normalize negative RetryDelay (Validate must catch)", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{RetryDelay: -1}
+		normalized := cfg.Normalize()
+
+		if normalized.RetryDelay != -1 {
+			t.Fatalf("RetryDelay = %v, want -1 (Normalize should not touch negative)", normalized.RetryDelay)
 		}
 	})
 }

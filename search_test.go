@@ -53,33 +53,26 @@ func TestSearch_RetryAfterRequestTimeout(t *testing.T) {
 
 	var attempts atomic.Int32
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 		n := attempts.Add(1)
 		if n < 3 {
-			time.Sleep(500 * time.Millisecond)
-
-			return
+			// Simulate a context deadline exceeded (timeout) without real sleep
+			return nil, context.DeadlineExceeded
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		//nolint:errcheck // test fixture write best-effort
-		_, _ = w.Write([]byte(
-			`{"query":"test","number_of_results":1,` +
-				`"results":[{"title":"OK","url":"https://example.com","content":"ok","engine":"test"}],` +
-				`"suggestions":[]}`))
-	}))
-	defer server.Close()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body: io.NopCloser(strings.NewReader(
+				`{"query":"test","number_of_results":1,` +
+					`"results":[{"title":"OK","url":"https://example.com","content":"ok","engine":"test"}],` +
+					`"suggestions":[]}`)),
+		}, nil
+	})
 
-	cfg := &searxng.Config{
-		SearXNGURL:    server.URL,
-		Timeout:       200 * time.Millisecond,
-		MaxRetries:    2,
-		RetryDelay:    time.Nanosecond,
-		MaxRetryDelay: time.Nanosecond,
-	}
+	searcher := newFastRetrySearcher(t, "https://search.example.com", transport, 2)
 
-	result, err := testPerformSearch(context.Background(), t, cfg, &searxng.SearchArgs{Query: "test"})
+	result, err := searcher.Search(context.Background(), &searxng.SearchArgs{Query: "test"})
 	if err != nil {
 		t.Fatalf("Search() error = %v, want nil (retries should not be preempted by request timeout)", err)
 	}
@@ -98,26 +91,25 @@ func TestSearch_CallerContextCancellationStopsRetries(t *testing.T) {
 
 	var attempts atomic.Int32
 
-	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 		attempts.Add(1)
-		// Block longer than the caller context timeout; cancellation should
-		// abort the retry loop even though per-request and retry budgets remain.
-		time.Sleep(5 * time.Second)
-	}))
-	defer server.Close()
+		// Return a retryable error; the retry loop will attempt to back off
+		// and the caller context cancellation should abort it.
+		return nil, errTestConnectionReset
+	})
 
-	cfg := &searxng.Config{
-		SearXNGURL:    server.URL,
-		Timeout:       30 * time.Second,
-		MaxRetries:    10,
-		RetryDelay:    time.Nanosecond,
-		MaxRetryDelay: time.Nanosecond,
+	// Use a searcher with 10ms retries — fast enough for tests but slow
+	// enough that the 50ms caller context fires before all 10 retries exhaust.
+	searcher := searxng.NewCustomRetrySearcher(
+		"https://search.example.com", transport, 10, 10*time.Millisecond, 10*time.Millisecond)
+	if searcher == nil {
+		t.Fatal("NewCustomRetrySearcher returned nil")
 	}
 
 	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
 
-	_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
+	_, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
 		t.Fatal("Search() error = nil, want context-canceled error")
 	}
@@ -126,10 +118,10 @@ func TestSearch_CallerContextCancellationStopsRetries(t *testing.T) {
 		t.Fatalf("attempts = %d, want at least 1", got)
 	}
 
-	// The caller context deadline is much shorter than any retry budget, so
+	// The caller context deadline is much shorter than the retry budget, so
 	// only a small number of attempts should run before cancellation.
-	if got := attempts.Load(); got > 3 {
-		t.Fatalf("attempts = %d, want <= 3 (caller context should stop retries early)", got)
+	if got := attempts.Load(); got > 6 {
+		t.Fatalf("attempts = %d, want <= 6 (caller context should stop retries early)", got)
 	}
 }
 
@@ -735,29 +727,24 @@ func TestSearch_RetriesRetryableStatus(t *testing.T) {
 
 			var attempts atomic.Int32
 
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 				if attempts.Add(1) == 1 {
-					w.WriteHeader(tt.status)
-
-					return
+					return &http.Response{
+						StatusCode: tt.status,
+						Body:       io.NopCloser(strings.NewReader("")),
+					}, nil
 				}
 
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusOK)
-				//nolint:errcheck // test fixture write best-effort
-				_, _ = w.Write([]byte(successResponseBody))
-			}))
-			defer server.Close()
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     http.Header{"Content-Type": []string{"application/json"}},
+					Body:       io.NopCloser(strings.NewReader(successResponseBody)),
+				}, nil
+			})
 
-			cfg := &searxng.Config{
-				SearXNGURL:    server.URL,
-				Timeout:       30 * time.Second,
-				MaxRetries:    1,
-				RetryDelay:    time.Nanosecond,
-				MaxRetryDelay: time.Nanosecond,
-			}
+			searcher := newFastRetrySearcher(t, "https://search.example.com", transport, 1)
 
-			result, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
+			result, err := searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
 			if err != nil {
 				t.Fatalf("Search() error = %v, want nil", err)
 			}
@@ -782,33 +769,27 @@ func TestSearch_RetriesEmptySearchResponse(t *testing.T) {
 
 	var attempts atomic.Int32
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 		attempt := attempts.Add(1)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-
 		if attempt == 1 {
-			//nolint:errcheck // test fixture write best-effort
-			_, _ = w.Write([]byte(`{"query":"test","results":[],"suggestions":[]}`))
-
-			return
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(strings.NewReader(`{"query":"test","results":[],"suggestions":[]}`)),
+			}, nil
 		}
 
-		//nolint:errcheck // test fixture write best-effort
-		_, _ = w.Write([]byte(successResponseBody))
-	}))
-	defer server.Close()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(successResponseBody)),
+		}, nil
+	})
 
-	cfg := &searxng.Config{
-		SearXNGURL:    server.URL,
-		Timeout:       30 * time.Second,
-		MaxRetries:    1,
-		RetryDelay:    time.Nanosecond,
-		MaxRetryDelay: time.Nanosecond,
-	}
+	searcher := newFastRetrySearcher(t, "https://search.example.com", transport, 1)
 
-	result, err := testPerformSearch(t.Context(), t, cfg, &searxng.SearchArgs{Query: "test"})
+	result, err := searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
 	if err != nil {
 		t.Fatalf("Search() error = %v, want nil", err)
 	}
@@ -842,16 +823,9 @@ func TestSearch_CanceledDuringRequest(t *testing.T) {
 		}, nil
 	})
 
-	cfg := &searxng.Config{
-		SearXNGURL:    "https://search.example.com",
-		Timeout:       30 * time.Second,
-		MaxRetries:    1,
-		RetryDelay:    500 * time.Millisecond,
-		MaxRetryDelay: 500 * time.Millisecond,
-		HTTPClient:    &http.Client{Transport: transport},
-	}
+	searcher := newFastRetrySearcher(t, "https://search.example.com", transport, 1)
 
-	_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
+	_, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
 		t.Fatal("Search() error = nil, want context cancellation error")
 	}
@@ -870,45 +844,33 @@ func TestSearch_RetryWaitCanceled(t *testing.T) {
 
 	var callCount atomic.Int32
 
-	ctx, cancel := context.WithCancel(t.Context())
+	// The context timeout (1ms) is shorter than the retry wait (4ms), so it
+	// fires during retryWait after the first attempt triggers a retry.
+	ctx, cancel := context.WithTimeout(t.Context(), time.Millisecond)
 	defer cancel()
 
 	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 		callCount.Add(1)
 
-		// Cancel the context after a brief delay so the retry machinery
-		// reaches retryWait before the cancellation fires.
-		go func() {
-			time.Sleep(10 * time.Millisecond)
-			cancel()
-		}()
-
-		return &http.Response{
-			StatusCode: http.StatusOK,
-			Header:     http.Header{"Content-Type": []string{"application/json"}},
-			Body: io.NopCloser(strings.NewReader(
-				`{"query":"test","results":[],"suggestions":[],"answers":[],"infoboxes":[]}`)),
-		}, nil
+		return nil, errTestConnectionReset
 	})
 
-	cfg := &searxng.Config{
-		SearXNGURL:    "https://search.example.com",
-		Timeout:       30 * time.Second,
-		MaxRetries:    1,
-		RetryDelay:    500 * time.Millisecond,
-		MaxRetryDelay: 500 * time.Millisecond,
-		HTTPClient:    &http.Client{Transport: transport},
+	searcher := searxng.NewCustomRetrySearcher(
+		"https://search.example.com", transport, 10, 4*time.Millisecond, 4*time.Millisecond)
+	if searcher == nil {
+		t.Fatal("NewCustomRetrySearcher returned nil")
 	}
 
-	_, err := testPerformSearch(ctx, t, cfg, &searxng.SearchArgs{Query: "test"})
+	_, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
-		t.Fatal("Search() error = nil, want context cancellation error")
+		t.Fatal("Search() error = nil, want context deadline exceeded error")
 	}
 
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("Search() error = %v, want context.Canceled", err)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Search() error = %v, want context.DeadlineExceeded", err)
 	}
 
+	// Only the first attempt completes; the retryWait fires the context error.
 	if got := callCount.Load(); got != 1 {
 		t.Fatalf("attempts = %d, want 1", got)
 	}

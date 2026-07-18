@@ -50,6 +50,8 @@ OPTIONS:
 	fmt.Fprintf(&b, `  --debug            Enable verbose HTTP request/response logging
                      Can also be enabled via DEBUG=1 environment variable
   --timeout DURATION Per-request HTTP client timeout (e.g., 8s) [default: %s]
+                     Must be positive; zero is rejected. Cannot be set to
+                     disable the package-managed timeout.
                      Can also be set via SEARXNG_TIMEOUT environment variable
   --max-retries N    Max retries after initial search attempt [default: %d]
                      Can also be set via SEARXNG_MAX_RETRIES environment variable
@@ -64,6 +66,13 @@ ARGUMENTS:
 
 OUTPUT:
   Results include title, URL, summary, publication date (if available), and engine source.
+
+RETRY:
+  Retries use exponential backoff with equal jitter. The base delay defaults
+  to 1s, doubles each attempt, and is capped at 30s. The effective wait after
+  jitter is always at least 1s. Setting RetryDelay or MaxRetryDelay below 1s
+  is rejected. See --retry-delay and --max-retry-delay flags (not yet
+  exposed; configured via Config struct for programmatic callers).
 
 EXAMPLES:
   searxng-mcp-go "golang programming"

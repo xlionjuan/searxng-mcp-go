@@ -297,7 +297,7 @@ The server validates the MCP initialization message on stdin before starting. If
 - **Transport**: Stdio (stdin/stdout)
 - **Protocol**: MCP (Model Context Protocol)
 - **SearXNG Format**: JSON (`format=json`)
-- **Timeout**: 8 seconds by default; set `SEARXNG_TIMEOUT` or, in CLI mode, `--timeout`. This is a per-request HTTP timeout, not an overall search-operation deadline.
+- **Timeout**: 8 seconds by default; set `SEARXNG_TIMEOUT` or, in CLI mode, `--timeout`. This is a per-request HTTP timeout, not an overall search-operation deadline. Zero is rejected (use a positive value or omit to keep the default).
 - **MaxRetries**: 5 retries after the initial search attempt by default; set `SEARXNG_MAX_RETRIES` or, in CLI mode, `--max-retries`
 - **POST→GET fallback**: Disabled by default. If POST `/search` returns 405 or 501, the server returns an error so operators can fix the SearXNG or reverse-proxy configuration. Set `SEARXNG_ALLOW_GET_FALLBACK=1` to opt in; this sends search parameters in the URL and may expose queries in upstream logs. In CLI mode, `--allow-get-fallback` overrides the environment variable.
 - **Initialize message size limit**: The first line of stdin (the MCP `initialize` JSON-RPC message) is capped at 1 MB; oversized input causes the server to exit instead of hanging
@@ -327,8 +327,9 @@ When a search attempt fails, the server classifies the outcome and decides wheth
 **Exponential backoff algorithm:**
 
 ```
-delay = baseDelay * 2^attempt (capped at maxDelay, minimum 1 ms)
+delay = baseDelay * 2^attempt (capped at maxDelay)
 jitter = delay/2 + random(0, delay/2)
+final wait = max(jittered wait, 1 second, capped at maxDelay)
 ```
 
-The base delay defaults to 1 second; the maximum delay defaults to 30 seconds. A 1 ms floor prevents zero-duration backoffs with very small base values.
+The base delay defaults to 1 second; the maximum delay defaults to 30 seconds. A 1-second floor ensures the jittered wait never drops below an operationally meaningful minimum for an upstream metasearch service that may fan out to multiple engines. Any explicit `RetryDelay` or `MaxRetryDelay` below 1 second is rejected at configuration time.
