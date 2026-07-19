@@ -50,10 +50,10 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 		origMethod := via[0].Method
 		nextMethod := req.Method
 
-		// strings.EqualFold is defensive — Go canonicalizes methods internally,
-		// but guarding against non-canonical values in the redirect chain adds
-		// no meaningful overhead.
-		if origMethod != "" && nextMethod != "" && !strings.EqualFold(origMethod, nextMethod) {
+		// HTTP methods are case-sensitive per RFC 9110 §9.2.1, and
+		// Go's http.NewRequestWithContext does not canonicalise non-empty
+		// methods. Use exact comparison.
+		if origMethod != "" && nextMethod != "" && origMethod != nextMethod {
 			return fmt.Errorf("%w: %s -> %s", errRedirectMethodChanged, origMethod, nextMethod)
 		}
 	}

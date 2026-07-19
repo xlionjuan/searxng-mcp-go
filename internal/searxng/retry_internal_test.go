@@ -488,6 +488,18 @@ func TestSearchRedirectPolicyNotRetried(t *testing.T) {
 			wantCall: 1,
 		},
 		{
+			name: "method change redirect error aborts without retry",
+			rtErr: func(req *http.Request) error {
+				return &url.Error{
+					Op:  req.Method,
+					URL: req.URL.String(),
+					Err: fmt.Errorf("POST -> GET: %w", errRedirectMethodChanged),
+				}
+			},
+			wantErr:  errRedirectMethodChanged,
+			wantCall: 1,
+		},
+		{
 			name:     "transient transport error still retries",
 			rtErr:    func(*http.Request) error { return errRetryTestConnectionReset },
 			wantErr:  errRetryTestConnectionReset,

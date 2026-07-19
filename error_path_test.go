@@ -887,3 +887,108 @@ func TestSearch_AllErrorTypesAreWrapped(t *testing.T) {
 		})
 	}
 }
+
+// ============================================================================
+// Redirect Integration Tests — real HTTP server through the full client
+// ============================================================================
+
+//nolint:gocognit // table-driven integration test: redirect method preservation (301-308)
+func TestSearch_RedirectMethodPreservation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		statusCode    int
+		wantRedirect  bool
+		wantErr       bool
+		wantErrSubstr string
+	}{
+		{
+			name:          "301 moved permanently blocks redirect",
+			statusCode:    http.StatusMovedPermanently,
+			wantRedirect:  false,
+			wantErr:       true,
+			wantErrSubstr: "redirect would change POST to GET",
+		},
+		{
+			name:          "302 found blocks redirect",
+			statusCode:    http.StatusFound,
+			wantRedirect:  false,
+			wantErr:       true,
+			wantErrSubstr: "redirect would change POST to GET",
+		},
+		{
+			name:          "303 see other blocks redirect",
+			statusCode:    http.StatusSeeOther,
+			wantRedirect:  false,
+			wantErr:       true,
+			wantErrSubstr: "redirect would change POST to GET",
+		},
+		{
+			name:         "307 temporary redirect preserves POST",
+			statusCode:   http.StatusTemporaryRedirect,
+			wantRedirect: true,
+			wantErr:      false,
+		},
+		{
+			name:         "308 permanent redirect preserves POST",
+			statusCode:   http.StatusPermanentRedirect,
+			wantRedirect: true,
+			wantErr:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				redirectReached  bool
+				redirectedMethod string
+			)
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/search/redirected" {
+					redirectReached = true
+					redirectedMethod = r.Method
+
+					w.Header().Set("Content-Type", "application/json")
+					//nolint:errcheck // test fixture write best-effort
+					_, _ = w.Write([]byte(`{"query":"test","number_of_results":1,` +
+						`"results":[{"title":"x","url":"https://x"}],"suggestions":[]}`))
+
+					return
+				}
+
+				w.Header().Set("Location", "/search/redirected")
+				w.WriteHeader(tt.statusCode)
+			}))
+			defer server.Close()
+
+			cfg := &searxng.Config{SearXNGURL: server.URL, Timeout: 5 * time.Second}
+			args := &searxng.SearchArgs{Query: "test"}
+
+			_, err := testPerformSearch(t.Context(), t, cfg, args)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("Search() error = nil, want error")
+				}
+
+				if !strings.Contains(err.Error(), tt.wantErrSubstr) {
+					t.Fatalf("error = %q, want containing %q", err.Error(), tt.wantErrSubstr)
+				}
+			} else if err != nil {
+				t.Fatalf("Search() error = %v, want nil", err)
+			}
+
+			if redirectReached != tt.wantRedirect {
+				t.Fatalf("redirect target reached = %v, want %v", redirectReached, tt.wantRedirect)
+			}
+
+			if tt.wantRedirect && redirectedMethod != http.MethodPost {
+				t.Fatalf("redirected request method = %s, want POST", redirectedMethod)
+			}
+		})
+	}
+}
