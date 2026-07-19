@@ -111,21 +111,23 @@ The server exposes a single **`search`** tool. For full parameter details, respo
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `SEARXNG_URL` | **Yes** | — | SearXNG instance URL |
-| `SEARXNG_TIMEOUT` | No | `8s` | Per-request HTTP client timeout (e.g., `8s`) |
+| `SEARXNG_TIMEOUT` | No | `8s` | Per-request HTTP client timeout (e.g., `8s`). Must be positive; zero is rejected. |
 | `SEARXNG_MAX_RETRIES` | No | `5` | Max retries after initial search attempt |
 | `SEARXNG_ALLOW_GET_FALLBACK` | No | `0` | Set to `1` to opt in to POST→GET fallback when POST `/search` returns 405/501. This sends search parameters in the URL and may expose queries in upstream logs. |
 | `DEBUG` | No | — | Set to `1` to log search queries and HTTP request/response details in plain text. The server emits a warning to stderr on startup; most MCP clients do not surface it. Avoid using it with sensitive queries. |
 
 **Priority:** CLI flag > environment variable > hardcoded default.
 
-> **Invalid values:** If `SEARXNG_TIMEOUT`, `SEARXNG_MAX_RETRIES`, or
-> `SEARXNG_ALLOW_GET_FALLBACK` is set to a value the server cannot parse
-> (or, for `SEARXNG_MAX_RETRIES`, to a negative number), the server logs a
-> warning to stderr and falls back to the built-in default. It does not exit.
-> For strict validation of timeout, retry, and GET fallback values, use the
-> `--timeout`, `--max-retries`, and `--allow-get-fallback` CLI flags, which
-> are validated on the command line and exit with a non-zero status on
+> **Invalid values:** Values that cannot be parsed (e.g., `SEARXNG_TIMEOUT=abc`)
+> produce a warning on stderr and fall back to the built-in default. The process
+> continues running. For strict validation, use the CLI flags (`--timeout`,
+> `--max-retries`, `--allow-get-fallback`), which exit with a non-zero status on
 > invalid input.
+>
+> **Semantically invalid values** (e.g., `SEARXNG_TIMEOUT=0`, a negative
+> `SEARXNG_MAX_RETRIES` value, or a value exceeding the allowed maximum) are
+> **rejected with an error** from both env var and CLI flag paths — the process
+> exits on startup to prevent silent misconfiguration.
 
 ## Troubleshooting
 

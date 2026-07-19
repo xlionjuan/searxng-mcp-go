@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -343,4 +344,150 @@ func TestAllowGETFallbackLogsWarnings(t *testing.T) {
 			t.Fatalf("log output leaked query: %q", logOutput)
 		}
 	})
+}
+
+func TestNewFastRetrySearcher_Success(t *testing.T) {
+	t.Parallel()
+
+	var attempt atomic.Int32
+
+	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		attempt.Add(1)
+
+		return makeJSONResponse(makeSearchResponseJSON(1)), nil
+	})
+
+	s := NewFastRetrySearcher("https://search.example.com", transport, 2)
+	if s == nil {
+		t.Fatal("NewFastRetrySearcher returned nil")
+	}
+	defer s.Close() //nolint:errcheck // test cleanup
+
+	result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+	if err != nil {
+		t.Fatalf("Search() error = %v, want nil", err)
+	}
+
+	if got := attempt.Load(); got != 1 {
+		t.Fatalf("attempts = %d, want 1 (single attempt should succeed)", got)
+	}
+
+	if len(result.Results) != 1 {
+		t.Fatalf("results = %d, want 1", len(result.Results))
+	}
+}
+
+func TestNewFastRetrySearcher_InvalidURL(t *testing.T) {
+	t.Parallel()
+
+	s := NewFastRetrySearcher("://", nil, 2)
+	if s != nil {
+		t.Fatal("NewFastRetrySearcher with invalid URL = non-nil, want nil")
+	}
+}
+
+func TestNewCustomRetrySearcher_Success(t *testing.T) {
+	t.Parallel()
+
+	var attempt atomic.Int32
+
+	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		attempt.Add(1)
+
+		return makeJSONResponse(makeSearchResponseJSON(1)), nil
+	})
+
+	s := NewCustomRetrySearcher("https://search.example.com", transport, 2, 10*time.Millisecond, 10*time.Millisecond)
+	if s == nil {
+		t.Fatal("NewCustomRetrySearcher returned nil")
+	}
+	defer s.Close() //nolint:errcheck // test cleanup
+
+	result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+	if err != nil {
+		t.Fatalf("Search() error = %v, want nil", err)
+	}
+
+	if got := attempt.Load(); got != 1 {
+		t.Fatalf("attempts = %d, want 1 (single attempt should succeed)", got)
+	}
+
+	if len(result.Results) != 1 {
+		t.Fatalf("results = %d, want 1", len(result.Results))
+	}
+}
+
+func TestNewCustomRetrySearcher_InvalidURL(t *testing.T) {
+	t.Parallel()
+
+	s := NewCustomRetrySearcher("://", nil, 2, time.Second, 30*time.Second)
+	if s != nil {
+		t.Fatal("NewCustomRetrySearcher with invalid URL = non-nil, want nil")
+	}
+}
+
+// TestNewSearXNGSearcher_ZeroTimeout verifies that a zero Config.Timeout in a
+// struct literal creates a searcher whose HTTP client uses DefaultTimeout.
+func TestNewSearXNGSearcher_ZeroTimeout(t *testing.T) {
+	t.Parallel()
+
+	cfg := &Config{
+		SearXNGURL: "https://search.example.com",
+		Timeout:    0, // zero struct literal: should normalize to DefaultTimeout
+	}
+
+	s, err := NewSearXNGSearcher(cfg, false)
+	if err != nil {
+		t.Fatalf("NewSearXNGSearcher() error = %v, want nil", err)
+	}
+	defer s.Close() //nolint:errcheck // test cleanup
+
+	if s.client.Timeout != DefaultTimeout {
+		t.Fatalf("client.Timeout = %v, want %v (zero should normalize to default)", s.client.Timeout, DefaultTimeout)
+	}
+}
+
+// TestNewSearXNGSearcher_PositiveTimeout verifies that a positive Config.Timeout
+// creates a searcher whose HTTP client uses the configured value.
+func TestNewSearXNGSearcher_PositiveTimeout(t *testing.T) {
+	t.Parallel()
+
+	cfg := &Config{
+		SearXNGURL: "https://search.example.com",
+		Timeout:    15 * time.Second,
+	}
+
+	s, err := NewSearXNGSearcher(cfg, false)
+	if err != nil {
+		t.Fatalf("NewSearXNGSearcher() error = %v, want nil", err)
+	}
+	defer s.Close() //nolint:errcheck // test cleanup
+
+	if s.client.Timeout != 15*time.Second {
+		t.Fatalf("client.Timeout = %v, want 15s", s.client.Timeout)
+	}
+}
+
+// TestNewSearXNGSearcher_CustomClientIgnoringTimeout verifies that when
+// HTTPClient is set, the Config.Timeout field is not applied to the client
+// (the caller-provided client controls its own HTTP timing).
+func TestNewSearXNGSearcher_CustomClientIgnoringTimeout(t *testing.T) {
+	t.Parallel()
+
+	customTimeout := 42 * time.Second
+	cfg := &Config{
+		SearXNGURL: "https://search.example.com",
+		Timeout:    5 * time.Second, // should be ignored
+		HTTPClient: &http.Client{Timeout: customTimeout},
+	}
+
+	s, err := NewSearXNGSearcher(cfg, false)
+	if err != nil {
+		t.Fatalf("NewSearXNGSearcher() error = %v, want nil", err)
+	}
+	defer s.Close() //nolint:errcheck // test cleanup
+
+	if s.client.Timeout != customTimeout {
+		t.Fatalf("client.Timeout = %v, want %v (custom client timeout must be preserved)", s.client.Timeout, customTimeout)
+	}
 }

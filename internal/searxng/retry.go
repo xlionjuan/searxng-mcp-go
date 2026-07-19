@@ -28,6 +28,7 @@ const (
 const (
 	jitterHalfDivisor      = 2
 	retryBackoffMultiplier = 2
+	retryMinWait           = time.Second
 )
 
 // exponentialBackoffStrategy handles retryable errors, retryable HTTP status codes,
@@ -154,12 +155,6 @@ func retryBackoff(attempt int, base, maxDelay time.Duration) time.Duration {
 		delay = min(delay*retryBackoffMultiplier, maxDelay)
 	}
 
-	// Ensure a minimum delay floor to avoid zero-duration backoffs
-	// when configured with very small base delays (e.g., 0 or 1ns).
-	if delay < time.Millisecond {
-		delay = time.Millisecond
-	}
-
 	if delay > maxDelay {
 		delay = maxDelay
 	}
@@ -172,7 +167,16 @@ func retryBackoff(attempt int, base, maxDelay time.Duration) time.Duration {
 	}
 
 	//nolint:gosec // jitter doesn't need cryptographic randomness; math/rand/v2 is correct here
-	return half + time.Duration(rand.Int64N(int64(jitterRange)))
+	wait := half + time.Duration(rand.Int64N(int64(jitterRange)))
+
+	// Ensure the final jittered wait never drops below the operationally
+	// meaningful minimum. Sub-second retries provide no recovery window
+	// for an upstream metasearch service that may fan out to multiple engines.
+	wait = max(wait, retryMinWait)
+
+	wait = min(wait, maxDelay)
+
+	return wait
 }
 
 func retryWait(ctx context.Context, delay time.Duration) error {

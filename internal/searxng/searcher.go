@@ -134,6 +134,50 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 	return s, nil
 }
 
+// NewFastRetrySearcher creates a SearXNGSearcher with microsecond retry delays
+// for fast test execution. It bypasses Config validation to allow sub-second
+// retry delays. Only intended for tests; production callers should use
+// NewSearXNGSearcher.
+//
+// This constructor is exported so that tests in the root package (main) can
+// create fast-retry searchers without going through Config validation. It is
+// intentionally placed in production code rather than a _test.go file because
+// Go does not allow test-file symbols to be imported across packages. Do not
+// use in production code paths.
+func NewFastRetrySearcher(
+	baseURL string, transport http.RoundTripper, maxRetries int,
+) *SearXNGSearcher {
+	return NewCustomRetrySearcher(baseURL, transport, maxRetries, time.Microsecond, time.Microsecond)
+}
+
+// NewCustomRetrySearcher creates a SearXNGSearcher with caller-specified retry
+// parameters for test use. It bypasses Config validation, allowing sub-second
+// retry delays. Only intended for tests; production callers should use
+// NewSearXNGSearcher.
+func NewCustomRetrySearcher(
+	baseURL string, transport http.RoundTripper,
+	maxRetries int, retryDelay, maxRetryDelay time.Duration,
+) *SearXNGSearcher {
+	endpoint, err := computeSearchEndpoint(baseURL)
+	if err != nil {
+		return nil
+	}
+
+	s := &SearXNGSearcher{
+		client: &http.Client{
+			Transport: transport,
+			Timeout:   30 * time.Second, //nolint:mnd // test helpers need a reasonable timeout
+		},
+		searchEndpoint: endpoint,
+		debug:          false,
+		retryStrategy:  newExponentialBackoffStrategy(maxRetries, retryDelay, maxRetryDelay),
+		ownsTransport:  false,
+	}
+	s.searcherCtx, s.searcherCancel = context.WithCancel(context.Background())
+
+	return s
+}
+
 // Close releases resources held by the searcher and cancels in-flight searches.
 // Close is safe to call on searchers that use a shared default client —
 // it will skip closing idle connections on transports it does not own.

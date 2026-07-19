@@ -210,7 +210,7 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 		timeout: fs.Duration(
 			"timeout",
 			searxng.DefaultTimeout,
-			"HTTP client timeout (e.g., 8s); overrides SEARXNG_TIMEOUT env var",
+			"HTTP client timeout (e.g., 8s); must be positive; overrides SEARXNG_TIMEOUT env var",
 		),
 		maxRetries: fs.Int(
 			"max-retries",
@@ -379,7 +379,7 @@ func (cs configSource[T]) apply(cfg *searxng.Config, flags *CLIFlags) error {
 		} else {
 			err = cs.setValue(cfg, val)
 			if err != nil {
-				warnInvalidConfigEntry(cs.envVar, envStr, err)
+				return fmt.Errorf("invalid %s value %q: %w", cs.envVar, envStr, err)
 			}
 		}
 	}
@@ -400,21 +400,15 @@ func warnInvalidConfigEntry[T any](source string, value T, err error) {
 		"value", value, "error", err)
 }
 
-var (
-	errMustBeNonNegative = errors.New("must be non-negative")
-	errMustBe01          = errors.New("must be 0 or 1")
-)
+var errMustBe01 = errors.New("must be 0 or 1")
 
-// intFromString parses an integer from an environment variable string,
-// rejecting negative values. Zero is accepted (disables retries).
+// intFromString parses an integer from an environment variable string.
+// Negative values and values exceeding the maximum are validated by
+// SetMaxRetries, which returns a hard error.
 func intFromString(s string) (int, error) {
 	n, err := strconv.Atoi(s)
 	if err != nil {
 		return 0, err
-	}
-
-	if n < 0 {
-		return 0, errMustBeNonNegative
 	}
 
 	return n, nil

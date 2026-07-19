@@ -809,14 +809,14 @@ func TestGetConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid env values fall back to defaults", func(t *testing.T) {
+	t.Run("invalid env parse values fall back to defaults", func(t *testing.T) {
 		t.Setenv("SEARXNG_TIMEOUT", "not-a-duration")
-		t.Setenv("SEARXNG_MAX_RETRIES", "-1")
+		t.Setenv("SEARXNG_MAX_RETRIES", "xyz")
 		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "true")
 
 		cfg, err := getConfig(&CLIFlags{}, false)
 		if err != nil {
-			t.Fatalf("getConfig() error = %v, want nil", err)
+			t.Fatalf("getConfig() error = %v, want nil (parse errors fall back)", err)
 		}
 
 		if cfg.Timeout != searxng.DefaultTimeout {
@@ -829,6 +829,24 @@ func TestGetConfig(t *testing.T) {
 
 		if cfg.AllowGETFallback {
 			t.Fatal("AllowGETFallback = true, want false for invalid env value")
+		}
+	})
+
+	t.Run("env semantic error: timeout zero", func(t *testing.T) {
+		t.Setenv("SEARXNG_TIMEOUT", "0")
+
+		_, err := getConfig(&CLIFlags{}, false)
+		if err == nil {
+			t.Fatal("getConfig() error = nil, want error for SEARXNG_TIMEOUT=0")
+		}
+	})
+
+	t.Run("env semantic error: max retries negative", func(t *testing.T) {
+		t.Setenv("SEARXNG_MAX_RETRIES", "-1")
+
+		_, err := getConfig(&CLIFlags{}, false)
+		if err == nil {
+			t.Fatal("getConfig() error = nil, want error for SEARXNG_MAX_RETRIES=-1")
 		}
 	})
 
@@ -888,7 +906,7 @@ func TestGetConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("timeout zero flag overrides env", func(t *testing.T) {
+	t.Run("timeout zero flag rejected by SetTimeout", func(t *testing.T) {
 		t.Setenv("SEARXNG_TIMEOUT", "30s")
 
 		_, flags, _, err := parseArgs([]string{
@@ -901,12 +919,12 @@ func TestGetConfig(t *testing.T) {
 		}
 
 		cfg, err := getConfig(flags, true)
-		if err != nil {
-			t.Fatalf("getConfig() error = %v, want nil", err)
+		if err == nil {
+			t.Fatal("getConfig() error = nil, want error (timeout=0 should be rejected)")
 		}
 
-		if cfg.Timeout != 0 {
-			t.Fatalf("Timeout = %v, want 0", cfg.Timeout)
+		if cfg != nil {
+			t.Fatal("getConfig() returned non-nil config on error")
 		}
 	})
 
@@ -1276,7 +1294,7 @@ func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
 	}
 }
 
-func TestRunCLIMode_TimeoutZeroSucceeds(t *testing.T) {
+func TestRunCLIMode_TimeoutZeroRejected(t *testing.T) {
 	t.Parallel()
 
 	resp := searxng.SearchResponse{
@@ -1298,15 +1316,9 @@ func TestRunCLIMode_TimeoutZeroSucceeds(t *testing.T) {
 	}
 	flags.SearXNGURL = server.URL
 
-	output := captureStdout(t, func() {
-		err := runCLIMode(false, flags, []string{})
-		if err != nil {
-			t.Fatalf("runCLIMode() error = %v, want nil (timeout=0 should not cancel)", err)
-		}
-	})
-
-	if !strings.Contains(output, "=== Results ===") {
-		t.Fatalf("expected results output, got: %q", output)
+	err := runCLIMode(false, flags, []string{})
+	if err == nil {
+		t.Fatal("runCLIMode() error = nil, want error (timeout=0 should be rejected)")
 	}
 }
 

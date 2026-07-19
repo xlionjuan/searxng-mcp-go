@@ -28,16 +28,17 @@ type WeatherLocation = answer.WeatherLocation
 // WeatherMeasure is a type alias kept for backward compatibility.
 type WeatherMeasure = answer.WeatherMeasure
 
-const errTimeoutNegativeMessage = "timeout cannot be negative"
-
 var (
 	errURLRequired           = errors.New("SearXNG URL cannot be empty")
-	errTimeoutNegative       = errors.New(errTimeoutNegativeMessage)
+	errTimeoutNegative       = errors.New("timeout cannot be negative")
+	errTimeoutZero           = errors.New("timeout must be greater than zero; omit it to use the 8s default")
 	errMaxRetriesNegative    = errors.New("max retries cannot be negative")
 	errMaxRetriesTooLarge    = errors.New("max retries cannot exceed 20")
 	maxRetryCap              = 20
 	errRetryDelayNegative    = errors.New("retry delay cannot be negative")
+	errRetryDelayTooSmall    = errors.New("retry delay must be at least 1s when set explicitly")
 	errMaxRetryDelayNegative = errors.New("max retry delay cannot be negative")
+	errMaxRetryDelayTooSmall = errors.New("max retry delay must be at least 1s when set explicitly")
 )
 
 // Config controls SearXNG client behavior.
@@ -47,10 +48,23 @@ type Config struct {
 	// request attempt. It does not bound the overall Search operation, which
 	// is governed by the caller-provided context. When HTTPClient is set,
 	// Timeout is ignored and the custom client controls HTTP timing.
-	Timeout          time.Duration
-	HTTPClient       *http.Client
-	MaxRetries       int
-	RetryDelay       time.Duration
+	//
+	// A zero value in a struct literal means "unset" and is normalized to
+	// DefaultTimeout (8s) by Normalize. An explicit zero through SetTimeout
+	// (the CLI/env path) is rejected — use a positive duration or omit the
+	// setting to keep the default.
+	Timeout    time.Duration
+	HTTPClient *http.Client
+	MaxRetries int
+	// RetryDelay is the base delay for exponential backoff. A zero value
+	// normalizes to DefaultRetryDelay (1s). An explicit positive value
+	// below 1s is rejected at configuration validation time. The final
+	// jittered wait is always at least 1s regardless of the configured delay.
+	RetryDelay time.Duration
+	// MaxRetryDelay is the upper bound for retry backoff delays. A zero
+	// value normalizes to DefaultMaxRetryDelay (30s). An explicit positive
+	// value below 1s is rejected at configuration validation time. When
+	// set below RetryDelay, Normalize clamps it to RetryDelay.
 	MaxRetryDelay    time.Duration
 	AllowGETFallback bool
 	Logger           *slog.Logger // Optional logger; nil = slog.Default()
@@ -69,11 +83,18 @@ func DefaultConfig() *Config {
 }
 
 // SetTimeout validates and sets the Timeout field. Returns an error for
-// negative values. Both env-var parsing and flag overrides go through this
-// setter so the "valid until Validate" footgun is closed.
+// negative values or zero (which would be ambiguous: "unset" vs "explicit"
+// are distinguished by whether SetTimeout was called). Both env-var parsing
+// and flag overrides go through this setter so zero is rejected for explicit
+// CLI/env paths. Programmatic callers using a struct literal zero can rely
+// on Normalize to apply DefaultTimeout.
 func (c *Config) SetTimeout(d time.Duration) error {
 	if d < 0 {
 		return errTimeoutNegative
+	}
+
+	if d == 0 {
+		return errTimeoutZero
 	}
 
 	c.Timeout = d
@@ -100,6 +121,9 @@ func (c *Config) SetMaxRetries(n int) error {
 
 // Validate checks the configuration for valid values.
 // No side effects: no HTTP calls, no logging.
+// Zero values for Timeout, RetryDelay, and MaxRetryDelay are accepted here
+// (they are normalized by Normalize). Only negative and explicitly invalid
+// positive values are rejected.
 func (c *Config) Validate() error {
 	if c.SearXNGURL == "" {
 		return errURLRequired
@@ -125,20 +149,34 @@ func (c *Config) Validate() error {
 		return errMaxRetryDelayNegative
 	}
 
+	if c.RetryDelay > 0 && c.RetryDelay < time.Second {
+		return errRetryDelayTooSmall
+	}
+
+	if c.MaxRetryDelay > 0 && c.MaxRetryDelay < time.Second {
+		return errMaxRetryDelayTooSmall
+	}
+
 	return nil
 }
 
 // Normalize returns a copy of the Config with safe defaults applied.
-// Zero or negative retry delays are replaced with defaults.
-// MaxRetryDelay is clamped to be at least RetryDelay.
+// Zero timeout values are set to DefaultTimeout. Zero retry delay values are
+// replaced with their respective defaults. MaxRetryDelay is clamped to be at
+// least RetryDelay. Negative values must be rejected by Validate before
+// Normalize is called.
 func (c *Config) Normalize() *Config {
 	cfg := *c // Copy
 
-	if cfg.RetryDelay <= 0 {
+	if cfg.Timeout == 0 {
+		cfg.Timeout = DefaultTimeout
+	}
+
+	if cfg.RetryDelay == 0 {
 		cfg.RetryDelay = DefaultRetryDelay
 	}
 
-	if cfg.MaxRetryDelay <= 0 {
+	if cfg.MaxRetryDelay == 0 {
 		cfg.MaxRetryDelay = DefaultMaxRetryDelay
 	}
 
