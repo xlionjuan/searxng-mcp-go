@@ -368,6 +368,10 @@ func TestNewFastRetrySearcher_Success(t *testing.T) {
 		t.Fatalf("Search() error = %v, want nil", err)
 	}
 
+	if got := attempt.Load(); got != 1 {
+		t.Fatalf("attempts = %d, want 1 (single attempt should succeed)", got)
+	}
+
 	if len(result.Results) != 1 {
 		t.Fatalf("results = %d, want 1", len(result.Results))
 	}
@@ -376,13 +380,7 @@ func TestNewFastRetrySearcher_Success(t *testing.T) {
 func TestNewFastRetrySearcher_InvalidURL(t *testing.T) {
 	t.Parallel()
 
-	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-		resp := makeJSONResponse(makeSearchResponseJSON(1))
-
-		return resp, nil
-	})
-
-	s := NewFastRetrySearcher("://", transport, 2)
+	s := NewFastRetrySearcher("://", nil, 2)
 	if s != nil {
 		t.Fatal("NewFastRetrySearcher with invalid URL = non-nil, want nil")
 	}
@@ -410,6 +408,10 @@ func TestNewCustomRetrySearcher_Success(t *testing.T) {
 		t.Fatalf("Search() error = %v, want nil", err)
 	}
 
+	if got := attempt.Load(); got != 1 {
+		t.Fatalf("attempts = %d, want 1 (single attempt should succeed)", got)
+	}
+
 	if len(result.Results) != 1 {
 		t.Fatalf("results = %d, want 1", len(result.Results))
 	}
@@ -418,13 +420,7 @@ func TestNewCustomRetrySearcher_Success(t *testing.T) {
 func TestNewCustomRetrySearcher_InvalidURL(t *testing.T) {
 	t.Parallel()
 
-	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-		resp := makeJSONResponse(makeSearchResponseJSON(1))
-
-		return resp, nil
-	})
-
-	s := NewCustomRetrySearcher("://", transport, 2, time.Second, 30*time.Second)
+	s := NewCustomRetrySearcher("://", nil, 2, time.Second, 30*time.Second)
 	if s != nil {
 		t.Fatal("NewCustomRetrySearcher with invalid URL = non-nil, want nil")
 	}
