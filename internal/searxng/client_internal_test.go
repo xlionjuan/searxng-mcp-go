@@ -529,6 +529,92 @@ func TestEnforceSearchRedirectPolicy(t *testing.T) {
 			t.Fatalf("error = %q, want redirect to different host blocked", err.Error())
 		}
 	})
+
+	// --- Method-change redirect tests ---
+
+	t.Run("block POST to GET redirect (301/302/303)", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{Method: http.MethodGet, URL: mustParseURL(t, "https://search.example.com/result")}
+		via := []*http.Request{
+			{Method: http.MethodPost, URL: mustParseURL(t, "https://search.example.com/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err == nil {
+			t.Fatal("enforceSearchRedirectPolicy() = nil, want error for POST -> GET method change")
+		}
+
+		if !errors.Is(err, errRedirectMethodChanged) {
+			t.Fatalf("error = %v, want errRedirectMethodChanged", err)
+		}
+
+		if !strings.Contains(err.Error(), "POST -> GET") {
+			t.Fatalf("error = %q, want it to describe the POST -> GET method change", err.Error())
+		}
+	})
+
+	t.Run("allow POST to POST redirect (307/308 preserves method)", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{Method: http.MethodPost, URL: mustParseURL(t, "https://search.example.com/result")}
+		via := []*http.Request{
+			{Method: http.MethodPost, URL: mustParseURL(t, "https://search.example.com/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for POST -> POST method-preserving redirect", err)
+		}
+	})
+
+	t.Run("allow GET to GET redirect (GET fallback scenario)", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{Method: http.MethodGet, URL: mustParseURL(t, "https://search.example.com/result")}
+		via := []*http.Request{
+			{Method: http.MethodGet, URL: mustParseURL(t, "https://search.example.com/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil for GET -> GET redirect", err)
+		}
+	})
+
+	t.Run("allow redirect when via[0] method is empty (default GET)", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{Method: http.MethodGet, URL: mustParseURL(t, "https://search.example.com/result")}
+		via := []*http.Request{
+			{URL: mustParseURL(t, "https://search.example.com/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err != nil {
+			t.Fatalf("enforceSearchRedirectPolicy() = %v, want nil when via method is unset", err)
+		}
+	})
+
+	t.Run("block POST to GET redirect preserves across scheme downgrade", func(t *testing.T) {
+		t.Parallel()
+
+		req := &http.Request{Method: http.MethodGet, URL: mustParseURL(t, "http://search.example.com/result")}
+		via := []*http.Request{
+			{Method: http.MethodPost, URL: mustParseURL(t, "https://search.example.com/search")},
+		}
+
+		err := enforceSearchRedirectPolicy(req, via)
+		if err == nil {
+			t.Fatal("enforceSearchRedirectPolicy() = nil, want error")
+		}
+
+		// Scheme downgrade is checked before method change, so the error
+		// is errRedirectSchemeDowngrade — the POST body is still protected.
+		if !errors.Is(err, errRedirectSchemeDowngrade) {
+			t.Fatalf("error = %v, want errRedirectSchemeDowngrade (checked before method)", err)
+		}
+	})
 }
 
 func mustParseURL(t *testing.T, raw string) *url.URL {

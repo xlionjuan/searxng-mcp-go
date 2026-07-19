@@ -11,6 +11,7 @@ import (
 var (
 	errRedirectDifferentHost   = errors.New("redirect to different host blocked")
 	errRedirectSchemeDowngrade = errors.New("redirect from https to http blocked")
+	errRedirectMethodChanged   = errors.New("redirect would change POST to GET; only 307/308 preserve POST semantics")
 	errTooManyRedirects        = errors.New("stopped after 10 redirects")
 )
 
@@ -38,6 +39,17 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 			if prevScheme == "https" && nextScheme == "http" {
 				return fmt.Errorf("%w: %s -> %s", errRedirectSchemeDowngrade, prev.URL.Scheme, req.URL.Scheme)
 			}
+		}
+
+		// Reject redirects that change the search method (e.g. 301, 302, 303
+		// from POST to GET). Go's http.Client drops the body before calling
+		// CheckRedirect for these status codes, silently discarding search
+		// parameters such as q, format=json, and all search options.
+		origMethod := via[0].Method
+		nextMethod := req.Method
+
+		if origMethod != "" && nextMethod != "" && !strings.EqualFold(origMethod, nextMethod) {
+			return fmt.Errorf("%w: %s -> %s", errRedirectMethodChanged, origMethod, nextMethod)
 		}
 	}
 

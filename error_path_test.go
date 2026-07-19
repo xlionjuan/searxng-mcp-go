@@ -673,7 +673,7 @@ func TestSearch_HTTPStatusErrors(t *testing.T) {
 func TestSearch_RedirectStatus(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Location", "/search/redirected")
-		w.WriteHeader(http.StatusFound)
+		w.WriteHeader(http.StatusTemporaryRedirect)
 		_, _ = w.Write([]byte("redirect")) //nolint:errcheck // test fixture write; failure does not affect test outcome
 	}))
 	defer server.Close()
@@ -696,8 +696,8 @@ func TestSearch_RedirectStatus(t *testing.T) {
 		t.Fatalf("expected *searxng.SearXNGError, got %T", err)
 	}
 
-	if searxngErr.StatusCode != http.StatusFound {
-		t.Fatalf("StatusCode = %d, want %d", searxngErr.StatusCode, http.StatusFound)
+	if searxngErr.StatusCode != http.StatusTemporaryRedirect {
+		t.Fatalf("StatusCode = %d, want %d", searxngErr.StatusCode, http.StatusTemporaryRedirect)
 	}
 }
 
@@ -737,7 +737,7 @@ func TestSearch_CustomHTTPClientSameHostRedirectAllowed(t *testing.T) {
 		}
 
 		w.Header().Set("Location", "/search/redirected")
-		w.WriteHeader(http.StatusFound)
+		w.WriteHeader(http.StatusTemporaryRedirect)
 	}))
 	defer server.Close()
 

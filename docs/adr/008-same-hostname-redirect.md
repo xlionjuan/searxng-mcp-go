@@ -13,7 +13,9 @@ A subsequent security review (issue #97) observed that the original implementati
 
 ## Decision
 
-**Redirects are only allowed within the same hostname and must preserve or upgrade the original scheme.** If a SearXNG instance at `https://search.example.com/search` redirects to `https://search.example.com/some-path`, it is followed. If it redirects to any other host (including `127.0.0.1`, `192.168.x.x`, `localhost`, or any other domain), the redirect is rejected. If a same-host redirect changes the scheme from `https://` to `http://`, the redirect is also rejected. A same-host upgrade from `http://` to `https://` is allowed because it strengthens, rather than weakens, transport security.
+**Redirects are only allowed within the same hostname, must preserve or upgrade the original scheme, and must preserve the search method.** If a SearXNG instance at `https://search.example.com/search` redirects to `https://search.example.com/some-path`, it is followed only if the method remains unchanged (i.e., 307 or 308). If it redirects to any other host (including `127.0.0.1`, `192.168.x.x`, `localhost`, or any other domain), the redirect is rejected. If a same-host redirect changes the scheme from `https://` to `http://`, the redirect is also rejected. A same-host upgrade from `http://` to `https://` is allowed because it strengthens, rather than weakens, transport security.
+
+Method-changing redirects (301, 302, 303) are rejected even for same-host targets because Go's `http.Client` rewrites the method from POST to GET and drops the request body before calling `CheckRedirect`. Following such a redirect would send a bodyless GET request that silently discards `q`, `format=json`, and every search option — violating the POST-default contract established in ADR-009.
 
 ## Rationale
 
