@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -635,6 +636,39 @@ func TestSearch_BodyReadRetry(t *testing.T) {
 
 		if !errors.Is(err, errReadFailed) {
 			t.Fatalf("Search() error = %v, want unwrapping to %v", err, errReadFailed)
+		}
+	})
+
+	t.Run("body read failure closes body exactly once per attempt", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			mu              sync.Mutex
+			totalCloseCalls int
+		)
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			body := &closeCounter{
+				ReadCloser: &errorReader{},
+				mu:         &mu,
+				total:      &totalCloseCalls,
+			}
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       body,
+			}, nil
+		}), 1)
+
+		_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("Search() error = nil, want error")
+		}
+
+		// 2 HTTP requests (initial + 1 retry), each body closed exactly once.
+		if totalCloseCalls != 2 {
+			t.Fatalf("total body Close() calls = %d, want 2 (one per HTTP request)", totalCloseCalls)
 		}
 	})
 }
