@@ -165,7 +165,7 @@ func NewCustomRetrySearcher(
 		searchEndpoint: endpoint,
 		debug:          false,
 		retryStrategy:  newExponentialBackoffStrategy(maxRetries, retryDelay, maxRetryDelay),
-		ownsTransport:  true,
+		ownsTransport:  false,
 	}
 	s.searcherCtx, s.searcherCancel = context.WithCancel(context.Background())
 

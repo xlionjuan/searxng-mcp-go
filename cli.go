@@ -71,8 +71,8 @@ RETRY:
   Retries use exponential backoff with equal jitter. The base delay defaults
   to 1s, doubles each attempt, and is capped at 30s. The effective wait after
   jitter is always at least 1s. Setting RetryDelay or MaxRetryDelay below 1s
-  is rejected. See --retry-delay and --max-retry-delay flags (not yet
-  exposed; configured via Config struct for programmatic callers).
+  is rejected. RetryDelay and MaxRetryDelay are configurable only through the
+  Config struct for programmatic callers.
 
 EXAMPLES:
   searxng-mcp-go "golang programming"
