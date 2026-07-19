@@ -17,7 +17,7 @@ var (
 	errRetryTestRequestCreationFailure = errors.New("request creation failed")
 )
 
-//nolint:gocognit,gocyclo // sequential subtests covering many outcome branches
+//nolint:gocognit,gocyclo // per-branch subtests; extracting them would add indirection without improving clarity
 func TestClassifyOutcome(t *testing.T) {
 	t.Parallel()
 

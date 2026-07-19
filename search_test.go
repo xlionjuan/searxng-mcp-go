@@ -580,12 +580,14 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 			t.Parallel()
 
 			var (
-				postReq *http.Request
-				getReq  *http.Request
+				postCount int
+				postReq   *http.Request
+				getReq    *http.Request
 			)
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodPost {
+					postCount++
 					postReq = r
 
 					w.WriteHeader(tt.statusCode)
@@ -613,12 +615,25 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 				t.Fatal("POST request was never made")
 			}
 
+			if postCount != 1 {
+				t.Fatalf("POST count = %d, want 1 (501 should not be retried)", postCount)
+			}
+
 			if getReq != nil {
 				t.Fatal("GET fallback was called even though it is disabled")
 			}
 
 			if postReq.URL.RawQuery != "" {
 				t.Error("POST request had query params in URI - query should only be in body")
+			}
+
+			var se *searxng.SearXNGError
+			if !errors.As(err, &se) {
+				t.Fatalf("error type = %T, want *searxng.SearXNGError", err)
+			}
+
+			if se.StatusCode != tt.statusCode {
+				t.Fatalf("SearXNGError.StatusCode = %d, want %d", se.StatusCode, tt.statusCode)
 			}
 
 			errText := err.Error()
