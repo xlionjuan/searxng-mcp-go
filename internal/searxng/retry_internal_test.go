@@ -17,7 +17,7 @@ var (
 	errRetryTestRequestCreationFailure = errors.New("request creation failed")
 )
 
-//nolint:gocognit // sequential subtests covering many outcome branches
+//nolint:gocognit,gocyclo // per-branch subtests; extracting them would add indirection without improving clarity
 func TestClassifyOutcome(t *testing.T) {
 	t.Parallel()
 
@@ -90,6 +90,18 @@ func TestClassifyOutcome(t *testing.T) {
 
 		if outcome != OutcomeAbort {
 			t.Fatalf("classifyOutcome() = %v, want OutcomeAbort for 404", outcome)
+		}
+	})
+
+	t.Run("501 Not Implemented returns OutcomeAbort", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		resp := &http.Response{StatusCode: http.StatusNotImplemented}
+		outcome := classifyOutcome(ctx, 0, 2, resp, nil, false)
+
+		if outcome != OutcomeAbort {
+			t.Fatalf("classifyOutcome() = %v, want OutcomeAbort for 501", outcome)
 		}
 	})
 
@@ -539,6 +551,7 @@ func TestIsRetryableStatusCode(t *testing.T) {
 		{http.StatusForbidden, false},
 		{http.StatusNotFound, false},
 		{http.StatusMethodNotAllowed, false},
+		{http.StatusNotImplemented, false},
 		{http.StatusOK, false},
 	}
 

@@ -77,8 +77,10 @@ Changes:
     `OutcomeAbort`, `OutcomeEmptyExhausted`.
 - **Backward compatible behavior.** Retry behaviour is preserved for all
     existing scenarios: plain network errors retry, `SearXNGError` does not,
-    retryable status codes (429, 5xx) retry, empty responses retry on
-    non-final attempts, non-retryable status codes abort.
+    retryable status codes (429, 5xx except 501) retry, empty responses retry on
+    non-final attempts, non-retryable status codes abort. 501 is excluded from
+    retryable 5xx because it is a deterministic method-rejection: when GET
+    fallback is disabled, retrying sends the same POST to the same rejection.
 - **Non-backward compatible terminal behaviour.** The original decision
     returned an empty success response when all retries were exhausted on an
     empty SearXNG reply. This extension changes that to a terminal error. MCP
