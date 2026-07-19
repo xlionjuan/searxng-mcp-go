@@ -103,7 +103,7 @@ where they are rejected:
   the CLI search flow. The error is reported on stderr, the process
   exits with a non-zero status, and **no CLI help is printed**. No
   search request is issued.
-  
+
   When these values are set via environment variables (e.g.,
   `SEARXNG_TIMEOUT=0`), they are also **rejected with a clear error**
   — the server exits on startup to prevent silent misconfiguration.

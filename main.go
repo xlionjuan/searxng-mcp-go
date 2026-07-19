@@ -400,21 +400,15 @@ func warnInvalidConfigEntry[T any](source string, value T, err error) {
 		"value", value, "error", err)
 }
 
-var (
-	errMustBeNonNegative = errors.New("must be non-negative")
-	errMustBe01          = errors.New("must be 0 or 1")
-)
+var errMustBe01 = errors.New("must be 0 or 1")
 
-// intFromString parses an integer from an environment variable string,
-// rejecting negative values. Zero is accepted (disables retries).
+// intFromString parses an integer from an environment variable string.
+// Negative values and values exceeding the maximum are validated by
+// SetMaxRetries, which returns a hard error.
 func intFromString(s string) (int, error) {
 	n, err := strconv.Atoi(s)
 	if err != nil {
 		return 0, err
-	}
-
-	if n < 0 {
-		return 0, errMustBeNonNegative
 	}
 
 	return n, nil

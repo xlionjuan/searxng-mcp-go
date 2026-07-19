@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"searxng-mcp-go/internal/searxng"
@@ -840,41 +841,41 @@ func TestSearch_CanceledDuringRequest(t *testing.T) {
 }
 
 func TestSearch_RetryWaitCanceled(t *testing.T) {
-	t.Parallel()
+	// synctest.Test runs the enclosed function in a deterministic time bubble
+	// where timers and context deadlines use synthetic time. Time advances
+	// only when all goroutines in the bubble are blocked, so there is no
+	// wall-clock race between the retryWait timer and the context deadline.
+	synctest.Test(t, func(t *testing.T) {
+		var callCount atomic.Int32
 
-	var callCount atomic.Int32
+		ctx, cancel := context.WithTimeout(t.Context(), time.Millisecond)
+		defer cancel()
 
-	// Use a 1-hour retry delay so the retryWait timer will never fire before
-	// the 1ms context timeout. This eliminates the wall-clock race between
-	// the two timers — ctx.Done always wins the select.
-	ctx, cancel := context.WithTimeout(t.Context(), time.Millisecond)
-	defer cancel()
+		transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			callCount.Add(1)
 
-	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-		callCount.Add(1)
+			return nil, errTestConnectionReset
+		})
 
-		return nil, errTestConnectionReset
+		searcher := searxng.NewCustomRetrySearcher(
+			"https://search.example.com", transport, 10, time.Hour, time.Hour)
+		if searcher == nil {
+			t.Fatal("NewCustomRetrySearcher returned nil")
+		}
+
+		_, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("Search() error = nil, want context deadline exceeded error")
+		}
+
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("Search() error = %v, want context.DeadlineExceeded", err)
+		}
+
+		if got := callCount.Load(); got != 1 {
+			t.Fatalf("attempts = %d, want 1", got)
+		}
 	})
-
-	searcher := searxng.NewCustomRetrySearcher(
-		"https://search.example.com", transport, 10, time.Hour, time.Hour)
-	if searcher == nil {
-		t.Fatal("NewCustomRetrySearcher returned nil")
-	}
-
-	_, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "test"})
-	if err == nil {
-		t.Fatal("Search() error = nil, want context deadline exceeded error")
-	}
-
-	if !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("Search() error = %v, want context.DeadlineExceeded", err)
-	}
-
-	// Only the first attempt completes; the retryWait fires the context error.
-	if got := callCount.Load(); got != 1 {
-		t.Fatalf("attempts = %d, want 1", got)
-	}
 }
 
 // assertBrowserHeaders checks that common browser-like headers are set on search requests.
