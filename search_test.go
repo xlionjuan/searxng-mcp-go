@@ -92,37 +92,48 @@ func TestSearch_CallerContextCancellationStopsRetries(t *testing.T) {
 
 	var attempts atomic.Int32
 
-	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+	started := make(chan struct{})
+
+	transport := testhelper.RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
 		attempts.Add(1)
-		// Return a retryable error; the retry loop will attempt to back off
-		// and the caller context cancellation should abort it.
-		return nil, errTestConnectionReset
+		close(started)
+
+		// Block until the caller context is canceled — then return the
+		// cancellation error so the retry loop sees ctx.Err() and aborts.
+		<-r.Context().Done()
+
+		return nil, r.Context().Err()
 	})
 
-	// Use a searcher with 10ms retries — fast enough for tests but slow
-	// enough that the 50ms caller context fires before all 10 retries exhaust.
+	// Use 1-hour retries so no timer ever fires; only caller context
+	// cancellation can stop the retry loop.
 	searcher := searxng.NewCustomRetrySearcher(
-		"https://search.example.com", transport, 10, 10*time.Millisecond, 10*time.Millisecond)
+		"https://search.example.com", transport, 10, time.Hour, time.Hour)
 	if searcher == nil {
 		t.Fatal("NewCustomRetrySearcher returned nil")
 	}
 
-	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
-	_, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "test"})
+	errCh := make(chan error, 1)
+
+	go func() {
+		_, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "test"})
+		errCh <- err
+	}()
+
+	// Wait for the first request to actually begin executing, then cancel.
+	<-started
+	cancel()
+
+	err := <-errCh
 	if err == nil {
 		t.Fatal("Search() error = nil, want context-canceled error")
 	}
 
-	if got := attempts.Load(); got < 1 {
-		t.Fatalf("attempts = %d, want at least 1", got)
-	}
-
-	// The caller context deadline is much shorter than the retry budget, so
-	// only a small number of attempts should run before cancellation.
-	if got := attempts.Load(); got > 6 {
-		t.Fatalf("attempts = %d, want <= 6 (caller context should stop retries early)", got)
+	if got := attempts.Load(); got != 1 {
+		t.Fatalf("attempts = %d, want 1", got)
 	}
 }
 
