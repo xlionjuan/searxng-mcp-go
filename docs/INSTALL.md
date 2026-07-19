@@ -48,14 +48,14 @@ export SEARXNG_URL=https://your-searxng-instance.example.com
 ```
 
 > **Warning:** Using `http://` for a non-private SearXNG host triggers a non-suppressible warning on every invocation: *"Using HTTP for non-private host. Search queries may be transmitted in clear text. Search results could be intercepted and modified by a MITM attacker."*
-> 
+>
 > A host is considered private only if it matches one of the following RFC-grounded criteria (see [ADR-003](https://github.com/xlionjuan/searxng-mcp-go/blob/main/docs/adr/003-http-warning-for-non-private-hosts.md)):
 > - Hostname: `localhost` or any subdomain of `localhost` (e.g., `something.localhost`)
 > - IPv4 address in: `0.0.0.0/8`, `10.0.0.0/8`, `100.64.0.0/10`, `127.0.0.0/8`, `169.254.0.0/16`, `172.16.0.0/12`, `192.0.0.0/24`, `192.0.2.0/24`, `192.88.99.0/24`, `192.168.0.0/16`, `198.18.0.0/15`, `198.51.100.0/24`, `203.0.113.0/24`, `224.0.0.0/4`, `255.255.255.255/32`
 > - IPv6 address in: `::`, `::1`, `fc00::/7`, `fe80::/10`, `ff00::/8`
-> 
+>
 > Prefer HTTPS unless the SearXNG instance is on a private/local network.
-> 
+>
 > **Note:** The warning suppression is based on syntactic host matching only and does not imply confidentiality for cleartext HTTP.
 
 ### Max Retries
