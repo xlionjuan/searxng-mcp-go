@@ -379,7 +379,7 @@ func (cs configSource[T]) apply(cfg *searxng.Config, flags *CLIFlags) error {
 		} else {
 			err = cs.setValue(cfg, val)
 			if err != nil {
-				warnInvalidConfigEntry(cs.envVar, envStr, err)
+				return fmt.Errorf("invalid %s value %q: %w", cs.envVar, envStr, err)
 			}
 		}
 	}

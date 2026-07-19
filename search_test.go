@@ -844,8 +844,9 @@ func TestSearch_RetryWaitCanceled(t *testing.T) {
 
 	var callCount atomic.Int32
 
-	// The context timeout (1ms) is shorter than the retry wait (4ms), so it
-	// fires during retryWait after the first attempt triggers a retry.
+	// Use a 1-hour retry delay so the retryWait timer will never fire before
+	// the 1ms context timeout. This eliminates the wall-clock race between
+	// the two timers — ctx.Done always wins the select.
 	ctx, cancel := context.WithTimeout(t.Context(), time.Millisecond)
 	defer cancel()
 
@@ -856,7 +857,7 @@ func TestSearch_RetryWaitCanceled(t *testing.T) {
 	})
 
 	searcher := searxng.NewCustomRetrySearcher(
-		"https://search.example.com", transport, 10, 4*time.Millisecond, 4*time.Millisecond)
+		"https://search.example.com", transport, 10, time.Hour, time.Hour)
 	if searcher == nil {
 		t.Fatal("NewCustomRetrySearcher returned nil")
 	}

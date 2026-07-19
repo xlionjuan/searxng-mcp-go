@@ -138,6 +138,12 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 // for fast test execution. It bypasses Config validation to allow sub-second
 // retry delays. Only intended for tests; production callers should use
 // NewSearXNGSearcher.
+//
+// This constructor is exported so that tests in the root package (main) can
+// create fast-retry searchers without going through Config validation. It is
+// intentionally placed in production code rather than a _test.go file because
+// Go does not allow test-file symbols to be imported across packages. Do not
+// use in production code paths.
 func NewFastRetrySearcher(
 	baseURL string, transport http.RoundTripper, maxRetries int,
 ) *SearXNGSearcher {

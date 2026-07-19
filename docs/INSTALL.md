@@ -103,6 +103,10 @@ where they are rejected:
   the CLI search flow. The error is reported on stderr, the process
   exits with a non-zero status, and **no CLI help is printed**. No
   search request is issued.
+  
+  When these values are set via environment variables (e.g.,
+  `SEARXNG_TIMEOUT=0`), they are also **rejected with a clear error**
+  — the server exits on startup to prevent silent misconfiguration.
 
 > **Note:** If you provide a custom `HTTPClient` (for example, when using the library programmatically), the `Timeout` setting is ignored and the provided client is used as-is. Either set `Timeout` or supply a custom `HTTPClient`, not both.
 

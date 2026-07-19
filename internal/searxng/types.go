@@ -48,10 +48,23 @@ type Config struct {
 	// request attempt. It does not bound the overall Search operation, which
 	// is governed by the caller-provided context. When HTTPClient is set,
 	// Timeout is ignored and the custom client controls HTTP timing.
-	Timeout          time.Duration
-	HTTPClient       *http.Client
-	MaxRetries       int
-	RetryDelay       time.Duration
+	//
+	// A zero value in a struct literal means "unset" and is normalized to
+	// DefaultTimeout (8s) by Normalize. An explicit zero through SetTimeout
+	// (the CLI/env path) is rejected — use a positive duration or omit the
+	// setting to keep the default.
+	Timeout    time.Duration
+	HTTPClient *http.Client
+	MaxRetries int
+	// RetryDelay is the base delay for exponential backoff. A zero value
+	// normalizes to DefaultRetryDelay (1s). An explicit positive value
+	// below 1s is rejected at configuration validation time. The final
+	// jittered wait is always at least 1s regardless of the configured delay.
+	RetryDelay time.Duration
+	// MaxRetryDelay is the upper bound for retry backoff delays. A zero
+	// value normalizes to DefaultMaxRetryDelay (30s). An explicit positive
+	// value below 1s is rejected at configuration validation time. When
+	// set below RetryDelay, Normalize clamps it to RetryDelay.
 	MaxRetryDelay    time.Duration
 	AllowGETFallback bool
 	Logger           *slog.Logger // Optional logger; nil = slog.Default()

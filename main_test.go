@@ -809,14 +809,14 @@ func TestGetConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid env values fall back to defaults", func(t *testing.T) {
+	t.Run("invalid env parse values fall back to defaults", func(t *testing.T) {
 		t.Setenv("SEARXNG_TIMEOUT", "not-a-duration")
 		t.Setenv("SEARXNG_MAX_RETRIES", "-1")
 		t.Setenv("SEARXNG_ALLOW_GET_FALLBACK", "true")
 
 		cfg, err := getConfig(&CLIFlags{}, false)
 		if err != nil {
-			t.Fatalf("getConfig() error = %v, want nil", err)
+			t.Fatalf("getConfig() error = %v, want nil (parse errors fall back)", err)
 		}
 
 		if cfg.Timeout != searxng.DefaultTimeout {
@@ -829,6 +829,15 @@ func TestGetConfig(t *testing.T) {
 
 		if cfg.AllowGETFallback {
 			t.Fatal("AllowGETFallback = true, want false for invalid env value")
+		}
+	})
+
+	t.Run("env semantic errors are hard errors", func(t *testing.T) {
+		t.Setenv("SEARXNG_TIMEOUT", "0")
+
+		_, err := getConfig(&CLIFlags{}, false)
+		if err == nil {
+			t.Fatal("getConfig() error = nil, want error for SEARXNG_TIMEOUT=0")
 		}
 	})
 
