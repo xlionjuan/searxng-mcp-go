@@ -832,13 +832,21 @@ func TestGetConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("env semantic errors are hard errors", func(t *testing.T) {
+	t.Run("env semantic error: timeout zero", func(t *testing.T) {
 		t.Setenv("SEARXNG_TIMEOUT", "0")
+
+		_, err := getConfig(&CLIFlags{}, false)
+		if err == nil {
+			t.Fatal("getConfig() error = nil, want error for SEARXNG_TIMEOUT=0")
+		}
+	})
+
+	t.Run("env semantic error: max retries negative", func(t *testing.T) {
 		t.Setenv("SEARXNG_MAX_RETRIES", "-1")
 
 		_, err := getConfig(&CLIFlags{}, false)
 		if err == nil {
-			t.Fatal("getConfig() error = nil, want error for semantically invalid env values")
+			t.Fatal("getConfig() error = nil, want error for SEARXNG_MAX_RETRIES=-1")
 		}
 	})
 
