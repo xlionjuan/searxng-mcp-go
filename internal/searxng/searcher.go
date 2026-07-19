@@ -217,7 +217,7 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 
 // searchWithRetries runs the retry loop for a single search.
 //
-//nolint:gocognit,gocyclo // retry orchestration: attempt, classification, error tracking, and wait
+//nolint:gocognit,gocyclo,cyclop // retry orchestration: attempt, classification, error tracking, and wait
 func (s *SearXNGSearcher) searchWithRetries(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	var lastErr error
 
@@ -241,6 +241,10 @@ func (s *SearXNGSearcher) searchWithRetries(ctx context.Context, args *SearchArg
 
 		// Determine the error to track for this attempt
 		trackErr := err
+		if trackErr == nil && ar.err != nil {
+			trackErr = ar.err
+		}
+
 		if trackErr == nil && ar.outcome == OutcomeEmptyRetry {
 			trackErr = errSearchEmptyResults
 		}
@@ -320,6 +324,7 @@ func wrapSearchError(err error) error {
 type attemptResult struct {
 	outcome Outcome
 	result  *SearchResponse
+	err     error // underlying error when outcome requires tracking (e.g. body-read failure)
 }
 
 // classifyAttempt processes the response from a single search attempt and
@@ -343,6 +348,14 @@ func (s *SearXNGSearcher) classifyAttempt(
 
 	result, finishErr := s.finishResponse(resp, args)
 	if finishErr != nil {
+		// Body-read failures (unexpected EOF, connection reset during
+		// read) are transient network errors — retry them. Invalid
+		// JSON, HTML, unexpected content type, and oversized bodies
+		// remain non-retryable hard failures.
+		if errors.Is(finishErr, errResponseReadFailed) {
+			return &attemptResult{outcome: OutcomeRetry, err: finishErr}, nil
+		}
+
 		return nil, finishErr
 	}
 

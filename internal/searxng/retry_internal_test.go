@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -532,6 +534,109 @@ func TestSearchRedirectPolicyNotRetried(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClassifyAttempt_BodyReadRetry(t *testing.T) {
+	t.Parallel()
+
+	s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		return nil, errTransportNotExpected
+	}), 2)
+
+	t.Run("body read failure returns OutcomeRetry", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		resp := &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       &errorReader{},
+		}
+
+		ar, err := s.classifyAttempt(ctx, 0, 2, resp, nil, &SearchArgs{Query: "test"})
+		if err != nil {
+			t.Fatalf("classifyAttempt() error = %v, want nil", err)
+		}
+
+		if ar.outcome != OutcomeRetry {
+			t.Fatalf("classifyAttempt() outcome = %v, want OutcomeRetry", ar.outcome)
+		}
+	})
+
+	t.Run("HTML response error is still propagated as hard error", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		resp := &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"text/html"}},
+			Body:       io.NopCloser(strings.NewReader("<html><body>error</body></html>")),
+		}
+
+		_, err := s.classifyAttempt(ctx, 0, 2, resp, nil, &SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("classifyAttempt() error = nil, want error for HTML response")
+		}
+
+		var he *HTMLResponseError
+		if !errors.As(err, &he) {
+			t.Fatalf("classifyAttempt() error type = %T, want *HTMLResponseError", err)
+		}
+	})
+}
+
+func TestSearch_BodyReadRetry(t *testing.T) {
+	t.Parallel()
+
+	t.Run("body read failure followed by success", func(t *testing.T) {
+		t.Parallel()
+
+		var attempt int
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			attempt++
+			switch attempt {
+			case 1:
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     http.Header{"Content-Type": []string{"application/json"}},
+					Body:       &errorReader{},
+				}, nil
+			default:
+				return makeJSONResponse(makeSearchResponseJSON(1)), nil
+			}
+		}), 1)
+
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err != nil {
+			t.Fatalf("Search() error = %v, want nil after retry", err)
+		}
+
+		if result == nil {
+			t.Fatal("Search() result = nil, want non-nil")
+		}
+	})
+
+	t.Run("exhausted body read failures preserve underlying error", func(t *testing.T) {
+		t.Parallel()
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       &errorReader{},
+			}, nil
+		}), 1)
+
+		_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("Search() error = nil, want error")
+		}
+
+		if !errors.Is(err, errReadFailed) {
+			t.Fatalf("Search() error = %v, want unwrapping to %v", err, errReadFailed)
+		}
+	})
 }
 
 func TestIsRetryableStatusCode(t *testing.T) {
