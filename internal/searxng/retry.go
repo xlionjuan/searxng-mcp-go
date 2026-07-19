@@ -126,6 +126,16 @@ func classifyOutcome(
 }
 
 func isRetryableStatusCode(statusCode int) bool {
+	// 501 Not Implemented is never retryable: it's a deterministic
+	// method-rejection response. When GET fallback is enabled,
+	// doSearchAttempt intercepts 501 before the retry layer runs;
+	// when disabled, retrying would send the same POST to the same
+	// rejection. 405 is also deterministic but is < 500, so the
+	// generic >=500 rule already excludes it.
+	if statusCode == http.StatusNotImplemented {
+		return false
+	}
+
 	return statusCode == http.StatusTooManyRequests ||
 		statusCode == http.StatusRequestTimeout ||
 		statusCode >= http.StatusInternalServerError

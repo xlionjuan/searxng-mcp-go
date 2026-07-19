@@ -313,7 +313,8 @@ When a search attempt fails, the server classifies the outcome and decides wheth
 |-------------|--------|
 | 429 Too Many Requests | Rate-limited; waiting may succeed |
 | 408 Request Timeout | Transient server-side timeout |
-| 5xx (all) | Server-side errors that may be transient |
+| 5xx (except 501) | Server-side errors that may be transient |
+| 501 Not Implemented | Deterministic method-rejection; retrying would send the same POST to the same rejection |
 
 **Abort triggers** (no retry — the error is returned immediately):
 
