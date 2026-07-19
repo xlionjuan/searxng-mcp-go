@@ -128,8 +128,8 @@ func TestSearch_CallerContextCancellationStopsRetries(t *testing.T) {
 	cancel()
 
 	err := <-errCh
-	if err == nil {
-		t.Fatal("Search() error = nil, want context-canceled error")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Search() error = %v, want context.Canceled", err)
 	}
 
 	if got := attempts.Load(); got != 1 {
