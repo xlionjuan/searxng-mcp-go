@@ -314,7 +314,6 @@ When a search attempt fails, the server classifies the outcome and decides wheth
 | 429 Too Many Requests | Rate-limited; waiting may succeed |
 | 408 Request Timeout | Transient server-side timeout |
 | 5xx (except 501) | Server-side errors that may be transient |
-| 501 Not Implemented | Deterministic method-rejection; retrying would send the same POST to the same rejection |
 
 **Abort triggers** (no retry — the error is returned immediately):
 
@@ -322,6 +321,7 @@ When a search attempt fails, the server classifies the outcome and decides wheth
 |-----------|--------|
 | Non-retryable 4xx (400, 403, 404, etc.) | Client error or resource not found; retrying would produce the same result |
 | `SearXNGError` (including `HTMLResponseError`) | SearXNG returned an error response (HTML instead of JSON, method rejected, etc.) |
+| 501 Not Implemented | Deterministic method-rejection; retrying would send the same POST to the same rejection |
 | Redirect policy errors (redirect to different host, scheme downgrade, too many redirects) | Deterministic failures — retrying would hit the same blocked redirect |
 | Context canceled or deadline exceeded | Parent context signaled completion or timeout |
 
