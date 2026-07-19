@@ -45,9 +45,14 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 		// from POST to GET). Go's http.Client drops the body before calling
 		// CheckRedirect for these status codes, silently discarding search
 		// parameters such as q, format=json, and all search options.
+		// via[0] is the original request (chronological order, oldest first);
+		// req is the redirect target Go will issue next.
 		origMethod := via[0].Method
 		nextMethod := req.Method
 
+		// strings.EqualFold is defensive — Go canonicalizes methods internally,
+		// but guarding against non-canonical values in the redirect chain adds
+		// no meaningful overhead.
 		if origMethod != "" && nextMethod != "" && !strings.EqualFold(origMethod, nextMethod) {
 			return fmt.Errorf("%w: %s -> %s", errRedirectMethodChanged, origMethod, nextMethod)
 		}

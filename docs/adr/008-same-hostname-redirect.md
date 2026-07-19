@@ -32,3 +32,4 @@ Method-changing redirects (301, 302, 303) are rejected even for same-host target
 - The `getDefaultHTTPClient` TLS tests remain unchanged.
 - Mixed-environment SearXNG deployments that intentionally terminate TLS at the proxy and then redirect to a cleartext backend on the same host will no longer be reached via that downgrade. Operators in that situation should either keep the redirect on `https://` or point the SearXNG base URL at the cleartext endpoint directly (and rely on the existing `http://` non-private-host warning for visibility).
 - If a legitimate SearXNG deployment requires cross-host redirects (unlikely), or an `https` → `http` downgrade is genuinely required, this decision should be revisited.
+- Same-host method-changing redirects (301, 302, 303) from POST are now rejected even when same-host and same-scheme. SearXNG instances that issue these for canonicalisation must be reconfigured to use 307 or 308 instead to preserve POST semantics.
