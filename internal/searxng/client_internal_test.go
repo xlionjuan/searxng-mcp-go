@@ -1,14 +1,20 @@
 package searxng
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
+
+	"searxng-mcp-go/internal/testhelper"
 )
 
 // --- validateBaseURL tests ---
@@ -709,6 +715,321 @@ func TestNewHTTPClient(t *testing.T) {
 
 	if transport.MaxIdleConnsPerHost != transportMaxIdleConnsPerHost {
 		t.Fatalf("MaxIdleConnsPerHost = %d, want %d", transport.MaxIdleConnsPerHost, transportMaxIdleConnsPerHost)
+	}
+
+	if transport.TLSHandshakeTimeout != transportTLSHandshakeTimeout {
+		t.Fatalf("TLSHandshakeTimeout = %v, want %v", transport.TLSHandshakeTimeout, transportTLSHandshakeTimeout)
+	}
+
+	if transport.IdleConnTimeout != transportIdleConnTimeout {
+		t.Fatalf("IdleConnTimeout = %v, want %v", transport.IdleConnTimeout, transportIdleConnTimeout)
+	}
+}
+
+// errFakeTransport is a sentinel error used by TestNewHTTPClient_DefaultTransportFallback
+// to satisfy the err113 linter (no dynamic errors in tests).
+var errFakeTransport = errors.New("not a real transport")
+
+// TestNewHTTPClient_DefaultTransportFallback verifies that newHTTPClient works
+// even when http.DefaultTransport has been replaced with a non-*http.Transport
+// implementation. The fallback path constructs a transport from scratch.
+func TestNewHTTPClient_DefaultTransportFallback(t *testing.T) {
+	// This test modifies http.DefaultTransport — a package-level global —
+	// so it cannot use t.Parallel().
+
+	// Replace DefaultTransport with a non-*http.Transport implementation.
+	orig := http.DefaultTransport
+
+	http.DefaultTransport = testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		return nil, errFakeTransport
+	})
+	defer func() { http.DefaultTransport = orig }()
+
+	client := newHTTPClient(5 * time.Second)
+
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Transport is not *http.Transport (fallback should construct one)")
+	}
+
+	if transport.MaxIdleConnsPerHost != transportMaxIdleConnsPerHost {
+		t.Fatalf("MaxIdleConnsPerHost = %d, want %d", transport.MaxIdleConnsPerHost, transportMaxIdleConnsPerHost)
+	}
+
+	if transport.Proxy == nil {
+		t.Fatal("Transport.Proxy is nil (fallback should set ProxyFromEnvironment)")
+	}
+}
+
+func TestNewHTTPClient_ProxyFromEnvironment(t *testing.T) {
+	t.Parallel()
+
+	client := newHTTPClient(DefaultTimeout)
+
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Transport is not *http.Transport")
+	}
+
+	if transport.Proxy == nil {
+		t.Fatal("Transport.Proxy is nil, want http.ProxyFromEnvironment")
+	}
+
+	// Verify the proxy function returns nil for localhost and loopback
+	// addresses. These are guaranteed by ProxyFromEnvironment's useProxy
+	// regardless of proxy env var state.
+	tests := []struct {
+		name string
+		url  string
+	}{
+		{name: "localhost", url: "http://localhost:8080/search"},
+		{name: "loopback IPv4", url: "http://127.0.0.1:8080/search"},
+		{name: "loopback IPv6", url: "http://[::1]:8080/search"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			req := &http.Request{
+				Method: http.MethodGet,
+				URL:    mustParseURL(t, tt.url),
+			}
+
+			proxyURL, err := transport.Proxy(req)
+			if err != nil {
+				t.Fatalf("Proxy(%q) returned error: %v", tt.url, err)
+			}
+
+			if proxyURL != nil {
+				t.Fatalf("Proxy(%q) = %v, want nil (loopback bypass)", tt.url, proxyURL)
+			}
+		})
+	}
+}
+
+// proxySubprocessEnv is the sentinel env var that indicates the test is running
+// inside a subprocess with proxy env vars pre-configured. Using a subprocess
+// isolates the test from http.ProxyFromEnvironment's global sync.Once cache.
+const proxySubprocessEnv = "_SEARXNG_MCP_TEST_PROXY"
+
+// proxySubprocessCmd returns an exec.Cmd that re-runs the named test function
+// in a subprocess. It uses t.Context() for cancellation (with a 30s timeout)
+// and filters out proxy-related environment variables from the parent process
+// so the child starts with a clean proxy environment.
+func proxySubprocessCmd(t *testing.T, testName string, extraEnv ...string) *exec.Cmd {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	t.Cleanup(cancel)
+
+	// Filter out proxy-related env vars from the parent to avoid
+	// interference (e.g. NO_PROXY=* from the test runner's shell).
+	env := make([]string, 0, len(os.Environ())+len(extraEnv))
+
+	for _, e := range os.Environ() {
+		key, _, _ := strings.Cut(e, "=")
+
+		switch strings.ToLower(key) {
+		case "http_proxy", "https_proxy", "no_proxy", "all_proxy":
+			continue
+		}
+
+		env = append(env, e)
+	}
+
+	env = append(env, extraEnv...)
+
+	//nolint:gosec // G204: test binary path is controlled by the test runner
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run", "^"+testName+"$")
+	cmd.Env = env
+
+	return cmd
+}
+
+// TestNewHTTPClient_ProxyEnvHonored verifies that setting HTTP_PROXY makes the
+// transport return the configured proxy URL for non-loopback requests.
+//
+// The test re-executes itself in a subprocess with HTTP_PROXY set, because
+// http.ProxyFromEnvironment caches its configuration on first call via a
+// global sync.Once that cannot be reset from outside net/http.
+func TestNewHTTPClient_ProxyEnvHonored(t *testing.T) {
+	if os.Getenv(proxySubprocessEnv) == "" {
+		cmd := proxySubprocessCmd(t, "TestNewHTTPClient_ProxyEnvHonored",
+			proxySubprocessEnv+"=1",
+			"HTTP_PROXY=http://test-proxy:8080",
+			"HTTPS_PROXY=http://test-proxy:8080",
+		)
+
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("subprocess test failed: %v\n%s", err, out)
+		}
+
+		return
+	}
+
+	// Child process: HTTP_PROXY is set and the sync.Once cache is fresh.
+	client := newHTTPClient(DefaultTimeout)
+
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Transport is not *http.Transport")
+	}
+
+	req := &http.Request{
+		Method: http.MethodGet,
+		URL:    mustParseURL(t, "http://example.com/search"),
+	}
+
+	proxyURL, err := transport.Proxy(req)
+	if err != nil {
+		t.Fatalf("Proxy(req) returned error: %v", err)
+	}
+
+	if proxyURL == nil {
+		t.Fatal("Proxy(req) = nil, want http://test-proxy:8080")
+	}
+
+	if proxyURL.String() != "http://test-proxy:8080" {
+		t.Fatalf("Proxy(req) = %q, want http://test-proxy:8080", proxyURL.String())
+	}
+
+	// Also verify the HTTPS request uses the same proxy.
+	req2 := &http.Request{
+		Method: http.MethodGet,
+		URL:    mustParseURL(t, "https://example.com/search"),
+	}
+
+	proxyURL2, err := transport.Proxy(req2)
+	if err != nil {
+		t.Fatalf("Proxy(req) for HTTPS returned error: %v", err)
+	}
+
+	if proxyURL2 == nil {
+		t.Fatal("Proxy(req) for HTTPS = nil, want http://test-proxy:8080")
+	}
+
+	if proxyURL2.String() != "http://test-proxy:8080" {
+		t.Fatalf("Proxy(req) for HTTPS = %q, want http://test-proxy:8080", proxyURL2.String())
+	}
+}
+
+// TestNewHTTPClient_NoProxyBypass verifies that NO_PROXY bypasses the proxy
+// for matching destinations.
+//
+// The test re-executes itself in a subprocess with HTTP_PROXY and NO_PROXY
+// set, for the same sync.Once isolation reason as ProxyEnvHonored.
+func TestNewHTTPClient_NoProxyBypass(t *testing.T) {
+	if os.Getenv(proxySubprocessEnv) == "" {
+		cmd := proxySubprocessCmd(t, "TestNewHTTPClient_NoProxyBypass",
+			proxySubprocessEnv+"=1",
+			"HTTP_PROXY=http://test-proxy:8080",
+			"HTTPS_PROXY=http://test-proxy:8080",
+			"NO_PROXY=example.com",
+		)
+
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("subprocess test failed: %v\n%s", err, out)
+		}
+
+		return
+	}
+
+	// Child process: HTTP_PROXY and NO_PROXY are set.
+	client := newHTTPClient(DefaultTimeout)
+
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Transport is not *http.Transport")
+	}
+
+	// Matching NO_PROXY — should bypass proxy.
+	req := &http.Request{
+		Method: http.MethodGet,
+		URL:    mustParseURL(t, "http://example.com/search"),
+	}
+
+	proxyURL, err := transport.Proxy(req)
+	if err != nil {
+		t.Fatalf("Proxy(req) for NO_PROXY match returned error: %v", err)
+	}
+
+	if proxyURL != nil {
+		t.Fatalf("Proxy(req) for NO_PROXY match = %v, want nil", proxyURL)
+	}
+
+	// Non-matching host — should use proxy.
+	req2 := &http.Request{
+		Method: http.MethodGet,
+		URL:    mustParseURL(t, "http://other.com/search"),
+	}
+
+	proxyURL2, err := transport.Proxy(req2)
+	if err != nil {
+		t.Fatalf("Proxy(req) for non-matching host returned error: %v", err)
+	}
+
+	if proxyURL2 == nil {
+		t.Fatal("Proxy(req) for non-matching host = nil, want http://test-proxy:8080")
+	}
+
+	if proxyURL2.String() != "http://test-proxy:8080" {
+		t.Fatalf("Proxy(req) for non-matching host = %q, want http://test-proxy:8080", proxyURL2.String())
+	}
+}
+
+// TestNewHTTPClient_ProxyServerRouting verifies that when a Proxy function is
+// configured on the transport, requests are actually routed through the proxy
+// server rather than going direct.
+func TestNewHTTPClient_ProxyServerRouting(t *testing.T) {
+	t.Parallel()
+
+	proxyCalled := make(chan struct{}, 1)
+
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		proxyCalled <- struct{}{}
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer proxy.Close()
+
+	proxyURL, err := url.Parse(proxy.URL)
+	if err != nil {
+		t.Fatalf("url.Parse(%q) = %v", proxy.URL, err)
+	}
+
+	client := newHTTPClient(5 * time.Second)
+
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Transport is not *http.Transport")
+	}
+
+	// Replace the proxy function with one that always points to our test proxy.
+	// The target is a non-loopback address so the transport routes through
+	// the proxy rather than going direct.
+	transport.Proxy = http.ProxyURL(proxyURL)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://198.51.100.1/search", http.NoBody)
+	if err != nil {
+		t.Fatalf("NewRequestWithContext failed: %v", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+
+	//nolint:errcheck,gosec // drain + close for keep-alive; error is intentionally discarded
+	resp.Body.Close()
+
+	select {
+	case <-proxyCalled:
+		// Proxy was used — success.
+	default:
+		t.Fatal("Request was not routed through the proxy server")
 	}
 }
 

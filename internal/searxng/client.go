@@ -25,19 +25,44 @@ const (
 )
 
 func newHTTPClient(timeout time.Duration) *http.Client {
+	// Clone DefaultTransport to inherit ForceAttemptHTTP2, ProxyFromEnvironment,
+	// and other standard settings, then override project-specific fields.
+	defaultTransport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		// Fallback: construct from scratch if DefaultTransport was replaced
+		// with a non-*http.Transport implementation.
+		return &http.Client{
+			Timeout: timeout,
+			Transport: &http.Transport{
+				Proxy: http.ProxyFromEnvironment,
+				DialContext: (&net.Dialer{
+					Timeout:   transportDialTimeout,
+					KeepAlive: transportKeepAlive,
+				}).DialContext,
+				TLSHandshakeTimeout:   transportTLSHandshakeTimeout,
+				ResponseHeaderTimeout: transportResponseHeaderTimeout,
+				IdleConnTimeout:       transportIdleConnTimeout,
+				MaxIdleConns:          transportMaxIdleConns,
+				MaxIdleConnsPerHost:   transportMaxIdleConnsPerHost,
+			},
+			CheckRedirect: enforceSearchRedirectPolicy,
+		}
+	}
+
+	clone := defaultTransport.Clone()
+	clone.DialContext = (&net.Dialer{
+		Timeout:   transportDialTimeout,
+		KeepAlive: transportKeepAlive,
+	}).DialContext
+	clone.TLSHandshakeTimeout = transportTLSHandshakeTimeout
+	clone.ResponseHeaderTimeout = transportResponseHeaderTimeout
+	clone.IdleConnTimeout = transportIdleConnTimeout
+	clone.MaxIdleConns = transportMaxIdleConns
+	clone.MaxIdleConnsPerHost = transportMaxIdleConnsPerHost
+
 	return &http.Client{
-		Timeout: timeout,
-		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout:   transportDialTimeout,
-				KeepAlive: transportKeepAlive,
-			}).DialContext,
-			TLSHandshakeTimeout:   transportTLSHandshakeTimeout,
-			ResponseHeaderTimeout: transportResponseHeaderTimeout,
-			IdleConnTimeout:       transportIdleConnTimeout,
-			MaxIdleConns:          transportMaxIdleConns,
-			MaxIdleConnsPerHost:   transportMaxIdleConnsPerHost,
-		},
+		Timeout:       timeout,
+		Transport:     clone,
 		CheckRedirect: enforceSearchRedirectPolicy,
 	}
 }
