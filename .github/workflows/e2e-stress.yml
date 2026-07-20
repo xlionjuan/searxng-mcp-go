@@ -47,12 +47,12 @@ jobs:
           fallback: none
 
       - name: Build binary
-        run: go build -o searxng-mcp-go .
+        run: just build
 
       - name: E2E stress test
         env:
           E2E_MCP_BINARY: ./searxng-mcp-go
-        run: go test -v -tags='e2e stress' -run 'TestMCPStress' -race -count=1 -timeout=900s .
+        run: just test-e2e-stress
 
       - name: Cleanup
         if: always()
