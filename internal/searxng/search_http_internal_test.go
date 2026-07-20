@@ -63,8 +63,6 @@ func TestSearch_NilSearcherCtx(t *testing.T) {
 
 		if result == nil {
 			t.Fatal("Search() result = nil, want non-nil")
-
-			return
 		}
 
 		if result.Query != "test" {

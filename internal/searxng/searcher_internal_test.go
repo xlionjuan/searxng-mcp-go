@@ -2,6 +2,7 @@ package searxng
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -122,6 +123,115 @@ func TestClose_Searcher(t *testing.T) {
 		err := s.Close()
 		if err != nil {
 			t.Fatalf("Close() error = %v, want nil for nil client", err)
+		}
+	})
+}
+
+//nolint:gocognit,gocyclo // subtests cover three separate lifecycle scenarios
+func TestClose_SearcherLifecycle(t *testing.T) {
+	t.Parallel()
+
+	t.Run("close before search returns context canceled", func(t *testing.T) {
+		t.Parallel()
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			<-req.Context().Done()
+
+			return nil, req.Context().Err()
+		}), 0)
+
+		// Close the searcher first — searcherCtx is canceled
+		err := s.Close()
+		if err != nil {
+			t.Fatalf("Close() error = %v, want nil", err)
+		}
+
+		// AfterFunc fires cancel on the search context (searcherCtx is already done)
+		_, err = s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("Search() error = nil after Close, want error")
+		}
+
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("Search() error = %v, want context.Canceled in chain", err)
+		}
+	})
+
+	t.Run("close during request cancels in-flight search", func(t *testing.T) {
+		t.Parallel()
+
+		enteredTransport := make(chan struct{})
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			close(enteredTransport)
+			<-req.Context().Done()
+
+			return nil, req.Context().Err()
+		}), 0)
+
+		errCh := make(chan error, 1)
+
+		go func() {
+			_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+			errCh <- err
+		}()
+
+		<-enteredTransport
+
+		err := s.Close()
+		if err != nil {
+			t.Fatalf("Close() error = %v, want nil", err)
+		}
+
+		select {
+		case err = <-errCh:
+			if err == nil {
+				t.Fatal("Search() error = nil after Close during request, want error")
+			}
+
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("Search() error = %v, want context.Canceled in chain", err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("Search() did not return within timeout")
+		}
+	})
+
+	t.Run("close during retry backoff cancels waiting search", func(t *testing.T) {
+		t.Parallel()
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			return nil, errRetryTestConnectionReset
+		}), 1)
+		// Long enough retry delay so we can Close during the wait
+		s.retryStrategy = newExponentialBackoffStrategy(1, time.Second, time.Second)
+
+		errCh := make(chan error, 1)
+
+		go func() {
+			_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+			errCh <- err
+		}()
+
+		// Wait for the first attempt to fail and retry wait to start
+		time.Sleep(50 * time.Millisecond)
+
+		err := s.Close()
+		if err != nil {
+			t.Fatalf("Close() error = %v, want nil", err)
+		}
+
+		select {
+		case err = <-errCh:
+			if err == nil {
+				t.Fatal("Search() error = nil after Close during backoff, want error")
+			}
+
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("Search() error = %v, want context.Canceled in chain", err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("Search() did not return within timeout")
 		}
 	})
 }
