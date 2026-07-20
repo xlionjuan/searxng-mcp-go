@@ -49,20 +49,27 @@ Queries where `answers` contains genuinely distinct information:
 
 ## Solution
 
+### Engine Scoping
+
+Deduplication is applied **only** to answers from the `duckduckgo` engine. The " More at Wikipedia" suffix and 200-rune substring heuristic are specific to DuckDuckGo's response format, where the same Wikipedia summary appears in both `answers` and `infoboxes`. Answers from other engines (calculator, IP, timezone, etc.), including those with empty or unknown `Engine`, always pass through without deduplication. This prevents false positives like discarding a calculator result "4" whose text happens to appear in unrelated infobox content.
+
 ### Deduplication Strategy
 
-The function `deduplicateAnswers` in `internal/searxng/deduplicate.go` filters answers at the **search response layer**, before the result reaches JSON serialization or CLI formatting. This means both output modes benefit.
+The function `DeduplicateAnswers` in `internal/searxng/answer/deduplicate.go` filters answers at the **search response layer**, before the result reaches JSON serialization or CLI formatting. This means both output modes benefit.
 
-**Algorithm (exact-case fast path + lazy lowercase fallback):**
+**Algorithm (engine gate + exact-case fast path + lazy lowercase fallback):**
 
 For each answer, the following steps are applied:
 
-*Fast path (no allocation):*
+*Engine gate:*
+1. If `ans.Engine != "duckduckgo"`, the answer is retained without further checks.
+
+*Fast path (no allocation, DuckDuckGo answers only):*
 1. Strip the known suffix `" More at Wikipedia"` (exact case) that DuckDuckGo appends.
 2. Take the first 200 characters of the stripped text as a prefix.
 3. Check if any infobox content **contains** this prefix using exact-case substring matching.
 
-*Lazy fallback (lowercase, built on first use):*
+*Lazy fallback (lowercase, built on first use, DuckDuckGo answers only):*
 If the fast path did not match, a lowercased copy of all infobox contents is built once and reused for subsequent answers:
 1. Lowercase the answer text.
 2. Strip the known suffix `" more at wikipedia"` (lowercase).
@@ -87,7 +94,10 @@ Deduplication happens while normalizing the SearXNG response, using `deduplicate
 | Infobox with empty `content` | Skip that infobox (no filtering against it) |
 | Empty `answer` text | Skip (filtered out) |
 | Case differences | Case-insensitive comparison |
-| Multiple answers, some duplicate | Keep non-duplicates, remove duplicates |
+| Non-DuckDuckGo engine | Retain (no dedup applied) |
+| Empty `Engine` field | Retain (conservative default) |
+| Unknown `Engine` field | Retain (conservative default) |
+| Multiple answers, some duplicate | Keep non-duplicates, remove DuckDuckGo duplicates |
 
 ## Bounded Work Cap (CAND-33fe0b85-RUNTIME-003)
 
@@ -115,8 +125,9 @@ without a searcher.
 
 ## Implementation
 
-- **Function**: `deduplicateAnswers(answers []Answer, infoboxes []Infobox) []Answer` in `internal/searxng/deduplicate.go`
-- **Called**: During response normalization after JSON unmarshalling, after the `MaxAnswers` / `MaxInfoboxes` cap is applied, before the response is returned to formatting/output code
+- **Function**: `DeduplicateAnswers(answers []Answer, infoboxContents []string) []Answer` in `internal/searxng/answer/deduplicate.go`
+- **Called**: Via `deduplicateAnswers` wrapper in `internal/searxng/deduplicate.go` during response normalization after JSON unmarshalling, after the `MaxAnswers` / `MaxInfoboxes` cap is applied, before the response is returned to formatting/output code
 - **Tests**:
-  - 11 cases in `internal/searxng/deduplicate_internal_test.go` covering empty inputs, exact match, prefix match, DDG "More at Wikipedia" suffix stripping, case insensitivity, distinct answers (IP), mixed scenarios, empty answer skipping, typed answers with fallback text, and fixture survival
-  - 5 new subtests in `TestNormalizeResponse` (`internal/searxng/response_internal_test.go`) covering cap truncation for answers and infoboxes, no-op when at the cap, dedup behavior after truncation, and a pathological-input time budget assertion
+  - 14 cases in `internal/searxng/answer/deduplicate_test.go` covering empty inputs, exact match, prefix match, DDG "More at Wikipedia" suffix stripping, case insensitivity, engine scoping (non-DDG, empty engine, unknown engine), distinct answers (IP), mixed scenarios, empty answer skipping, truncation boundary, and non-matching truncation
+  - 14 cases in `internal/searxng/deduplicate_internal_test.go` covering the same scenarios at the wrapper level plus typed answers with fallback text and fixture survival
+  - 5 subtests in `TestNormalizeResponse` (`internal/searxng/response_internal_test.go`) covering cap truncation for answers and infoboxes, no-op when at the cap, dedup behavior after truncation, and a pathological-input time budget assertion

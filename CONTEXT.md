@@ -54,7 +54,7 @@ _Avoid_: DeadEngines, FailedEngines
 
 ### Search Behavior
 
-**Deduplicate**: The process of filtering out `Answer` entries whose text overlaps with `Infobox` content (specifically, DuckDuckGo returning the same Wikipedia summary in both answers and infoboxes), using prefix matching on the first 200 characters with a lowercase fallback. The implementation lives in `internal/searxng/answer`.
+**Deduplicate**: The process of filtering out DuckDuckGo `Answer` entries whose text overlaps with `Infobox` content (specifically, DuckDuckGo returning the same Wikipedia summary in both answers and infoboxes), using prefix matching on the first 200 characters with a lowercase fallback. Only answers with `Engine == "duckduckgo"` are checked; non-DuckDuckGo answers, including those with empty or unknown `Engine`, pass through. The implementation lives in `internal/searxng/answer`.
 _Avoid_: Dedup (internal function name; prefer the full term in docs)
 
 **setBrowserHeaders**: The function that applies Chrome-like HTTP headers (User-Agent, Accept, Sec-* family, Priority) to every search request to bypass SearXNG's limiter / bot-detection mechanism.
@@ -75,7 +75,7 @@ _Avoid_: POSTtoGETFallback (internal test function name)
 
 - **SearXNGSearcher** is configured by **Config** (URL + timeout + optional HTTP client) and executes a search via **SearchArgs**, returning a **SearchResponse**.
 - **SearchResponse** contains zero or more **SearchResult**s, **Answer**s, **Infobox**es, **Suggestion**s, and **UnresponsiveEngines** entries.
-- **Answer**s are **Deduplicate**d against **Infobox** content to remove overlapping DuckDuckGo Wikipedia summaries.
+- **Answer**s are **Deduplicate**d against **Infobox** content to remove overlapping DuckDuckGo Wikipedia summaries; answers from non-DuckDuckGo engines are not checked.
 - **setBrowserHeaders** is applied by **SearXNGSearcher** to every HTTP request made during search execution.
 - **SearXNGSearcher** falls back to a **GET Fallback** only when the SearXNG instance rejects the initial POST with 405 or 501 and **Config** enables `AllowGETFallback`.
 - **SearXNGSearcher.Close** cancels active **SearchArgs** executions through an internal shutdown signal, so shutdown can return in-flight searches with `context.Canceled` instead of waiting for upstream completion.
@@ -94,7 +94,7 @@ _Avoid_: POSTtoGETFallback (internal test function name)
 >
 > **Dev:** "And I see duplicate answers in the output for DuckDuckGo queries. What's that about?"
 >
-> **Domain expert:** "The **Deduplicate** function handles that. DuckDuckGo puts the same Wikipedia snippet in both the **Answer** and the **Infobox**. The dedup checks if the answer text is a prefix of any infobox content and filters it out."
+> **Domain expert:** "The **Deduplicate** function handles that. DuckDuckGo puts the same Wikipedia snippet in both the **Answer** and the **Infobox**. The dedup only checks answers from the `duckduckgo` engine — if the answer text is a prefix of any infobox content, it's filtered out. Non-DuckDuckGo answers are never touched."
 >
 > **Dev:** "I ran a query with `--debug` and saw my search query logged in plain text. Is that safe?"
 >
