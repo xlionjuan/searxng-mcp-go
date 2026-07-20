@@ -252,7 +252,7 @@ func writeResultsSection(buf *strings.Builder, results []searxng.SearchResult, q
 	nResults := len(results)
 	total := numberOfResults
 
-	if total == 0 {
+	if total <= 0 || total < nResults {
 		total = nResults
 	}
 
