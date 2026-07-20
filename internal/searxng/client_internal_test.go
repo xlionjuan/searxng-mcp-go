@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"os/exec"
@@ -713,6 +714,14 @@ func TestNewHTTPClient(t *testing.T) {
 	if transport.MaxIdleConnsPerHost != transportMaxIdleConnsPerHost {
 		t.Fatalf("MaxIdleConnsPerHost = %d, want %d", transport.MaxIdleConnsPerHost, transportMaxIdleConnsPerHost)
 	}
+
+	if transport.TLSHandshakeTimeout != transportTLSHandshakeTimeout {
+		t.Fatalf("TLSHandshakeTimeout = %v, want %v", transport.TLSHandshakeTimeout, transportTLSHandshakeTimeout)
+	}
+
+	if transport.IdleConnTimeout != transportIdleConnTimeout {
+		t.Fatalf("IdleConnTimeout = %v, want %v", transport.IdleConnTimeout, transportIdleConnTimeout)
+	}
 }
 
 func TestNewHTTPClient_ProxyFromEnvironment(t *testing.T) {
@@ -931,6 +940,59 @@ func TestNewHTTPClient_NoProxyBypass(t *testing.T) {
 
 	if proxyURL2.String() != "http://test-proxy:8080" {
 		t.Fatalf("Proxy(req) for non-matching host = %q, want http://test-proxy:8080", proxyURL2.String())
+	}
+}
+
+// TestNewHTTPClient_ProxyServerRouting verifies that when a Proxy function is
+// configured on the transport, requests are actually routed through the proxy
+// server rather than going direct.
+func TestNewHTTPClient_ProxyServerRouting(t *testing.T) {
+	t.Parallel()
+
+	proxyCalled := make(chan struct{}, 1)
+
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		proxyCalled <- struct{}{}
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer proxy.Close()
+
+	proxyURL, err := url.Parse(proxy.URL)
+	if err != nil {
+		t.Fatalf("url.Parse(%q) = %v", proxy.URL, err)
+	}
+
+	client := newHTTPClient(5 * time.Second)
+
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Transport is not *http.Transport")
+	}
+
+	// Replace the proxy function with one that always points to our test proxy.
+	// The target is a non-loopback address so the transport routes through
+	// the proxy rather than going direct.
+	transport.Proxy = http.ProxyURL(proxyURL)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://198.51.100.1/search", http.NoBody)
+	if err != nil {
+		t.Fatalf("NewRequestWithContext failed: %v", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+
+	//nolint:errcheck,gosec // drain + close for keep-alive; error is intentionally discarded
+	resp.Body.Close()
+
+	select {
+	case <-proxyCalled:
+		// Proxy was used — success.
+	default:
+		t.Fatal("Request was not routed through the proxy server")
 	}
 }
 

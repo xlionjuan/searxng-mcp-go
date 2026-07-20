@@ -27,28 +27,11 @@ const (
 func newHTTPClient(timeout time.Duration) *http.Client {
 	// Clone DefaultTransport to inherit ForceAttemptHTTP2, ProxyFromEnvironment,
 	// and other standard settings, then override project-specific fields.
-	defaultTransport, ok := http.DefaultTransport.(*http.Transport)
-	if !ok {
-		// Fallback: construct from scratch if the type assertion fails.
-		return &http.Client{
-			Timeout: timeout,
-			Transport: &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-				DialContext: (&net.Dialer{
-					Timeout:   transportDialTimeout,
-					KeepAlive: transportKeepAlive,
-				}).DialContext,
-				TLSHandshakeTimeout:   transportTLSHandshakeTimeout,
-				ResponseHeaderTimeout: transportResponseHeaderTimeout,
-				IdleConnTimeout:       transportIdleConnTimeout,
-				MaxIdleConns:          transportMaxIdleConns,
-				MaxIdleConnsPerHost:   transportMaxIdleConnsPerHost,
-			},
-			CheckRedirect: enforceSearchRedirectPolicy,
-		}
-	}
-
-	clone := defaultTransport.Clone()
+	// DefaultTransport is guaranteed to be *http.Transport in all current
+	// and reasonably future Go versions; a failed assertion is a fatal
+	// internal error that must not be silently papered over.
+	//nolint:errcheck,forcetypeassert // Clone returns *Transport; no error.
+	clone := http.DefaultTransport.(*http.Transport).Clone()
 	clone.DialContext = (&net.Dialer{
 		Timeout:   transportDialTimeout,
 		KeepAlive: transportKeepAlive,
