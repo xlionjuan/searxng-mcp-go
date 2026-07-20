@@ -767,6 +767,40 @@ func TestNewHTTPClient_ProxyFromEnvironment(t *testing.T) {
 // isolates the test from http.ProxyFromEnvironment's global sync.Once cache.
 const proxySubprocessEnv = "_SEARXNG_MCP_TEST_PROXY"
 
+// proxySubprocessCmd returns an exec.Cmd that re-runs the named test function
+// in a subprocess. It uses t.Context() for cancellation (with a 30s timeout)
+// and filters out proxy-related environment variables from the parent process
+// so the child starts with a clean proxy environment.
+func proxySubprocessCmd(t *testing.T, testName string, extraEnv ...string) *exec.Cmd {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	t.Cleanup(cancel)
+
+	// Filter out proxy-related env vars from the parent to avoid
+	// interference (e.g. NO_PROXY=* from the test runner's shell).
+	env := make([]string, 0, len(os.Environ())+len(extraEnv))
+
+	for _, e := range os.Environ() {
+		key, _, _ := strings.Cut(e, "=")
+
+		switch strings.ToLower(key) {
+		case "http_proxy", "https_proxy", "no_proxy", "all_proxy":
+			continue
+		}
+
+		env = append(env, e)
+	}
+
+	env = append(env, extraEnv...)
+
+	//nolint:gosec // G204: test binary path is controlled by the test runner
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run", "^"+testName+"$")
+	cmd.Env = env
+
+	return cmd
+}
+
 // TestNewHTTPClient_ProxyEnvHonored verifies that setting HTTP_PROXY makes the
 // transport return the configured proxy URL for non-loopback requests.
 //
@@ -775,12 +809,10 @@ const proxySubprocessEnv = "_SEARXNG_MCP_TEST_PROXY"
 // global sync.Once that cannot be reset from outside net/http.
 func TestNewHTTPClient_ProxyEnvHonored(t *testing.T) {
 	if os.Getenv(proxySubprocessEnv) == "" {
-		//nolint:gosec // G204: test binary path is controlled by the test runner
-		cmd := exec.CommandContext(context.Background(), os.Args[0], "-test.run", "^TestNewHTTPClient_ProxyEnvHonored$")
-
-		cmd.Env = append(os.Environ(),
+		cmd := proxySubprocessCmd(t, "TestNewHTTPClient_ProxyEnvHonored",
 			proxySubprocessEnv+"=1",
 			"HTTP_PROXY=http://test-proxy:8080",
+			"HTTPS_PROXY=http://test-proxy:8080",
 		)
 
 		out, err := cmd.CombinedOutput()
@@ -816,6 +848,25 @@ func TestNewHTTPClient_ProxyEnvHonored(t *testing.T) {
 	if proxyURL.String() != "http://test-proxy:8080" {
 		t.Fatalf("Proxy(req) = %q, want http://test-proxy:8080", proxyURL.String())
 	}
+
+	// Also verify the HTTPS request uses the same proxy.
+	req2 := &http.Request{
+		Method: http.MethodGet,
+		URL:    mustParseURL(t, "https://example.com/search"),
+	}
+
+	proxyURL2, err := transport.Proxy(req2)
+	if err != nil {
+		t.Fatalf("Proxy(req) for HTTPS returned error: %v", err)
+	}
+
+	if proxyURL2 == nil {
+		t.Fatal("Proxy(req) for HTTPS = nil, want http://test-proxy:8080")
+	}
+
+	if proxyURL2.String() != "http://test-proxy:8080" {
+		t.Fatalf("Proxy(req) for HTTPS = %q, want http://test-proxy:8080", proxyURL2.String())
+	}
 }
 
 // TestNewHTTPClient_NoProxyBypass verifies that NO_PROXY bypasses the proxy
@@ -825,12 +876,10 @@ func TestNewHTTPClient_ProxyEnvHonored(t *testing.T) {
 // set, for the same sync.Once isolation reason as ProxyEnvHonored.
 func TestNewHTTPClient_NoProxyBypass(t *testing.T) {
 	if os.Getenv(proxySubprocessEnv) == "" {
-		//nolint:gosec // G204: test binary path is controlled by the test runner
-		cmd := exec.CommandContext(context.Background(), os.Args[0], "-test.run", "^TestNewHTTPClient_NoProxyBypass$")
-
-		cmd.Env = append(os.Environ(),
+		cmd := proxySubprocessCmd(t, "TestNewHTTPClient_NoProxyBypass",
 			proxySubprocessEnv+"=1",
 			"HTTP_PROXY=http://test-proxy:8080",
+			"HTTPS_PROXY=http://test-proxy:8080",
 			"NO_PROXY=example.com",
 		)
 

@@ -54,6 +54,7 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 		KeepAlive: transportKeepAlive,
 	}).DialContext
 	clone.ResponseHeaderTimeout = transportResponseHeaderTimeout
+	clone.MaxIdleConns = transportMaxIdleConns
 	clone.MaxIdleConnsPerHost = transportMaxIdleConnsPerHost
 
 	return &http.Client{
