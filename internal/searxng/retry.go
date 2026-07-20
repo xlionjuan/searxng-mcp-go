@@ -72,7 +72,7 @@ func (s *exponentialBackoffStrategy) ShouldRetry(
 	return false, 0
 }
 
-// classifyOutcome determines the Outcome of a single search attempt.
+//nolint:gocyclo // classifyOutcome: many failure-mode branches; each is direct and well-understood
 func classifyOutcome(
 	ctx context.Context,
 	attempt, maxRetries int,
@@ -99,6 +99,7 @@ func classifyOutcome(
 		// the same request to the same blocked redirect on every attempt.
 		if errors.Is(err, errRedirectDifferentHost) ||
 			errors.Is(err, errRedirectSchemeDowngrade) ||
+			errors.Is(err, errRedirectMethodChanged) ||
 			errors.Is(err, errTooManyRedirects) {
 			return OutcomeAbort
 		}
