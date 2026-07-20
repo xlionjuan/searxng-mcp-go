@@ -1282,7 +1282,15 @@ func TestRunCLIMode_SearchErrorReturnsError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 	server.Close()
 
-	flags := &CLIFlags{Query: "test", SearXNGURL: server.URL, Language: "", SafeSearch: 0, Pageno: nil}
+	maxRetries := 0
+	flags := &CLIFlags{
+		Query:      "test",
+		SearXNGURL: server.URL,
+		Language:   "",
+		SafeSearch: 0,
+		Pageno:     nil,
+		MaxRetries: &maxRetries,
+	}
 
 	err := runCLIMode(false, flags, []string{})
 	if err == nil {
