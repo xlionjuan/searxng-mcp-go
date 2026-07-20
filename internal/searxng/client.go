@@ -29,7 +29,24 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 	// and other standard settings, then override project-specific fields.
 	defaultTransport, ok := http.DefaultTransport.(*http.Transport)
 	if !ok {
-		panic("searxng-mcp-go: http.DefaultTransport is not *http.Transport")
+		// Fallback: construct from scratch if DefaultTransport was replaced
+		// with a non-*http.Transport implementation.
+		return &http.Client{
+			Timeout: timeout,
+			Transport: &http.Transport{
+				Proxy: http.ProxyFromEnvironment,
+				DialContext: (&net.Dialer{
+					Timeout:   transportDialTimeout,
+					KeepAlive: transportKeepAlive,
+				}).DialContext,
+				TLSHandshakeTimeout:   transportTLSHandshakeTimeout,
+				ResponseHeaderTimeout: transportResponseHeaderTimeout,
+				IdleConnTimeout:       transportIdleConnTimeout,
+				MaxIdleConns:          transportMaxIdleConns,
+				MaxIdleConnsPerHost:   transportMaxIdleConnsPerHost,
+			},
+			CheckRedirect: enforceSearchRedirectPolicy,
+		}
 	}
 
 	clone := defaultTransport.Clone()

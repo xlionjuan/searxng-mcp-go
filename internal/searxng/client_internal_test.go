@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"searxng-mcp-go/internal/testhelper"
 )
 
 // --- validateBaseURL tests ---
@@ -721,6 +723,41 @@ func TestNewHTTPClient(t *testing.T) {
 
 	if transport.IdleConnTimeout != transportIdleConnTimeout {
 		t.Fatalf("IdleConnTimeout = %v, want %v", transport.IdleConnTimeout, transportIdleConnTimeout)
+	}
+}
+
+// errFakeTransport is a sentinel error used by TestNewHTTPClient_DefaultTransportFallback
+// to satisfy the err113 linter (no dynamic errors in tests).
+var errFakeTransport = errors.New("not a real transport")
+
+// TestNewHTTPClient_DefaultTransportFallback verifies that newHTTPClient works
+// even when http.DefaultTransport has been replaced with a non-*http.Transport
+// implementation. The fallback path constructs a transport from scratch.
+func TestNewHTTPClient_DefaultTransportFallback(t *testing.T) {
+	// This test modifies http.DefaultTransport — a package-level global —
+	// so it cannot use t.Parallel().
+
+	// Replace DefaultTransport with a non-*http.Transport implementation.
+	orig := http.DefaultTransport
+
+	http.DefaultTransport = testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		return nil, errFakeTransport
+	})
+	defer func() { http.DefaultTransport = orig }()
+
+	client := newHTTPClient(5 * time.Second)
+
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Transport is not *http.Transport (fallback should construct one)")
+	}
+
+	if transport.MaxIdleConnsPerHost != transportMaxIdleConnsPerHost {
+		t.Fatalf("MaxIdleConnsPerHost = %d, want %d", transport.MaxIdleConnsPerHost, transportMaxIdleConnsPerHost)
+	}
+
+	if transport.Proxy == nil {
+		t.Fatal("Transport.Proxy is nil (fallback should set ProxyFromEnvironment)")
 	}
 }
 
