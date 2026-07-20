@@ -36,14 +36,14 @@ jobs:
           version: v2.12.2
           install-only: true
 
-      - name: golangci-lint
-        run: golangci-lint run --timeout 5m
+      - name: Install just
+        uses: taiki-e/install-action@43aecc8d72668fbcfe75c31400bc4f890f1c5853 # v2.83.2
+        with:
+          tool: just@1.51.0
+          fallback: none
 
-      - name: golangci-lint (stress build tag)
-        run: golangci-lint run --timeout 5m --build-tags=stress
-
-      - name: golangci-lint (e2e build tag)
-        run: golangci-lint run --timeout 5m --build-tags=e2e
+      - name: golangci-lint (all build-tag variants)
+        run: just lint
 
       - name: Check formatting (gofumpt / goimports / gci)
-        run: golangci-lint fmt --diff
+        run: just fmt-check

@@ -36,7 +36,7 @@ in `internal/searxng/bench_internal_test.go`.
 | `test-cover` | `go test -race -shuffle=on -coverprofile=coverage.out ./...` | CI-style test run with race detector |
 | `test-stress` | `go test -race -tags=stress -shuffle=on ./...` | Include stress/concurrency tests |
 | `test-e2e` | `go test -race -tags='e2e stress' -count=1 -timeout=900s .` | E2E test; requires `SEARXNG_URL` and a running test server. `E2E_MCP_BINARY` skips per-test `go build`; see `docs/MCP_TESTING.md`. |
-| `lint` | `golangci-lint run --timeout 5m` (+ stress + e2e build tags) | Full lint suite; CI uses v2.12.2 |
+| `lint` | `golangci-lint run --timeout 5m` (+ `stress` + `e2e` + `e2e,stress` build tags) | Full lint suite (4 tag variants); CI uses v2.12.2 |
 | `vet` | `go vet ./...` | Static analysis fallback |
 
 ## Completion Gate for AI Agents

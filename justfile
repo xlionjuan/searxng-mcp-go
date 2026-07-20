@@ -65,11 +65,13 @@ fmt:
 vet:
     go vet ./...
 
-# Run golangci-lint (all build-tag variants matching CI)
+# Run golangci-lint (all build-tag variants matching CI).
+# The combined e2e,stress variant ensures e2e_stress_test.go is linted.
 lint:
     golangci-lint run --timeout 5m
     golangci-lint run --timeout 5m --build-tags=stress
     golangci-lint run --timeout 5m --build-tags=e2e
+    golangci-lint run --timeout 5m --build-tags=e2e,stress
 
 # Full CI pipeline (matches the non-E2E verification gate).
 # Mirrors test.yml + lint.yml steps in fail-fast order.
