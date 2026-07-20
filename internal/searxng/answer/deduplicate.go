@@ -4,14 +4,18 @@ import "strings"
 
 const dedupPrefixRunes = 200
 
-// DeduplicateAnswers filters out answers whose text is a prefix (substring)
-// of any infobox content. For each answer, the exact-case match runs first;
-// the lowercase index is built lazily on the first miss and reused for
-// subsequent answers that also miss the exact-case check.
+// DeduplicateAnswers filters out DuckDuckGo answers whose text is a prefix
+// (substring) of any infobox content. For each DuckDuckGo answer, the
+// exact-case match runs first; the lowercase index is built lazily on the
+// first miss and reused for subsequent answers that also miss the exact-case
+// check.
 //
-// This function is DuckDuckGo-scoped: it strips " More at Wikipedia" suffixes
-// from answer text and matches against infobox content, a pattern specific to
-// DuckDuckGo response formatting.
+// Only answers whose Engine is "duckduckgo" are checked — non-DuckDuckGo
+// answers (including those with empty or unknown Engine) always pass through.
+// This prevents discarding legitimate results like calculator answers or IP
+// addresses that happen to appear in infobox text. The " More at Wikipedia"
+// suffix stripping and 200-rune substring heuristic are specific to the
+// DuckDuckGo Wikipedia duplicate pattern.
 func DeduplicateAnswers(answers []Answer, infoboxContents []string) []Answer {
 	// Move collectInfoboxText (content filtering) inline.
 	filteredContents := make([]string, 0, len(infoboxContents))
@@ -33,16 +37,18 @@ func DeduplicateAnswers(answers []Answer, infoboxContents []string) []Answer {
 			continue
 		}
 
-		if answerPrefixMatch(ans.Answer, filteredContents, false) {
-			continue
-		}
+		if ans.Engine == "duckduckgo" {
+			if answerPrefixMatch(ans.Answer, filteredContents, false) {
+				continue
+			}
 
-		if lowerInfoboxTexts == nil {
-			lowerInfoboxTexts = buildLowerInfoboxTexts(filteredContents)
-		}
+			if lowerInfoboxTexts == nil {
+				lowerInfoboxTexts = buildLowerInfoboxTexts(filteredContents)
+			}
 
-		if answerPrefixMatch(ans.Answer, lowerInfoboxTexts, true) {
-			continue
+			if answerPrefixMatch(ans.Answer, lowerInfoboxTexts, true) {
+				continue
+			}
 		}
 
 		filtered = append(filtered, ans)

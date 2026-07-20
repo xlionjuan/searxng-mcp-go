@@ -174,6 +174,65 @@ func TestDeduplicateAnswers_DDGSuffixMoreAtWikipedia(t *testing.T) {
 	}
 }
 
+func TestDeduplicateAnswers_NonDuckDuckGoKeepsOverlap(t *testing.T) {
+	t.Parallel()
+
+	// A non-DuckDuckGo answer (calculator) that overlaps infobox content
+	// must be retained — the dedup algorithm is specific to DuckDuckGo's
+	// Wikipedia summary pattern.
+	answers := []Answer{
+		{Answer: "4", Engine: "calculator"},
+	}
+	infoboxes := []Infobox{
+		{Infobox: "Calc", Content: "Result: 4 items found"},
+	}
+
+	result := deduplicateAnswers(answers, infoboxes)
+	if len(result) != 1 {
+		t.Errorf("expected 1 (non-DDG calculator answer kept), got %d", len(result))
+	}
+
+	if result[0].Answer != "4" {
+		t.Errorf("expected '4', got %q", result[0].Answer)
+	}
+}
+
+func TestDeduplicateAnswers_EmptyEngineKeepsOverlap(t *testing.T) {
+	t.Parallel()
+
+	// An answer with empty engine that overlaps infobox content must be
+	// retained — unknown engine metadata defaults to conservative behavior.
+	answers := []Answer{
+		{Answer: "overlapping text from unknown engine"},
+	}
+	infoboxes := []Infobox{
+		{Infobox: "Test", Content: "overlapping text from unknown engine appears here"},
+	}
+
+	result := deduplicateAnswers(answers, infoboxes)
+	if len(result) != 1 {
+		t.Errorf("expected 1 (empty-engine answer kept), got %d", len(result))
+	}
+}
+
+func TestDeduplicateAnswers_UnknownEngineKeepsOverlap(t *testing.T) {
+	t.Parallel()
+
+	// An answer with an unknown/unrecognized engine that overlaps infobox
+	// content must be retained — only DuckDuckGo answers are deduplicated.
+	answers := []Answer{
+		{Answer: "some answer text", Engine: "unknown_engine"},
+	}
+	infoboxes := []Infobox{
+		{Infobox: "Test", Content: "some answer text appears in this infobox"},
+	}
+
+	result := deduplicateAnswers(answers, infoboxes)
+	if len(result) != 1 {
+		t.Errorf("expected 1 (unknown-engine answer kept), got %d", len(result))
+	}
+}
+
 func TestDeduplicateAnswers_EmptyAnswerSkipped(t *testing.T) {
 	t.Parallel()
 
