@@ -1,7 +1,6 @@
 package searxng
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"mime"
 	"net/http"
 	"slices"
+	"unicode"
 	"unicode/utf8"
 
 	"searxng-mcp-go/internal/searxng/answer"
@@ -128,11 +128,59 @@ func isHTMLResponse(contentType string, body []byte) bool {
 		return true
 	}
 
-	trimmedBody := bytes.TrimSpace(body)
-	lowerBody := bytes.ToLower(trimmedBody)
+	return hasHTMLPrefix(body)
+}
 
-	return bytes.HasPrefix(lowerBody, []byte("<!doctype")) ||
-		bytes.HasPrefix(lowerBody, []byte("<html"))
+// maxHTMLProbe is the maximum number of bytes examined from the body for
+// HTML prefix detection. It covers leading whitespace plus the longest
+// prefix we check (<!doctype or <html).
+const maxHTMLProbe = 64
+
+// hasHTMLPrefix reports whether body has <!doctype or <html prefix after
+// skipping leading ASCII whitespace, examining at most maxHTMLProbe bytes.
+// It avoids allocating a lowercase copy of the entire body.
+func hasHTMLPrefix(body []byte) bool {
+	n := min(len(body), maxHTMLProbe)
+	i := 0
+
+	for i < n {
+		r, size := utf8.DecodeRune(body[i:])
+
+		if r == utf8.RuneError {
+			break
+		}
+
+		if !unicode.IsSpace(r) {
+			break
+		}
+
+		i += size
+	}
+
+	remaining := body[i:n]
+	if len(remaining) == 0 {
+		return false
+	}
+
+	return equalFoldPrefix(remaining, "<!doctype") || equalFoldPrefix(remaining, "<html")
+}
+
+// equalFoldPrefix reports whether b starts with prefix s under ASCII
+// case-insensitive comparison. Both b and s are assumed to contain only
+// ASCII bytes. The caller is responsible for bounding how much of b is
+// examined.
+func equalFoldPrefix(b []byte, s string) bool {
+	if len(b) < len(s) {
+		return false
+	}
+
+	for i := range len(s) {
+		if b[i]|0x20 != s[i]|0x20 {
+			return false
+		}
+	}
+
+	return true
 }
 
 // isJSONContentType reports whether the Content-Type header value, when parsed
@@ -207,14 +255,14 @@ func (s *SearXNGSearcher) normalizeResponse(result *SearchResponse, args *Search
 		s.getLogger().Warn("truncating answers before deduplication",
 			"count", len(result.Answers),
 			"max", MaxAnswers)
-		result.Answers = result.Answers[:MaxAnswers]
+		result.Answers = slices.Clone(result.Answers[:MaxAnswers])
 	}
 
 	if len(result.Infoboxes) > MaxInfoboxes {
 		s.getLogger().Warn("truncating infoboxes before deduplication",
 			"count", len(result.Infoboxes),
 			"max", MaxInfoboxes)
-		result.Infoboxes = result.Infoboxes[:MaxInfoboxes]
+		result.Infoboxes = slices.Clone(result.Infoboxes[:MaxInfoboxes])
 	}
 
 	// Derive display text for typed answers (translation, weather) that may
@@ -226,7 +274,7 @@ func (s *SearXNGSearcher) normalizeResponse(result *SearchResponse, args *Search
 	result.Answers = deduplicateAnswers(result.Answers, result.Infoboxes)
 
 	if args.Limit != nil && *args.Limit >= 0 && len(result.Results) > *args.Limit {
-		result.Results = result.Results[:*args.Limit]
+		result.Results = slices.Clone(result.Results[:*args.Limit])
 	}
 
 	// Normalize nil slices to empty slices for consistent JSON output.

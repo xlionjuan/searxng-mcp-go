@@ -160,6 +160,50 @@ func BenchmarkValidateSearchArgsMinimal(b *testing.B) {
 }
 
 // ============================================================================
+// isHTMLResponse Benchmarks
+// ============================================================================
+
+func BenchmarkIsHTMLResponseSmallJSONBody(b *testing.B) {
+	body := []byte(`{"query": "test"}`)
+
+	b.ReportAllocs()
+
+	for b.Loop() {
+		_ = isHTMLResponse("application/json", body)
+	}
+}
+
+func BenchmarkIsHTMLResponseLargeBody(b *testing.B) {
+	body := make([]byte, MaxResponseBodySize)
+	for i := range body {
+		body[i] = 'x'
+	}
+
+	b.ReportAllocs()
+	b.SetBytes(MaxResponseBodySize)
+
+	for b.Loop() {
+		_ = isHTMLResponse("application/json", body)
+	}
+}
+
+func BenchmarkIsHTMLResponseLargeHTML(b *testing.B) {
+	body := make([]byte, MaxResponseBodySize)
+	copy(body, "<!DOCTYPE html>")
+
+	for i := 15; i < len(body); i++ {
+		body[i] = 'x'
+	}
+
+	b.ReportAllocs()
+	b.SetBytes(MaxResponseBodySize)
+
+	for b.Loop() {
+		_ = isHTMLResponse("text/plain", body)
+	}
+}
+
+// ============================================================================
 // Normalize Response Benchmarks (CAND-33fe0b85-RUNTIME-003)
 // ============================================================================
 //
