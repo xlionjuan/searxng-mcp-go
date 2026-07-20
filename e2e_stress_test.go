@@ -28,6 +28,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+//nolint:gocognit,gosec,errcheck // test: concurrent stress; binary trusted; kill/wait fire-and-forget
 func TestMCPStress_Concurrent(t *testing.T) {
 	searxngURL := os.Getenv("SEARXNG_URL")
 	if searxngURL == "" {
@@ -41,18 +42,22 @@ func TestMCPStress_Concurrent(t *testing.T) {
 	if binaryPath == "" {
 		binaryPath = buildE2EMCPBinary(ctx, t)
 	}
+
 	t.Logf("using MCP binary: %s", binaryPath)
 
 	var stderr bytes.Buffer
+
 	cmd := exec.CommandContext(ctx, binaryPath)
 	cmd.Env = e2eMCPEnv(searxngURL)
 	cmd.Stderr = &stderr
 
 	session := newMCPSession(ctx, t, cmd, &stderr, "searxng-mcp-go-stress-test")
 	defer func() {
-		if closeErr := session.Close(); closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
+		closeErr := session.Close()
+		if closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
 			t.Logf("close MCP session: %v", closeErr)
 		}
+
 		if cmd.Process != nil && cmd.ProcessState == nil {
 			_ = cmd.Process.Kill()
 			_, _ = cmd.Process.Wait()
@@ -68,6 +73,7 @@ func TestMCPStress_Concurrent(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
+
 	errs := make(chan string, len(queries))
 
 	for _, query := range queries {
@@ -81,15 +87,20 @@ func TestMCPStress_Concurrent(t *testing.T) {
 			})
 			if err != nil {
 				errs <- fmt.Sprintf("tools/call search failed for %q: %v", query, err)
+
 				return
 			}
+
 			if result.IsError {
 				text, ok := toolTextFromResult(result)
 				if !ok {
 					errs <- fmt.Sprintf("search returned tool error with malformed content for %q", query)
+
 					return
 				}
+
 				errs <- fmt.Sprintf("search returned tool error for %q: %s", query, text)
+
 				return
 			}
 		})
@@ -99,17 +110,21 @@ func TestMCPStress_Concurrent(t *testing.T) {
 	close(errs)
 
 	failCount := 0
+
 	for errText := range errs {
 		t.Errorf("%s\nstderr:\n%s", errText, stderr.String())
+
 		failCount++
 	}
 
 	if failCount > 0 {
 		t.Fatalf("%d concurrent searches failed", failCount)
 	}
+
 	t.Logf("all %d concurrent searches completed successfully", len(queries))
 }
 
+//nolint:gosec,errcheck // test: sequential sessions; binary trusted; kill/wait fire-and-forget
 func TestMCPStress_SequentialSessions(t *testing.T) {
 	searxngURL := os.Getenv("SEARXNG_URL")
 	if searxngURL == "" {
@@ -123,6 +138,7 @@ func TestMCPStress_SequentialSessions(t *testing.T) {
 	if binaryPath == "" {
 		binaryPath = buildE2EMCPBinary(ctx, t)
 	}
+
 	t.Logf("using MCP binary: %s", binaryPath)
 
 	for i := range 10 {
@@ -131,15 +147,18 @@ func TestMCPStress_SequentialSessions(t *testing.T) {
 			defer subCancel()
 
 			var stderr bytes.Buffer
+
 			cmd := exec.CommandContext(subCtx, binaryPath)
 			cmd.Env = e2eMCPEnv(searxngURL)
 			cmd.Stderr = &stderr
 
 			session := newMCPSession(subCtx, t, cmd, &stderr, "searxng-mcp-go-stress-test")
 			defer func() {
-				if closeErr := session.Close(); closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
+				closeErr := session.Close()
+				if closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
 					t.Logf("session %d close: %v", i, closeErr)
 				}
+
 				if cmd.Process != nil && cmd.ProcessState == nil {
 					_ = cmd.Process.Kill()
 					_, _ = cmd.Process.Wait()
@@ -156,6 +175,7 @@ func TestMCPStress_SequentialSessions(t *testing.T) {
 	}
 }
 
+//nolint:gocognit,gosec,errcheck // test: rapid-fire stress; binary trusted; kill/wait fire-and-forget
 func TestMCPStress_RapidFire(t *testing.T) {
 	searxngURL := os.Getenv("SEARXNG_URL")
 	if searxngURL == "" {
@@ -169,18 +189,22 @@ func TestMCPStress_RapidFire(t *testing.T) {
 	if binaryPath == "" {
 		binaryPath = buildE2EMCPBinary(ctx, t)
 	}
+
 	t.Logf("using MCP binary: %s", binaryPath)
 
 	var stderr bytes.Buffer
+
 	cmd := exec.CommandContext(ctx, binaryPath)
 	cmd.Env = e2eMCPEnv(searxngURL)
 	cmd.Stderr = &stderr
 
 	session := newMCPSession(ctx, t, cmd, &stderr, "searxng-mcp-go-stress-test")
 	defer func() {
-		if closeErr := session.Close(); closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
+		closeErr := session.Close()
+		if closeErr != nil && !strings.Contains(closeErr.Error(), "signal: terminated") {
 			t.Logf("close MCP session: %v", closeErr)
 		}
+
 		if cmd.Process != nil && cmd.ProcessState == nil {
 			_ = cmd.Process.Kill()
 			_, _ = cmd.Process.Wait()
@@ -193,7 +217,9 @@ func TestMCPStress_RapidFire(t *testing.T) {
 	}
 
 	start := time.Now()
+
 	var wg sync.WaitGroup
+
 	errs := make(chan string, len(queries))
 
 	for _, query := range queries {
@@ -207,15 +233,20 @@ func TestMCPStress_RapidFire(t *testing.T) {
 			})
 			if err != nil {
 				errs <- fmt.Sprintf("tools/call search failed for %q: %v", query, err)
+
 				return
 			}
+
 			if result.IsError {
 				text, ok := toolTextFromResult(result)
 				if !ok {
 					errs <- fmt.Sprintf("search returned tool error with malformed content for %q", query)
+
 					return
 				}
+
 				errs <- fmt.Sprintf("search returned tool error for %q: %s", query, text)
+
 				return
 			}
 		})
@@ -227,8 +258,10 @@ func TestMCPStress_RapidFire(t *testing.T) {
 	elapsed := time.Since(start)
 
 	failCount := 0
+
 	for errText := range errs {
 		t.Errorf("%s\nstderr:\n%s", errText, stderr.String())
+
 		failCount++
 	}
 

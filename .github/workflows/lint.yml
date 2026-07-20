@@ -45,5 +45,8 @@ jobs:
       - name: golangci-lint (e2e build tag)
         run: golangci-lint run --timeout 5m --build-tags=e2e
 
+      - name: golangci-lint (e2e+stress build tags)
+        run: golangci-lint run --timeout 5m --build-tags=e2e,stress
+
       - name: Check formatting (gofumpt / goimports / gci)
         run: golangci-lint fmt --diff
