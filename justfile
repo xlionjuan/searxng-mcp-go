@@ -71,9 +71,19 @@ lint:
     golangci-lint run --timeout 5m --build-tags=stress
     golangci-lint run --timeout 5m --build-tags=e2e
 
+# Ensure go.mod go directive matches workflow go-version (no silent drift)
+version-guard:
+    @GO_MOD_VER=$(sed -n 's/^go //p' go.mod) && \
+    CI_VER=$(grep 'go-version:' .github/workflows/test.yml | head -1 | sed 's/.*"\(.*\)".*/\1/') && \
+    if [ "$GO_MOD_VER" != "$CI_VER" ]; then \
+        echo "ERROR: go.mod go directive ($GO_MOD_VER) != CI go-version ($CI_VER)"; \
+        exit 1; \
+    fi && \
+    echo "OK: version guard passed (go.mod & CI agree on $GO_MOD_VER)"
+
 # Full CI pipeline (matches the non-E2E verification gate).
 # Mirrors test.yml + lint.yml steps in fail-fast order.
-verify: mod-verify fmt-check vet lint
+verify: version-guard mod-verify fmt-check vet lint
     go mod download
     just mod-tidy
     go build -o {{ binary }} .
