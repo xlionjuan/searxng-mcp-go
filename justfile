@@ -4,6 +4,7 @@
 #   just           — run default (test)
 #   just build     — build binary
 #   just test      — run tests with race detector
+#   just deps      — download and verify dependencies
 #   just verify   — full CI pipeline (fmt-check → vet → lint → tidy → build → test-cover → test-stress)
 #   just clean     — remove build artifacts
 
@@ -41,6 +42,21 @@ test-stress:
 test-e2e:
     go test -race -tags='e2e stress' -count=1 -timeout=900s .
 
+# Run the E2E stress test subset against a live SearXNG instance.
+# Requires `just test-server-start` and `SEARXNG_URL` exported.
+test-e2e-stress:
+    go test -v -tags='e2e stress' -run 'TestMCPStress' -race -count=1 -timeout=900s .
+
+# Run the MCP stdio E2E test subset with the CI retry wrapper.
+# The workflow supplies the retry wrapper; this recipe owns the Go command.
+test-e2e-mcp:
+    go test -v -tags=e2e -run 'TestMCP' -race -count=1 -timeout=600s .
+
+# Run the CLI smoke E2E test subset with the CI retry wrapper.
+# The workflow supplies the retry wrapper; this recipe owns the Go command.
+test-e2e-cli-smoke:
+    go test -v -tags=e2e -run 'TestCLISmoke' -race -count=1 -timeout=600s .
+
 # Run tests in short mode (skip slow tests)
 test-short:
     go test -race -shuffle=on -short ./...
@@ -73,12 +89,14 @@ lint:
     golangci-lint run --timeout 5m --build-tags=e2e
     golangci-lint run --timeout 5m --build-tags=e2e,stress
 
+# Download and verify module dependencies.
+deps: mod-download mod-verify
+
 # Full CI pipeline (matches the non-E2E verification gate).
 # Mirrors test.yml + lint.yml steps in fail-fast order.
-verify: mod-verify fmt-check vet lint
-    go mod download
+verify: deps fmt-check vet lint
     just mod-tidy
-    go build -o {{ binary }} .
+    just build
     just test-cover
     just test-stress
 
@@ -90,6 +108,10 @@ alias check := verify
 mod-tidy:
     go mod tidy
     git diff --exit-code go.mod go.sum
+
+# Download module dependencies
+mod-download:
+    go mod download
 
 # Verify module checksums
 mod-verify:
