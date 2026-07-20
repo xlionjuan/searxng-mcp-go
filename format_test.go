@@ -133,10 +133,12 @@ func TestFormatResults_NilInput(t *testing.T) {
 }
 
 // TestFormatResults_ResultCountFormat locks the "Found N results for '...'"
-// line format across three scenarios:
+// line format across these scenarios:
 //   - mismatch: NumberOfResults > len(Results) → "Found N total (showing M)"
 //   - match:    NumberOfResults == len(Results) → "Found N results"
 //   - zero:     NumberOfResults == 0 → normalized to len(Results)
+//   - under:    NumberOfResults < len(Results) → normalized to len(Results)
+//   - negative: NumberOfResults < 0 → normalized to len(Results)
 func TestFormatResults_ResultCountFormat(t *testing.T) {
 	t.Parallel()
 
@@ -194,6 +196,35 @@ func TestFormatResults_ResultCountFormat(t *testing.T) {
 				},
 			},
 			want:   "Found 5 results for 'zero'",
+			notWnt: "total (showing",
+		},
+		{
+			name: "server count less than rendered normalized",
+			resp: &searxng.SearchResponse{
+				Query:           "under",
+				NumberOfResults: 1,
+				Results: []searxng.SearchResult{
+					{Title: "r1", URL: "https://e.com/1", Engine: "g"},
+					{Title: "r2", URL: "https://e.com/2", Engine: "g"},
+					{Title: "r3", URL: "https://e.com/3", Engine: "g"},
+				},
+			},
+			want:   "Found 3 results for 'under'",
+			notWnt: "total (showing",
+		},
+		{
+			name: "negative server count normalized to rendered",
+			resp: &searxng.SearchResponse{
+				Query:           "neg",
+				NumberOfResults: -5,
+				Results: []searxng.SearchResult{
+					{Title: "r1", URL: "https://e.com/1", Engine: "g"},
+					{Title: "r2", URL: "https://e.com/2", Engine: "g"},
+					{Title: "r3", URL: "https://e.com/3", Engine: "g"},
+					{Title: "r4", URL: "https://e.com/4", Engine: "g"},
+				},
+			},
+			want:   "Found 4 results for 'neg'",
 			notWnt: "total (showing",
 		},
 	}
