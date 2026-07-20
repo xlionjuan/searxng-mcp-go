@@ -28,6 +28,7 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 	return &http.Client{
 		Timeout: timeout,
 		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{
 				Timeout:   transportDialTimeout,
 				KeepAlive: transportKeepAlive,

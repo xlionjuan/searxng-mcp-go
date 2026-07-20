@@ -66,6 +66,36 @@ The default retry count is 5 retries after the initial search attempt. Set `SEAR
 
 The default per-request HTTP timeout is 8 seconds. Set `SEARXNG_TIMEOUT` to a Go duration such as `8s`; in CLI mode, `--timeout` overrides the environment variable. The timeout applies to each individual HTTP request attempt, not to the overall search operation including retries. Zero is rejected (use a positive value or omit to keep the default).
 
+### HTTP Proxy
+
+The server honours the standard `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment variables (and their lowercase equivalents). When running behind a corporate or egress proxy, set these variables in the environment:
+
+```bash
+export HTTP_PROXY=http://proxy.example.com:8080
+export HTTPS_PROXY=http://proxy.example.com:8080
+export NO_PROXY=localhost,127.0.0.1,.internal.example.com
+```
+
+These are read once at process startup. Changing them at runtime has no effect.
+
+In MCP client configuration, add the proxy variables to the `env` block:
+
+```json
+{
+  "mcpServers": {
+    "searxng": {
+      "command": "/home/linuxbrew/.linuxbrew/bin/searxng-mcp-go",
+      "env": {
+        "SEARXNG_URL": "https://your-searxng-instance.example.com",
+        "HTTP_PROXY": "http://proxy.example.com:8080",
+        "HTTPS_PROXY": "http://proxy.example.com:8080",
+        "NO_PROXY": "localhost,127.0.0.1"
+      }
+    }
+  }
+}
+```
+
 ### POST to GET Fallback
 
 Search requests use POST by default. If POST `/search` returns

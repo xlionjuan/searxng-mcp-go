@@ -712,6 +712,53 @@ func TestNewHTTPClient(t *testing.T) {
 	}
 }
 
+func TestNewHTTPClient_ProxyFromEnvironment(t *testing.T) {
+	t.Parallel()
+
+	client := newHTTPClient(DefaultTimeout)
+
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Transport is not *http.Transport")
+	}
+
+	if transport.Proxy == nil {
+		t.Fatal("Transport.Proxy is nil, want http.ProxyFromEnvironment")
+	}
+
+	// Verify the proxy function returns nil for localhost and loopback
+	// addresses. These are guaranteed by ProxyFromEnvironment's useProxy
+	// regardless of proxy env var state.
+	tests := []struct {
+		name string
+		url  string
+	}{
+		{name: "localhost", url: "http://localhost:8080/search"},
+		{name: "loopback IPv4", url: "http://127.0.0.1:8080/search"},
+		{name: "loopback IPv6", url: "http://[::1]:8080/search"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			req := &http.Request{
+				Method: http.MethodGet,
+				URL:    mustParseURL(t, tt.url),
+			}
+
+			proxyURL, err := transport.Proxy(req)
+			if err != nil {
+				t.Fatalf("Proxy(%q) returned error: %v", tt.url, err)
+			}
+
+			if proxyURL != nil {
+				t.Fatalf("Proxy(%q) = %v, want nil (loopback bypass)", tt.url, proxyURL)
+			}
+		})
+	}
+}
+
 // --- getDefaultHTTPClient tests ---
 
 func TestGetDefaultHTTPClient(t *testing.T) {
