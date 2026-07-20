@@ -9,6 +9,7 @@ import (
 	"mime"
 	"net/http"
 	"slices"
+	"unicode"
 	"unicode/utf8"
 
 	"searxng-mcp-go/internal/searxng/answer"
@@ -143,12 +144,17 @@ func hasHTMLPrefix(body []byte) bool {
 	i := 0
 
 	for i < n {
-		b := body[i]
-		if b != ' ' && b != '\t' && b != '\n' && b != '\r' {
+		r, size := utf8.DecodeRune(body[i:])
+
+		if r == utf8.RuneError {
 			break
 		}
 
-		i++
+		if !unicode.IsSpace(r) {
+			break
+		}
+
+		i += size
 	}
 
 	remaining := body[i:n]

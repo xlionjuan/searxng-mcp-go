@@ -163,7 +163,7 @@ func BenchmarkValidateSearchArgsMinimal(b *testing.B) {
 // isHTMLResponse Benchmarks
 // ============================================================================
 
-func BenchmarkIsHTMLResponseSmallBody(b *testing.B) {
+func BenchmarkIsHTMLResponseSmallJSONBody(b *testing.B) {
 	body := []byte(`{"query": "test"}`)
 
 	b.ReportAllocs()
