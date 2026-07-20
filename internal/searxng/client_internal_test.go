@@ -1,11 +1,14 @@
 package searxng
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -756,6 +759,129 @@ func TestNewHTTPClient_ProxyFromEnvironment(t *testing.T) {
 				t.Fatalf("Proxy(%q) = %v, want nil (loopback bypass)", tt.url, proxyURL)
 			}
 		})
+	}
+}
+
+// proxySubprocessEnv is the sentinel env var that indicates the test is running
+// inside a subprocess with proxy env vars pre-configured. Using a subprocess
+// isolates the test from http.ProxyFromEnvironment's global sync.Once cache.
+const proxySubprocessEnv = "_SEARXNG_MCP_TEST_PROXY"
+
+// TestNewHTTPClient_ProxyEnvHonored verifies that setting HTTP_PROXY makes the
+// transport return the configured proxy URL for non-loopback requests.
+//
+// The test re-executes itself in a subprocess with HTTP_PROXY set, because
+// http.ProxyFromEnvironment caches its configuration on first call via a
+// global sync.Once that cannot be reset from outside net/http.
+func TestNewHTTPClient_ProxyEnvHonored(t *testing.T) {
+	if os.Getenv(proxySubprocessEnv) == "" {
+		//nolint:gosec // G204: test binary path is controlled by the test runner
+		cmd := exec.CommandContext(context.Background(), os.Args[0], "-test.run", "^TestNewHTTPClient_ProxyEnvHonored$")
+
+		cmd.Env = append(os.Environ(),
+			proxySubprocessEnv+"=1",
+			"HTTP_PROXY=http://test-proxy:8080",
+		)
+
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("subprocess test failed: %v\n%s", err, out)
+		}
+
+		return
+	}
+
+	// Child process: HTTP_PROXY is set and the sync.Once cache is fresh.
+	client := newHTTPClient(DefaultTimeout)
+
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Transport is not *http.Transport")
+	}
+
+	req := &http.Request{
+		Method: http.MethodGet,
+		URL:    mustParseURL(t, "http://example.com/search"),
+	}
+
+	proxyURL, err := transport.Proxy(req)
+	if err != nil {
+		t.Fatalf("Proxy(req) returned error: %v", err)
+	}
+
+	if proxyURL == nil {
+		t.Fatal("Proxy(req) = nil, want http://test-proxy:8080")
+	}
+
+	if proxyURL.String() != "http://test-proxy:8080" {
+		t.Fatalf("Proxy(req) = %q, want http://test-proxy:8080", proxyURL.String())
+	}
+}
+
+// TestNewHTTPClient_NoProxyBypass verifies that NO_PROXY bypasses the proxy
+// for matching destinations.
+//
+// The test re-executes itself in a subprocess with HTTP_PROXY and NO_PROXY
+// set, for the same sync.Once isolation reason as ProxyEnvHonored.
+func TestNewHTTPClient_NoProxyBypass(t *testing.T) {
+	if os.Getenv(proxySubprocessEnv) == "" {
+		//nolint:gosec // G204: test binary path is controlled by the test runner
+		cmd := exec.CommandContext(context.Background(), os.Args[0], "-test.run", "^TestNewHTTPClient_NoProxyBypass$")
+
+		cmd.Env = append(os.Environ(),
+			proxySubprocessEnv+"=1",
+			"HTTP_PROXY=http://test-proxy:8080",
+			"NO_PROXY=example.com",
+		)
+
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("subprocess test failed: %v\n%s", err, out)
+		}
+
+		return
+	}
+
+	// Child process: HTTP_PROXY and NO_PROXY are set.
+	client := newHTTPClient(DefaultTimeout)
+
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Transport is not *http.Transport")
+	}
+
+	// Matching NO_PROXY — should bypass proxy.
+	req := &http.Request{
+		Method: http.MethodGet,
+		URL:    mustParseURL(t, "http://example.com/search"),
+	}
+
+	proxyURL, err := transport.Proxy(req)
+	if err != nil {
+		t.Fatalf("Proxy(req) for NO_PROXY match returned error: %v", err)
+	}
+
+	if proxyURL != nil {
+		t.Fatalf("Proxy(req) for NO_PROXY match = %v, want nil", proxyURL)
+	}
+
+	// Non-matching host — should use proxy.
+	req2 := &http.Request{
+		Method: http.MethodGet,
+		URL:    mustParseURL(t, "http://other.com/search"),
+	}
+
+	proxyURL2, err := transport.Proxy(req2)
+	if err != nil {
+		t.Fatalf("Proxy(req) for non-matching host returned error: %v", err)
+	}
+
+	if proxyURL2 == nil {
+		t.Fatal("Proxy(req) for non-matching host = nil, want http://test-proxy:8080")
+	}
+
+	if proxyURL2.String() != "http://test-proxy:8080" {
+		t.Fatalf("Proxy(req) for non-matching host = %q, want http://test-proxy:8080", proxyURL2.String())
 	}
 }
 

@@ -76,7 +76,7 @@ export HTTPS_PROXY=http://proxy.example.com:8080
 export NO_PROXY=localhost,127.0.0.1,.internal.example.com
 ```
 
-These are read once at process startup. Changing them at runtime has no effect.
+These are cached after the first proxy evaluation; changing them at runtime has no effect.
 
 In MCP client configuration, add the proxy variables to the `env` block:
 
