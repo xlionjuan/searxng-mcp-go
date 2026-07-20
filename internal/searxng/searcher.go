@@ -295,12 +295,18 @@ func (s *SearXNGSearcher) searchContext(ctx context.Context) (context.Context, c
 	// When the searcher is closed, cancel the search context.
 	// AfterFunc runs f in a goroutine only when s.searcherCtx is done,
 	// so this is a no-op (just bookkeeping) in the happy path.
-	stop := context.AfterFunc(s.searcherCtx, cancel)
+	// The nil guard covers test literals that bypass constructors;
+	// all production paths initialize searcherCtx at construction.
+	if s.searcherCtx != nil {
+		stop := context.AfterFunc(s.searcherCtx, cancel)
 
-	return searchCtx, func() {
-		stop()
-		cancel()
+		return searchCtx, func() {
+			stop()
+			cancel()
+		}
 	}
+
+	return searchCtx, cancel
 }
 
 // wrapSearchError wraps the last error for the Search return value.

@@ -56,3 +56,54 @@ shutdown signaling.
 - `Close()` remains safe for searchers using a shared default client because it
   still closes idle transport connections only when the searcher owns the
   transport.
+
+## Amendment (2026-07-20): Context-Based Close Lifecycle
+
+### Background
+
+During implementation, the `done` channel design was replaced with a context-based
+approach that the codebase now uses:
+
+- `SearXNGSearcher` owns a lifecycle `context.Context` and `context.CancelFunc`
+  created by `NewSearXNGSearcher` (`searcher.go:38-39,132`).
+- `Close()` calls `searcherCancel` exactly once via `sync.Once` (`searcher.go:185`).
+- Each `Search()` derives a per-call context and uses `context.AfterFunc` to
+  propagate searcher closure to in-flight searches without a dedicated watcher
+  goroutine (`searcher.go:292-303`).
+- Retry backoff uses `retryWait` which respects context cancellation, so close
+  during backoff returns immediately.
+
+### Why the change supersedes the original decision
+
+1. **No per-search goroutine overhead.** `context.AfterFunc` registers a callback
+   that runs in a goroutine only when the lifecycle context is actually canceled —
+   zero cost in the happy path.
+2. **Familiar Go idiom.** Context cancellation is the standard way to signal
+   shutdown, making the design more recognizable to contributors.
+3. **Simpler ownership.** The lifecycle context is created once at construction
+   and canceled once at close; there is no channel to initialize, select on, or
+   guard against double-close outside of `sync.Once`.
+
+### Containedctx suppression
+
+The `SearXNGSearcher` struct carries `//nolint:containedctx` because the lifecycle
+context represents object lifecycle, not request-scoped data. The stored
+`searcherCtx` is analogous to the `ctx` field in `exec.Command` or `sql.DB` — an
+architectural invariant initialized at construction and unchanged for the life of
+the value. The narrow suppression is intentional and acceptable.
+
+### Constructor invariant
+
+Production and integration code must construct `SearXNGSearcher` through
+`NewSearXNGSearcher`, `NewFastRetrySearcher`, or `NewCustomRetrySearcher` — every
+constructor initializes the lifecycle context. Direct struct literals in internal
+tests are permitted only when they do not call lifecycle-dependent methods
+(`Search`, `Close`), or when a defensive nil guard prevents accidental misuse
+(see `searchContext` in `searcher.go:292`).
+
+### External contract preserved
+
+- `Close` remains idempotent (backed by `sync.Once`).
+- `Close` cancels in-flight searches and retry backoff waits.
+- `Close` still releases idle HTTP connections only for owned transports.
+- No behavior change was introduced to update this ADR.
