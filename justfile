@@ -73,9 +73,28 @@ lint:
     golangci-lint run --timeout 5m --build-tags=e2e
     golangci-lint run --timeout 5m --build-tags=e2e,stress
 
+# Verify that the lint build-tag matrix matches between justfile and CI workflow.
+# A deterministic drift test to keep them in sync (Issue #498).
+lint-drift-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just_count=$(grep -c '^[[:space:]]*golangci-lint run --timeout' justfile)
+    workflow_count=$(grep -c 'golangci-lint run --timeout' .github/workflows/lint.yml)
+    if [ "$just_count" -ne "$workflow_count" ]; then
+        echo "ERROR: Lint invocation count mismatch between justfile and CI" >&2
+        exit 1
+    fi
+    just_tags=$(grep '^[[:space:]]*golangci-lint run --timeout' justfile | sed -n 's/.*--build-tags=//p' | sort -u | tr '\n' ' ' | sed 's/ $//')
+    workflow_tags=$(grep 'golangci-lint run --timeout' .github/workflows/lint.yml | sed -n 's/.*--build-tags=//p' | sort -u | tr '\n' ' ' | sed 's/ $//')
+    if [ "$just_tags" != "$workflow_tags" ]; then
+        echo "ERROR: Lint build-tag set mismatch between justfile and CI" >&2
+        exit 1
+    fi
+    echo "lint-drift-check OK: $just_count invocations, tags: [$just_tags]"
+
 # Full CI pipeline (matches the non-E2E verification gate).
 # Mirrors test.yml + lint.yml steps in fail-fast order.
-verify: mod-verify fmt-check vet lint
+verify: mod-verify fmt-check lint-drift-check vet lint
     go mod download
     just mod-tidy
     go build -o {{ binary }} .

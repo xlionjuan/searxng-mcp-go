@@ -28,7 +28,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-//nolint:gocognit,gosec,errcheck // test: concurrent stress; binary trusted; kill/wait fire-and-forget
+//nolint:gocognit // test: concurrent stress; complexity inherent in pattern
 func TestMCPStress_Concurrent(t *testing.T) {
 	searxngURL := os.Getenv("SEARXNG_URL")
 	if searxngURL == "" {
@@ -47,7 +47,7 @@ func TestMCPStress_Concurrent(t *testing.T) {
 
 	var stderr bytes.Buffer
 
-	cmd := exec.CommandContext(ctx, binaryPath)
+	cmd := exec.CommandContext(ctx, binaryPath) //nolint:gosec // test: binary from env/build is trusted
 	cmd.Env = e2eMCPEnv(searxngURL)
 	cmd.Stderr = &stderr
 
@@ -59,8 +59,8 @@ func TestMCPStress_Concurrent(t *testing.T) {
 		}
 
 		if cmd.Process != nil && cmd.ProcessState == nil {
-			_ = cmd.Process.Kill()
-			_, _ = cmd.Process.Wait()
+			_ = cmd.Process.Kill()    //nolint:errcheck // test cleanup; fire-and-forget kill
+			_, _ = cmd.Process.Wait() //nolint:errcheck // test cleanup; fire-and-forget wait
 		}
 	}()
 
@@ -124,7 +124,6 @@ func TestMCPStress_Concurrent(t *testing.T) {
 	t.Logf("all %d concurrent searches completed successfully", len(queries))
 }
 
-//nolint:gosec,errcheck // test: sequential sessions; binary trusted; kill/wait fire-and-forget
 func TestMCPStress_SequentialSessions(t *testing.T) {
 	searxngURL := os.Getenv("SEARXNG_URL")
 	if searxngURL == "" {
@@ -148,7 +147,7 @@ func TestMCPStress_SequentialSessions(t *testing.T) {
 
 			var stderr bytes.Buffer
 
-			cmd := exec.CommandContext(subCtx, binaryPath)
+			cmd := exec.CommandContext(subCtx, binaryPath) //nolint:gosec // test: binary from env/build is trusted
 			cmd.Env = e2eMCPEnv(searxngURL)
 			cmd.Stderr = &stderr
 
@@ -160,8 +159,8 @@ func TestMCPStress_SequentialSessions(t *testing.T) {
 				}
 
 				if cmd.Process != nil && cmd.ProcessState == nil {
-					_ = cmd.Process.Kill()
-					_, _ = cmd.Process.Wait()
+					_ = cmd.Process.Kill()    //nolint:errcheck // test cleanup; fire-and-forget kill
+					_, _ = cmd.Process.Wait() //nolint:errcheck // test cleanup; fire-and-forget wait
 				}
 			}()
 
@@ -175,7 +174,7 @@ func TestMCPStress_SequentialSessions(t *testing.T) {
 	}
 }
 
-//nolint:gocognit,gosec,errcheck // test: rapid-fire stress; binary trusted; kill/wait fire-and-forget
+//nolint:gocognit // test: rapid-fire stress; complexity inherent in pattern
 func TestMCPStress_RapidFire(t *testing.T) {
 	searxngURL := os.Getenv("SEARXNG_URL")
 	if searxngURL == "" {
@@ -194,7 +193,7 @@ func TestMCPStress_RapidFire(t *testing.T) {
 
 	var stderr bytes.Buffer
 
-	cmd := exec.CommandContext(ctx, binaryPath)
+	cmd := exec.CommandContext(ctx, binaryPath) //nolint:gosec // test: binary from env/build is trusted
 	cmd.Env = e2eMCPEnv(searxngURL)
 	cmd.Stderr = &stderr
 
@@ -206,8 +205,8 @@ func TestMCPStress_RapidFire(t *testing.T) {
 		}
 
 		if cmd.Process != nil && cmd.ProcessState == nil {
-			_ = cmd.Process.Kill()
-			_, _ = cmd.Process.Wait()
+			_ = cmd.Process.Kill()    //nolint:errcheck // test cleanup; fire-and-forget kill
+			_, _ = cmd.Process.Wait() //nolint:errcheck // test cleanup; fire-and-forget wait
 		}
 	}()
 
