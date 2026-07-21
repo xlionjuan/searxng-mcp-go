@@ -147,11 +147,11 @@ and talks JSON-RPC over its stdin/stdout. This is the only layer that catches
 issues like wrong env-var parsing on startup, missing stderr flushing on
 shutdown, or stdio framing regressions.
 
-The one exception is `e2e_exitcode_test.go`, which is not gated by the `e2e`
-build tag: it exercises the built binary as a subprocess, but it has no
-external dependencies (no live SearXNG server, no MCP session) and runs in
-under a second, so it ships in the default `go test ./...` set alongside the
-unit tests.
+Three files are not gated by the `e2e` build tag:
+`e2e_exitcode_test.go`, `e2e_cli_test.go`, and `e2e_mockserver_test.go`.
+They exercise the built binary as a subprocess with no external dependencies
+(no live SearXNG server, no MCP session) and run in under a second each,
+so they ship in the default `go test ./...` set alongside the unit tests.
 
 ### Pattern
 
@@ -266,7 +266,8 @@ verify.
 | Unit | direct handler call (`NewSearchToolHandler()`) | `mcp_tool_test.go`, `internal/searxng/*_test.go` | Search logic, input validation, JSON response shape |
 | MCP integration | `mcp.NewInMemoryTransports()` (`net.Pipe` in-process) | (unit-style tests of the MCP server surface) | MCP protocol wiring, tool registration, schema, session lifecycle |
 | CLI subprocess (default `go test ./...`) | raw `exec.Command` on the built binary | `e2e_exitcode_test.go`, `e2e_cli_test.go`, `e2e_mockserver_test.go` | CLI exit code contract, stderr/stdout split, flag parsing |
-| MCP E2E (stdio, `-tags=e2e`) | `exec.Command` + `mcp.CommandTransport` (subprocess) | `e2e_mcp_test.go`, `e2e_functional_test.go`, `e2e_error_test.go`, `e2e_lifecycle_test.go`, `e2e_stress_test.go` | Real stdio framing, env-var startup, process lifecycle, live SearXNG behavior |
+| MCP E2E (stdio, `-tags=e2e`) | `exec.Command` + `mcp.CommandTransport` (subprocess) | `e2e_mcp_test.go`, `e2e_functional_test.go`, `e2e_error_test.go`, `e2e_lifecycle_test.go` | Real stdio framing, env-var startup, process lifecycle, live SearXNG behavior |
+| MCP E2E stress (stdio, `-tags='e2e stress'`) | `exec.Command` + `mcp.CommandTransport` (subprocess) | `e2e_stress_test.go` | Concurrent searches, lifecycle concurrency, goroutine leak detection |
 | Manual / smoke | MCP Inspector, CI shell smoke | `.github/workflows/e2e.yml` | Interactive verification, deterministic exit-code smoke |
 
 Rule of thumb:

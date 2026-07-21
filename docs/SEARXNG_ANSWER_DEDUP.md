@@ -80,7 +80,7 @@ If either path finds a match, the answer is considered a duplicate and is remove
 
 ### Why Search Layer, Not Format Layer
 
-Deduplication happens while normalizing the SearXNG response, using `deduplicateAnswers` from `internal/searxng/deduplicate.go`, rather than in `formatResults()` (format.go) so that:
+Deduplication happens while normalizing the SearXNG response. The `deduplicateAnswers` wrapper in `internal/searxng/deduplicate.go` extracts infobox content and delegates to `DeduplicateAnswers` in `internal/searxng/answer/deduplicate.go`. This is done at the normalization layer rather than in `formatResults()` (format.go) so that:
 - **JSON output** (`--json` flag or MCP mode) also has clean results
 - **CLI output** benefits automatically
 - Single point of truth — no scattered filtering logic
@@ -128,6 +128,6 @@ without a searcher.
 - **Function**: `DeduplicateAnswers(answers []Answer, infoboxContents []string) []Answer` in `internal/searxng/answer/deduplicate.go`
 - **Called**: Via `deduplicateAnswers` wrapper in `internal/searxng/deduplicate.go` during response normalization after JSON unmarshalling, after the `MaxAnswers` / `MaxInfoboxes` cap is applied, before the response is returned to formatting/output code
 - **Tests**:
-  - 14 cases in `internal/searxng/answer/deduplicate_test.go` covering empty inputs, exact match, prefix match, DDG "More at Wikipedia" suffix stripping, case insensitivity, engine scoping (non-DDG, empty engine, unknown engine), distinct answers (IP), mixed scenarios, empty answer skipping, truncation boundary, and non-matching truncation
-  - 14 cases in `internal/searxng/deduplicate_internal_test.go` covering the same scenarios at the wrapper level plus typed answers with fallback text and fixture survival
-  - 5 subtests in `TestNormalizeResponse` (`internal/searxng/response_internal_test.go`) covering cap truncation for answers and infoboxes, no-op when at the cap, dedup behavior after truncation, and a pathological-input time budget assertion
+  - `internal/searxng/answer/deduplicate_test.go` — unit tests for `DeduplicateAnswers`, covering empty inputs, exact/prefix match, "More at Wikipedia" suffix stripping, case insensitivity, engine scoping, distinct answers, mixed scenarios, empty answer skipping, and truncation boundary cases
+  - `internal/searxng/deduplicate_internal_test.go` — wrapper-level tests for the same scenarios plus typed answers with fallback text and fixture survival
+  - `TestNormalizeResponse` in `internal/searxng/response_internal_test.go` — integration coverage for answer/infobox cap truncation, no-op at cap, dedup after truncation, and pathological-input time budget
