@@ -125,6 +125,28 @@ func TestClose_Searcher(t *testing.T) {
 			t.Fatalf("Close() error = %v, want nil for nil client", err)
 		}
 	})
+
+	t.Run("repeated close does not panic", func(t *testing.T) {
+		t.Parallel()
+
+		s, err := NewSearXNGSearcher(&Config{
+			SearXNGURL: "https://127.0.0.1:9999",
+			Timeout:    time.Second,
+		}, false)
+		if err != nil {
+			t.Fatalf("NewSearXNGSearcher() error = %v", err)
+		}
+
+		err = s.Close()
+		if err != nil {
+			t.Fatalf("first Close() error = %v, want nil", err)
+		}
+
+		err = s.Close()
+		if err != nil {
+			t.Fatalf("second Close() error = %v, want nil", err)
+		}
+	})
 }
 
 //nolint:gocognit,gocyclo // subtests cover three separate lifecycle scenarios
@@ -200,10 +222,21 @@ func TestClose_SearcherLifecycle(t *testing.T) {
 	t.Run("close during retry backoff cancels waiting search", func(t *testing.T) {
 		t.Parallel()
 
+		transportDone := make(chan struct{})
+
 		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			// Signal that the first attempt has hit the transport.
+			// The retry path after this (classify, ShouldRetry, retryWait) is
+			// synchronous in the same goroutine, so retryWait is guaranteed to
+			// start (or have already started) once we receive this signal.
+			//
+			// Even if Close() wins the race against retryWait, the search
+			// context is already wired via AfterFunc and will cancel immediately
+			// when retryWait starts — same observable result.
+			close(transportDone)
+
 			return nil, errRetryTestConnectionReset
 		}), 1)
-		// Long enough retry delay so we can Close during the wait
 		s.retryStrategy = newExponentialBackoffStrategy(1, time.Second, time.Second)
 
 		errCh := make(chan error, 1)
@@ -213,8 +246,7 @@ func TestClose_SearcherLifecycle(t *testing.T) {
 			errCh <- err
 		}()
 
-		// Wait for the first attempt to fail and retry wait to start
-		time.Sleep(50 * time.Millisecond)
+		<-transportDone
 
 		err := s.Close()
 		if err != nil {
