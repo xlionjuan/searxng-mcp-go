@@ -57,10 +57,6 @@ test-e2e-mcp:
 test-e2e-cli-smoke:
     go test -v -tags=e2e -run 'TestCLISmoke' -race -count=1 -timeout=600s .
 
-# Run tests in short mode (skip slow tests)
-test-short:
-    go test -race -shuffle=on -short ./...
-
 # View coverage in browser
 cover:
     go tool cover -html={{ coverfile }}
