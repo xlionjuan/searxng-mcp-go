@@ -41,6 +41,11 @@ type SearXNGSearcher struct {
 	retryStrategy    *exponentialBackoffStrategy
 	ownsTransport    bool // true if the searcher created its own transport (safe to close)
 	allowGETFallback bool
+
+	// retryWaitHook is a test-only hook called immediately before retryWait.
+	// It allows tests to synchronize at the point where the retry loop has
+	// entered the backoff wait so Close-during-backoff can be verified directly.
+	retryWaitHook func()
 }
 
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
@@ -276,6 +281,10 @@ func (s *SearXNGSearcher) searchWithRetries(ctx context.Context, args *SearchArg
 
 		closeResponseBody(resp, s.getLogger())
 
+		if s.retryWaitHook != nil {
+			s.retryWaitHook()
+		}
+
 		waitErr := retryWait(ctx, delay)
 		if waitErr != nil {
 			lastErr = waitErr
@@ -295,12 +304,18 @@ func (s *SearXNGSearcher) searchContext(ctx context.Context) (context.Context, c
 	// When the searcher is closed, cancel the search context.
 	// AfterFunc runs f in a goroutine only when s.searcherCtx is done,
 	// so this is a no-op (just bookkeeping) in the happy path.
-	stop := context.AfterFunc(s.searcherCtx, cancel)
+	// The nil guard covers test literals that bypass constructors;
+	// all production paths initialize searcherCtx at construction.
+	if s.searcherCtx != nil {
+		stop := context.AfterFunc(s.searcherCtx, cancel)
 
-	return searchCtx, func() {
-		stop()
-		cancel()
+		return searchCtx, func() {
+			stop()
+			cancel()
+		}
 	}
+
+	return searchCtx, cancel
 }
 
 // wrapSearchError wraps the last error for the Search return value.

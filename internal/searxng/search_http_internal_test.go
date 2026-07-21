@@ -35,6 +35,42 @@ func (c *closeCounter) Close() error {
 // Search function tests (full flow via mock HTTP client)
 // ---------------------------------------------------------------------------
 
+func TestSearch_NilSearcherCtx(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil searcherCtx does not panic", func(t *testing.T) {
+		t.Parallel()
+
+		endpoint, err := computeSearchEndpoint("https://search.example.com")
+		if err != nil {
+			t.Fatalf("computeSearchEndpoint() error = %v", err)
+		}
+
+		s := &SearXNGSearcher{
+			client: &http.Client{
+				Transport: testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+					return makeJSONResponse(makeSearchResponseJSON(1)), nil
+				}),
+			},
+			searchEndpoint: endpoint,
+			retryStrategy:  newExponentialBackoffStrategy(0, time.Microsecond, time.Microsecond),
+		}
+
+		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err != nil {
+			t.Fatalf("Search() error = %v, want nil", err)
+		}
+
+		if result == nil {
+			t.Fatal("Search() result = nil, want non-nil")
+		}
+
+		if result.Query != "test" {
+			t.Fatalf("Query = %q, want %q", result.Query, "test")
+		}
+	})
+}
+
 func TestSearch_ValidationError(t *testing.T) {
 	t.Parallel()
 

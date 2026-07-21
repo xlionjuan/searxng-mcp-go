@@ -2,6 +2,7 @@ package searxng
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -122,6 +123,152 @@ func TestClose_Searcher(t *testing.T) {
 		err := s.Close()
 		if err != nil {
 			t.Fatalf("Close() error = %v, want nil for nil client", err)
+		}
+	})
+
+	t.Run("repeated close does not panic", func(t *testing.T) {
+		t.Parallel()
+
+		s, err := NewSearXNGSearcher(&Config{
+			SearXNGURL: "https://127.0.0.1:9999",
+			Timeout:    time.Second,
+		}, false)
+		if err != nil {
+			t.Fatalf("NewSearXNGSearcher() error = %v", err)
+		}
+
+		err = s.Close()
+		if err != nil {
+			t.Fatalf("first Close() error = %v, want nil", err)
+		}
+
+		err = s.Close()
+		if err != nil {
+			t.Fatalf("second Close() error = %v, want nil", err)
+		}
+	})
+}
+
+//nolint:gocognit,gocyclo // subtests cover three separate lifecycle scenarios
+func TestClose_SearcherLifecycle(t *testing.T) {
+	t.Parallel()
+
+	t.Run("close before search returns context canceled", func(t *testing.T) {
+		t.Parallel()
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			<-req.Context().Done()
+
+			return nil, req.Context().Err()
+		}), 0)
+
+		// Close the searcher first — searcherCtx is canceled
+		err := s.Close()
+		if err != nil {
+			t.Fatalf("Close() error = %v, want nil", err)
+		}
+
+		// AfterFunc fires cancel on the search context (searcherCtx is already done)
+		_, err = s.Search(t.Context(), &SearchArgs{Query: "test"})
+		if err == nil {
+			t.Fatal("Search() error = nil after Close, want error")
+		}
+
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("Search() error = %v, want context.Canceled in chain", err)
+		}
+	})
+
+	t.Run("close during request cancels in-flight search", func(t *testing.T) {
+		t.Parallel()
+
+		enteredTransport := make(chan struct{})
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			close(enteredTransport)
+			<-req.Context().Done()
+
+			return nil, req.Context().Err()
+		}), 0)
+
+		errCh := make(chan error, 1)
+
+		go func() {
+			_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+			errCh <- err
+		}()
+
+		<-enteredTransport
+
+		err := s.Close()
+		if err != nil {
+			t.Fatalf("Close() error = %v, want nil", err)
+		}
+
+		select {
+		case err = <-errCh:
+			if err == nil {
+				t.Fatal("Search() error = nil after Close during request, want error")
+			}
+
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("Search() error = %v, want context.Canceled in chain", err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("Search() did not return within timeout")
+		}
+	})
+
+	t.Run("close during retry backoff cancels waiting search", func(t *testing.T) {
+		t.Parallel()
+
+		retryWaitStarted := make(chan struct{})
+
+		// Use a retry delay (30s) much longer than the test-select timeout (5s)
+		// so the test can only pass if cancellation interrupts the backoff
+		// promptly — the normal retry delay alone would exceed the timeout.
+		retryDelay := 30 * time.Second
+
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			return nil, errRetryTestConnectionReset
+		}), 1)
+		s.retryStrategy = newExponentialBackoffStrategy(1, retryDelay, retryDelay)
+		s.retryWaitHook = func() { close(retryWaitStarted) }
+
+		errCh := make(chan error, 1)
+
+		go func() {
+			_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+			errCh <- err
+		}()
+
+		// Wait until the search goroutine has entered retryWait.
+		// At this point ShouldRetry has already returned true and the
+		// retryWait select is waiting on ctx.Done() or the timer.
+		<-retryWaitStarted
+
+		searchStart := time.Now()
+
+		err := s.Close()
+		if err != nil {
+			t.Fatalf("Close() error = %v, want nil", err)
+		}
+
+		select {
+		case err = <-errCh:
+			if elapsed := time.Since(searchStart); elapsed >= retryDelay {
+				t.Fatalf("Search() returned %v after Close, want <%v (backoff cancellation not prompt)", elapsed, retryDelay)
+			}
+
+			if err == nil {
+				t.Fatal("Search() error = nil after Close during backoff, want error")
+			}
+
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("Search() error = %v, want context.Canceled in chain", err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("Search() did not return within timeout — 30s retry delay exceeded test timeout, cancellation likely failed")
 		}
 	})
 }
