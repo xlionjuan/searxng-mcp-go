@@ -224,20 +224,20 @@ func TestClose_SearcherLifecycle(t *testing.T) {
 
 		transportDone := make(chan struct{})
 
+		// Use a retry delay (30s) much longer than the test-select timeout (5s)
+		// so the test can only pass if cancellation interrupts the backoff
+		// promptly — the normal retry delay alone would exceed the timeout.
+		retryDelay := 30 * time.Second
+
 		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-			// Signal that the first attempt has hit the transport.
-			// The retry path after this (classify, ShouldRetry, retryWait) is
-			// synchronous in the same goroutine, so retryWait is guaranteed to
-			// start (or have already started) once we receive this signal.
-			//
-			// Even if Close() wins the race against retryWait, the search
-			// context is already wired via AfterFunc and will cancel immediately
-			// when retryWait starts — same observable result.
+			// Signal that the first transport attempt has completed.
+			// The synchronous retry path (classify, ShouldRetry, retryWait)
+			// follows in the same goroutine.
 			close(transportDone)
 
 			return nil, errRetryTestConnectionReset
 		}), 1)
-		s.retryStrategy = newExponentialBackoffStrategy(1, time.Second, time.Second)
+		s.retryStrategy = newExponentialBackoffStrategy(1, retryDelay, retryDelay)
 
 		errCh := make(chan error, 1)
 
@@ -248,6 +248,8 @@ func TestClose_SearcherLifecycle(t *testing.T) {
 
 		<-transportDone
 
+		searchStart := time.Now()
+
 		err := s.Close()
 		if err != nil {
 			t.Fatalf("Close() error = %v, want nil", err)
@@ -255,6 +257,10 @@ func TestClose_SearcherLifecycle(t *testing.T) {
 
 		select {
 		case err = <-errCh:
+			if elapsed := time.Since(searchStart); elapsed >= retryDelay {
+				t.Fatalf("Search() returned %v after Close, want <%v (backoff cancellation not prompt)", elapsed, retryDelay)
+			}
+
 			if err == nil {
 				t.Fatal("Search() error = nil after Close during backoff, want error")
 			}
@@ -263,7 +269,7 @@ func TestClose_SearcherLifecycle(t *testing.T) {
 				t.Fatalf("Search() error = %v, want context.Canceled in chain", err)
 			}
 		case <-time.After(5 * time.Second):
-			t.Fatal("Search() did not return within timeout")
+			t.Fatal("Search() did not return within timeout — 30s retry delay exceeded test timeout, cancellation likely failed")
 		}
 	})
 }
