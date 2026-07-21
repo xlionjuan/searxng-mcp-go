@@ -23,7 +23,8 @@ jobs:
           fetch-depth: 0
 
       - name: Install Cosign
-        # Cosign verifies the goreleaser CLI binary signature during download
+        # Cosign is currently installed but not invoked by any subsequent step;
+        # reserved for future release-artifact signing (see docs/agents/release.md)
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       - name: Set up Go

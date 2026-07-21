@@ -149,7 +149,7 @@ the PR body with a short reason.
 ## ADR Awareness
 
 Read `CONTEXT.md` and the ADRs referenced in
-[docs/agents/domain.md](docs/agents/domain.md) before opening the PR. If the PR
+[domain.md](domain.md) before opening the PR. If the PR
 contradicts an accepted ADR, either update/supersede the ADR in the same PR or
 explicitly frame the PR as an ADR challenge.
 

@@ -220,8 +220,9 @@ The `answer` field is derived by the searcher; SearXNG's typed-answer payload in
 
 Typed answers (translations, weather) populate `translations`, `current`,
 `forecasts`, and `service` instead of the legacy `answer` string. See
-`internal/searxng/types.go` (`Answer` struct) for the full set of typed
-fields and their `omitempty` behavior.
+`internal/searxng/answer/answer.go` for the full set of typed
+fields and their `omitempty` behavior; the `Answer` type in `types.go` is a
+type alias for the canonical definition in the answer subpackage.
 
 ### Error Responses
 
@@ -320,7 +321,7 @@ When a search attempt fails, the server classifies the outcome and decides wheth
 | Condition | Reason |
 |-----------|--------|
 | Non-retryable 4xx (400, 403, 404, etc.) | Client error or resource not found; retrying would produce the same result |
-| `SearXNGError` (including `HTMLResponseError`) | SearXNG returned an error response (HTML instead of JSON, method rejected, etc.) |
+| `SearXNGError` or `HTMLResponseError` | SearXNG returned an error response (HTML instead of JSON, method rejected, etc.) |
 | 501 Not Implemented | Deterministic method-rejection; retrying would send the same POST to the same rejection |
 | Redirect policy errors (redirect to different host, scheme downgrade, method change, too many redirects) | Deterministic failures — retrying would hit the same blocked redirect |
 | Context canceled or deadline exceeded | Parent context signaled completion or timeout |
