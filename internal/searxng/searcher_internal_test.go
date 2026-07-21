@@ -222,7 +222,7 @@ func TestClose_SearcherLifecycle(t *testing.T) {
 	t.Run("close during retry backoff cancels waiting search", func(t *testing.T) {
 		t.Parallel()
 
-		transportDone := make(chan struct{})
+		retryWaitStarted := make(chan struct{})
 
 		// Use a retry delay (30s) much longer than the test-select timeout (5s)
 		// so the test can only pass if cancellation interrupts the backoff
@@ -230,14 +230,10 @@ func TestClose_SearcherLifecycle(t *testing.T) {
 		retryDelay := 30 * time.Second
 
 		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-			// Signal that the first transport attempt has completed.
-			// The synchronous retry path (classify, ShouldRetry, retryWait)
-			// follows in the same goroutine.
-			close(transportDone)
-
 			return nil, errRetryTestConnectionReset
 		}), 1)
 		s.retryStrategy = newExponentialBackoffStrategy(1, retryDelay, retryDelay)
+		s.retryWaitHook = func() { close(retryWaitStarted) }
 
 		errCh := make(chan error, 1)
 
@@ -246,7 +242,10 @@ func TestClose_SearcherLifecycle(t *testing.T) {
 			errCh <- err
 		}()
 
-		<-transportDone
+		// Wait until the search goroutine has entered retryWait.
+		// At this point ShouldRetry has already returned true and the
+		// retryWait select is waiting on ctx.Done() or the timer.
+		<-retryWaitStarted
 
 		searchStart := time.Now()
 

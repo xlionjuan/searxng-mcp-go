@@ -41,6 +41,11 @@ type SearXNGSearcher struct {
 	retryStrategy    *exponentialBackoffStrategy
 	ownsTransport    bool // true if the searcher created its own transport (safe to close)
 	allowGETFallback bool
+
+	// retryWaitHook is a test-only hook called immediately before retryWait.
+	// It allows tests to synchronize at the point where the retry loop has
+	// entered the backoff wait so Close-during-backoff can be verified directly.
+	retryWaitHook func()
 }
 
 // NewSearXNGSearcher creates a new SearXNGSearcher with the given configuration.
@@ -275,6 +280,10 @@ func (s *SearXNGSearcher) searchWithRetries(ctx context.Context, args *SearchArg
 		s.logDebugRetry(attempt, maxRetries+1, delay, lastErr)
 
 		closeResponseBody(resp, s.getLogger())
+
+		if s.retryWaitHook != nil {
+			s.retryWaitHook()
+		}
 
 		waitErr := retryWait(ctx, delay)
 		if waitErr != nil {
