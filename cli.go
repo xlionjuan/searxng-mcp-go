@@ -82,7 +82,8 @@ EXAMPLES:
 
 MCP MODE:
   When launched without CLI arguments by an MCP client, the server runs in
-  MCP stdio mode. The client must send the MCP initialize message on stdin.
+  MCP stdio mode. The client must send a supported MCP first message on stdin:
+  legacy initialize, server/discover, or a stateless request with protocol metadata.
 
 EXIT CODES:
   0   Success

@@ -56,6 +56,23 @@ func (b *safeBuffer) String() string {
 // the stdin validation gate so we reach config validation.
 const validMCPInitialize = `{"jsonrpc":"2.0","method":"initialize"}` + "\n"
 
+// validMCPDiscover is the first request a go-sdk v1.7.0+ client sends on
+// stdio when negotiating the 2026-07-28 protocol (SEP-2575).
+const validMCPDiscover = `{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{` +
+	`"io.modelcontextprotocol/clientCapabilities":{},` +
+	`"io.modelcontextprotocol/clientInfo":{"name":"searxng-mcp-go-e2e","version":"v0.0.0"},` +
+	`"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}}` +
+	"\n"
+
+// validMCPToolsList is a stateless tools/list request carrying the per-request
+// protocol metadata. In protocol version 2026-07-28 there is no handshake,
+// so this is a valid first message on stdio (SEP-2575).
+const validMCPToolsList = `{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{` +
+	`"io.modelcontextprotocol/clientCapabilities":{},` +
+	`"io.modelcontextprotocol/clientInfo":{"name":"searxng-mcp-go-e2e","version":"v0.0.0"},` +
+	`"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}}` +
+	"\n"
+
 var (
 	e2eBinaryOnce     sync.Once
 	e2eBinaryPath     string

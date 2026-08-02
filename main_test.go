@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -427,7 +428,7 @@ func TestParseArgs(t *testing.T) {
 	}
 }
 
-func TestIsValidMCPInitializeMessage(t *testing.T) {
+func TestIsValidMCPFirstMessage(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -435,18 +436,95 @@ func TestIsValidMCPInitializeMessage(t *testing.T) {
 		line string
 		want bool
 	}{
-		{name: "valid initialize", line: `{"jsonrpc":"2.0","method":"initialize","id":1}` + "\n", want: true},
-		{name: "wrong method", line: `{"jsonrpc":"2.0","method":"tools/list"}` + "\n", want: false},
-		{name: "wrong version", line: `{"jsonrpc":"1.0","method":"initialize"}` + "\n", want: false},
-		{name: "not json", line: `hello` + "\n", want: false},
+		{
+			name: "valid initialize",
+			line: `{"jsonrpc":"2.0","method":"initialize","id":1}` + "\n",
+			want: true,
+		},
+		{
+			name: "valid server discover",
+			line: `{"jsonrpc":"2.0","method":"server/discover","id":1}` + "\n",
+			want: true,
+		},
+		{
+			name: "server discover with params",
+			line: `{"jsonrpc":"2.0","method":"server/discover","params":` +
+				`{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}}` + "\n",
+			want: true,
+		},
+		{
+			name: "valid stateless request",
+			line: `{"jsonrpc":"2.0","method":"tools/list","id":1,"params":` +
+				`{"_meta":{"io.modelcontextprotocol/clientCapabilities":{},` +
+				`"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}}` + "\n",
+			want: true,
+		},
+		{
+			name: "wrong method without stateless metadata",
+			line: `{"jsonrpc":"2.0","method":"tools/list"}` + "\n",
+			want: false,
+		},
+		{
+			name: "valid notification with stateless metadata",
+			line: `{"jsonrpc":"2.0","method":"notifications/initialized","params":` +
+				`{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}}` + "\n",
+			want: true,
+		},
+		{
+			name: "stateless metadata missing protocol version",
+			line: `{"jsonrpc":"2.0","method":"tools/list","params":` +
+				`{"_meta":{"io.modelcontextprotocol/clientCapabilities":{}}}}` + "\n",
+			want: false,
+		},
+		{
+			name: "stateless request with non-object params",
+			line: `{"jsonrpc":"2.0","method":"tools/list","params":[1,2,3]}` + "\n",
+			want: false,
+		},
+		{
+			name: "stateless request with non-object metadata",
+			line: `{"jsonrpc":"2.0","method":"tools/list","params":` +
+				`{"_meta":"not an object"}}` + "\n",
+			want: false,
+		},
+		{
+			name: "metadata in wrong location",
+			line: `{"jsonrpc":"2.0","method":"tools/list","_meta":` +
+				`{"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}` + "\n",
+			want: false,
+		},
+		{
+			name: "wrong method",
+			line: `{"jsonrpc":"2.0","method":"ping"}` + "\n",
+			want: false,
+		},
+		{
+			name: "wrong JSON-RPC version initialize",
+			line: `{"jsonrpc":"1.0","method":"initialize"}` + "\n",
+			want: false,
+		},
+		{
+			name: "wrong JSON-RPC version server discover",
+			line: `{"jsonrpc":"1.0","method":"server/discover"}` + "\n",
+			want: false,
+		},
+		{
+			name: "wrong JSON-RPC version stateless request",
+			line: `{"jsonrpc":"1.0","method":"tools/list","params":` +
+				`{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}}` + "\n",
+			want: false,
+		},
+		{name: "empty input", line: "", want: false},
+		{name: "not json", line: `not json at all`, want: false},
+		{name: "whitespace only", line: "   \t\n  ", want: false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := isValidMCPInitializeMessage([]byte(tt.line)); got != tt.want {
-				t.Fatalf("isValidMCPInitializeMessage() = %v, want %v", got, tt.want)
+			if got := isValidMCPFirstMessage([]byte(tt.line)); got != tt.want {
+				t.Fatalf("isValidMCPFirstMessage() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -527,7 +605,7 @@ func TestPrepareMCPStdinAllowsLargePostInitializeTraffic(t *testing.T) {
 
 	initialize := `{"jsonrpc":"2.0","method":"initialize","id":1}` + "\n"
 	laterTraffic := `{"jsonrpc":"2.0","method":"tools/call","id":2,"params":{"payload":"` +
-		strings.Repeat("a", mcpInitializeMaxBytes+1024) + `"}}` + "\n"
+		strings.Repeat("a", mcpFirstMessageMaxBytes+1024) + `"}}` + "\n"
 	input := initialize + laterTraffic
 
 	stdin, err := prepareMCPStdin(strings.NewReader(input))
@@ -548,12 +626,12 @@ func TestPrepareMCPStdinAllowsLargePostInitializeTraffic(t *testing.T) {
 func TestPrepareMCPStdinRejectsInvalidInput(t *testing.T) {
 	t.Parallel()
 
-	_, err := prepareMCPStdin(strings.NewReader("not initialize\\n"))
+	_, err := prepareMCPStdin(strings.NewReader("not initialize\n"))
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
 
-	if err.Error() != "stdin does not contain a valid MCP initialize message" {
+	if err.Error() != "stdin does not contain a valid MCP first message" {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -562,16 +640,224 @@ func TestPrepareMCPStdinRejectsOversizedInitializeLine(t *testing.T) {
 	t.Parallel()
 
 	input := `{"jsonrpc":"2.0","method":"initialize","padding":"` +
-		strings.Repeat("a", mcpInitializeMaxBytes) + `"}` + "\n"
+		strings.Repeat("a", mcpFirstMessageMaxBytes) + `"}` + "\n"
 
-	_, err := prepareMCPStdin(strings.NewReader(input))
+	reader := &countingMCPReader{reader: strings.NewReader(input)}
+
+	_, err := prepareMCPStdin(reader)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
 
-	if err.Error() != "stdin does not contain a valid MCP initialize message" {
+	if err.Error() != "stdin does not contain a valid MCP first message" {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
+	if reader.consumed > mcpFirstMessageMaxBytes+1 {
+		t.Fatalf("prepareMCPStdin consumed %d bytes, want at most %d", reader.consumed, mcpFirstMessageMaxBytes+1)
+	}
+}
+
+func TestPrepareMCPStdinAcceptsEOFWithoutNewline(t *testing.T) {
+	t.Parallel()
+
+	input := `{"jsonrpc":"2.0","method":"initialize","id":1}`
+
+	stdin, err := prepareMCPStdin(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("prepareMCPStdin() returned error: %v", err)
+	}
+
+	got, err := io.ReadAll(stdin)
+	if err != nil {
+		t.Fatalf("failed to read prepared stdin: %v", err)
+	}
+
+	if string(got) != input {
+		t.Fatalf("prepared stdin mismatch\nwant: %q\ngot:  %q", input, string(got))
+	}
+}
+
+func TestPrepareMCPStdinFirstMessageLimit(t *testing.T) {
+	t.Parallel()
+
+	const (
+		prefix = `{"jsonrpc":"2.0","id":1,"method":"tools/list","params":` +
+			`{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28"},"padding":"`
+		suffix = `"}}`
+	)
+
+	messageLength := mcpFirstMessageMaxBytes
+
+	paddingLength := messageLength - len(prefix) - len(suffix)
+	if paddingLength < 0 {
+		t.Fatalf("test prefix exceeds transport limit: %d bytes", len(prefix)+len(suffix))
+	}
+
+	exact := prefix + strings.Repeat("a", paddingLength) + suffix
+	if len(exact) != mcpFirstMessageMaxBytes {
+		t.Fatalf("exact first message length = %d, want %d", len(exact), mcpFirstMessageMaxBytes)
+	}
+
+	if !json.Valid([]byte(exact)) {
+		t.Fatal("exact first message is not valid JSON")
+	}
+
+	input := exact + "\n" + "tail"
+
+	stdin, err := prepareMCPStdin(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("prepareMCPStdin() rejected exact-limit message: %v", err)
+	}
+
+	got, err := io.ReadAll(stdin)
+	if err != nil {
+		t.Fatalf("failed to read prepared stdin: %v", err)
+	}
+
+	if string(got) != input {
+		t.Fatalf("prepared exact-limit stdin mismatch\nwant: %q\ngot:  %q", input, string(got))
+	}
+
+	over := prefix + strings.Repeat("a", paddingLength+1) + suffix
+	if len(over) != mcpFirstMessageMaxBytes+1 {
+		t.Fatalf("over-limit first message length = %d, want %d", len(over), mcpFirstMessageMaxBytes+1)
+	}
+
+	if !json.Valid([]byte(over)) {
+		t.Fatal("over-limit first message is not valid JSON")
+	}
+
+	reader := &countingMCPReader{reader: strings.NewReader(over)}
+
+	_, err = prepareMCPStdin(reader)
+	if err == nil {
+		t.Fatal("expected over-limit first message to be rejected")
+	}
+
+	if reader.consumed > mcpFirstMessageMaxBytes+1 {
+		t.Fatalf("over-limit read consumed %d bytes, want at most %d", reader.consumed, mcpFirstMessageMaxBytes+1)
+	}
+}
+
+func TestPrepareMCPStdinAcceptsEscapedStatelessFirstMessage(t *testing.T) {
+	t.Parallel()
+
+	message, err := json.Marshal(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"_meta": map[string]any{
+				metaKeyProtocolVersion: "2026-07-28",
+			},
+			"arguments": map[string]any{
+				"text": "quote \" slash \\ NUL \x00 HTML <",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("json.Marshal() returned error: %v", err)
+	}
+
+	input := string(message) + "\n"
+
+	stdin, err := prepareMCPStdin(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("prepareMCPStdin() rejected escaped stateless message: %v", err)
+	}
+
+	got, err := io.ReadAll(stdin)
+	if err != nil {
+		t.Fatalf("failed to read prepared stdin: %v", err)
+	}
+
+	if string(got) != input {
+		t.Fatalf("prepared escaped stateless stdin mismatch\nwant: %q\ngot:  %q", input, got)
+	}
+}
+
+var errMCPFirstMessageReader = errors.New("simulated MCP stdin read failure")
+
+type mcpFirstMessageDataErrorReader struct {
+	data []byte
+	err  error
+	done bool
+}
+
+func (r *mcpFirstMessageDataErrorReader) Read(p []byte) (int, error) {
+	if r.done {
+		return 0, io.EOF
+	}
+
+	r.done = true
+
+	return copy(p, r.data), r.err
+}
+
+func TestPrepareMCPStdinAcceptsCompleteLineWithReadError(t *testing.T) {
+	t.Parallel()
+
+	input := `{"jsonrpc":"2.0","method":"initialize","id":1}` + "\n" + "tail"
+
+	stdin, err := prepareMCPStdin(&mcpFirstMessageDataErrorReader{
+		data: []byte(input),
+		err:  errMCPFirstMessageReader,
+	})
+	if err != nil {
+		t.Fatalf("prepareMCPStdin() rejected complete line with read error: %v", err)
+	}
+
+	got, err := io.ReadAll(stdin)
+	if err != nil {
+		t.Fatalf("failed to read prepared stdin: %v", err)
+	}
+
+	if string(got) != input {
+		t.Fatalf("prepared stdin mismatch\nwant: %q\ngot:  %q", input, string(got))
+	}
+}
+
+type mcpFirstMessageErrorReader struct{}
+
+func (mcpFirstMessageErrorReader) Read([]byte) (int, error) {
+	return 0, errMCPFirstMessageReader
+}
+
+func TestPrepareMCPStdinRejectsReadErrorBeforeCompleteLine(t *testing.T) {
+	t.Parallel()
+
+	_, err := prepareMCPStdin(mcpFirstMessageErrorReader{})
+	if !errors.Is(err, errInvalidMCPFirstMessage) {
+		t.Fatalf("prepareMCPStdin() error = %v, want %v", err, errInvalidMCPFirstMessage)
+	}
+}
+
+type mcpFirstMessageZeroProgressReader struct{}
+
+func (mcpFirstMessageZeroProgressReader) Read([]byte) (int, error) {
+	return 0, nil
+}
+
+func TestPrepareMCPStdinRejectsZeroProgressReader(t *testing.T) {
+	t.Parallel()
+
+	_, err := prepareMCPStdin(mcpFirstMessageZeroProgressReader{})
+	if !errors.Is(err, errInvalidMCPFirstMessage) {
+		t.Fatalf("prepareMCPStdin() error = %v, want %v", err, errInvalidMCPFirstMessage)
+	}
+}
+
+type countingMCPReader struct {
+	reader   io.Reader
+	consumed int
+}
+
+func (r *countingMCPReader) Read(p []byte) (int, error) {
+	n, err := r.reader.Read(p)
+	r.consumed += n
+
+	return n, err
 }
 
 func captureStdout(t *testing.T, fn func()) string {

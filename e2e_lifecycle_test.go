@@ -3,13 +3,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"slices"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -113,26 +116,226 @@ func TestMCPLifecycle_InvalidJSONAfterInitialize(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	cmd, stdin, stderr := startRawMCPProcess(ctx, t, searxngURL)
+	process := startRawMCPProcess(ctx, t, searxngURL)
 
 	defer func() {
-		if cmd.Process != nil && cmd.ProcessState == nil {
-			_ = cmd.Process.Kill()    //nolint:errcheck // best-effort cleanup
-			_, _ = cmd.Process.Wait() //nolint:errcheck // best-effort cleanup
-		}
+		process.cleanup()
 	}()
 
-	sendInvalidJSONInput(t, stdin, stderr)
+	sendInvalidJSONInput(t, process.stdin, process.stderr)
 
-	waitErr := waitForRawProcessExit(ctx, t, cmd, stderr)
-	assertAcceptableExitCode(t, waitErr, stderr, "invalid JSON", 0, 2)
+	waitErr := waitForRawProcessExit(ctx, t, process)
+	assertAcceptableExitCode(t, waitErr, process.stderr, "invalid JSON", 0, 2)
 }
 
-// startRawMCPProcess builds and starts the MCP binary with a raw stdin pipe.
-// The caller is responsible for process cleanup.
+// rawMCPResponse is the small JSON-RPC envelope needed by the first-message
+// tests. Result is kept raw so each test can decode its method-specific shape.
+type rawMCPResponse struct {
+	JSONRPC string          `json:"jsonrpc"`
+	ID      json.RawMessage `json:"id"`
+	Result  json.RawMessage `json:"result"`
+	Error   json.RawMessage `json:"error"`
+}
+
+// rawMCPProcess owns the one cmd.Wait call for a raw MCP subprocess. Every
+// caller observes waitDone and cleanup only kills an unfinished process before
+// waiting for that same goroutine to finish.
+type rawMCPProcess struct {
+	cmd      *exec.Cmd
+	stdin    io.WriteCloser
+	stderr   *safeBuffer
+	stdout   *safeBuffer
+	waitDone chan struct{}
+	waitErr  error
+}
+
+// runRawFirstMessageScenario starts the MCP binary over raw stdio, writes a
+// first MCP request, waits for a complete JSON-RPC response line, closes stdin,
+// and asserts a clean exit. The response envelope is returned for
+// method-specific result assertions.
+func runRawFirstMessageScenario(
+	ctx context.Context, t *testing.T, searxngURL, msg, label string,
+) rawMCPResponse {
+	t.Helper()
+
+	process := startRawMCPProcess(ctx, t, searxngURL)
+
+	defer process.cleanup()
+
+	_, err := fmt.Fprint(process.stdin, msg)
+	if err != nil {
+		t.Fatalf("write first message: %v\nstderr:\n%s", err, process.stderr.String())
+	}
+
+	// Wait for the server to answer before closing stdin; closing stdin too
+	// early would race the asynchronous response write and lose the reply.
+	response := waitForJSONRPCResponse(ctx, t, process)
+
+	t.Logf("server stdout:\n%s", process.stdout.String())
+
+	// Closing stdin makes the server see EOF after answering the request, so
+	// the process exits cleanly with code 0.
+	err = process.stdin.Close()
+	if err != nil {
+		t.Fatalf("close stdin: %v\nstderr:\n%s", err, process.stderr.String())
+	}
+
+	waitErr := waitForRawProcessExit(ctx, t, process)
+	assertAcceptableExitCode(t, waitErr, process.stderr, label, 0)
+
+	return response
+}
+
+func TestMCPFirstMessage_ServerDiscoverAccepted(t *testing.T) {
+	searxngURL := os.Getenv("SEARXNG_URL")
+	if searxngURL == "" {
+		t.Skip("SEARXNG_URL not set")
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+
+	// A go-sdk v1.7.0+ client probes server/discover as its first message on
+	// stdio (SEP-2575). The stdin gate must accept it.
+	response := runRawFirstMessageScenario(
+		ctx,
+		t,
+		searxngURL,
+		validMCPDiscover,
+		"server/discover first request",
+	)
+
+	var result struct {
+		SupportedVersions []string `json:"supportedVersions"`
+	}
+
+	err := json.Unmarshal(response.Result, &result)
+	if err != nil {
+		t.Fatalf("server/discover result is invalid: %v\nresult:%s", err, response.Result)
+	}
+
+	if len(result.SupportedVersions) == 0 {
+		t.Fatalf("server/discover supportedVersions is empty\nresult:%s", response.Result)
+	}
+}
+
+func TestMCPFirstMessage_StatelessToolsListAccepted(t *testing.T) {
+	searxngURL := os.Getenv("SEARXNG_URL")
+	if searxngURL == "" {
+		t.Skip("SEARXNG_URL not set")
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+
+	// In the stateless protocol (>= 2026-07-28) there is no handshake: a
+	// direct tools/list request carrying per-request _meta metadata is a valid
+	// first message (SEP-2575).
+	response := runRawFirstMessageScenario(
+		ctx,
+		t,
+		searxngURL,
+		validMCPToolsList,
+		"stateless tools/list first request",
+	)
+
+	var result struct {
+		Tools []struct {
+			Name string `json:"name"`
+		} `json:"tools"`
+	}
+
+	err := json.Unmarshal(response.Result, &result)
+	if err != nil {
+		t.Fatalf("tools/list result is invalid: %v\nresult:%s", err, response.Result)
+	}
+
+	for _, tool := range result.Tools {
+		if tool.Name == "search" {
+			return
+		}
+	}
+
+	t.Fatalf("tools/list result does not include search tool\nresult:%s", response.Result)
+}
+
+// waitForJSONRPCResponse waits for a complete newline-delimited JSON-RPC
+// response. It fails immediately if the process exits before writing a line.
+func waitForJSONRPCResponse(
+	ctx context.Context, t *testing.T, process *rawMCPProcess,
+) rawMCPResponse {
+	t.Helper()
+
+	deadline := time.NewTimer(10 * time.Second)
+	defer deadline.Stop()
+
+	ticker := time.NewTicker(20 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		out := process.stdout.String()
+
+		line, _, found := strings.Cut(out, "\n")
+		if found {
+			return decodeJSONRPCResponse(t, strings.TrimSuffix(line, "\r"), process.stderr)
+		}
+
+		select {
+		case <-process.waitDone:
+			t.Fatalf("process exited before JSON-RPC response\nstdout:\n%s\nstderr:\n%s\nwait error: %v",
+				process.stdout.String(), process.stderr.String(), process.waitErr)
+		case <-ctx.Done():
+			process.cleanup()
+			t.Fatalf("timeout waiting for JSON-RPC response\nstdout:\n%s\nstderr:\n%s",
+				process.stdout.String(), process.stderr.String())
+		case <-deadline.C:
+			process.cleanup()
+			t.Fatalf("timeout waiting for JSON-RPC response\nstdout:\n%s\nstderr:\n%s",
+				process.stdout.String(), process.stderr.String())
+		case <-ticker.C:
+		}
+	}
+}
+
+// decodeJSONRPCResponse unmarshals and validates one complete JSON-RPC
+// response line before method-specific result assertions run.
+func decodeJSONRPCResponse(t *testing.T, line string, stderr *safeBuffer) rawMCPResponse {
+	t.Helper()
+
+	var response rawMCPResponse
+
+	err := json.Unmarshal([]byte(line), &response)
+	if err != nil {
+		t.Fatalf("invalid JSON-RPC response: %v\nline:%s\nstderr:\n%s",
+			err, line, stderr.String())
+	}
+
+	if response.JSONRPC != "2.0" {
+		t.Fatalf("JSON-RPC version = %q, want %q\nline:%s",
+			response.JSONRPC, "2.0", line)
+	}
+
+	if !bytes.Equal(bytes.TrimSpace(response.ID), []byte("1")) {
+		t.Fatalf("JSON-RPC id = %s, want 1\nline:%s", response.ID, line)
+	}
+
+	if len(response.Error) > 0 {
+		t.Fatalf("JSON-RPC response contains error: %s\nline:%s", response.Error, line)
+	}
+
+	if len(response.Result) == 0 || bytes.Equal(bytes.TrimSpace(response.Result), []byte("null")) {
+		t.Fatalf("JSON-RPC response has no result\nline:%s", line)
+	}
+
+	return response
+}
+
+// startRawMCPProcess builds and starts the MCP binary with a raw stdin pipe,
+// capturing stdout and stderr. It starts the sole cmd.Wait goroutine before
+// returning; callers must observe waitDone instead of calling cmd.Wait.
 func startRawMCPProcess(
 	ctx context.Context, t *testing.T, searxngURL string,
-) (*exec.Cmd, io.WriteCloser, *safeBuffer) {
+) *rawMCPProcess {
 	t.Helper()
 
 	binaryPath := os.Getenv("E2E_MCP_BINARY")
@@ -142,11 +345,12 @@ func startRawMCPProcess(
 
 	t.Logf("using MCP binary: %s", binaryPath)
 
-	var stderr safeBuffer
+	var stderr, stdout safeBuffer
 
 	cmd := exec.CommandContext(ctx, binaryPath) //nolint:gosec // test runs built binary
 	cmd.Env = e2eMCPEnv(searxngURL)
 	cmd.Stderr = &stderr
+	cmd.Stdout = &stdout
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -158,7 +362,19 @@ func startRawMCPProcess(
 		t.Fatalf("start MCP process: %v", err)
 	}
 
-	return cmd, stdin, &stderr
+	process := &rawMCPProcess{
+		cmd:      cmd,
+		stdin:    stdin,
+		stderr:   &stderr,
+		stdout:   &stdout,
+		waitDone: make(chan struct{}),
+	}
+	go func() {
+		process.waitErr = cmd.Wait()
+		close(process.waitDone)
+	}()
+
+	return process
 }
 
 // sendInvalidJSONInput writes a valid initialize message, waits briefly, then
@@ -185,24 +401,38 @@ func sendInvalidJSONInput(t *testing.T, stdin io.WriteCloser, stderr *safeBuffer
 	}
 }
 
-// waitForRawProcessExit waits for a process started outside of
-// mcp.CommandTransport to exit, failing the test on timeout.
+// waitForRawProcessExit waits for the sole cmd.Wait goroutine to finish,
+// failing the test on timeout. It never calls cmd.Wait itself.
 func waitForRawProcessExit(
-	ctx context.Context, t *testing.T, cmd *exec.Cmd, stderr *safeBuffer,
+	ctx context.Context, t *testing.T, process *rawMCPProcess,
 ) error {
 	t.Helper()
 
-	done := make(chan error, 1)
-	go func() { done <- cmd.Wait() }()
-
 	select {
-	case err := <-done:
-		return err
+	case <-process.waitDone:
+		return process.waitErr
 	case <-ctx.Done():
-		t.Fatalf("timeout waiting for process to exit\nstderr:\n%s", stderr.String())
+		process.cleanup()
+		t.Fatalf("timeout waiting for process to exit\nstderr:\n%s", process.stderr.String())
 
 		return nil
 	}
+}
+
+// cleanup kills a still-running process, then waits for the sole cmd.Wait
+// goroutine. It is safe to call after a normal wait or from a defer.
+func (p *rawMCPProcess) cleanup() {
+	select {
+	case <-p.waitDone:
+		return
+	default:
+	}
+
+	if p.cmd.Process != nil {
+		_ = p.cmd.Process.Kill() //nolint:errcheck // best-effort cleanup
+	}
+
+	<-p.waitDone
 }
 
 // waitForSessionClose waits for the MCP session to close naturally — the

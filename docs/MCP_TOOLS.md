@@ -286,12 +286,12 @@ Search error examples — the response format depends on whether the error is a 
 
 ### Startup Errors
 
-The server validates the MCP initialization message on stdin before starting. If validation fails, the process exits immediately with code 2 and prints the error to stderr (no MCP error response is sent).
+Before starting, the server applies a bounded structural check to the first line of stdin. It accepts a legacy JSON-RPC 2.0 `initialize` request, a `server/discover` request, or a stateless request carrying `params._meta["io.modelcontextprotocol/protocolVersion"]`. This preflight is only a safe structure gate; complete protocol metadata validation is delegated to the MCP SDK. If the preflight fails, the process exits immediately with code 2 and prints the error to stderr (no MCP error response is sent).
 
 | Error Condition | Stderr Output | Exit Code |
 |-----------------|---------------|-----------|
-| No valid MCP `initialize` message on stdin (non-MCP input, empty stdin, or invalid JSON) | `ERROR: stdin does not contain a valid MCP initialize message` | 2 |
-| First line of stdin exceeds 1 MB | `ERROR: stdin does not contain a valid MCP initialize message` | 2 |
+| No supported MCP first message on stdin (non-MCP input, empty stdin, invalid JSON, or missing recognized method/metadata) | `ERROR: stdin does not contain a valid MCP first message` | 2 |
+| JSON first-message wire bytes exceed the fixed 1 MiB transport bound (an optional trailing newline delimiter is excluded from the count) | `ERROR: stdin does not contain a valid MCP first message` | 2 |
 
 ### Implementation Details
 
@@ -301,7 +301,7 @@ The server validates the MCP initialization message on stdin before starting. If
 - **Timeout**: 8 seconds by default; set `SEARXNG_TIMEOUT` or, in CLI mode, `--timeout`. This is a per-request HTTP timeout, not an overall search-operation deadline. Zero is rejected (use a positive value or omit to keep the default).
 - **MaxRetries**: 5 retries after the initial search attempt by default; set `SEARXNG_MAX_RETRIES` or, in CLI mode, `--max-retries`
 - **POST→GET fallback**: Disabled by default. If POST `/search` returns 405 or 501, the server returns an error so operators can fix the SearXNG or reverse-proxy configuration. Set `SEARXNG_ALLOW_GET_FALLBACK=1` to opt in; this sends search parameters in the URL and may expose queries in upstream logs. In CLI mode, `--allow-get-fallback` overrides the environment variable.
-- **Initialize message size limit**: The first line of stdin (the MCP `initialize` JSON-RPC message) is capped at 1 MB; oversized input causes the server to exit instead of hanging
+- **First-message transport bound**: JSON first-message wire bytes are capped at a fixed 1 MiB, regardless of message type, payload, or configuration; an optional trailing newline delimiter is excluded from the count; oversized input causes the server to exit instead of hanging
 - **Schema**: `additionalProperties: false` — unrecognized parameters are rejected at the schema level before handler validation runs
 
 ### Retry Behavior
