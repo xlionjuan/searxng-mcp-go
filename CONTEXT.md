@@ -65,7 +65,7 @@ _Avoid_: POSTtoGETFallback (internal test function name)
 
 **Private Host Detection**: The RFC-grounded classification that suppresses the HTTP warning when the configured SearXNG URL points to a private/internal destination. A host is "private" iff the literal name is `localhost` or ends in `.localhost` (RFC 6761 §6.3, Special-Use Domain Names), or the literal address falls inside one of the published private/loopback/link-local/ULA/CGNAT/multicast/broadcast ranges enumerated in `docs/adr/003-http-warning-for-non-private-hosts.md`. No DNS resolution is performed, and the contract intentionally accepts that names like `printer.local` or `nas.lan` will now trigger the warning because no cited RFC reserves those suffixes for "private network" use.
 
-**prepareMCPStdin**: The function that peeks at the first line of stdin to verify it contains a valid MCP initialize message (JSON-RPC 2.0 with method `initialize`), preventing the MCP server from hanging when piped non-MCP input.
+**prepareMCPStdin**: The function that peeks at the first line of stdin and applies a fixed 1 MiB transport bound to the JSON first-message wire bytes, excluding an optional trailing newline delimiter, plus a safe structural MCP gate. It accepts a legacy JSON-RPC 2.0 `initialize` request, a `server/discover` request, or a stateless request carrying `params._meta["io.modelcontextprotocol/protocolVersion"]`; complete protocol metadata validation remains with the MCP SDK. This prevents the MCP server from hanging when piped non-MCP input.
 
 ### Constants
 

@@ -2,19 +2,34 @@
 
 How to test the MCP server in searxng-mcp-go at the right layer. This guide
 covers three complementary approaches — in-memory transport, subprocess stdio
-with `mcp.CommandTransport`, and raw `exec.Command` for CLI exit codes — and
-when to reach for each.
+with `mcp.CommandTransport`, and raw `exec.Command` for process-level checks —
+and when to reach for each.
 
 For the layer overview, see [Test Layers](#test-layers) below.
 
-## Why Pipe-Based Testing Is Wrong
+With go-sdk v1.7, a normal `Client.Connect` starts with `server/discover`
+negotiation and falls back to the legacy `initialize` handshake when needed.
+The SDK owns that negotiation; tests should not assume that every client starts
+with the same first message.
 
-Using `echo '{"jsonrpc":...}' | ./searxng-mcp-go` to test MCP is fundamentally flawed:
+## Pipe-Based Testing Has Narrow Uses
 
-- MCP requires a **persistent bidirectional session** over stdin/stdout
-- A pipe is one-shot: it sends data then EOF, killing the session immediately
-- Each test must re-initialize from scratch
-- Multi-step flows, notifications, and session behavior cannot be tested
+Using `echo '{"jsonrpc":...}' | ./searxng-mcp-go` as a general MCP test is
+unreliable:
+
+- Stateful or multi-step MCP sessions require a **persistent bidirectional
+  session** over stdin/stdout.
+- `echo` is one-shot: it writes one message and closes stdin, so it cannot
+  coordinate responses, first-message negotiation, or follow-up messages.
+- Each stateful test must establish a fresh session, including the SDK's
+  `server/discover` negotiation and any legacy `initialize` fallback.
+- Multi-step flows, notifications, and session behavior cannot be tested with a
+  one-shot pipe.
+
+A deliberately synchronized raw subprocess can still test the first-message
+gate or one stateless request. Use a dedicated harness that keeps the process
+and pipes under explicit control for those cases; `echo | binary` remains
+unreliable because it cannot synchronize with the server's response.
 
 ## Recommended: InMemoryTransport (from official SDK)
 
@@ -41,7 +56,8 @@ func setupTest(t *testing.T) (*mcp.ClientSession, *mcp.ServerSession, func()) {
     // 2. Create paired transports (net.Pipe internally)
     serverTransport, clientTransport := mcp.NewInMemoryTransports()
 
-    // 3. Server connects FIRST (client sends initialize on Connect)
+    // 3. Server connects FIRST (the SDK client negotiates server/discover and
+    //    may fall back to initialize on Connect)
     serverSession, err := server.Connect(ctx, serverTransport, nil)
     if err != nil {
         t.Fatal(err)
@@ -276,12 +292,13 @@ Rule of thumb:
   surface (no subprocess, no live network).
 - Use **CommandTransport** when the assertion depends on the binary actually
   starting, reading env vars, or talking over real stdin/stdout.
-- Use **raw `exec.Command`** only when the assertion is about the CLI process
-  itself (exit code, stderr text) and not about MCP protocol behavior.
+- Use **raw `exec.Command`** for process-level assertions (exit code, stderr
+  text) and carefully synchronized first-message or single-stateless-request
+  E2E checks; use `CommandTransport` for multi-step MCP protocol behavior.
 
 ## Key Gotchas
 
-1. **Server must Connect before Client** — the client sends `initialize` on Connect(), so the server must be ready to receive it
+1. **Server must Connect before Client for SDK negotiation** — go-sdk v1.7 clients send `server/discover` first and may fall back to `initialize`, so the server must be ready to receive either message
 2. **Always call `serverSession.Wait()` in cleanup** — ensures the server goroutine exits cleanly
 3. **`clientSession.Close()` before `serverSession.Wait()`** — client initiates shutdown
 

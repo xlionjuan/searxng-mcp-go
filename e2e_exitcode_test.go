@@ -67,8 +67,8 @@ func TestValidationExitCode(t *testing.T) {
 }
 
 // TestMCPExitCode_StdinValidation verifies that the MCP server exits with
-// the documented exit code 2 when stdin does not start with a valid MCP
-// initialize message. CLI mode keeps exit code 1.
+// the documented exit code 2 when stdin does not start with a valid MCP first
+// message. CLI mode keeps exit code 1.
 func TestMCPExitCode_StdinValidation(t *testing.T) {
 	t.Parallel()
 
@@ -103,7 +103,7 @@ func TestMCPExitCode_StdinValidation(t *testing.T) {
 		t.Errorf("exit code = %d, want 2 (MCP server error per documented contract)\nstderr:\n%s", got, stderrStr)
 	}
 
-	if !strings.Contains(stderrStr, "stdin does not contain a valid MCP initialize message") {
+	if !strings.Contains(stderrStr, "stdin does not contain a valid MCP first message") {
 		t.Errorf("stderr should contain stdin validation error, got: %s", stderrStr)
 	}
 }

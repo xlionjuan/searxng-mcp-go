@@ -102,7 +102,7 @@ For all available flags, run `searxng-mcp-go --help` or see [docs/INSTALL.md](do
 
 ## MCP Mode
 
-When launched without CLI arguments by an MCP client, the server runs in **MCP stdio mode**. The client starts the process, sends the required MCP JSON-RPC `initialize` message on stdin, and then exchanges tool calls over stdin/stdout.
+When launched without CLI arguments by an MCP client, the server runs in **MCP stdio mode**. The client starts the process and sends an MCP JSON-RPC first message on stdin: a legacy `initialize` request, a `server/discover` request, or a stateless request carrying `params._meta["io.modelcontextprotocol/protocolVersion"]`. The startup preflight performs only a bounded structural check; the MCP SDK performs complete protocol metadata validation. The client then exchanges tool calls over stdin/stdout.
 
 The server exposes a single **`search`** tool. For full parameter details, response format, and error reference, see [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md).
 

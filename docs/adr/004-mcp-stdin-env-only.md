@@ -10,13 +10,13 @@ The searxng-mcp-go server operates in two modes:
 1. **CLI mode**: Interactive command-line usage with flags like `--query`, `--json`, `--searxng-url`, etc.
 2. **MCP stdin mode**: Headless operation communicating via stdio with MCP clients (e.g., Claude Desktop).
 
-The server now detects MCP stdin mode by inspecting stdin for a valid MCP `initialize` message. If the process was launched with CLI arguments, it runs in CLI mode instead. This avoids treating normal command-line usage as MCP input and matches the actual startup flow:
+The server now detects MCP stdin mode by inspecting the first line of stdin for a supported MCP first message. The preflight accepts a legacy `initialize` request, a `server/discover` request, or a stateless request carrying `params._meta["io.modelcontextprotocol/protocolVersion"]`. It is a bounded structural gate; complete protocol metadata validation remains with the MCP SDK. If the process was launched with CLI arguments, it runs in CLI mode instead. This avoids treating normal command-line usage as MCP input and matches the actual startup flow:
 
 ## Detection Flow
 
 1. CLI arguments are parsed first.
 2. Any argument selects CLI mode, including positional queries, search flags, configuration flags such as `--searxng-url` or `--timeout`, `--debug`, `--help`, and `--version`.
-3. Otherwise the process reads stdin and requires the first message to be a valid MCP `initialize` request.
+3. Otherwise the process reads the first line of stdin and requires one of the supported MCP first-message shapes: legacy `initialize`, `server/discover`, or stateless protocol-version metadata in `params._meta["io.modelcontextprotocol/protocolVersion"]`.
 4. If stdin does not look like MCP input, startup fails with an MCP-specific error.
 
 ## Decision
@@ -34,16 +34,22 @@ In MCP stdin mode, configuration comes from environment variables and MCP input,
 `--help` and `--version` trigger CLI mode for informational output. Like every
 other CLI flag, they are not accepted in MCP stdin mode.
 
+The JSON first-message wire bytes have a fixed 1 MiB transport bound,
+independent of the message type, payload, or configuration. An optional
+trailing newline delimiter is excluded from the count. The preflight only
+checks safe structure; the MCP SDK validates the complete protocol metadata
+after startup.
+
 ### Detection Logic
 
 ```
 MCP stdin mode = no command-line arguments
 ```
 
-If stdin does not contain a valid MCP `initialize` message, the server exits with:
+If stdin does not contain a supported MCP first message, the server exits with:
 
 ```
-stdin does not contain a valid MCP initialize message
+stdin does not contain a valid MCP first message
 ```
 
 ### CLI mode is unaffected

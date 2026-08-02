@@ -155,18 +155,18 @@ where they are rejected:
 
 ### Basic Execution
 
-In MCP mode, `searxng-mcp-go` is meant to be launched by an MCP client host (such as an AI agent framework), not run directly in a terminal. The client provides the configured environment variables, starts the process, and sends the required MCP JSON-RPC `initialize` message on stdin before tool calls are available.
+In MCP mode, `searxng-mcp-go` is meant to be launched by an MCP client host (such as an AI agent framework), not run directly in a terminal. The client provides the configured environment variables, starts the process, and sends an MCP JSON-RPC first message on stdin before tool calls are available. The first message may be a legacy `initialize` request, a `server/discover` request, or a stateless request carrying `params._meta["io.modelcontextprotocol/protocolVersion"]`.
 
 The server uses stdio transport, meaning it communicates via stdin/stdout after the MCP client starts it.
 
 #### Stdin Validation
 
-The server reads the first line of stdin and validates it is a JSON-RPC 2.0 `initialize` message before starting:
+The server reads the first line of stdin and performs a bounded structural MCP check before starting. It accepts the legacy JSON-RPC 2.0 `initialize` request, the `server/discover` request, or a stateless request carrying `params._meta["io.modelcontextprotocol/protocolVersion"]`. This preflight is only a safe structure gate; the MCP SDK performs complete protocol metadata validation:
 
-- **Invalid input** (non-MCP input, empty stdin, malformed JSON): the server prints `ERROR: stdin does not contain a valid MCP initialize message` to stderr and exits with code 2.
-- **Oversized input** (first line exceeds 1 MB): treated as invalid — same error and exit code 2.
+- **Invalid input** (non-MCP input, empty stdin, malformed JSON, or no supported first-message shape): the server prints `ERROR: stdin does not contain a valid MCP first message` to stderr and exits with code 2.
+- **Oversized input** (the JSON first-message wire bytes exceed the fixed 1 MiB transport bound; an optional trailing newline delimiter is not counted): treated as invalid — same error and exit code 2.
 
-MCP clients that correctly send the `initialize` message are not affected.
+MCP clients that correctly send any supported first message are not affected.
 
 ### MCP Client Configuration
 

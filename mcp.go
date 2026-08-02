@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -75,52 +74,178 @@ func newSearchTool(schema json.RawMessage) *mcp.Tool {
 	}
 }
 
-type mcpInitializeMessage struct {
-	JSONRPC string `json:"jsonrpc"`
-	Method  string `json:"method"`
+// mcpFirstMessage is the JSON-RPC envelope of the first message an MCP client
+// sends over stdin to start a session.
+type mcpFirstMessage struct {
+	JSONRPC string          `json:"jsonrpc"`
+	Method  string          `json:"method"`
+	Params  json.RawMessage `json:"params"`
 }
 
-const mcpInitializeMaxBytes = 1 << 20
+const (
+	// mcpFirstMessageMaxBytes is the fixed transport bound, in bytes, for the
+	// first newline-delimited JSON message read from stdin. The trailing
+	// newline delimiter is allowed in addition to this bound. It is deliberately
+	// a transport limit, independent of any search payload limits.
+	mcpFirstMessageMaxBytes = 1 << 20
 
-var errInvalidMCPInitializeMessage = errors.New("stdin does not contain a valid MCP initialize message")
+	// mcpFirstMessageReadChunkSize keeps the incremental preflight reader's
+	// buffer small while still allowing ordinary MCP messages to be read with
+	// few underlying calls.
+	mcpFirstMessageReadChunkSize = 32 << 10
 
-// prepareMCPStdin reads the first line of stdin to verify it contains a valid
-// MCP initialize message (JSON-RPC 2.0 with method "initialize"), preventing
-// the MCP server from hanging when piped non-MCP input.
+	mcpMethodInitialize = "initialize"
+	mcpMethodDiscover   = "server/discover"
+
+	// metaKeyProtocolVersion marks a request that uses the stateless MCP
+	// protocol introduced in 2026-07-28. The SDK validates the complete
+	// metadata object after this transport gate accepts the message.
+	metaKeyProtocolVersion = "io.modelcontextprotocol/protocolVersion"
+)
+
+var (
+	errInvalidMCPFirstMessage             = errors.New("stdin does not contain a valid MCP first message")
+	errMCPFirstMessageTooLong             = errors.New("MCP first message exceeds the transport limit")
+	errInvalidMCPFirstMessageReaderResult = errors.New("invalid MCP stdin reader result")
+)
+
+// prepareMCPStdin reads the first line of stdin to verify it starts a valid
+// MCP session (legacy "initialize", "server/discover", or a stateless request
+// carrying protocol metadata), preventing the MCP server from hanging when
+// piped non-MCP input.
 func prepareMCPStdin(stdin io.Reader) (io.Reader, error) {
-	reader := bufio.NewReaderSize(stdin, mcpInitializeMaxBytes+1)
-
-	firstLine, err := reader.ReadSlice('\n')
-	if errors.Is(err, bufio.ErrBufferFull) {
-		return nil, errInvalidMCPInitializeMessage
+	firstLine, leftover, err := readFirstLine(stdin, mcpFirstMessageMaxBytes)
+	if err != nil || !isValidMCPFirstMessage(firstLine) {
+		return nil, errInvalidMCPFirstMessage
 	}
 
-	if err != nil && !errors.Is(err, io.EOF) {
-		return nil, errInvalidMCPInitializeMessage
-	}
-
-	if len(firstLine) > mcpInitializeMaxBytes || !isValidMCPInitializeMessage(firstLine) {
-		return nil, errInvalidMCPInitializeMessage
-	}
-
-	return io.MultiReader(bytes.NewReader(firstLine), reader), nil
+	return io.MultiReader(
+		bytes.NewReader(firstLine),
+		bytes.NewReader(leftover),
+		stdin,
+	), nil
 }
 
-// isValidMCPInitializeMessage checks whether the given byte slice is a valid
-// JSON-RPC 2.0 initialize message.
-func isValidMCPInitializeMessage(line []byte) bool {
+// readFirstLine incrementally reads through the first newline, retaining any
+// bytes read after that newline as leftover. The reader never consumes more
+// than maxBytes+1 bytes, so an oversized first line is rejected without
+// buffering attacker-controlled input or allocating the entire transport
+// bound up front. A line ending at EOF is accepted for JSON validation by the
+// caller.
+func readFirstLine(reader io.Reader, maxBytes int) ([]byte, []byte, error) {
+	if reader == nil || maxBytes < 1 {
+		return nil, nil, errMCPFirstMessageTooLong
+	}
+
+	// The fixed transport bound used by prepareMCPStdin makes this addition
+	// safe. Keep the helper defensive for direct tests and future callers.
+	maxInt := int(^uint(0) >> 1)
+	if maxBytes == maxInt {
+		return nil, nil, errMCPFirstMessageTooLong
+	}
+
+	readLimit := maxBytes + 1
+	chunk := make([]byte, mcpFirstMessageReadChunkSize)
+	lineCapacity := min(maxBytes, len(chunk))
+	line := make([]byte, 0, lineCapacity)
+
+	consumed := 0
+	for consumed < readLimit {
+		readSize := min(len(chunk), readLimit-consumed)
+
+		n, err := reader.Read(chunk[:readSize])
+		if n < 0 || n > readSize {
+			return nil, nil, errInvalidMCPFirstMessageReaderResult
+		}
+
+		if n > 0 {
+			consumed += n
+
+			chunkLine, leftover, complete := consumeMCPFirstLineChunk(line, chunk[:n])
+			line = chunkLine
+
+			if complete {
+				return line, leftover, nil
+			}
+		}
+
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return line, nil, nil
+			}
+
+			return nil, nil, err
+		}
+
+		if n == 0 {
+			return nil, nil, io.ErrNoProgress
+		}
+	}
+
+	return nil, nil, errMCPFirstMessageTooLong
+}
+
+func consumeMCPFirstLineChunk(line, data []byte) ([]byte, []byte, bool) {
+	newline := bytes.IndexByte(data, '\n')
+	if newline < 0 {
+		return append(line, data...), nil, false
+	}
+
+	line = append(line, data[:newline+1]...)
+	leftover := append([]byte(nil), data[newline+1:]...)
+
+	return line, leftover, true
+}
+
+// isValidMCPFirstMessage checks whether the given byte slice is a valid JSON-RPC
+// 2.0 message that can start an MCP session: the legacy "initialize" handshake,
+// the stateless "server/discover" RPC, or any request carrying the per-request
+// protocol metadata. Full protocol validation remains the SDK's responsibility.
+func isValidMCPFirstMessage(line []byte) bool {
 	if len(bytes.TrimSpace(line)) == 0 {
 		return false
 	}
 
-	var msg mcpInitializeMessage
+	var msg mcpFirstMessage
 
 	err := json.Unmarshal(line, &msg)
 	if err != nil {
 		return false
 	}
 
-	return msg.JSONRPC == "2.0" && msg.Method == "initialize"
+	if msg.JSONRPC != "2.0" {
+		return false
+	}
+
+	if msg.Method == mcpMethodInitialize || msg.Method == mcpMethodDiscover {
+		return true
+	}
+
+	return msg.hasStatelessProtocolMeta()
+}
+
+// hasStatelessProtocolMeta reports whether the first message carries the
+// stateless protocol-version metadata key. The SDK performs all further
+// validation, including value type, supported version, and required peer
+// capability metadata.
+func (m mcpFirstMessage) hasStatelessProtocolMeta() bool {
+	if len(m.Params) == 0 {
+		return false
+	}
+
+	var params struct {
+		//nolint:tagliatelle // matches the wire key "_meta"
+		Meta map[string]json.RawMessage `json:"_meta"`
+	}
+
+	err := json.Unmarshal(m.Params, &params)
+	if err != nil {
+		return false
+	}
+
+	_, ok := params.Meta[metaKeyProtocolVersion]
+
+	return ok
 }
 
 // runMCPMode starts the MCP stdio server, registers the search tool, and
