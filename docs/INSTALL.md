@@ -115,7 +115,7 @@ overrides the environment variable.
 `SEARXNG_ALLOW_GET_FALLBACK` accept fixed formats (a Go duration, a
 non-negative integer, and `0`/`1`, respectively). When a value is set to
 something the server cannot parse — for example `SEARXNG_TIMEOUT=abc`,
-`SEARXNG_MAX_RETRIES=-1`, or `SEARXNG_ALLOW_GET_FALLBACK=true` — the server
+`SEARXNG_MAX_RETRIES=abc`, or `SEARXNG_ALLOW_GET_FALLBACK=true` — the server
 writes a warning line to stderr that names the offending variable and value,
 and then the server falls back to whichever value takes precedence:
 if a corresponding CLI flag is set (e.g. `--timeout 30s`,
@@ -124,6 +124,10 @@ otherwise the built-in default is used. The process
 **continues running** and does not exit. In MCP stdio mode, most MCP clients do
 not surface the stderr stream, so end users typically do not see the warning at
 all.
+
+Values that parse successfully but fall outside the documented range (for
+example `SEARXNG_MAX_RETRIES=-1`) are **not** treated this way — they are
+rejected as a hard startup error, as described below.
 
 If you need strict validation (for example in CI), prefer the
 `--timeout` and `--max-retries` CLI flags instead of the environment

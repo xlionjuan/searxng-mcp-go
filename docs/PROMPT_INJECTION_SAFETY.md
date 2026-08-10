@@ -4,9 +4,14 @@
 
 ---
 
-## Status: Informational — No Implementation Planned
+## Status: Informational — Option A Implemented
 
-This document summarizes research into external content warning mechanisms. It is intended as a reference for understanding the landscape of prompt injection defenses, not as a specification for implementation in this project.
+This document summarizes research into external content warning mechanisms.
+Option A (minimal header + `warning` field) has since been implemented in this
+project: every normalized response carries `ExternalContentWarning` in the
+`warning` JSON field, and CLI text output emits a `=== Web Search Results ===`
+header with the warning (see issues #448 and #50). Options B and C remain
+unimplemented.
 
 ---
 
@@ -163,8 +168,9 @@ If the LLM does not recognize boundary markers, their value is limited to:
 
 Given the research findings, there are several directions this project could take:
 
-### Option A: Minimal Header (Recommended as Starting Point)
-Add a simple `[EXTERNAL CONTENT]` or `[WEB SEARCH RESULTS]` header to CLI text output and a `warning` field in JSON/MCP responses. No detailed warning, no boundary markers. Aligns with OpenClaw's `web_search` treatment.
+### Option A: Minimal Header (Implemented)
+
+Add a simple `[EXTERNAL CONTENT]` or `[WEB SEARCH RESULTS]` header to CLI text output and a `warning` field in JSON/MCP responses. No detailed warning, no boundary markers. Aligns with OpenClaw's `web_search` treatment. **Implemented**: CLI output carries a `=== Web Search Results ===` header plus the warning text, and every normalized response sets the `warning` field (see `internal/searxng/response.go` and `format.go`).
 
 **Pros**: Low complexity, immediately visible, no LLM dependency
 **Cons**: No actual injection protection, purely informational

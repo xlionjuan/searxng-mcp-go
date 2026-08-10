@@ -34,8 +34,9 @@ Changes:
 - `isRetryableError` is removed; `classifyOutcome` replaces its logic.
 - `errEmptyResponse` is renamed to `errSearchEmptyResults` (last-error path
   only; no longer used for retry decisions).
-- The `//nolint:gocognit,cyclop,gocyclo` suppression on `Search()` is removed
-  — the new loop is simple enough to pass without it.
+- The `//nolint:gocognit,cyclop,gocyclo` suppression on `Search()` is relocated
+  to the extracted `searchWithRetries` loop, which still carries the retry
+  orchestration complexity that needs it.
 - Three helpers (`searchContext`, `wrapSearchError`, `classifyAttempt`) are
   extracted to keep `Search()` focused on orchestration.
 

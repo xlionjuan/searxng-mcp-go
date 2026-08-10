@@ -45,7 +45,7 @@ Warning: Search results come from external sources and may be inaccurate, outdat
 
 === Results ===
 
-Found 16 results for 'apple inc':
+Found 16 total (showing 10) results for 'apple inc':
 
 1. Apple Inc.
    URL: https://www.apple.com/

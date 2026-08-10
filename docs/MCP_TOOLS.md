@@ -274,7 +274,7 @@ Search error examples — the response format depends on whether the error is a 
 
 | Error Condition | Response Format (as received by MCP client) |
 |-----------------|---------------------------------------------|
-| Network failure (wrapped as `SearXNGError`) | `Search error: searxng error (status 0): <error description>` (full error logged server-side) |
+| Network failure (wrapped as `SearXNGError`) | `Search error: searxng error (status 0): failed to execute search request: <error description>` (full error logged server-side) |
 | SearXNG HTTP error (4xx/5xx, wrapped as `SearXNGError`) | `Search error: searxng error (status <N>) - content-type <type>: <error description>` (full error logged server-side) |
 | POST `/search` rejected with 405/501 | `Search error: searxng error (status 405/501) - content-type <type>: search method rejected` (full error logged server-side; fix the reverse proxy or opt in with `SEARXNG_ALLOW_GET_FALLBACK=1`) |
 | GET fallback enabled but fails | `Search error: searxng error (status 405/501) - content-type <type>: search method rejected` — underlying `errGETFallbackUsed` + failure details logged server-side |

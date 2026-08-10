@@ -56,8 +56,9 @@ or required environment for Go execution**, run:
 just verify
 ```
 
-This runs all steps from `.github/workflows/test.yml` (except E2E) and
-`.github/workflows/lint.yml`, matching the CI verification gate.
+This runs all build/test/lint steps from `.github/workflows/test.yml` and
+`.github/workflows/lint.yml` (CI-only steps such as coverage-artifact upload
+excluded), matching the CI verification gate.
 
 For workflow-only changes that do not affect Go execution, use targeted
 workflow validation instead of `just verify`. Examples include trigger
@@ -81,5 +82,7 @@ verified.
 E2E retry tweaks and the `e2eMCPEnv` helper live in `docs/MCP_TESTING.md`;
 do not duplicate them here. The CLI exit-code tests in
 `e2e_exitcode_test.go` are part of the default `go test ./...` set (they
-do not require a live server), so they are exercised by `just verify` as well
-as by the E2E workflow.
+do not require a live server), so they are exercised by `just verify`.
+Of those, `TestMCPExitCode_StdinValidation` also matches the E2E workflow's
+`-run 'TestMCP'` filter, while `TestValidationExitCode` runs under
+`just verify` only.
