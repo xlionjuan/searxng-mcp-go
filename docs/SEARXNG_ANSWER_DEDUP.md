@@ -51,7 +51,7 @@ Queries where `answers` contains genuinely distinct information:
 
 ### Engine Scoping
 
-Deduplication is applied **only** to answers from the `duckduckgo` engine. The " More at Wikipedia" suffix and 200-rune substring heuristic are specific to DuckDuckGo's response format, where the same Wikipedia summary appears in both `answers` and `infoboxes`. Answers from other engines (calculator, IP, timezone, etc.), including those with empty or unknown `Engine`, always pass through without deduplication. This prevents false positives like discarding a calculator result "4" whose text happens to appear in unrelated infobox content.
+Deduplication is applied **only** to answers from the `duckduckgo` engine. The " More at Wikipedia" suffix and 200-rune substring heuristic are specific to DuckDuckGo's response format, where the same Wikipedia summary appears in both `answers` and `infoboxes`. When dedup runs, answers with empty text are dropped before the engine gate; non-empty answers from other engines (calculator, IP, timezone, etc.), including those with unknown `Engine`, pass through without deduplication. This prevents false positives like discarding a calculator result "4" whose text happens to appear in unrelated infobox content.
 
 ### Deduplication Strategy
 

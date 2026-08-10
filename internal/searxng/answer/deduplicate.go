@@ -10,8 +10,9 @@ const dedupPrefixRunes = 200
 // first miss and reused for subsequent answers that also miss the exact-case
 // check.
 //
-// Only answers whose Engine is "duckduckgo" are checked — non-DuckDuckGo
-// answers (including those with empty or unknown Engine) always pass through.
+// Only answers whose Engine is "duckduckgo" are checked — when dedup runs,
+// answers with empty text are dropped before the engine gate, and non-empty
+// non-DuckDuckGo answers (including those with unknown Engine) pass through.
 // This prevents discarding legitimate results like calculator answers or IP
 // addresses that happen to appear in infobox text. The " More at Wikipedia"
 // suffix stripping and 200-rune substring heuristic are specific to the
