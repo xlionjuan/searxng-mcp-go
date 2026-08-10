@@ -95,7 +95,7 @@ Deduplication happens while normalizing the SearXNG response. The `deduplicateAn
 | Empty `answers` | Return as-is (no filtering) |
 | Empty `infoboxes` | Return as-is (no filtering) |
 | Infobox with empty `content` | Skip that infobox (no filtering against it) |
-| Empty `answer` text | Skip (filtered out before the engine gate) |
+| Empty `answer` text | Dropped when dedup runs (non-empty infobox exists); kept otherwise (early return) |
 | Case differences | Case-insensitive comparison |
 | Non-DuckDuckGo engine | Retain when non-empty (no dedup applied) |
 | Empty `Engine` field | Retain when non-empty (conservative default) |
