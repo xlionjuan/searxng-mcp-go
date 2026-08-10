@@ -112,8 +112,8 @@ overrides the environment variable.
 ### Invalid Environment Variable Values
 
 `SEARXNG_TIMEOUT`, `SEARXNG_MAX_RETRIES`, and
-`SEARXNG_ALLOW_GET_FALLBACK` accept fixed formats (a Go duration, a
-non-negative integer, and `0`/`1`, respectively). When a value is set to
+`SEARXNG_ALLOW_GET_FALLBACK` accept fixed formats (a Go duration, an
+integer in the range 0–20, and `0`/`1`, respectively). When a value is set to
 something the server cannot parse — for example `SEARXNG_TIMEOUT=abc`,
 `SEARXNG_MAX_RETRIES=abc`, or `SEARXNG_ALLOW_GET_FALLBACK=true` — the server
 writes a warning line to stderr that names the offending variable and value,

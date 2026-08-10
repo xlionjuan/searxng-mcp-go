@@ -54,7 +54,7 @@ _Avoid_: DeadEngines, FailedEngines
 
 ### Search Behavior
 
-**Deduplicate**: The process of filtering out DuckDuckGo `Answer` entries whose text overlaps with `Infobox` content (specifically, DuckDuckGo returning the same Wikipedia summary in both answers and infoboxes), using prefix matching on the first 200 characters with a lowercase fallback. Answers with empty `Answer` text are dropped before the engine gate; the remaining answers are checked only when `Engine == "duckduckgo"`, and non-DuckDuckGo answers with non-empty text pass through. The implementation lives in `internal/searxng/answer`.
+**Deduplicate**: The process of filtering out DuckDuckGo `Answer` entries whose text overlaps with `Infobox` content (specifically, DuckDuckGo returning the same Wikipedia summary in both answers and infoboxes), using prefix matching on the first 200 characters with a lowercase fallback. Dedup runs only when at least one non-empty infobox text exists — otherwise the original answers are returned unchanged. When it runs, answers with empty `Answer` text are dropped before the engine gate; the remaining answers are checked only when `Engine == "duckduckgo"`, and non-DuckDuckGo answers with non-empty text pass through. The implementation lives in `internal/searxng/answer`.
 _Avoid_: Dedup (internal function name; prefer the full term in docs)
 
 **setBrowserHeaders**: The function that applies Chrome-like HTTP headers (User-Agent, Accept, Sec-* family, Priority) to every search request to bypass SearXNG's limiter / bot-detection mechanism.

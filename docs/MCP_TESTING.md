@@ -190,10 +190,10 @@ func TestE2E(t *testing.T) {
     defer cancel()
 
     // 1. Reuse a pre-built binary if E2E_MCP_BINARY is set;
-    //    otherwise fall back to building one in t.TempDir().
+    //    otherwise fall back to the package-level cached build.
     binaryPath := os.Getenv("E2E_MCP_BINARY")
     if binaryPath == "" {
-        binaryPath = buildE2EMCPBinary(ctx, t) // go build -o <tempdir>/searxng-mcp-go .
+        binaryPath = buildE2EMCPBinary(ctx, t) // go build -o <cached tempdir>/searxng-mcp-go .
     }
 
     var stderr bytes.Buffer
@@ -223,7 +223,7 @@ func TestE2E(t *testing.T) {
 `E2E_MCP_BINARY` is an optional environment variable read by every E2E test
 that uses `mcp.CommandTransport` (`e2e_mcp_test.go`, `e2e_functional_test.go`,
 `e2e_error_test.go`, `e2e_lifecycle_test.go`, `e2e_stress_test.go`). When set, the test reuses that
-binary instead of running `go build` on every test invocation. CI sets it to
+binary instead of triggering the package-level cached build. CI sets it to
 `./searxng-mcp-go` after a single explicit build step (see
 `.github/workflows/e2e.yml`), which makes the in-workflow retry loop cheap.
 For local development:
@@ -239,8 +239,8 @@ When `E2E_MCP_BINARY` is unset, the binary is built once into a
 package-level cached temp directory via the `e2eMCPBinaryPath` helper and
 reused across all E2E tests (the directory is intentionally leaked to avoid
 rebuilding the binary for every test). Only the ungated CLI tests
-(`e2e_exitcode_test.go`, `e2e_cli_test.go`) build per-test in `t.TempDir()`
-via `buildTestBinary`.
+(`e2e_exitcode_test.go`, `e2e_cli_test.go`, `e2e_mockserver_test.go`) build
+per-test in `t.TempDir()` via `buildTestBinary`.
 
 `e2e_exitcode_test.go` does not use `mcp.CommandTransport` and is not gated
 by the `e2e` build tag; it asserts CLI exit codes via raw `exec.Command` and
