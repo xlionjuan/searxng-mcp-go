@@ -32,6 +32,7 @@ just test-server-stop
 | `just test-server-stop` | Stop background instance; uses SIGTERM then SIGKILL fallback |
 | `just test-server-restart` | Stop then start |
 | `just test-server-start-fg` | Foreground mode for humans only; do not use from agents or CI |
+| `just test-server-pid-helper` | Shell unit tests for `is_searxng_pid` |
 
 ## Underlying Scripts
 
@@ -80,7 +81,7 @@ E2E stress tests; the combined `e2e stress` tag is required for the latter.
 Use the same setup and lifecycle as the regular E2E tests: run
 `just test-server-setup` once, then `just test-server-start` and
 `just test-server-stop` around the stress run. The CI workflow uses
-`E2E_MCP_BINARY=./searxng-mcp-go` to skip the per-test `go build`.
+`E2E_MCP_BINARY=./searxng-mcp-go` to skip the MCP E2E package-level build.
 
 ## Pitfalls
 

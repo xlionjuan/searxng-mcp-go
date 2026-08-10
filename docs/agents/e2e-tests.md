@@ -34,7 +34,7 @@
 `TestMCPLifecycle_InvalidJSONAfterInitialize`) and `-run 'TestCLISmoke'` — in
 `Wandalen/wretry.action` with `attempt_limit=3` using
 `-v -tags=e2e -run 'TestMCP' -race -count=1 -timeout=600s .` (see
-`.github/workflows/e2e.yml:88` and `:105` for the exact commands).
+`.github/workflows/e2e.yml:87` and `:104` for the exact commands).
 This is because upstream search engines probabilistically rate-limit or ban
 the CI SearXNG instance during automated runs — a characteristic inherent to
 meta-search against live third-party engines, not a code or SearXNG bug.

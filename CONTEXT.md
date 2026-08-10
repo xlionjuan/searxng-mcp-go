@@ -54,7 +54,7 @@ _Avoid_: DeadEngines, FailedEngines
 
 ### Search Behavior
 
-**Deduplicate**: The process of filtering out DuckDuckGo `Answer` entries whose text overlaps with `Infobox` content (specifically, DuckDuckGo returning the same Wikipedia summary in both answers and infoboxes), using prefix matching on the first 200 characters with a lowercase fallback. Only answers with `Engine == "duckduckgo"` are checked; non-DuckDuckGo answers, including those with empty or unknown `Engine`, pass through. The implementation lives in `internal/searxng/answer`.
+**Deduplicate**: The process of filtering out DuckDuckGo `Answer` entries whose text overlaps with `Infobox` content (specifically, DuckDuckGo returning the same Wikipedia summary in both answers and infoboxes), using prefix matching on the first 200 characters with a lowercase fallback. Dedup runs only when at least one non-empty infobox text exists — otherwise the original answers are returned unchanged. When it runs, answers with empty `Answer` text are dropped before the engine gate; the remaining answers are checked only when `Engine == "duckduckgo"`, and non-DuckDuckGo answers with non-empty text pass through. The implementation lives in `internal/searxng/answer`.
 _Avoid_: Dedup (internal function name; prefer the full term in docs)
 
 **setBrowserHeaders**: The function that applies Chrome-like HTTP headers (User-Agent, Accept, Sec-* family, Priority) to every search request to bypass SearXNG's limiter / bot-detection mechanism.
@@ -94,7 +94,7 @@ _Avoid_: POSTtoGETFallback (internal test function name)
 >
 > **Dev:** "And I see duplicate answers in the output for DuckDuckGo queries. What's that about?"
 >
-> **Domain expert:** "The **Deduplicate** function handles that. DuckDuckGo puts the same Wikipedia snippet in both the **Answer** and the **Infobox**. The dedup only checks answers from the `duckduckgo` engine — if the answer text is a prefix of any infobox content, it's filtered out. Non-DuckDuckGo answers are never touched."
+> **Domain expert:** "The **Deduplicate** function handles that. DuckDuckGo puts the same Wikipedia snippet in both the **Answer** and the **Infobox**. When non-empty infobox content exists, empty answers are dropped first; remaining answers are checked only if they come from the `duckduckgo` engine — if the answer text is a prefix of any infobox content, it's filtered out. Non-empty non-DuckDuckGo answers pass through."
 >
 > **Dev:** "I ran a query with `--debug` and saw my search query logged in plain text. Is that safe?"
 >

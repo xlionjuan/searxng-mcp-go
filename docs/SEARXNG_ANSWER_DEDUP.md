@@ -51,15 +51,18 @@ Queries where `answers` contains genuinely distinct information:
 
 ### Engine Scoping
 
-Deduplication is applied **only** to answers from the `duckduckgo` engine. The " More at Wikipedia" suffix and 200-rune substring heuristic are specific to DuckDuckGo's response format, where the same Wikipedia summary appears in both `answers` and `infoboxes`. Answers from other engines (calculator, IP, timezone, etc.), including those with empty or unknown `Engine`, always pass through without deduplication. This prevents false positives like discarding a calculator result "4" whose text happens to appear in unrelated infobox content.
+Deduplication is applied **only** to answers from the `duckduckgo` engine. The " More at Wikipedia" suffix and 200-rune substring heuristic are specific to DuckDuckGo's response format, where the same Wikipedia summary appears in both `answers` and `infoboxes`. When dedup runs, answers with empty text are dropped before the engine gate; non-empty answers from other engines (calculator, IP, timezone, etc.), including those with unknown `Engine`, pass through without deduplication. This prevents false positives like discarding a calculator result "4" whose text happens to appear in unrelated infobox content.
 
 ### Deduplication Strategy
 
 The function `DeduplicateAnswers` in `internal/searxng/answer/deduplicate.go` filters answers at the **search response layer**, before the result reaches JSON serialization or CLI formatting. This means both output modes benefit.
 
-**Algorithm (engine gate + exact-case fast path + lazy lowercase fallback):**
+**Algorithm (empty-text filter + engine gate + exact-case fast path + lazy lowercase fallback):**
 
-For each answer, the following steps are applied:
+The dedup loop runs only when there is at least one non-empty infobox text; otherwise the original answers are returned unchanged. For each answer, the following steps are applied:
+
+*Empty-text filter (all engines):*
+1. If `ans.Answer == ""`, the answer is dropped regardless of engine.
 
 *Engine gate:*
 1. If `ans.Engine != "duckduckgo"`, the answer is retained without further checks.
@@ -92,11 +95,11 @@ Deduplication happens while normalizing the SearXNG response. The `deduplicateAn
 | Empty `answers` | Return as-is (no filtering) |
 | Empty `infoboxes` | Return as-is (no filtering) |
 | Infobox with empty `content` | Skip that infobox (no filtering against it) |
-| Empty `answer` text | Skip (filtered out) |
+| Empty `answer` text | Dropped when dedup runs (non-empty infobox exists); kept otherwise (early return) |
 | Case differences | Case-insensitive comparison |
-| Non-DuckDuckGo engine | Retain (no dedup applied) |
-| Empty `Engine` field | Retain (conservative default) |
-| Unknown `Engine` field | Retain (conservative default) |
+| Non-DuckDuckGo engine | Retain when non-empty (no dedup applied) |
+| Empty `Engine` field | Retain when non-empty (conservative default) |
+| Unknown `Engine` field | Retain when non-empty (conservative default) |
 | Multiple answers, some duplicate | Keep non-duplicates, remove DuckDuckGo duplicates |
 
 ## Bounded Work Cap (CAND-33fe0b85-RUNTIME-003)

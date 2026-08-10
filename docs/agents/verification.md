@@ -36,7 +36,7 @@ in `internal/searxng/bench_internal_test.go`.
 | `test` | `go test -race -shuffle=on ./...` | Unit tests, excluding e2e and stress |
 | `test-cover` | `go test -race -shuffle=on -coverprofile=coverage.out ./...` | CI-style test run with race detector |
 | `test-stress` | `go test -race -tags=stress -shuffle=on ./...` | Include stress/concurrency tests |
-| `test-e2e` | `go test -race -tags='e2e stress' -count=1 -timeout=900s .` | E2E test; requires `SEARXNG_URL` and a running test server. `E2E_MCP_BINARY` skips per-test `go build`; see `docs/MCP_TESTING.md`. |
+| `test-e2e` | `go test -race -tags='e2e stress' -count=1 -timeout=900s .` | E2E test; requires `SEARXNG_URL` and a running test server. `E2E_MCP_BINARY` skips the MCP E2E package-level build; see `docs/MCP_TESTING.md`. |
 | `test-e2e-stress` | `go test -v -tags='e2e stress' -run 'TestMCPStress' -race -count=1 -timeout=900s .` | E2E stress subset used by the manual stress workflow |
 | `test-e2e-mcp` | `go test -v -tags=e2e -run 'TestMCP' -race -count=1 -timeout=600s .` | MCP stdio E2E subset used with the CI retry wrapper |
 | `test-e2e-cli-smoke` | `go test -v -tags=e2e -run 'TestCLISmoke' -race -count=1 -timeout=600s .` | CLI smoke E2E subset used with the CI retry wrapper |
@@ -56,8 +56,9 @@ or required environment for Go execution**, run:
 just verify
 ```
 
-This runs all steps from `.github/workflows/test.yml` (except E2E) and
-`.github/workflows/lint.yml`, matching the CI verification gate.
+This runs all build/test/lint steps from `.github/workflows/test.yml` and
+`.github/workflows/lint.yml` (CI-only steps such as coverage-artifact upload
+excluded), matching the CI verification gate.
 
 For workflow-only changes that do not affect Go execution, use targeted
 workflow validation instead of `just verify`. Examples include trigger
@@ -81,5 +82,7 @@ verified.
 E2E retry tweaks and the `e2eMCPEnv` helper live in `docs/MCP_TESTING.md`;
 do not duplicate them here. The CLI exit-code tests in
 `e2e_exitcode_test.go` are part of the default `go test ./...` set (they
-do not require a live server), so they are exercised by `just verify` as well
-as by the E2E workflow.
+do not require a live server), so they are exercised by `just verify`.
+Of those, `TestMCPExitCode_StdinValidation` also matches the E2E workflow's
+`-run 'TestMCP'` filter, while `TestValidationExitCode` runs under
+`just verify` only.
