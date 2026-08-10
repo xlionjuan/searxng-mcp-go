@@ -81,7 +81,7 @@ E2E stress tests; the combined `e2e stress` tag is required for the latter.
 Use the same setup and lifecycle as the regular E2E tests: run
 `just test-server-setup` once, then `just test-server-start` and
 `just test-server-stop` around the stress run. The CI workflow uses
-`E2E_MCP_BINARY=./searxng-mcp-go` to skip the per-test `go build`.
+`E2E_MCP_BINARY=./searxng-mcp-go` to skip the MCP E2E package-level build.
 
 ## Pitfalls
 

@@ -94,7 +94,7 @@ _Avoid_: POSTtoGETFallback (internal test function name)
 >
 > **Dev:** "And I see duplicate answers in the output for DuckDuckGo queries. What's that about?"
 >
-> **Domain expert:** "The **Deduplicate** function handles that. DuckDuckGo puts the same Wikipedia snippet in both the **Answer** and the **Infobox**. The dedup only checks answers from the `duckduckgo` engine — if the answer text is a prefix of any infobox content, it's filtered out. Non-DuckDuckGo answers are never touched."
+> **Domain expert:** "The **Deduplicate** function handles that. DuckDuckGo puts the same Wikipedia snippet in both the **Answer** and the **Infobox**. When non-empty infobox content exists, empty answers are dropped first; remaining answers are checked only if they come from the `duckduckgo` engine — if the answer text is a prefix of any infobox content, it's filtered out. Non-empty non-DuckDuckGo answers pass through."
 >
 > **Dev:** "I ran a query with `--debug` and saw my search query logged in plain text. Is that safe?"
 >

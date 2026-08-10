@@ -36,7 +36,7 @@ in `internal/searxng/bench_internal_test.go`.
 | `test` | `go test -race -shuffle=on ./...` | Unit tests, excluding e2e and stress |
 | `test-cover` | `go test -race -shuffle=on -coverprofile=coverage.out ./...` | CI-style test run with race detector |
 | `test-stress` | `go test -race -tags=stress -shuffle=on ./...` | Include stress/concurrency tests |
-| `test-e2e` | `go test -race -tags='e2e stress' -count=1 -timeout=900s .` | E2E test; requires `SEARXNG_URL` and a running test server. `E2E_MCP_BINARY` skips per-test `go build`; see `docs/MCP_TESTING.md`. |
+| `test-e2e` | `go test -race -tags='e2e stress' -count=1 -timeout=900s .` | E2E test; requires `SEARXNG_URL` and a running test server. `E2E_MCP_BINARY` skips the MCP E2E package-level build; see `docs/MCP_TESTING.md`. |
 | `test-e2e-stress` | `go test -v -tags='e2e stress' -run 'TestMCPStress' -race -count=1 -timeout=900s .` | E2E stress subset used by the manual stress workflow |
 | `test-e2e-mcp` | `go test -v -tags=e2e -run 'TestMCP' -race -count=1 -timeout=600s .` | MCP stdio E2E subset used with the CI retry wrapper |
 | `test-e2e-cli-smoke` | `go test -v -tags=e2e -run 'TestCLISmoke' -race -count=1 -timeout=600s .` | CLI smoke E2E subset used with the CI retry wrapper |
