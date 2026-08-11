@@ -418,7 +418,7 @@ func TestParamDefJSONSchema(t *testing.T) {
 		},
 		{
 			name: "language", param: findParam(t, "language"),
-			wantType: "string", wantKeys: []string{"type", "description", "default"},
+			wantType: "string", wantKeys: []string{"type", "description", "maxLength", "default"},
 		},
 		{
 			name: "safesearch", param: findParam(t, "safesearch"),
@@ -497,6 +497,43 @@ func TestCSVParamDefDocumentsByteLimit(t *testing.T) {
 				t.Errorf("%s JSON Schema unexpectedly contains maxLength for a byte limit", name)
 			}
 		})
+	}
+}
+
+// TestSearchParamsLanguageLengthUsesSharedBound verifies that the language
+// metadata exposes the same total-rune bound used by validation and describes
+// it in both renderer inputs.
+func TestSearchParamsLanguageLengthUsesSharedBound(t *testing.T) {
+	t.Parallel()
+
+	p := findParam(t, "language")
+	if p.MaxLength == nil {
+		t.Fatal("language MaxLength is nil, want shared MaxLanguageLength")
+	}
+
+	if got, want := *p.MaxLength, MaxLanguageLength; got != want {
+		t.Fatalf("language MaxLength = %d, want %d (MaxLanguageLength)", got, want)
+	}
+
+	schema := p.JSONSchema()
+
+	rawMaxLength, ok := schema["maxLength"]
+	if !ok {
+		t.Fatal("language JSON schema is missing maxLength")
+	}
+
+	if got, ok := rawMaxLength.(int); !ok || got != MaxLanguageLength {
+		t.Fatalf("language JSON schema maxLength = %v (%T), want %d", rawMaxLength, rawMaxLength, MaxLanguageLength)
+	}
+
+	wantDescription := fmt.Sprintf("Maximum %d runes for the full value", MaxLanguageLength)
+	if !strings.Contains(p.Description, wantDescription) {
+		t.Errorf("language Description = %q, want to contain %q", p.Description, wantDescription)
+	}
+
+	wantCLIHelp := fmt.Sprintf("[max %d runes]", MaxLanguageLength)
+	if !strings.Contains(p.CLIHelp, wantCLIHelp) {
+		t.Errorf("language CLIHelp = %q, want to contain %q", p.CLIHelp, wantCLIHelp)
 	}
 }
 

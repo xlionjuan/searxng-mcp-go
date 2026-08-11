@@ -25,6 +25,11 @@ var (
 	MaxResultLimit = 20
 )
 
+// MaxLanguageLength is the maximum total length, in Unicode runes, of the
+// language parameter. Per-subtag grammar limits are defined separately by
+// languagePattern in validation.go.
+var MaxLanguageLength = 35
+
 // MaxCSVInputBytes is the maximum UTF-8 byte length accepted for the
 // comma-separated categories and engines parameters. JSON Schema maxLength is
 // intentionally not used for this bound because it does not express a

@@ -225,6 +225,61 @@ func TestMCPSearchSchemaPagenoDerivesFromConstant(t *testing.T) {
 	verifyJSONNumber(t, raw, "default", float64(searxng.MinPageno))
 }
 
+// TestMCPSearchSchemaLanguageLengthDerivesFromConstant guards the MCP JSON
+// Schema for the language parameter. The maximum applies to the complete
+// language value, while the validator keeps per-subtag grammar limits separate.
+func TestMCPSearchSchemaLanguageLengthDerivesFromConstant(t *testing.T) {
+	t.Parallel()
+
+	data, err := buildSearchSchema()
+	if err != nil {
+		t.Fatalf("buildSearchSchema() error = %v", err)
+	}
+
+	var schema map[string]any
+
+	err = json.Unmarshal(data, &schema)
+	if err != nil {
+		t.Fatalf("failed to parse schema: %v", err)
+	}
+
+	props, ok := schema["properties"].(map[string]any)
+	if !ok {
+		t.Fatalf("schema properties has unexpected type %T", schema["properties"])
+	}
+
+	rawLanguage, ok := props["language"].(map[string]any)
+	if !ok {
+		t.Fatal("schema missing language property")
+	}
+
+	verifyJSONNumber(t, rawLanguage, "maxLength", float64(searxng.MaxLanguageLength))
+
+	description, ok := rawLanguage["description"].(string)
+	if !ok {
+		t.Fatal("language description is not a string")
+	}
+
+	wantDescription := "Maximum " + strconv.Itoa(searxng.MaxLanguageLength) + " runes for the full value"
+	if !strings.Contains(description, wantDescription) {
+		t.Errorf("language description %q missing %q", description, wantDescription)
+	}
+}
+
+// TestCLIHelpLanguageLengthDerivesFromConstant guards the CLI help text for
+// the language parameter against a stale hard-coded total-rune limit.
+// Not t.Parallel(): captureStdout swaps process-global os.Stdout.
+func TestCLIHelpLanguageLengthDerivesFromConstant(t *testing.T) {
+	output := captureStdout(t, func() {
+		printCLIHelp(os.Stdout)
+	})
+
+	want := "[max " + strconv.Itoa(searxng.MaxLanguageLength) + " runes]"
+	if !strings.Contains(output, want) {
+		t.Errorf("CLI help language text missing %q", want)
+	}
+}
+
 // TestParseArgsDefaultLimitMatchesConstant guards the CLI defaulting policy:
 // when --limit is not provided, parseArgs must default to DefaultResultLimit.
 // If the CLI path diverges from the MCP path (which uses ApplyDefaults /

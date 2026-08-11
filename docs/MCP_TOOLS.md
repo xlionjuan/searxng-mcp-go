@@ -15,7 +15,7 @@ The `search` tool proxies web search requests to a SearXNG instance, which aggre
 | Parameter    | Type    | Required | Default | Description                                      |
 |--------------|---------|----------|---------|--------------------------------------------------|
 | `query`      | string  | Yes      | -       | The search query string. Max 500 runes.          |
-| `language`   | string  | No       |         | Language code for results (e.g., en, zh-tw, ja). Max 35 runes. Empty or `"auto"` = SearXNG decides |
+| `language`   | string  | No       |         | Language code for results (e.g., en, zh-tw, ja). Maximum 35 runes for the full value. Empty or `"auto"` = SearXNG decides |
 | `safesearch` | integer | No       | 0       | SafeSearch filtering level:                     |
 |              |         |          |         | - `0` = Off (show all results)                   |
 |              |         |          |         | - `1` = Moderate (filter some adult content)    |

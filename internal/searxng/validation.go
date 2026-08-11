@@ -32,9 +32,9 @@ var validTimeRangesText = strings.Join(ValidTimeRanges(), ", ")
 // languagePattern validates common BCP47-like language tags used by SearXNG.
 // It also accepts grandfathered tags (starting with "i-") and private-use
 // tags (starting with "x-"). Empty values are handled separately as "auto" mode.
+// The regex quantifiers limit individual subtags; validateLanguage applies the
+// separate MaxLanguageLength bound to the complete value.
 var languagePattern = regexp.MustCompile(`^(?:[ix]-[\p{L}\p{N}_-]{1,35}|[\p{L}]{2,35}(?:-[\p{L}\p{N}]{1,35})*)$`)
-
-const maxLanguageLength = 35
 
 // containsASCIIControlCharacters checks if a string contains ASCII control characters
 // (characters in the range \x00-\x1f and \x7f).
@@ -159,7 +159,7 @@ func validateQuery(query string) error {
 	}
 
 	if utf8.RuneCountInString(query) > MaxQueryLength {
-		return NewValidationError("query", "must be 500 runes or less")
+		return NewValidationError("query", fmt.Sprintf("must be %d runes or less", MaxQueryLength))
 	}
 
 	if containsASCIIControlCharacters(query) {
@@ -182,8 +182,11 @@ func validateLanguage(value string) (string, error) {
 		return "", nil
 	}
 
-	if utf8.RuneCountInString(value) > maxLanguageLength {
-		return value, NewValidationError("language", "must be 35 runes or less")
+	if utf8.RuneCountInString(value) > MaxLanguageLength {
+		return value, NewValidationError(
+			"language",
+			fmt.Sprintf("must be %d runes or less", MaxLanguageLength),
+		)
 	}
 
 	if !languagePattern.MatchString(value) {
