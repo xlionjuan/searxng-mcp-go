@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -199,6 +200,18 @@ func TestValidateSearchArgs(t *testing.T) {
 			t.Fatalf("ValidateSearchArgs() error = %v, want nil", err)
 		}
 	})
+}
+
+func TestValidateQueryErrorMessageUsesMaxQueryLength(t *testing.T) {
+	t.Parallel()
+
+	err := validateQuery(strings.Repeat("a", MaxQueryLength+1))
+	requireValidationErrorMsg(
+		t,
+		err,
+		"query",
+		"must be "+strconv.Itoa(MaxQueryLength)+" runes or less",
+	)
 }
 
 // TestValidateLanguagePure verifies the pure-helper contract: validateLanguage
