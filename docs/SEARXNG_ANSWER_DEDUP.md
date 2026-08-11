@@ -132,5 +132,5 @@ without a searcher.
 - **Called**: Via `deduplicateAnswers` wrapper in `internal/searxng/deduplicate.go` during response normalization after JSON unmarshalling, after the `MaxAnswers` / `MaxInfoboxes` cap is applied, before the response is returned to formatting/output code
 - **Tests**:
   - `internal/searxng/answer/deduplicate_test.go` — unit tests for `DeduplicateAnswers`, covering empty inputs, exact/prefix match, "More at Wikipedia" suffix stripping, case insensitivity, engine scoping, distinct answers, mixed scenarios, empty answer skipping, and truncation boundary cases
-  - `internal/searxng/deduplicate_internal_test.go` — wrapper-level tests for the same scenarios plus typed answers with fallback text and fixture survival
-  - `TestNormalizeResponse` in `internal/searxng/response_internal_test.go` — integration coverage for answer/infobox cap truncation, no-op at cap, dedup after truncation, and pathological-input time budget
+  - `internal/searxng/deduplicate_internal_test.go` — focused adapter coverage that verifies only `Infobox.Content` is projected into the canonical deduplication function
+  - `TestNormalizeResponse` in `internal/searxng/response_internal_test.go` — integration coverage for typed-answer fallback before deduplication, answer/infobox caps before deduplication, no-op at cap, and the pathological-input time budget

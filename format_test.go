@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"searxng-mcp-go/internal/searxng"
 	"searxng-mcp-go/internal/testhelper"
@@ -421,5 +422,72 @@ func TestFormatResults_UnicodePreserved(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("expected Unicode fragment %q in output, got:\n%s", want, out)
 		}
+	}
+}
+
+func TestFormatResults_TruncatesUnicodeAtRuneBoundary(t *testing.T) {
+	t.Parallel()
+
+	wantContent := strings.Repeat("🔥", searxng.MaxContentRunes)
+	tests := []struct {
+		name   string
+		prefix string
+		resp   *searxng.SearchResponse
+	}{
+		{
+			name:   "result content",
+			prefix: "   Summary: ",
+			resp: &searxng.SearchResponse{
+				Query: "unicode result truncation",
+				Results: []searxng.SearchResult{
+					{
+						Title:   "Long Unicode content",
+						URL:     "https://example.com/unicode",
+						Content: wantContent + "界",
+						Engine:  "test",
+					},
+				},
+				NumberOfResults: 1,
+			},
+		},
+		{
+			name:   "infobox content",
+			prefix: "[1] Long Unicode infobox\n    ",
+			resp: &searxng.SearchResponse{
+				Query: "unicode infobox truncation",
+				Infoboxes: []searxng.Infobox{
+					{
+						Infobox: "Long Unicode infobox",
+						Content: wantContent + "界",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			out := formatResults(tt.resp)
+
+			_, content, found := strings.Cut(out, tt.prefix)
+			if !found {
+				t.Fatalf("formatResults() missing content prefix %q in:\n%s", tt.prefix, out)
+			}
+
+			if end := strings.IndexByte(content, '\n'); end >= 0 {
+				content = content[:end]
+			}
+
+			if !utf8.ValidString(content) {
+				t.Fatal("formatted content is not valid UTF-8")
+			}
+
+			if content != wantContent {
+				t.Fatalf("formatted content has %d runes, want %d intact emoji runes",
+					utf8.RuneCountInString(content), searxng.MaxContentRunes)
+			}
+		})
 	}
 }

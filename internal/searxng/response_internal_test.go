@@ -6,9 +6,13 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"searxng-mcp-go/internal/searxng/answer"
+	"searxng-mcp-go/internal/testhelper"
 )
 
 // --- readBodyWithLimit tests ---
@@ -500,207 +504,6 @@ func TestDecodeSearchResponse(t *testing.T) {
 	})
 }
 
-// --- translationAnswerFallback tests ---
-
-func TestTranslationAnswerFallback(t *testing.T) {
-	t.Parallel()
-
-	t.Run("no translations returns empty", func(t *testing.T) {
-		t.Parallel()
-
-		a := &Answer{}
-
-		if got := translationAnswerFallback(a); got != "" {
-			t.Fatalf("translationAnswerFallback() = %q, want empty string", got)
-		}
-	})
-
-	t.Run("with translations returns formatted string", func(t *testing.T) {
-		t.Parallel()
-
-		a := &Answer{
-			Translations: []TranslationItem{
-				{Text: "bonjour"},
-				{Text: "salut"},
-			},
-		}
-
-		got := translationAnswerFallback(a)
-		if got != "Translation: bonjour; salut" {
-			t.Fatalf("translationAnswerFallback() = %q, want %q", got, "Translation: bonjour; salut")
-		}
-	})
-
-	t.Run("empty text entries are skipped", func(t *testing.T) {
-		t.Parallel()
-
-		a := &Answer{
-			Translations: []TranslationItem{
-				{Text: ""},
-				{Text: "hello"},
-			},
-		}
-
-		got := translationAnswerFallback(a)
-		if got != "Translation: hello" {
-			t.Fatalf("translationAnswerFallback() = %q, want %q", got, "Translation: hello")
-		}
-	})
-
-	t.Run("all empty texts return empty", func(t *testing.T) {
-		t.Parallel()
-
-		a := &Answer{
-			Translations: []TranslationItem{
-				{Text: "   "},
-			},
-		}
-
-		if got := translationAnswerFallback(a); got != "" {
-			t.Fatalf("translationAnswerFallback() = %q, want empty string", got)
-		}
-	})
-}
-
-// --- weatherAnswerFallback tests ---
-
-func TestWeatherAnswerFallback(t *testing.T) {
-	t.Parallel()
-
-	t.Run("nil current returns empty", func(t *testing.T) {
-		t.Parallel()
-
-		a := &Answer{}
-
-		if got := weatherAnswerFallback(a); got != "" {
-			t.Fatalf("weatherAnswerFallback() = %q, want empty string", got)
-		}
-	})
-
-	t.Run("summary is used when present", func(t *testing.T) {
-		t.Parallel()
-
-		a := &Answer{
-			Current: &WeatherItem{
-				Summary: "Partly cloudy throughout the day.",
-			},
-		}
-
-		got := weatherAnswerFallback(a)
-		if got != "Partly cloudy throughout the day." {
-			t.Fatalf("weatherAnswerFallback() = %q, want summary", got)
-		}
-	})
-
-	t.Run("no summary builds from components", func(t *testing.T) {
-		t.Parallel()
-
-		a := &Answer{
-			Current: &WeatherItem{
-				Location:    WeatherLocation{Name: "Berlin"},
-				Temperature: WeatherMeasure{Val: 11.2, Unit: "°C"},
-				Condition:   "partly cloudy",
-			},
-		}
-
-		got := weatherAnswerFallback(a)
-		if got != "Weather: Berlin, 11.2 °C, partly cloudy" {
-			t.Fatalf("weatherAnswerFallback() = %q, want %q", got, "Weather: Berlin, 11.2 °C, partly cloudy")
-		}
-	})
-
-	t.Run("empty location still returns components", func(t *testing.T) {
-		t.Parallel()
-
-		a := &Answer{
-			Current: &WeatherItem{
-				Temperature: WeatherMeasure{Val: 25.0, Unit: "°C"},
-				Condition:   "sunny",
-			},
-		}
-
-		got := weatherAnswerFallback(a)
-		if got != "Weather: 25 °C, sunny" {
-			t.Fatalf("weatherAnswerFallback() = %q, want %q", got, "Weather: 25 °C, sunny")
-		}
-	})
-
-	t.Run("empty components return empty", func(t *testing.T) {
-		t.Parallel()
-
-		a := &Answer{
-			Current: &WeatherItem{
-				Location:    WeatherLocation{Name: ""},
-				Temperature: WeatherMeasure{},
-				Condition:   "",
-			},
-		}
-
-		if got := weatherAnswerFallback(a); got != "" {
-			t.Fatalf("weatherAnswerFallback() = %q, want empty string", got)
-		}
-	})
-}
-
-// --- EnsureAnswerFallback tests ---
-
-func TestEnsureAnswerFallback(t *testing.T) {
-	t.Parallel()
-
-	t.Run("non-empty answer not overwritten", func(t *testing.T) {
-		t.Parallel()
-
-		a := &Answer{Answer: "existing answer"}
-		EnsureAnswerFallback(a)
-
-		if a.Answer != "existing answer" {
-			t.Fatalf("Answer = %q, want %q", a.Answer, "existing answer")
-		}
-	})
-
-	t.Run("empty answer with translation gets fallback", func(t *testing.T) {
-		t.Parallel()
-
-		a := &Answer{
-			Translations: []TranslationItem{{Text: "bonjour"}},
-		}
-		EnsureAnswerFallback(a)
-
-		if a.Answer != "Translation: bonjour" {
-			t.Fatalf("Answer = %q, want %q", a.Answer, "Translation: bonjour")
-		}
-	})
-
-	t.Run("empty answer with weather gets fallback", func(t *testing.T) {
-		t.Parallel()
-
-		a := &Answer{
-			Current: &WeatherItem{
-				Location:    WeatherLocation{Name: "Paris"},
-				Temperature: WeatherMeasure{Val: 15.0, Unit: "°C"},
-				Condition:   "clear",
-			},
-		}
-		EnsureAnswerFallback(a)
-
-		want := "Weather: Paris, 15 °C, clear"
-		if a.Answer != want {
-			t.Fatalf("Answer = %q, want %q", a.Answer, want)
-		}
-	})
-
-	t.Run("no fallback available stays empty", func(t *testing.T) {
-		t.Parallel()
-
-		a := &Answer{}
-		EnsureAnswerFallback(a)
-
-		if a.Answer != "" {
-			t.Fatalf("Answer = %q, want empty", a.Answer)
-		}
-	})
-}
-
 // --- normalizeResponse tests ---
 
 //nolint:gocognit,gocyclo,cyclop,maintidx // table-driven test covering many normalize response scenarios
@@ -839,6 +642,76 @@ func TestNormalizeResponse(t *testing.T) {
 		}
 	})
 
+	t.Run("applies typed fallbacks before deduplication", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name               string
+			fixture            string
+			fallback           func(*Answer) string
+			assertTypedPayload func(*testing.T, Answer)
+		}{
+			{
+				name:     "translation",
+				fixture:  "typed_translation_answer.json",
+				fallback: answer.TranslationAnswerFallback,
+				assertTypedPayload: func(t *testing.T, got Answer) {
+					t.Helper()
+
+					if len(got.Translations) == 0 || got.Translations[0].Text == "" {
+						t.Fatal("Translations is empty after normalization, want typed translation payload preserved")
+					}
+				},
+			},
+			{
+				name:     "weather",
+				fixture:  "typed_weather_answer.json",
+				fallback: answer.WeatherAnswerFallback,
+				assertTypedPayload: func(t *testing.T, got Answer) {
+					t.Helper()
+
+					if got.Current == nil || got.Current.Location.Name == "" {
+						t.Fatal("Current is empty after normalization, want typed weather payload preserved")
+					}
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+
+				var result SearchResponse
+				testhelper.LoadJSONFixture(t, filepath.Join("..", "..", "testdata", tt.fixture), &result)
+
+				if len(result.Answers) != 1 {
+					t.Fatalf("fixture has %d answers, want 1", len(result.Answers))
+				}
+
+				wantAnswer := tt.fallback(&result.Answers[0])
+
+				// A non-empty infobox forces the deduplication pass. If
+				// deduplication runs before fallback derivation, it drops the
+				// typed answer while its legacy Answer field is still empty.
+				result.Infoboxes = []Infobox{{Infobox: "Other", Content: "unrelated content"}}
+
+				s := &SearXNGSearcher{debug: false}
+				s.normalizeResponse(&result, &SearchArgs{})
+
+				if len(result.Answers) != 1 {
+					t.Fatalf("len(Answers) = %d, want 1 typed answer to survive normalization", len(result.Answers))
+				}
+
+				got := result.Answers[0]
+				if got.Answer != wantAnswer {
+					t.Fatalf("Answer = %q, want canonical fallback %q", got.Answer, wantAnswer)
+				}
+
+				tt.assertTypedPayload(t, got)
+			})
+		}
+	})
+
 	t.Run("truncates answers to MaxAnswers", func(t *testing.T) {
 		t.Parallel()
 
@@ -905,18 +778,23 @@ func TestNormalizeResponse(t *testing.T) {
 		}
 	})
 
-	t.Run("truncation preserves dedup behavior", func(t *testing.T) {
+	t.Run("caps answers before deduplication", func(t *testing.T) {
 		t.Parallel()
 
 		s := &SearXNGSearcher{debug: false}
 
-		// Mix duplicate and non-duplicate answers past the cap. The kept
-		// prefix is all duplicates, so the result must be empty.
+		// The retained prefix is all duplicates, while answers beyond the
+		// cap are distinct. If deduplication ran first, those later answers
+		// would survive and evade the cap after the duplicate prefix vanished.
 		wiki := "Apple Inc. is an American multinational technology company headquartered in Cupertino, California."
 
 		answers := make([]Answer, MaxAnswers+5)
-		for i := range answers {
+		for i := range MaxAnswers {
 			answers[i] = Answer{Answer: wiki, Engine: "duckduckgo"}
+		}
+
+		for i := MaxAnswers; i < len(answers); i++ {
+			answers[i] = Answer{Answer: "distinct answer", Engine: "calculator"}
 		}
 
 		infoboxes := []Infobox{{Infobox: "Apple Inc.", Content: wiki}}
@@ -926,7 +804,30 @@ func TestNormalizeResponse(t *testing.T) {
 		s.normalizeResponse(result, &SearchArgs{})
 
 		if len(result.Answers) != 0 {
-			t.Fatalf("len(Answers) = %d, want 0 (all kept answers were duplicates of the infobox)", len(result.Answers))
+			t.Fatalf("len(Answers) = %d, want 0 after capping away distinct answers then deduplicating", len(result.Answers))
+		}
+	})
+
+	t.Run("caps infoboxes before deduplication", func(t *testing.T) {
+		t.Parallel()
+
+		infoboxes := make([]Infobox, MaxInfoboxes+1)
+		for i := range MaxInfoboxes {
+			infoboxes[i] = Infobox{Infobox: "Other", Content: "unrelated content"}
+		}
+
+		infoboxes[MaxInfoboxes] = Infobox{Infobox: "Match", Content: "answer text appears only beyond the cap"}
+
+		result := &SearchResponse{
+			Answers:   []Answer{{Answer: "answer text", Engine: "duckduckgo"}},
+			Infoboxes: infoboxes,
+		}
+
+		s := &SearXNGSearcher{debug: false}
+		s.normalizeResponse(result, &SearchArgs{})
+
+		if len(result.Answers) != 1 {
+			t.Fatalf("len(Answers) = %d, want 1 because the only matching infobox is beyond the cap", len(result.Answers))
 		}
 	})
 
