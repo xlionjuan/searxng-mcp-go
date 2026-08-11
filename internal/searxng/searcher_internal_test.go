@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -463,86 +462,6 @@ func TestAllowGETFallbackLogsWarnings(t *testing.T) {
 			t.Fatalf("log output leaked query: %q", logOutput)
 		}
 	})
-}
-
-func TestNewFastRetrySearcher_Success(t *testing.T) {
-	t.Parallel()
-
-	var attempt atomic.Int32
-
-	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-		attempt.Add(1)
-
-		return makeJSONResponse(makeSearchResponseJSON(1)), nil
-	})
-
-	s := NewFastRetrySearcher("https://search.example.com", transport, 2)
-	if s == nil {
-		t.Fatal("NewFastRetrySearcher returned nil")
-	}
-	defer s.Close() //nolint:errcheck // test cleanup
-
-	result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
-	if err != nil {
-		t.Fatalf("Search() error = %v, want nil", err)
-	}
-
-	if got := attempt.Load(); got != 1 {
-		t.Fatalf("attempts = %d, want 1 (single attempt should succeed)", got)
-	}
-
-	if len(result.Results) != 1 {
-		t.Fatalf("results = %d, want 1", len(result.Results))
-	}
-}
-
-func TestNewFastRetrySearcher_InvalidURL(t *testing.T) {
-	t.Parallel()
-
-	s := NewFastRetrySearcher("://", nil, 2)
-	if s != nil {
-		t.Fatal("NewFastRetrySearcher with invalid URL = non-nil, want nil")
-	}
-}
-
-func TestNewCustomRetrySearcher_Success(t *testing.T) {
-	t.Parallel()
-
-	var attempt atomic.Int32
-
-	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-		attempt.Add(1)
-
-		return makeJSONResponse(makeSearchResponseJSON(1)), nil
-	})
-
-	s := NewCustomRetrySearcher("https://search.example.com", transport, 2, 10*time.Millisecond, 10*time.Millisecond)
-	if s == nil {
-		t.Fatal("NewCustomRetrySearcher returned nil")
-	}
-	defer s.Close() //nolint:errcheck // test cleanup
-
-	result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
-	if err != nil {
-		t.Fatalf("Search() error = %v, want nil", err)
-	}
-
-	if got := attempt.Load(); got != 1 {
-		t.Fatalf("attempts = %d, want 1 (single attempt should succeed)", got)
-	}
-
-	if len(result.Results) != 1 {
-		t.Fatalf("results = %d, want 1", len(result.Results))
-	}
-}
-
-func TestNewCustomRetrySearcher_InvalidURL(t *testing.T) {
-	t.Parallel()
-
-	s := NewCustomRetrySearcher("://", nil, 2, time.Second, 30*time.Second)
-	if s != nil {
-		t.Fatal("NewCustomRetrySearcher with invalid URL = non-nil, want nil")
-	}
 }
 
 // TestNewSearXNGSearcher_ZeroTimeout verifies that a zero Config.Timeout in a

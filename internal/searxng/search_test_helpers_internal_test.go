@@ -1,7 +1,6 @@
 package searxng
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -43,45 +42,51 @@ func makeSearchResponseJSON(results int) string {
 	return r
 }
 
-// newTestSearcher creates a SearXNGSearcher with a mock RoundTripper for HTTP-level tests.
+// newTestSearcher creates a SearXNGSearcher through the canonical constructor
+// and then installs a deterministic retry strategy for internal white-box tests.
 func newTestSearcher(t *testing.T, rt testhelper.RoundTripperFunc, maxRetries int) *SearXNGSearcher {
 	t.Helper()
 
-	endpoint, err := computeSearchEndpoint("https://search.example.com")
+	s, err := NewSearXNGSearcher(&Config{
+		SearXNGURL: "https://search.example.com",
+		HTTPClient: &http.Client{Transport: rt},
+		MaxRetries: maxRetries,
+	}, false)
 	if err != nil {
-		t.Fatalf("computeSearchEndpoint() error = %v", err)
+		t.Fatalf("NewSearXNGSearcher() error = %v", err)
 	}
 
-	s := &SearXNGSearcher{
-		client: &http.Client{
-			Transport: rt,
-		},
-		searchEndpoint: endpoint,
-		debug:          false,
-		retryStrategy:  newExponentialBackoffStrategy(maxRetries, time.Microsecond, time.Microsecond),
-		ownsTransport:  true,
-	}
-	s.searcherCtx, s.searcherCancel = context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		err := s.Close()
+		if err != nil {
+			t.Errorf("Close() error = %v", err)
+		}
+	})
+
+	s.retryStrategy = newExponentialBackoffStrategy(maxRetries, time.Microsecond, time.Microsecond)
 
 	return s
 }
 
-// newRequestTestSearcher creates a SearXNGSearcher with a precomputed search
-// endpoint derived from baseURL. It is intended for tests that exercise
-// buildSearchRequest without going through NewSearXNGSearcher.
+// newRequestTestSearcher creates a SearXNGSearcher through the canonical
+// constructor for tests that exercise buildSearchRequest.
 func newRequestTestSearcher(t *testing.T, baseURL string) *SearXNGSearcher {
 	t.Helper()
 
-	endpoint, err := computeSearchEndpoint(baseURL)
+	s, err := NewSearXNGSearcher(&Config{
+		SearXNGURL: baseURL,
+		HTTPClient: http.DefaultClient,
+	}, false)
 	if err != nil {
-		t.Fatalf("computeSearchEndpoint(%q) error = %v", baseURL, err)
+		t.Fatalf("NewSearXNGSearcher() error = %v", err)
 	}
 
-	s := &SearXNGSearcher{
-		searchEndpoint: endpoint,
-		client:         http.DefaultClient,
-	}
-	s.searcherCtx, s.searcherCancel = context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		err := s.Close()
+		if err != nil {
+			t.Errorf("Close() error = %v", err)
+		}
+	})
 
 	return s
 }

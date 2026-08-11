@@ -95,11 +95,12 @@ the value. The narrow suppression is intentional and acceptable.
 ### Constructor invariant
 
 Production and integration code must construct `SearXNGSearcher` through
-`NewSearXNGSearcher`, `NewFastRetrySearcher`, or `NewCustomRetrySearcher` — every
-constructor initializes the lifecycle context. Direct struct literals in internal
-tests are permitted only when they do not call lifecycle-dependent methods
-(`Search`, `Close`), or when a defensive nil guard prevents accidental misuse
-(see `searchContext` in `searcher.go:292`).
+`NewSearXNGSearcher`, which initializes the lifecycle context. Tests that exercise
+`Search` or `Close` also use the canonical constructor with a custom HTTP client;
+internal white-box tests may adjust a narrow retry-control seam after construction
+to keep timing deterministic. Direct struct literals in internal tests are
+permitted only when they do not call lifecycle-dependent methods, or when a
+defensive nil guard deliberately exercises that case (see `searchContext`).
 
 ### External contract preserved
 

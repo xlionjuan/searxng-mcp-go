@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"searxng-mcp-go/internal/searxng"
-	"searxng-mcp-go/internal/testhelper"
 )
 
 // errTestConnectionReset is a static test error used in retry and cancellation tests.
@@ -40,17 +40,34 @@ func testPerformSearch(
 	return s.Search(ctx, args)
 }
 
-// newFastRetrySearcher creates a SearXNGSearcher with sub-second retry delays
-// intended for fast test execution. It bypasses Config validation so the
-// retry delay can be set below the production 1-second minimum.
+// newRetrySearcher creates a SearXNGSearcher through the canonical constructor
+// with a custom HTTP transport and valid production retry settings.
 //
 //nolint:unparam // baseURL kept as parameter for future test flexibility
-func newFastRetrySearcher(
-	tb testing.TB, baseURL string, transport testhelper.RoundTripperFunc, maxRetries int,
+func newRetrySearcher(
+	tb testing.TB, baseURL string, transport http.RoundTripper, maxRetries int,
 ) *searxng.SearXNGSearcher {
 	tb.Helper()
 
-	return searxng.NewFastRetrySearcher(baseURL, transport, maxRetries)
+	searcher, err := searxng.NewSearXNGSearcher(&searxng.Config{
+		SearXNGURL:    baseURL,
+		HTTPClient:    &http.Client{Transport: transport},
+		MaxRetries:    maxRetries,
+		RetryDelay:    time.Second,
+		MaxRetryDelay: time.Second,
+	}, false)
+	if err != nil {
+		tb.Fatalf("NewSearXNGSearcher() error = %v", err)
+	}
+
+	tb.Cleanup(func() {
+		err := searcher.Close()
+		if err != nil {
+			tb.Errorf("Close() error = %v", err)
+		}
+	})
+
+	return searcher
 }
 
 func mustMarshalJSON(tb testing.TB, v any) []byte {

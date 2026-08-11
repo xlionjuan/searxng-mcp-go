@@ -518,22 +518,9 @@ func TestSearchRedirectPolicyNotRetried(t *testing.T) {
 				return nil, tt.rtErr(req)
 			})
 
-			client := &http.Client{Transport: transport}
+			s := newTestSearcher(t, transport, 2)
 
-			endpoint, err := computeSearchEndpoint("https://search.example.com")
-			if err != nil {
-				t.Fatalf("computeSearchEndpoint() error = %v", err)
-			}
-
-			s := &SearXNGSearcher{
-				client:         client,
-				searchEndpoint: endpoint,
-				retryStrategy:  newExponentialBackoffStrategy(2, time.Microsecond, time.Microsecond),
-				debug:          false,
-			}
-			s.searcherCtx, s.searcherCancel = context.WithCancel(context.Background())
-
-			_, err = s.Search(t.Context(), &SearchArgs{Query: "test"})
+			_, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 			if err == nil {
 				t.Fatal("Search() error = nil, want error")
 			}
