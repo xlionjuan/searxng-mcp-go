@@ -206,14 +206,12 @@ func TestValidateQueryErrorMessageUsesMaxQueryLength(t *testing.T) {
 	t.Parallel()
 
 	err := validateQuery(strings.Repeat("a", MaxQueryLength+1))
-	if err == nil {
-		t.Fatal("validateQuery(overlong query) = nil, want error")
-	}
-
-	want := strconv.Itoa(MaxQueryLength) + " runes or less"
-	if !strings.Contains(err.Error(), want) {
-		t.Errorf("validateQuery(overlong query) error = %q, want containing %q", err, want)
-	}
+	requireValidationErrorMsg(
+		t,
+		err,
+		"query",
+		"must be "+strconv.Itoa(MaxQueryLength)+" runes or less",
+	)
 }
 
 // TestValidateLanguagePure verifies the pure-helper contract: validateLanguage
