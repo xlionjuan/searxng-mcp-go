@@ -127,22 +127,36 @@ var SearchParams = []ParamDef{
 	},
 	{
 		Name: "categories", GoType: "string", Default: "",
-		Description: `Comma-separated list of SearXNG categories (CSV format). ` +
-			`Common values: general, news, images, videos, music, files, map, social media, science, it. ` +
-			`"social media" is a single category (with a space); pass it as "social media" in CSV, not "social,media". ` +
-			`Unknown categories are silently ignored by SearXNG.`,
-		CLIHelp:  "Comma-separated list of categories to search [max 4096 bytes]",
+		Description: fmt.Sprintf(
+			`Comma-separated list of SearXNG categories (CSV format). `+
+				`Common values: general, news, images, videos, music, files, map, social media, science, it. `+
+				`"social media" is a single category (with a space); pass it as "social media" in CSV, not "social,media". `+
+				`Unknown categories are silently ignored by SearXNG. `+
+				`Maximum %d bytes for the full string.`,
+			MaxCSVInputBytes,
+		),
+		CLIHelp: fmt.Sprintf(
+			"Comma-separated list of categories to search [max %d bytes]",
+			MaxCSVInputBytes,
+		),
 		CLIType:  "CAT",
 		MCPType:  "string",
 		Examples: []string{"general", "news", "social media", "images,videos"},
 	},
 	{
 		Name: "engines", GoType: "string", Default: "",
-		Description: `Comma-separated list of SearXNG engine names. Common engines: google, bing, duckduckgo.`,
-		CLIHelp:     "Comma-separated list of search engines to use [max 4096 bytes]",
-		CLIType:     "ENG",
-		MCPType:     "string",
-		Examples:    []string{"google", "bing", "duckduckgo"},
+		Description: fmt.Sprintf(
+			`Comma-separated list of SearXNG engine names. Common engines: google, bing, duckduckgo. `+
+				`Maximum %d bytes for the full string.`,
+			MaxCSVInputBytes,
+		),
+		CLIHelp: fmt.Sprintf(
+			"Comma-separated list of search engines to use [max %d bytes]",
+			MaxCSVInputBytes,
+		),
+		CLIType:  "ENG",
+		MCPType:  "string",
+		Examples: []string{"google", "bing", "duckduckgo"},
 	},
 	{
 		Name: "pageno", GoType: "int", Default: strconv.Itoa(MinPageno),

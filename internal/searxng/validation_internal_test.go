@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 var (
@@ -389,6 +390,66 @@ func TestValidateEngines(t *testing.T) {
 			if err != nil {
 				t.Fatalf("validateCSVIdentifiers() error = %v, want nil", err)
 			}
+		})
+	}
+}
+
+// csvIdentifiersWithByteLength returns a valid CSV value with the requested
+// UTF-8 byte length. Each generated item is one rune, so the fixture makes the
+// byte-versus-rune distinction explicit without tripping the per-item limit.
+func csvIdentifiersWithByteLength(length int) string {
+	if length <= 0 {
+		return ""
+	}
+
+	const item = "界"
+
+	const itemWithSeparatorBytes = len(item) + 1
+
+	itemCount := (length - 1) / itemWithSeparatorBytes
+	prefix := strings.Repeat(item+",", itemCount)
+	suffix := strings.Repeat("a", length-len(prefix))
+
+	return prefix + suffix
+}
+
+func TestValidateCSVIdentifiersAggregateByteLimit(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		field string
+		noun  string
+	}{
+		{name: "categories", field: "categories", noun: "category"},
+		{name: "engines", field: "engines", noun: "engine"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			atLimit := csvIdentifiersWithByteLength(MaxCSVInputBytes)
+			if got := len(atLimit); got != MaxCSVInputBytes {
+				t.Fatalf("fixture byte length = %d, want %d", got, MaxCSVInputBytes)
+			}
+
+			if got := utf8.RuneCountInString(atLimit); got >= MaxCSVInputBytes {
+				t.Fatalf("fixture rune length = %d, want less than byte limit %d", got, MaxCSVInputBytes)
+			}
+
+			err := validateCSVIdentifiers(atLimit, tt.field, tt.noun)
+			if err != nil {
+				t.Fatalf("validateCSVIdentifiers() at byte limit error = %v, want nil", err)
+			}
+
+			overLimit := atLimit + "a"
+			requireValidationErrorMsg(
+				t,
+				validateCSVIdentifiers(overLimit, tt.field, tt.noun),
+				tt.field,
+				tt.noun+" input too long",
+			)
 		})
 	}
 }

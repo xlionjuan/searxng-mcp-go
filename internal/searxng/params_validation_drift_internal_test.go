@@ -1,6 +1,7 @@
 package searxng
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -458,6 +459,42 @@ func TestParamDefJSONSchema(t *testing.T) {
 				if _, ok := got[key]; !ok {
 					t.Errorf("missing key %q", key)
 				}
+			}
+		})
+	}
+}
+
+func TestCSVParamDefDocumentsByteLimit(t *testing.T) {
+	t.Parallel()
+
+	wantLimit := fmt.Sprintf("%d bytes", MaxCSVInputBytes)
+
+	for _, name := range []string{"categories", "engines"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			param := findParam(t, name)
+			if !strings.Contains(param.Description, wantLimit) {
+				t.Errorf("%s Description = %q, want %q", name, param.Description, wantLimit)
+			}
+
+			if !strings.Contains(param.CLIHelp, wantLimit) {
+				t.Errorf("%s CLIHelp = %q, want %q", name, param.CLIHelp, wantLimit)
+			}
+
+			schema := param.JSONSchema()
+
+			description, ok := schema["description"].(string)
+			if !ok {
+				t.Fatalf("%s JSON Schema description has unexpected type %T", name, schema["description"])
+			}
+
+			if !strings.Contains(description, wantLimit) {
+				t.Errorf("%s JSON Schema description = %q, want %q", name, description, wantLimit)
+			}
+
+			if _, ok := schema["maxLength"]; ok {
+				t.Errorf("%s JSON Schema unexpectedly contains maxLength for a byte limit", name)
 			}
 		})
 	}
