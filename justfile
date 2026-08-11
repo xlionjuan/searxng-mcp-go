@@ -164,6 +164,7 @@ test-server-pid-helper:
 # requirements-server.txt change upstream. Clears existing deps, re-imports,
 # and refreshes uv.lock.
 test-server-deps-sync:
+    just pull
     cd searxng-server-test && bash 50-sync-searxng-requirement-to-pyproject.sh
 
 # Update SearXNG submoudle
