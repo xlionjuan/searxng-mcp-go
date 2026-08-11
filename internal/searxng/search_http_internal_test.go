@@ -496,22 +496,10 @@ func TestSearch_DebugMode(t *testing.T) {
 	t.Run("debug mode does not affect search result", func(t *testing.T) {
 		t.Parallel()
 
-		endpoint, err := computeSearchEndpoint("https://search.example.com")
-		if err != nil {
-			t.Fatalf("computeSearchEndpoint() error = %v", err)
-		}
-
-		s := &SearXNGSearcher{
-			client: &http.Client{
-				Transport: testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-					return makeJSONResponse(makeSearchResponseJSON(1)), nil
-				}),
-			},
-			searchEndpoint: endpoint,
-			debug:          true,
-			retryStrategy:  newExponentialBackoffStrategy(0, time.Microsecond, time.Microsecond),
-		}
-		s.searcherCtx, s.searcherCancel = context.WithCancel(context.Background())
+		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			return makeJSONResponse(makeSearchResponseJSON(1)), nil
+		}), 0)
+		s.debug = true
 
 		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
 		if err != nil {

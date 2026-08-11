@@ -50,41 +50,41 @@ func TestSearch_TimeoutZeroWithBackgroundContext(t *testing.T) {
 }
 
 func TestSearch_RetryAfterRequestTimeout(t *testing.T) {
-	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		var attempts atomic.Int32
 
-	var attempts atomic.Int32
+		transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			n := attempts.Add(1)
+			if n < 3 {
+				// Simulate a context deadline exceeded (timeout) without real sleep.
+				return nil, context.DeadlineExceeded
+			}
 
-	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-		n := attempts.Add(1)
-		if n < 3 {
-			// Simulate a context deadline exceeded (timeout) without real sleep
-			return nil, context.DeadlineExceeded
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body: io.NopCloser(strings.NewReader(
+					`{"query":"test","number_of_results":1,` +
+						`"results":[{"title":"OK","url":"https://example.com","content":"ok","engine":"test"}],` +
+						`"suggestions":[]}`)),
+			}, nil
+		})
+
+		searcher := newRetrySearcher(t, "https://search.example.com", transport, 2)
+
+		result, err := searcher.Search(context.Background(), &searxng.SearchArgs{Query: "test"})
+		if err != nil {
+			t.Fatalf("Search() error = %v, want nil (retries should not be preempted by request timeout)", err)
 		}
 
-		return &http.Response{
-			StatusCode: http.StatusOK,
-			Header:     http.Header{"Content-Type": []string{"application/json"}},
-			Body: io.NopCloser(strings.NewReader(
-				`{"query":"test","number_of_results":1,` +
-					`"results":[{"title":"OK","url":"https://example.com","content":"ok","engine":"test"}],` +
-					`"suggestions":[]}`)),
-		}, nil
+		if got := attempts.Load(); got != 3 {
+			t.Fatalf("attempts = %d, want 3 (2 request timeouts + 1 success)", got)
+		}
+
+		if len(result.Results) != 1 {
+			t.Fatalf("results length = %d, want 1", len(result.Results))
+		}
 	})
-
-	searcher := newFastRetrySearcher(t, "https://search.example.com", transport, 2)
-
-	result, err := searcher.Search(context.Background(), &searxng.SearchArgs{Query: "test"})
-	if err != nil {
-		t.Fatalf("Search() error = %v, want nil (retries should not be preempted by request timeout)", err)
-	}
-
-	if got := attempts.Load(); got != 3 {
-		t.Fatalf("attempts = %d, want 3 (2 request timeouts + 1 success)", got)
-	}
-
-	if len(result.Results) != 1 {
-		t.Fatalf("results length = %d, want 1", len(result.Results))
-	}
 }
 
 func TestSearch_CallerContextCancellationStopsRetries(t *testing.T) {
@@ -105,13 +105,7 @@ func TestSearch_CallerContextCancellationStopsRetries(t *testing.T) {
 		return nil, r.Context().Err()
 	})
 
-	// Use 1-hour retries so no timer ever fires; only caller context
-	// cancellation can stop the retry loop.
-	searcher := searxng.NewCustomRetrySearcher(
-		"https://search.example.com", transport, 10, time.Hour, time.Hour)
-	if searcher == nil {
-		t.Fatal("NewCustomRetrySearcher returned nil")
-	}
+	searcher := newRetrySearcher(t, "https://search.example.com", transport, 10)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -731,8 +725,6 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 }
 
 func TestSearch_RetriesRetryableStatus(t *testing.T) {
-	t.Parallel()
-
 	const successResponseBody = `{"query":"test","number_of_results":1,` +
 		`"results":[{"title":"Result","url":"https://example.com","content":"ok","engine":"test"}],` +
 		`"suggestions":[]}`
@@ -750,84 +742,84 @@ func TestSearch_RetriesRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				var attempts atomic.Int32
 
-			var attempts atomic.Int32
+				transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+					if attempts.Add(1) == 1 {
+						return &http.Response{
+							StatusCode: tt.status,
+							Body:       io.NopCloser(strings.NewReader("")),
+						}, nil
+					}
 
-			transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-				if attempts.Add(1) == 1 {
 					return &http.Response{
-						StatusCode: tt.status,
-						Body:       io.NopCloser(strings.NewReader("")),
+						StatusCode: http.StatusOK,
+						Header:     http.Header{"Content-Type": []string{"application/json"}},
+						Body:       io.NopCloser(strings.NewReader(successResponseBody)),
 					}, nil
+				})
+
+				searcher := newRetrySearcher(t, "https://search.example.com", transport, 1)
+
+				result, err := searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
+				if err != nil {
+					t.Fatalf("Search() error = %v, want nil", err)
 				}
 
-				return &http.Response{
-					StatusCode: http.StatusOK,
-					Header:     http.Header{"Content-Type": []string{"application/json"}},
-					Body:       io.NopCloser(strings.NewReader(successResponseBody)),
-				}, nil
+				if got := attempts.Load(); got != 2 {
+					t.Fatalf("attempts = %d, want 2", got)
+				}
+
+				if len(result.Results) != 1 {
+					t.Fatalf("results length = %d, want 1", len(result.Results))
+				}
 			})
-
-			searcher := newFastRetrySearcher(t, "https://search.example.com", transport, 1)
-
-			result, err := searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
-			if err != nil {
-				t.Fatalf("Search() error = %v, want nil", err)
-			}
-
-			if got := attempts.Load(); got != 2 {
-				t.Fatalf("attempts = %d, want 2", got)
-			}
-
-			if len(result.Results) != 1 {
-				t.Fatalf("results length = %d, want 1", len(result.Results))
-			}
 		})
 	}
 }
 
 func TestSearch_RetriesEmptySearchResponse(t *testing.T) {
-	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		const successResponseBody = `{"query":"test","number_of_results":1,` +
+			`"results":[{"title":"Result","url":"https://example.com","content":"ok","engine":"test"}],` +
+			`"suggestions":[]}`
 
-	const successResponseBody = `{"query":"test","number_of_results":1,` +
-		`"results":[{"title":"Result","url":"https://example.com","content":"ok","engine":"test"}],` +
-		`"suggestions":[]}`
+		var attempts atomic.Int32
 
-	var attempts atomic.Int32
+		transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+			attempt := attempts.Add(1)
 
-	transport := testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-		attempt := attempts.Add(1)
+			if attempt == 1 {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     http.Header{"Content-Type": []string{"application/json"}},
+					Body:       io.NopCloser(strings.NewReader(`{"query":"test","results":[],"suggestions":[]}`)),
+				}, nil
+			}
 
-		if attempt == 1 {
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     http.Header{"Content-Type": []string{"application/json"}},
-				Body:       io.NopCloser(strings.NewReader(`{"query":"test","results":[],"suggestions":[]}`)),
+				Body:       io.NopCloser(strings.NewReader(successResponseBody)),
 			}, nil
+		})
+
+		searcher := newRetrySearcher(t, "https://search.example.com", transport, 1)
+
+		result, err := searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
+		if err != nil {
+			t.Fatalf("Search() error = %v, want nil", err)
 		}
 
-		return &http.Response{
-			StatusCode: http.StatusOK,
-			Header:     http.Header{"Content-Type": []string{"application/json"}},
-			Body:       io.NopCloser(strings.NewReader(successResponseBody)),
-		}, nil
+		if got := attempts.Load(); got != 2 {
+			t.Fatalf("attempts = %d, want 2", got)
+		}
+
+		if len(result.Results) != 1 {
+			t.Fatalf("results length = %d, want 1", len(result.Results))
+		}
 	})
-
-	searcher := newFastRetrySearcher(t, "https://search.example.com", transport, 1)
-
-	result, err := searcher.Search(t.Context(), &searxng.SearchArgs{Query: "test"})
-	if err != nil {
-		t.Fatalf("Search() error = %v, want nil", err)
-	}
-
-	if got := attempts.Load(); got != 2 {
-		t.Fatalf("attempts = %d, want 2", got)
-	}
-
-	if len(result.Results) != 1 {
-		t.Fatalf("results length = %d, want 1", len(result.Results))
-	}
 }
 
 func TestSearch_CanceledDuringRequest(t *testing.T) {
@@ -850,7 +842,7 @@ func TestSearch_CanceledDuringRequest(t *testing.T) {
 		}, nil
 	})
 
-	searcher := newFastRetrySearcher(t, "https://search.example.com", transport, 1)
+	searcher := newRetrySearcher(t, "https://search.example.com", transport, 1)
 
 	_, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "test"})
 	if err == nil {
@@ -883,11 +875,7 @@ func TestSearch_RetryWaitCanceled(t *testing.T) {
 			return nil, errTestConnectionReset
 		})
 
-		searcher := searxng.NewCustomRetrySearcher(
-			"https://search.example.com", transport, 10, time.Hour, time.Hour)
-		if searcher == nil {
-			t.Fatal("NewCustomRetrySearcher returned nil")
-		}
+		searcher := newRetrySearcher(t, "https://search.example.com", transport, 10)
 
 		_, err := searcher.Search(ctx, &searxng.SearchArgs{Query: "test"})
 		if err == nil {
