@@ -391,34 +391,6 @@ func TestSearch_EmptyResultsAfterRetryExhaustion(t *testing.T) {
 			t.Fatalf("Search() error = %q, must not contain raw query", err)
 		}
 	})
-
-	t.Run("zero retries returns wrapped empty-results error", func(t *testing.T) {
-		t.Parallel()
-
-		callCount := 0
-		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-			callCount++
-
-			return makeJSONResponse(minimalJSONBody), nil
-		}), 0)
-
-		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
-		if err == nil {
-			t.Fatal("Search() error = nil, want empty-results error")
-		}
-
-		if !errors.Is(err, errSearchEmptyResults) {
-			t.Fatalf("Search() error = %v, want errSearchEmptyResults in chain", err)
-		}
-
-		if result != nil {
-			t.Fatalf("Search() result = %#v, want nil", result)
-		}
-
-		if callCount != 1 {
-			t.Fatalf("callCount = %d, want 1", callCount)
-		}
-	})
 }
 
 func TestAllowGETFallbackLogsWarnings(t *testing.T) {

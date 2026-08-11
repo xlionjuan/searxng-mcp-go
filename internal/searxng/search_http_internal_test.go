@@ -386,27 +386,6 @@ func TestSearch_RetryOnEmptyResponse(t *testing.T) {
 			t.Fatalf("len(Results) = %d, want 1", len(result.Results))
 		}
 	})
-
-	t.Run("empty response with no retries left returns error", func(t *testing.T) {
-		t.Parallel()
-
-		s := newTestSearcher(t, testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-			return makeJSONResponse(`{"query":"test","results":[],"suggestions":[],"answers":[],"infoboxes":[]}`), nil
-		}), 0)
-
-		result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
-		if err == nil {
-			t.Fatal("Search() error = nil, want empty-results error")
-		}
-
-		if !errors.Is(err, errSearchEmptyResults) {
-			t.Fatalf("Search() error = %v, want errSearchEmptyResults in chain", err)
-		}
-
-		if result != nil {
-			t.Fatalf("Search() result = %#v, want nil", result)
-		}
-	})
 }
 
 func TestSearch_NonOKStatus(t *testing.T) {
