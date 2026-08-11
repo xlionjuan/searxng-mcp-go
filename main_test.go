@@ -7,7 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -1428,6 +1430,116 @@ func TestRunCLIMode_Success(t *testing.T) {
 
 			tt.check(t, output)
 		})
+	}
+}
+
+func TestRunCLIMode_MapsParsedFlagsToSearchRequest(t *testing.T) {
+	t.Parallel()
+
+	type capturedCLIRequest struct {
+		method   string
+		form     url.Values
+		parseErr error
+	}
+
+	capturedRequest := make(chan capturedCLIRequest, 1)
+	responseBody := mustMarshalJSON(t, searxng.SearchResponse{
+		Query:           "cli seam mapping",
+		NumberOfResults: 3,
+		Results: []searxng.SearchResult{
+			{Title: "First", URL: "https://example.com/1", Engine: "first-engine"},
+			{Title: "Second", URL: "https://example.com/2", Engine: "second-engine"},
+			{Title: "Third", URL: "https://example.com/3", Engine: "third-engine"},
+		},
+	})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		parseErr := r.ParseForm()
+
+		form := make(url.Values, len(r.PostForm))
+		for key, values := range r.PostForm {
+			form[key] = append([]string(nil), values...)
+		}
+
+		capturedRequest <- capturedCLIRequest{
+			method:   r.Method,
+			form:     form,
+			parseErr: parseErr,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(responseBody) //nolint:errcheck // test fixture write; failure is observed by the client
+	}))
+	defer server.Close()
+
+	isCLIMode, flags, positionalArgs, err := parseArgs([]string{
+		"--searxng-url", server.URL,
+		"--timeout", "2s",
+		"--max-retries", "0",
+		"--json",
+		"--query", "cli seam mapping",
+		"--language", "fr",
+		"--safesearch", "2",
+		"--time_range", "month",
+		"--categories", "news,science",
+		"--engines", "google,bing",
+		"--pageno", "7",
+		"--limit", "2",
+	})
+	if err != nil {
+		t.Fatalf("parseArgs() error = %v", err)
+	}
+
+	if !isCLIMode {
+		t.Fatal("parseArgs() isCLIMode = false, want true")
+	}
+
+	var runErr error
+
+	output := captureStdout(t, func() {
+		runErr = runCLIMode(flags.Debug, flags, positionalArgs)
+	})
+	if runErr != nil {
+		t.Fatalf("runCLIMode() error = %v", runErr)
+	}
+
+	request := <-capturedRequest
+	if request.parseErr != nil {
+		t.Fatalf("ParseForm() error = %v", request.parseErr)
+	}
+
+	if request.method != http.MethodPost {
+		t.Errorf("request method = %q, want %q", request.method, http.MethodPost)
+	}
+
+	wantForm := url.Values{
+		"q":          []string{"cli seam mapping"},
+		"format":     []string{"json"},
+		"language":   []string{"fr"},
+		"safesearch": []string{"2"},
+		"time_range": []string{"month"},
+		"categories": []string{"news,science"},
+		"engines":    []string{"google,bing"},
+		"pageno":     []string{"7"},
+	}
+	if !reflect.DeepEqual(request.form, wantForm) {
+		t.Errorf("request form = %#v, want %#v", request.form, wantForm)
+	}
+
+	if request.form.Has("limit") {
+		t.Error("request form contains client-side-only limit")
+	}
+
+	var response searxng.SearchResponse
+
+	err = json.Unmarshal([]byte(output), &response)
+	if err != nil {
+		t.Fatalf("runCLIMode() output is not valid JSON: %v\n%s", err, output)
+	}
+
+	if got, want := len(response.Results), 2; got != want {
+		t.Fatalf("len(response.Results) = %d, want %d (--limit must be applied client-side)", got, want)
 	}
 }
 
