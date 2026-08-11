@@ -61,9 +61,11 @@ flagging the rendering-vs-data-model distinction.
 ## Rationale
 
 1. **Single source of truth.** Two byte-identical helpers invited
-   drift. After the answer package extraction, the exhaustive helper contract
-   is owned by `internal/searxng/answer/truncate_test.go`; formatter tests
-   exercise the parent forwarding function through its user-visible call site.
+   drift. After the answer package extraction, the canonical implementation
+   and exhaustive contract tests live in `internal/searxng/answer/truncate.go`
+   and `internal/searxng/answer/truncate_test.go`. The exported
+   `internal/searxng.TruncateRunes` function remains a forwarding adapter,
+   exercised through the formatter's user-visible call sites.
 2. **Helper lives with the lower-level package.** The searxng package
    has no dependencies on the root package, so the import direction
    is clean. The root package already imports searxng for
@@ -89,8 +91,10 @@ flagging the rendering-vs-data-model distinction.
   processing).
 - The exhaustive unit matrix (empty / zero / negative limit, shorter /
   exact / longer, ASCII, CJK, emoji, mixed, no-truncation) now lives in
-  `internal/searxng/answer/truncate_test.go`, alongside the implementation.
-  Parent coverage is limited to formatter integration, including Unicode
+  `internal/searxng/answer/truncate_test.go`, alongside the canonical
+  implementation in `internal/searxng/answer/truncate.go`.
+  `internal/searxng/truncate.go` remains the exported forwarding adapter;
+  parent coverage is limited to formatter integration, including Unicode
   truncation at the user-visible output seam.
 - `format.go` no longer defines `truncateRunes`. Both call sites in
   `formatResults` (infobox content and result content) call

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"searxng-mcp-go/internal/searxng/answer"
 	"searxng-mcp-go/internal/testhelper"
 )
 
@@ -644,12 +645,50 @@ func TestNormalizeResponse(t *testing.T) {
 	t.Run("applies typed fallbacks before deduplication", func(t *testing.T) {
 		t.Parallel()
 
-		for _, fixture := range []string{"typed_translation_answer.json", "typed_weather_answer.json"} {
-			t.Run(fixture, func(t *testing.T) {
+		tests := []struct {
+			name               string
+			fixture            string
+			fallback           func(*Answer) string
+			assertTypedPayload func(*testing.T, Answer)
+		}{
+			{
+				name:     "translation",
+				fixture:  "typed_translation_answer.json",
+				fallback: answer.TranslationAnswerFallback,
+				assertTypedPayload: func(t *testing.T, got Answer) {
+					t.Helper()
+
+					if len(got.Translations) == 0 || got.Translations[0].Text == "" {
+						t.Fatal("Translations is empty after normalization, want typed translation payload preserved")
+					}
+				},
+			},
+			{
+				name:     "weather",
+				fixture:  "typed_weather_answer.json",
+				fallback: answer.WeatherAnswerFallback,
+				assertTypedPayload: func(t *testing.T, got Answer) {
+					t.Helper()
+
+					if got.Current == nil || got.Current.Location.Name == "" {
+						t.Fatal("Current is empty after normalization, want typed weather payload preserved")
+					}
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 
 				var result SearchResponse
-				testhelper.LoadJSONFixture(t, filepath.Join("..", "..", "testdata", fixture), &result)
+				testhelper.LoadJSONFixture(t, filepath.Join("..", "..", "testdata", tt.fixture), &result)
+
+				if len(result.Answers) != 1 {
+					t.Fatalf("fixture has %d answers, want 1", len(result.Answers))
+				}
+
+				wantAnswer := tt.fallback(&result.Answers[0])
 
 				// A non-empty infobox forces the deduplication pass. If
 				// deduplication runs before fallback derivation, it drops the
@@ -663,9 +702,12 @@ func TestNormalizeResponse(t *testing.T) {
 					t.Fatalf("len(Answers) = %d, want 1 typed answer to survive normalization", len(result.Answers))
 				}
 
-				if result.Answers[0].Answer == "" {
-					t.Fatal("Answer is empty after normalization, want typed fallback text")
+				got := result.Answers[0]
+				if got.Answer != wantAnswer {
+					t.Fatalf("Answer = %q, want canonical fallback %q", got.Answer, wantAnswer)
 				}
+
+				tt.assertTypedPayload(t, got)
 			})
 		}
 	})
