@@ -25,6 +25,11 @@ var (
 	MaxResultLimit = 20
 )
 
+// MaxLanguageLength is the maximum total length, in Unicode runes, of the
+// language parameter. Per-subtag grammar limits are defined separately by
+// languagePattern in validation.go.
+var MaxLanguageLength = 35
+
 // validTimeRangesList is the canonical list of time-range values accepted by the
 // time_range parameter. The empty string is handled separately as "no
 // restriction" by both schema and validation, so it intentionally has no

@@ -209,7 +209,7 @@ func TestValidateSearchArgs(t *testing.T) {
 // in place, which was a data-race hazard for callers that share the struct
 // across goroutines.
 //
-//nolint:gocognit,gocyclo,cyclop // subtests cover each normalization/validation branch explicitly
+//nolint:gocognit,gocyclo // subtests cover each normalization/validation branch explicitly
 func TestValidateLanguagePure(t *testing.T) {
 	t.Parallel()
 
@@ -305,19 +305,44 @@ func TestValidateLanguagePure(t *testing.T) {
 			t.Fatalf("validateLanguage(\"en_US\") = %q, want original %q on error", got, "en_US")
 		}
 	})
+}
 
-	t.Run("language exceeding max length returns ValidationError", func(t *testing.T) {
-		t.Parallel()
+func TestValidateLanguageTotalLength(t *testing.T) {
+	t.Parallel()
 
-		longLang := strings.Repeat("a", maxLanguageLength+1)
+	if MaxLanguageLength < 3 {
+		t.Fatalf("MaxLanguageLength = %d, want at least 3 for a valid language boundary fixture", MaxLanguageLength)
+	}
 
-		_, err := validateLanguage(longLang)
-		if err == nil {
-			t.Fatal("validateLanguage(long) error = nil, want ValidationError")
-		}
+	validAtLimit := "aa-" + strings.Repeat("b", MaxLanguageLength-3)
+	invalidAboveLimit := "aa-" + strings.Repeat("b", MaxLanguageLength-2)
+	wantLengthMessage := fmt.Sprintf("must be %d runes or less", MaxLanguageLength)
 
-		requireValidationError(t, err, "language")
-	})
+	tests := []struct {
+		name      string
+		input     string
+		wantError bool
+	}{
+		{name: "at total length limit", input: validAtLimit},
+		{name: "above total length limit", input: invalidAboveLimit, wantError: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := validateLanguage(tt.input)
+			if tt.wantError {
+				requireValidationErrorMsg(t, err, "language", wantLengthMessage)
+			} else if err != nil {
+				t.Fatalf("validateLanguage(%q) error = %v, want nil", tt.input, err)
+			}
+
+			if got != tt.input {
+				t.Fatalf("validateLanguage(%q) = %q, want original value", tt.input, got)
+			}
+		})
+	}
 }
 
 func TestValidateCategories(t *testing.T) {

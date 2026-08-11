@@ -93,15 +93,23 @@ var SearchParams = []ParamDef{
 	},
 	{
 		Name: "language", GoType: "string", Default: "",
-		Description: "Language code for results (e.g., en, zh-tw, ja). Leave empty or pass \"auto\" to let SearXNG decide",
+		Description: fmt.Sprintf(
+			"Language code for results (e.g., en, zh-tw, ja). Maximum %d runes for the full value. "+
+				"Leave empty or pass \"auto\" to let SearXNG decide",
+			MaxLanguageLength,
+		),
 		// DefaultStr is set only for language because empty string is the
 		// semantically meaningful "auto-detect" default that schema-aware
 		// MCP clients should see. Other string params with Default: ""
 		// (time_range, categories, engines) represent "no filter" which
 		// is an absence of constraint, not an explicit default.
-		CLIHelp:    "Language code for results (e.g., en, zh-tw, ja) [default: \"\"]",
+		CLIHelp: fmt.Sprintf(
+			"Language code for results (e.g., en, zh-tw, ja) [max %d runes] [default: \"\"]",
+			MaxLanguageLength,
+		),
 		CLIType:    "LANG",
 		MCPType:    "string",
+		MaxLength:  &MaxLanguageLength,
 		DefaultStr: &paramDefaultLanguage,
 	},
 	{
