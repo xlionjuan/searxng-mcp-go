@@ -464,6 +464,43 @@ func TestParamDefJSONSchema(t *testing.T) {
 	}
 }
 
+func TestCSVParamDefDocumentsByteLimit(t *testing.T) {
+	t.Parallel()
+
+	wantLimit := fmt.Sprintf("%d bytes", MaxCSVInputBytes)
+	wantDescriptionLimit := fmt.Sprintf("%d UTF-8 bytes", MaxCSVInputBytes)
+
+	for _, name := range []string{"categories", "engines"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			param := findParam(t, name)
+			if !strings.Contains(param.Description, wantDescriptionLimit) {
+				t.Errorf("%s Description = %q, want %q", name, param.Description, wantDescriptionLimit)
+			}
+
+			if !strings.Contains(param.CLIHelp, wantLimit) {
+				t.Errorf("%s CLIHelp = %q, want %q", name, param.CLIHelp, wantLimit)
+			}
+
+			schema := param.JSONSchema()
+
+			description, ok := schema["description"].(string)
+			if !ok {
+				t.Fatalf("%s JSON Schema description has unexpected type %T", name, schema["description"])
+			}
+
+			if !strings.Contains(description, wantDescriptionLimit) {
+				t.Errorf("%s JSON Schema description = %q, want %q", name, description, wantDescriptionLimit)
+			}
+
+			if _, ok := schema["maxLength"]; ok {
+				t.Errorf("%s JSON Schema unexpectedly contains maxLength for a byte limit", name)
+			}
+		})
+	}
+}
+
 // TestSearchParamsLanguageLengthUsesSharedBound verifies that the language
 // metadata exposes the same total-rune bound used by validation and describes
 // it in both renderer inputs.

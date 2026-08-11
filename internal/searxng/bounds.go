@@ -30,6 +30,12 @@ var (
 // languagePattern in validation.go.
 var MaxLanguageLength = 35
 
+// MaxCSVInputBytes is the maximum UTF-8 byte length accepted for the
+// comma-separated categories and engines parameters. JSON Schema maxLength is
+// intentionally not used for this bound because it does not express a
+// UTF-8 byte limit.
+const MaxCSVInputBytes = 4096
+
 // validTimeRangesList is the canonical list of time-range values accepted by the
 // time_range parameter. The empty string is handled separately as "no
 // restriction" by both schema and validation, so it intentionally has no

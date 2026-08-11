@@ -55,9 +55,8 @@ func validateCSVIdentifiers(value, field, noun string) error {
 		return nil
 	}
 
-	// Bound total input length to prevent abuse with multi-megabyte strings.
-	const maxCSVInputLength = 4096
-	if len(value) > maxCSVInputLength {
+	// Bound total UTF-8 byte length to prevent abuse with multi-megabyte strings.
+	if len(value) > MaxCSVInputBytes {
 		return NewValidationError(field, noun+" input too long")
 	}
 
