@@ -298,11 +298,3 @@ func (s *SearXNGSearcher) normalizeResponse(result *SearchResponse, args *Search
 func EnsureAnswerFallback(a *Answer) {
 	answer.EnsureAnswerFallback(a)
 }
-
-func translationAnswerFallback(a *Answer) string {
-	return answer.TranslationAnswerFallback(a)
-}
-
-func weatherAnswerFallback(a *Answer) string {
-	return answer.WeatherAnswerFallback(a)
-}

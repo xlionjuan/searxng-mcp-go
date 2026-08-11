@@ -154,7 +154,7 @@ Fields:
 - `definitions` (array of strings, optional): Definitions of the translated term.
 - `synonyms` (array of strings, optional): Synonyms for the translated term.
 
-**Fallback display:** When the legacy `answer` string is empty and `Translations` is populated, the server produces `"Translation: <text>; <text>; ..."` using `translationAnswerFallback`.
+**Fallback display:** When the legacy `answer` string is empty and `Translations` is populated, the canonical answer fallback logic produces `"Translation: <text>; <text>; ..."` during response normalization.
 
 #### 3. `WeatherAnswer` (weather data)
 
@@ -233,7 +233,7 @@ Fields (WeatherItem):
 - `wind_speed` (object, optional): Wind speed measurement.
 - `cloud_cover` (integer, optional): Cloud cover percentage.
 
-**Fallback display:** When the legacy `answer` string is empty and `Current` is populated, the server produces a human-readable summary using `weatherAnswerFallback`, preferring `Current.Summary` first, then falling back to `"Weather: <location>, <temperature>, <condition>"`.
+**Fallback display:** When the legacy `answer` string is empty and `Current` is populated, the canonical answer fallback logic produces a human-readable summary during response normalization, preferring `Current.Summary` first, then falling back to `"Weather: <location>, <temperature>, <condition>"`.
 
 The `WeatherMeasure.String()` method returns a compact representation: `"<value> <unit>"` or just `"<value>"` when unit is empty.
 
