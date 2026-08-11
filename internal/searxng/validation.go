@@ -160,7 +160,7 @@ func validateQuery(query string) error {
 	}
 
 	if utf8.RuneCountInString(query) > MaxQueryLength {
-		return NewValidationError("query", "must be 500 runes or less")
+		return NewValidationError("query", fmt.Sprintf("must be %d runes or less", MaxQueryLength))
 	}
 
 	if containsASCIIControlCharacters(query) {
