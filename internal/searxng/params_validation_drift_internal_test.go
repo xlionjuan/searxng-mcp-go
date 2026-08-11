@@ -468,14 +468,15 @@ func TestCSVParamDefDocumentsByteLimit(t *testing.T) {
 	t.Parallel()
 
 	wantLimit := fmt.Sprintf("%d bytes", MaxCSVInputBytes)
+	wantDescriptionLimit := fmt.Sprintf("%d UTF-8 bytes", MaxCSVInputBytes)
 
 	for _, name := range []string{"categories", "engines"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
 			param := findParam(t, name)
-			if !strings.Contains(param.Description, wantLimit) {
-				t.Errorf("%s Description = %q, want %q", name, param.Description, wantLimit)
+			if !strings.Contains(param.Description, wantDescriptionLimit) {
+				t.Errorf("%s Description = %q, want %q", name, param.Description, wantDescriptionLimit)
 			}
 
 			if !strings.Contains(param.CLIHelp, wantLimit) {
@@ -489,8 +490,8 @@ func TestCSVParamDefDocumentsByteLimit(t *testing.T) {
 				t.Fatalf("%s JSON Schema description has unexpected type %T", name, schema["description"])
 			}
 
-			if !strings.Contains(description, wantLimit) {
-				t.Errorf("%s JSON Schema description = %q, want %q", name, description, wantLimit)
+			if !strings.Contains(description, wantDescriptionLimit) {
+				t.Errorf("%s JSON Schema description = %q, want %q", name, description, wantDescriptionLimit)
 			}
 
 			if _, ok := schema["maxLength"]; ok {

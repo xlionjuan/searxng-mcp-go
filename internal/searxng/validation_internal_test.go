@@ -433,8 +433,8 @@ func TestValidateEngines(t *testing.T) {
 }
 
 // csvIdentifiersWithByteLength returns a valid CSV value with the requested
-// UTF-8 byte length. Each generated item is one rune, so the fixture makes the
-// byte-versus-rune distinction explicit without tripping the per-item limit.
+// UTF-8 byte length. Its repeated prefix items are one rune each; the final
+// ASCII suffix fills the exact byte budget without tripping the per-item limit.
 func csvIdentifiersWithByteLength(length int) string {
 	if length <= 0 {
 		return ""

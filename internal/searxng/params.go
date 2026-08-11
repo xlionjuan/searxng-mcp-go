@@ -140,7 +140,7 @@ var SearchParams = []ParamDef{
 				`Common values: general, news, images, videos, music, files, map, social media, science, it. `+
 				`"social media" is a single category (with a space); pass it as "social media" in CSV, not "social,media". `+
 				`Unknown categories are silently ignored by SearXNG. `+
-				`Maximum %d bytes for the full string.`,
+				`Maximum %d UTF-8 bytes for the full string.`,
 			MaxCSVInputBytes,
 		),
 		CLIHelp: fmt.Sprintf(
@@ -155,7 +155,7 @@ var SearchParams = []ParamDef{
 		Name: "engines", GoType: "string", Default: "",
 		Description: fmt.Sprintf(
 			`Comma-separated list of SearXNG engine names. Common engines: google, bing, duckduckgo. `+
-				`Maximum %d bytes for the full string.`,
+				`Maximum %d UTF-8 bytes for the full string.`,
 			MaxCSVInputBytes,
 		),
 		CLIHelp: fmt.Sprintf(
