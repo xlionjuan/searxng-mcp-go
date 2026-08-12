@@ -283,6 +283,10 @@ Search error examples — the response format depends on whether the error is a 
 | HTML response (JSON disabled) | `Search error: request failed` (full error logged server-side) |
 | Other unexpected errors | `Search error: request failed` (full error logged server-side) |
 
+HTTP errors preserve useful URL path diagnostics, but query parameters from
+request and redirect URLs are redacted before the error reaches MCP output or
+ordinary server logs. Opting into GET fallback can still expose search
+parameters to upstream servers and intermediary logs.
 
 ### Startup Errors
 
