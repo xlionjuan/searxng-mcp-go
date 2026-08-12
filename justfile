@@ -34,8 +34,8 @@ test-verbose:
 # Actively fuzz the selected high-value targets with short local budgets.
 # CI overrides the durations for its weekly/manual run.
 fuzz response_time="30s" validation_time="15s":
-    go test -run='^$' -fuzz='^FuzzDecodeSearchResponse$' -fuzztime={{ response_time }} -parallel=2 ./internal/searxng
-    go test -run='^$' -fuzz='^FuzzValidateSearchArgs$' -fuzztime={{ validation_time }} -parallel=2 .
+    go test -run='^$' -fuzz='^FuzzDecodeSearchResponse$' -fuzztime={{ response_time }} -parallel=4 ./internal/searxng
+    go test -run='^$' -fuzz='^FuzzValidateSearchArgs$' -fuzztime={{ validation_time }} -parallel=4 .
 
 # Run in-process concurrency stress tests (concurrency_test.go, build tag `stress`).
 # No live server required; safe to run anywhere `go test ./...` works.
