@@ -7,6 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -382,19 +385,113 @@ func (s *SearXNGSearcher) doSearchAttempt(ctx context.Context, args *SearchArgs)
 	return resp, postBodyStr, err
 }
 
-// doHTTP executes a request and transfers a response body to the caller only
-// when http.Client.Do returned without an error.
+// redactedHTTPError keeps the original HTTP error available for errors.Is and
+// errors.As while providing a query-redacted representation for logs and users.
+type redactedHTTPError struct {
+	err     error
+	message string
+}
+
+func (e *redactedHTTPError) Error() string {
+	return e.message
+}
+
+func (e *redactedHTTPError) Unwrap() error {
+	return e.err
+}
+
+// doHTTP normalizes response-body ownership and the observable representation
+// of every error returned by http.Client.Do.
 func (s *SearXNGSearcher) doHTTP(req *http.Request) (*http.Response, error) {
 	//nolint:gosec // Callers use the validated SearXNG endpoint or its derived GET fallback URL.
 	resp, err := s.client.Do(req)
-	if err != nil && resp != nil {
+	if err == nil {
+		return resp, nil
+	}
+
+	if resp != nil {
 		// http.Client.Do returns both values only when CheckRedirect rejects a
 		// redirect. The client has already closed resp.Body, so retaining resp
 		// would give its body a second owner.
 		resp = nil
 	}
 
-	return resp, err
+	return resp, redactHTTPError(err)
+}
+
+func redactHTTPError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	redactions := make(map[string]string)
+	collectHTTPErrorURLRedactions(err, redactions)
+
+	if len(redactions) == 0 {
+		return err
+	}
+
+	urls := make([]string, 0, len(redactions))
+	for rawURL := range redactions {
+		urls = append(urls, rawURL)
+	}
+
+	// Replace longer URLs first so a URL that prefixes another target cannot
+	// leave the longer target's remaining query parameters visible.
+	sort.Slice(urls, func(i, j int) bool {
+		if len(urls[i]) == len(urls[j]) {
+			return urls[i] < urls[j]
+		}
+
+		return len(urls[i]) > len(urls[j])
+	})
+
+	originalMessage := err.Error()
+	message := originalMessage
+
+	for _, rawURL := range urls {
+		redactedURL := redactions[rawURL]
+
+		// url.Error renders URL with %q. Replace that exact representation first
+		// to handle escaped characters, then replace unquoted copies emitted by
+		// wrappers that reuse the typed URL value in their own context.
+		message = strings.ReplaceAll(message, strconv.Quote(rawURL), strconv.Quote(redactedURL))
+		message = strings.ReplaceAll(message, rawURL, redactedURL)
+	}
+
+	if message == originalMessage {
+		return err
+	}
+
+	return &redactedHTTPError{err: err, message: message}
+}
+
+func collectHTTPErrorURLRedactions(err error, redactions map[string]string) {
+	if err == nil {
+		return
+	}
+
+	// Inspect this concrete node rather than using errors.As, which would jump
+	// to a descendant and prevent the walker from handling every URL node.
+	urlErr, ok := err.(*url.Error) //nolint:errorlint // inspect the current concrete node, not a descendant
+	if ok && urlErr != nil && urlErr.URL != "" {
+		redactedURL := redactSearchURLParams(urlErr.URL)
+		if redactedURL != urlErr.URL {
+			redactions[urlErr.URL] = redactedURL
+		}
+	}
+
+	// This is structural traversal of the current node, not error matching.
+	// errors.As cannot distinguish the node's one-child and many-child shapes.
+	//nolint:errorlint // inspect the current node's concrete Unwrap shape, not a descendant
+	switch unwrapped := err.(type) {
+	case interface{ Unwrap() []error }:
+		for _, child := range unwrapped.Unwrap() {
+			collectHTTPErrorURLRedactions(child, redactions)
+		}
+	case interface{ Unwrap() error }:
+		collectHTTPErrorURLRedactions(unwrapped.Unwrap(), redactions)
+	}
 }
 
 func (s *SearXNGSearcher) isEmptyResponse(resp *SearchResponse) bool {
@@ -496,29 +593,13 @@ func (s *SearXNGSearcher) executeGETfallback(
 
 	getResp, err := s.doHTTP(getReq)
 	if err != nil {
-		err = fmt.Errorf("%w: %w", errGETFallbackUsed, redactSearchURLParamsFromError(err))
+		err = fmt.Errorf("%w: %w", errGETFallbackUsed, err)
 		err = errors.Join(origErr, err)
 	}
 
 	s.logDebugResponse(getResp, err)
 
 	return getResp, err
-}
-
-func redactSearchURLParamsFromError(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	var urlErr *url.Error
-	if !errors.As(err, &urlErr) {
-		return err
-	}
-
-	redacted := *urlErr
-	redacted.URL = redactSearchURLParams(urlErr.URL)
-
-	return &redacted
 }
 
 func redactSearchURLParams(rawURL string) string {
