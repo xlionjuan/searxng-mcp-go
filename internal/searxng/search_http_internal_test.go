@@ -3,15 +3,24 @@ package searxng
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"searxng-mcp-go/internal/testhelper"
+)
+
+var (
+	errTestNestedFallbackTransport    = errors.New("nested fallback transport failure")
+	errTestSecondaryFallbackTransport = errors.New("secondary fallback transport failure")
+	errTestNoQueryTransport           = errors.New("transport failed without a query")
 )
 
 // closeCounter wraps an io.ReadCloser and counts Close calls into a shared
@@ -387,6 +396,226 @@ func TestSearch_RetryOnEmptyResponse(t *testing.T) {
 			t.Fatalf("len(Results) = %d, want 1", len(result.Results))
 		}
 	})
+}
+
+//nolint:gocyclo // assertions cover redaction, diagnostics, identity, and request count independently
+func TestSearch_RedactsPOSTRedirectErrorURL(t *testing.T) {
+	t.Parallel()
+
+	const secret = "post-location-secret"
+
+	var requestCount atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requestCount.Add(1)
+		w.Header().Set("Location", "/canonical?q="+secret)
+		w.WriteHeader(http.StatusFound)
+	}))
+	t.Cleanup(server.Close)
+
+	s, err := NewSearXNGSearcher(&Config{
+		SearXNGURL: server.URL,
+		HTTPClient: server.Client(),
+		MaxRetries: 2,
+	}, false)
+	if err != nil {
+		t.Fatalf("NewSearXNGSearcher() error = %v", err)
+	}
+
+	t.Cleanup(func() {
+		closeErr := s.Close()
+		if closeErr != nil {
+			t.Errorf("Close() error = %v", closeErr)
+		}
+	})
+
+	result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+	if err == nil {
+		t.Fatal("Search() error = nil, want redirect policy error")
+	}
+
+	if result != nil {
+		t.Fatalf("Search() result = %#v, want nil", result)
+	}
+
+	errText := err.Error()
+	if strings.Contains(errText, secret) || strings.Contains(errText, "?q=") {
+		t.Fatalf("Search() error exposed redirect query: %q", errText)
+	}
+
+	if !strings.Contains(errText, "/canonical") {
+		t.Fatalf("Search() error = %q, want redirect path diagnostic", errText)
+	}
+
+	if !strings.Contains(errText, "redirect would change POST to GET") {
+		t.Fatalf("Search() error = %q, want redirect method context", errText)
+	}
+
+	if !errors.Is(err, errRedirectMethodChanged) {
+		t.Fatalf("Search() error = %v, want errRedirectMethodChanged in chain", err)
+	}
+
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) {
+		t.Fatalf("Search() error type = %T, want *url.Error in chain", err)
+	}
+
+	if !strings.Contains(urlErr.URL, secret) {
+		t.Fatalf("original url.Error.URL = %q, want original redirect query preserved internally", urlErr.URL)
+	}
+
+	var searxErr *SearXNGError
+	if !errors.As(err, &searxErr) {
+		t.Fatalf("Search() error type = %T, want *SearXNGError in chain", err)
+	}
+
+	if got := requestCount.Load(); got != 1 {
+		t.Fatalf("HTTP request count = %d, want 1 (redirect rejected before follow)", got)
+	}
+}
+
+//nolint:gocyclo,cyclop // assertions cover every nested/joined redaction and traversal invariant
+func TestSearch_RedactsNestedGETFallbackErrorURLs(t *testing.T) {
+	t.Parallel()
+
+	const (
+		outerSecret  = "fallback-outer-secret"
+		nestedSecret = "fallback-nested-secret"
+	)
+
+	nestedURLError := &url.Error{
+		Op:  "dial",
+		URL: "https://nested.example/failure?q=" + nestedSecret,
+		Err: errTestNestedFallbackTransport,
+	}
+
+	s := newTestSearcher(t, testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodPost {
+			return &http.Response{
+				StatusCode: http.StatusMethodNotAllowed,
+				Header:     http.Header{"Content-Type": []string{"text/html"}},
+				Body:       io.NopCloser(strings.NewReader("POST not allowed")),
+				Request:    req,
+			}, nil
+		}
+
+		return nil, fmt.Errorf(
+			"wrapped fallback failure: %w",
+			errors.Join(nestedURLError, errTestSecondaryFallbackTransport),
+		)
+	}), 0)
+	s.allowGETFallback = true
+
+	result, err := s.Search(t.Context(), &SearchArgs{Query: outerSecret})
+	if err == nil {
+		t.Fatal("Search() error = nil, want GET fallback error")
+	}
+
+	if result != nil {
+		t.Fatalf("Search() result = %#v, want nil", result)
+	}
+
+	errText := err.Error()
+	for _, secret := range []string{outerSecret, nestedSecret} {
+		if strings.Contains(errText, secret) {
+			t.Fatalf("Search() error exposed %q: %q", secret, errText)
+		}
+	}
+
+	if strings.Contains(errText, "?q=") || strings.Contains(errText, "format=") {
+		t.Fatalf("Search() error exposed search query parameters: %q", errText)
+	}
+
+	for _, diagnostic := range []string{
+		"GET fallback was used",
+		"search method rejected",
+		"https://search.example.com/search",
+		"https://nested.example/failure",
+	} {
+		if !strings.Contains(errText, diagnostic) {
+			t.Fatalf("Search() error = %q, want diagnostic %q", errText, diagnostic)
+		}
+	}
+
+	if !errors.Is(err, errSearchMethodRejected) {
+		t.Fatalf("Search() error = %v, want errSearchMethodRejected in chain", err)
+	}
+
+	if !errors.Is(err, errTestNestedFallbackTransport) {
+		t.Fatalf("Search() error = %v, want nested transport sentinel in chain", err)
+	}
+
+	if !errors.Is(err, errTestSecondaryFallbackTransport) {
+		t.Fatalf("Search() error = %v, want joined transport sentinel in chain", err)
+	}
+
+	if !errors.Is(err, nestedURLError) {
+		t.Fatalf("Search() error = %v, want original nested *url.Error identity in chain", err)
+	}
+
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) {
+		t.Fatalf("Search() error type = %T, want *url.Error in chain", err)
+	}
+
+	if !strings.Contains(urlErr.URL, outerSecret) {
+		t.Fatalf("original outer url.Error.URL = %q, want fallback query preserved internally", urlErr.URL)
+	}
+
+	var searxErr *SearXNGError
+	if !errors.As(err, &searxErr) {
+		t.Fatalf("Search() error type = %T, want *SearXNGError in chain", err)
+	}
+
+	if searxErr.StatusCode != http.StatusMethodNotAllowed {
+		t.Fatalf("SearXNGError.StatusCode = %d, want %d", searxErr.StatusCode, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestDoHTTPPreservesNoQueryURLDiagnostic(t *testing.T) {
+	t.Parallel()
+
+	s := &SearXNGSearcher{
+		client: &http.Client{
+			Transport: testhelper.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+				return nil, errTestNoQueryTransport
+			}),
+		},
+	}
+
+	req, err := http.NewRequestWithContext(
+		t.Context(),
+		http.MethodGet,
+		"https://search.example.com/health",
+		http.NoBody,
+	)
+	if err != nil {
+		t.Fatalf("http.NewRequestWithContext() error = %v", err)
+	}
+
+	resp, err := s.doHTTP(req)
+	closeBody(resp)
+
+	if err == nil {
+		t.Fatal("doHTTP() error = nil, want transport error")
+	}
+
+	if !strings.Contains(err.Error(), "https://search.example.com/health") {
+		t.Fatalf("doHTTP() error = %q, want no-query URL diagnostic", err.Error())
+	}
+
+	if strings.Contains(err.Error(), "[REDACTED]") {
+		t.Fatalf("doHTTP() error unnecessarily redacted no-query URL: %q", err.Error())
+	}
+
+	if !errors.Is(err, errTestNoQueryTransport) {
+		t.Fatalf("doHTTP() error = %v, want transport sentinel in chain", err)
+	}
+
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) {
+		t.Fatalf("doHTTP() error type = %T, want *url.Error in chain", err)
+	}
 }
 
 // Regression test: http.Client closes a response body before returning a

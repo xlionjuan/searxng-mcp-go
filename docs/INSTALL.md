@@ -228,7 +228,10 @@ searxng-mcp-go "query" --allow-get-fallback
 Set `NO_COLOR` to any non-empty value, or set `TERM=dumb`, to print errors
 without ANSI color escape sequences.
 
-> **Note:** When GET fallback is enabled and the request fails, the `q` search parameter is redacted to `[REDACTED]` in error messages to prevent query leakage.
+> **Note:** Observable HTTP error messages preserve useful URL path diagnostics
+> but redact URL query parameters to `[REDACTED]`. This applies to rejected
+> redirects and failed GET fallback requests. Enabling GET fallback can still
+> expose search parameters to upstream servers and intermediary logs.
 
 ---
 
