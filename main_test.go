@@ -768,6 +768,44 @@ func TestPrepareMCPStdinFirstMessageLimit(t *testing.T) {
 	}
 }
 
+func TestPrepareMCPStdinFirstMessageLimitAcceptsCRLFAcrossReads(t *testing.T) {
+	t.Parallel()
+
+	const (
+		prefix = `{"jsonrpc":"2.0","id":1,"method":"tools/list","params":` +
+			`{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28"},"padding":"`
+		suffix = `"}}`
+	)
+
+	paddingLength := mcpFirstMessageMaxBytes - len(prefix) - len(suffix)
+	exact := prefix + strings.Repeat("a", paddingLength) + suffix
+	input := exact + "\r\n" + "tail"
+
+	reader := &countingMCPReader{reader: io.MultiReader(
+		strings.NewReader(exact+"\r"),
+		strings.NewReader("\ntail"),
+	)}
+
+	stdin, err := prepareMCPStdin(reader)
+	if err != nil {
+		t.Fatalf("prepareMCPStdin() rejected exact-limit CRLF message across reads: %v", err)
+	}
+
+	maxConsumed := mcpFirstMessageMaxBytes + mcpFirstMessageMaxDelimiterBytes
+	if reader.consumed > maxConsumed {
+		t.Fatalf("preflight read consumed %d bytes, want at most %d", reader.consumed, maxConsumed)
+	}
+
+	got, err := io.ReadAll(stdin)
+	if err != nil {
+		t.Fatalf("failed to read prepared stdin: %v", err)
+	}
+
+	if string(got) != input {
+		t.Fatalf("prepared CRLF stdin mismatch\nwant: %q\ngot:  %q", input, string(got))
+	}
+}
+
 func assertMCPFirstMessageLimit(t *testing.T, tt mcpFirstMessageLimitTest, maxConsumed int) {
 	t.Helper()
 
