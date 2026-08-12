@@ -464,6 +464,110 @@ func TestSearch_RedirectPolicyErrorBodyOwnership(t *testing.T) {
 	}
 }
 
+// Regression test: the GET fallback must preserve the same ownership boundary
+// when its redirect is rejected by http.Client's CheckRedirect policy.
+func TestSearch_GETFallbackRedirectPolicyErrorBodyOwnership(t *testing.T) {
+	t.Parallel()
+
+	var (
+		mu            sync.Mutex
+		getCloseCalls int
+		postCalls     int
+		getCalls      int
+	)
+
+	client := &http.Client{
+		Transport: testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			mu.Lock()
+			defer mu.Unlock()
+
+			switch req.Method {
+			case http.MethodPost:
+				postCalls++
+
+				return &http.Response{
+					StatusCode: http.StatusMethodNotAllowed,
+					Header:     http.Header{"Content-Type": []string{"text/html"}},
+					Body:       io.NopCloser(strings.NewReader("POST not allowed")),
+					Request:    req,
+				}, nil
+			case http.MethodGet:
+				getCalls++
+
+				return &http.Response{
+					StatusCode: http.StatusTemporaryRedirect,
+					Header:     http.Header{"Location": []string{"https://other.example.com/redirected"}},
+					Body: &closeCounter{
+						ReadCloser: io.NopCloser(strings.NewReader("redirect")),
+						mu:         &mu,
+						total:      &getCloseCalls,
+					},
+					Request: req,
+				}, nil
+			default:
+				return nil, errTransportNotExpected
+			}
+		}),
+	}
+
+	s, err := NewSearXNGSearcher(&Config{
+		SearXNGURL:       "https://search.example.com",
+		HTTPClient:       client,
+		MaxRetries:       2,
+		AllowGETFallback: true,
+	}, false)
+	if err != nil {
+		t.Fatalf("NewSearXNGSearcher() error = %v", err)
+	}
+
+	t.Cleanup(func() {
+		closeErr := s.Close()
+		if closeErr != nil {
+			t.Errorf("Close() error = %v", closeErr)
+		}
+	})
+
+	result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+	if err == nil {
+		t.Fatal("Search() error = nil, want GET fallback redirect error")
+	}
+
+	if result != nil {
+		t.Fatalf("Search() result = %#v, want nil", result)
+	}
+
+	if !errors.Is(err, errSearchMethodRejected) {
+		t.Fatalf("Search() error = %v, want errSearchMethodRejected in chain", err)
+	}
+
+	if !errors.Is(err, errRedirectDifferentHost) {
+		t.Fatalf("Search() error = %v, want errRedirectDifferentHost in chain", err)
+	}
+
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) {
+		t.Fatalf("Search() error type = %T, want *url.Error in chain", err)
+	}
+
+	mu.Lock()
+	gotPostCalls := postCalls
+	gotGETCalls := getCalls
+	gotCloseCalls := getCloseCalls
+	mu.Unlock()
+
+	if gotPostCalls != 1 {
+		t.Fatalf("POST RoundTrip call count = %d, want 1", gotPostCalls)
+	}
+
+	if gotGETCalls != 1 {
+		t.Fatalf("GET RoundTrip call count = %d, want 1", gotGETCalls)
+	}
+
+	if gotCloseCalls != 1 {
+		t.Fatalf("GET fallback response body Close() calls = %d, want 1 from http.Client", gotCloseCalls)
+	}
+}
+
 func TestSearch_ErrUseLastResponseBodyOwnership(t *testing.T) {
 	t.Parallel()
 
