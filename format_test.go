@@ -62,10 +62,10 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 			wantEngine: "Engine: libretranslate",
 		},
 		{
-			name:       "weather",
-			fixture:    "testdata/typed_weather_answer.json",
+			name:       "weather without summary falls back to components",
+			fixture:    "testdata/typed_weather_no_summary_fallback.json",
 			wantAnswer: "[1] Weather: Berlin, 11.2 °C, partly cloudy",
-			wantEngine: "Engine: open_meteo",
+			wantEngine: "Engine: openmeteo",
 		},
 	}
 
@@ -90,6 +90,45 @@ func TestFormatResults_TypedAnswerFixtures(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestTypedWeatherNoSummaryFixture_EnsureAnswerFallback defines the synthetic
+// compatibility boundary for weather answers without a legacy answer or
+// current summary. It must derive display text from the current components.
+func TestTypedWeatherNoSummaryFixture_EnsureAnswerFallback(t *testing.T) {
+	t.Parallel()
+
+	var resp searxng.SearchResponse
+
+	testhelper.LoadJSONFixture(t, "testdata/typed_weather_no_summary_fallback.json", &resp)
+
+	if len(resp.Answers) != 1 {
+		t.Fatalf("fixture has %d answers, want 1", len(resp.Answers))
+	}
+
+	weather := &resp.Answers[0]
+	if weather.Answer != "" {
+		t.Fatalf("legacy answer = %q, want empty", weather.Answer)
+	}
+
+	if weather.Engine != "openmeteo" {
+		t.Fatalf("engine = %q, want openmeteo", weather.Engine)
+	}
+
+	if weather.Current == nil {
+		t.Fatal("fixture must contain current weather")
+	}
+
+	if weather.Current.Summary != "" {
+		t.Fatalf("current summary = %q, want empty", weather.Current.Summary)
+	}
+
+	searxng.EnsureAnswerFallback(weather)
+
+	const want = "Weather: Berlin, 11.2 °C, partly cloudy"
+	if weather.Answer != want {
+		t.Fatalf("derived answer = %q, want %q", weather.Answer, want)
 	}
 }
 
