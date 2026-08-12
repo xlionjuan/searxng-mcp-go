@@ -208,6 +208,22 @@ func TestIsHTMLResponse(t *testing.T) {
 	}
 }
 
+func TestHasHTMLPrefix_ProbeBoundarySplitUnicodeWhitespace(t *testing.T) {
+	t.Parallel()
+
+	leadingWhitespace := strings.Repeat("\u2000", maxHTMLProbe/len("\u2000"))
+	if len(leadingWhitespace) != maxHTMLProbe-1 {
+		t.Fatalf("leading whitespace length = %d, want %d", len(leadingWhitespace), maxHTMLProbe-1)
+	}
+
+	// U+2006 begins within the probe window but ends beyond it; <html begins
+	// after the window and must not be considered by HTML prefix detection.
+	body := []byte(leadingWhitespace + "\u2006<html>")
+	if hasHTMLPrefix(body) {
+		t.Fatal("hasHTMLPrefix() = true, want false when <html is outside the probe window")
+	}
+}
+
 // --- isJSONContentType tests ---
 
 func TestIsJSONContentType(t *testing.T) {

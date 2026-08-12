@@ -137,14 +137,14 @@ func isHTMLResponse(contentType string, body []byte) bool {
 const maxHTMLProbe = 64
 
 // hasHTMLPrefix reports whether body has <!doctype or <html prefix after
-// skipping leading ASCII whitespace, examining at most maxHTMLProbe bytes.
+// skipping leading Unicode whitespace, examining at most maxHTMLProbe bytes.
 // It avoids allocating a lowercase copy of the entire body.
 func hasHTMLPrefix(body []byte) bool {
-	n := min(len(body), maxHTMLProbe)
+	probe := body[:min(len(body), maxHTMLProbe)]
 	i := 0
 
-	for i < n {
-		r, size := utf8.DecodeRune(body[i:])
+	for i < len(probe) {
+		r, size := utf8.DecodeRune(probe[i:])
 
 		if r == utf8.RuneError {
 			break
@@ -157,7 +157,7 @@ func hasHTMLPrefix(body []byte) bool {
 		i += size
 	}
 
-	remaining := body[i:n]
+	remaining := probe[i:]
 	if len(remaining) == 0 {
 		return false
 	}
