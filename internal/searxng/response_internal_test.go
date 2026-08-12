@@ -664,8 +664,8 @@ func TestNormalizeResponse(t *testing.T) {
 				},
 			},
 			{
-				name:     "weather",
-				fixture:  "typed_weather_answer.json",
+				name:     "weather without summary falls back to components",
+				fixture:  "typed_weather_no_summary_fallback.json",
 				fallback: answer.WeatherAnswerFallback,
 				assertTypedPayload: func(t *testing.T, got Answer) {
 					t.Helper()

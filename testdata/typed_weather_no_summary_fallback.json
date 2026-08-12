@@ -4,7 +4,7 @@
   "results": [],
   "answers": [
     {
-      "engine": "open_meteo",
+      "engine": "openmeteo",
       "template": "answer/weather.html",
       "current": {
         "location": {
