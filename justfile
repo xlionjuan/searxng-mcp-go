@@ -4,6 +4,7 @@
 #   just           — run default (test)
 #   just build     — build binary
 #   just test      — run tests with race detector
+#   just fuzz      — actively fuzz the selected high-value targets
 #   just deps      — download and verify dependencies
 #   just verify   — full CI pipeline (fmt-check → vet → lint → tidy → build → test-cover → test-stress)
 #   just clean     — remove build artifacts
@@ -29,6 +30,12 @@ test-cover:
 # Run tests with verbose output
 test-verbose:
     go test -race -shuffle=on -v ./...
+
+# Actively fuzz the selected high-value targets with short local budgets.
+# CI overrides the durations for its weekly/manual run.
+fuzz response_time="30s" validation_time="15s":
+    go test -run='^$' -fuzz='^FuzzDecodeSearchResponse$' -fuzztime={{ response_time }} -parallel=2 ./internal/searxng
+    go test -run='^$' -fuzz='^FuzzValidateSearchArgs$' -fuzztime={{ validation_time }} -parallel=2 .
 
 # Run in-process concurrency stress tests (concurrency_test.go, build tag `stress`).
 # No live server required; safe to run anywhere `go test ./...` works.

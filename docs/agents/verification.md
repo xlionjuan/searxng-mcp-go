@@ -36,12 +36,33 @@ in `internal/searxng/bench_internal_test.go`.
 | `test` | `go test -race -shuffle=on ./...` | Unit tests, excluding e2e and stress |
 | `test-cover` | `go test -race -shuffle=on -coverprofile=coverage.out ./...` | CI-style test run with race detector |
 | `test-stress` | `go test -race -tags=stress -shuffle=on ./...` | Include stress/concurrency tests |
+| `fuzz` | Two bounded `go test -fuzz` runs | Actively fuzz response decoding for 30 seconds and search-argument validation for 15 seconds |
 | `test-e2e` | `go test -race -tags='e2e stress' -count=1 -timeout=900s .` | E2E test; requires `SEARXNG_URL` and a running test server. `E2E_MCP_BINARY` skips the MCP E2E package-level build; see `docs/MCP_TESTING.md`. |
 | `test-e2e-stress` | `go test -v -tags='e2e stress' -run 'TestMCPStress' -race -count=1 -timeout=900s .` | E2E stress subset used by the manual stress workflow |
 | `test-e2e-mcp` | `go test -v -tags=e2e -run 'TestMCP' -race -count=1 -timeout=600s .` | MCP stdio E2E subset used with the CI retry wrapper |
 | `test-e2e-cli-smoke` | `go test -v -tags=e2e -run 'TestCLISmoke' -race -count=1 -timeout=600s .` | CLI smoke E2E subset used with the CI retry wrapper |
 | `lint` | `golangci-lint run --timeout 5m` (+ `stress` + `e2e` + `e2e,stress` build tags) | Full lint suite (4 tag variants); CI uses v2.12.2 |
 | `vet` | `go vet ./...` | Static analysis fallback |
+
+## Lightweight Fuzzing Policy
+
+`just fuzz` runs `FuzzDecodeSearchResponse` and `FuzzValidateSearchArgs` in
+active mutation mode with two workers and short local budgets. The
+`FuzzUnescapeIfNeeded` target remains seed-only because it primarily checks a
+thin fast-path wrapper against `html.UnescapeString`; ordinary `go test` still
+replays its seeds and any committed corpus entries.
+
+The dedicated fuzz workflow runs weekly and on manual dispatch, using two
+minutes for response decoding and one minute for argument validation. It does
+not run for pushes or pull requests, and active fuzzing is deliberately not
+part of `just verify`; it supplements the deterministic race, stress, lint,
+and E2E gates.
+
+When CI finds a failure, download the minimized corpus artifact and reproduce
+the input locally using the command reported by `go test`. Fix the bug or an
+incorrect invariant, then commit the minimized input with the fix only when it
+represents a meaningful regression. Ordinary Go tests will replay committed
+corpus entries; generated corpus is not otherwise synchronized or persisted.
 
 ## Completion Gate for AI Agents
 
