@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -386,6 +387,149 @@ func TestSearch_RetryOnEmptyResponse(t *testing.T) {
 			t.Fatalf("len(Results) = %d, want 1", len(result.Results))
 		}
 	})
+}
+
+// Regression test: http.Client closes a response body before returning a
+// CheckRedirect error, so ownership must not transfer to the retry loop.
+func TestSearch_RedirectPolicyErrorBodyOwnership(t *testing.T) {
+	t.Parallel()
+
+	var (
+		mu             sync.Mutex
+		closeCalls     int
+		transportCalls int
+	)
+
+	client := &http.Client{
+		Transport: testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			transportCalls++
+
+			return &http.Response{
+				StatusCode: http.StatusTemporaryRedirect,
+				Header:     http.Header{"Location": []string{"https://other.example.com/redirected"}},
+				Body: &closeCounter{
+					ReadCloser: io.NopCloser(strings.NewReader("redirect")),
+					mu:         &mu,
+					total:      &closeCalls,
+				},
+				Request: req,
+			}, nil
+		}),
+	}
+
+	s, err := NewSearXNGSearcher(&Config{
+		SearXNGURL: "https://search.example.com",
+		HTTPClient: client,
+		MaxRetries: 2,
+	}, false)
+	if err != nil {
+		t.Fatalf("NewSearXNGSearcher() error = %v", err)
+	}
+
+	t.Cleanup(func() {
+		closeErr := s.Close()
+		if closeErr != nil {
+			t.Errorf("Close() error = %v", closeErr)
+		}
+	})
+
+	result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+	if err == nil {
+		t.Fatal("Search() error = nil, want redirect error")
+	}
+
+	if result != nil {
+		t.Fatalf("Search() result = %#v, want nil", result)
+	}
+
+	if !errors.Is(err, errRedirectDifferentHost) {
+		t.Fatalf("Search() error = %v, want errRedirectDifferentHost in chain", err)
+	}
+
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) {
+		t.Fatalf("Search() error type = %T, want *url.Error in chain", err)
+	}
+
+	if transportCalls != 1 {
+		t.Fatalf("RoundTrip call count = %d, want 1", transportCalls)
+	}
+
+	mu.Lock()
+	gotCloseCalls := closeCalls
+	mu.Unlock()
+
+	if gotCloseCalls != 1 {
+		t.Fatalf("response body Close() calls = %d, want 1 from http.Client", gotCloseCalls)
+	}
+}
+
+func TestSearch_ErrUseLastResponseBodyOwnership(t *testing.T) {
+	t.Parallel()
+
+	var (
+		mu         sync.Mutex
+		closeCalls int
+	)
+
+	client := &http.Client{
+		Transport: testhelper.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusTemporaryRedirect,
+				Header:     http.Header{"Location": []string{"https://search.example.com/redirected"}},
+				Body: &closeCounter{
+					ReadCloser: io.NopCloser(strings.NewReader("redirect")),
+					mu:         &mu,
+					total:      &closeCalls,
+				},
+				Request: req,
+			}, nil
+		}),
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	s, err := NewSearXNGSearcher(&Config{
+		SearXNGURL: "https://search.example.com",
+		HTTPClient: client,
+	}, false)
+	if err != nil {
+		t.Fatalf("NewSearXNGSearcher() error = %v", err)
+	}
+
+	t.Cleanup(func() {
+		closeErr := s.Close()
+		if closeErr != nil {
+			t.Errorf("Close() error = %v", closeErr)
+		}
+	})
+
+	result, err := s.Search(t.Context(), &SearchArgs{Query: "test"})
+	if err == nil {
+		t.Fatal("Search() error = nil, want status error")
+	}
+
+	if result != nil {
+		t.Fatalf("Search() result = %#v, want nil", result)
+	}
+
+	var searxErr *SearXNGError
+	if !errors.As(err, &searxErr) {
+		t.Fatalf("Search() error type = %T, want *SearXNGError", err)
+	}
+
+	if searxErr.StatusCode != http.StatusTemporaryRedirect {
+		t.Fatalf("SearXNGError.StatusCode = %d, want %d", searxErr.StatusCode, http.StatusTemporaryRedirect)
+	}
+
+	mu.Lock()
+	gotCloseCalls := closeCalls
+	mu.Unlock()
+
+	if gotCloseCalls != 1 {
+		t.Fatalf("response body Close() calls = %d, want 1 from searcher", gotCloseCalls)
+	}
 }
 
 func TestSearch_NonOKStatus(t *testing.T) {

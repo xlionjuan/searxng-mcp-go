@@ -369,7 +369,7 @@ func (s *SearXNGSearcher) doSearchAttempt(ctx context.Context, args *SearchArgs)
 
 	s.logDebugRequest(postReq, postBodyStr)
 
-	resp, err := s.client.Do(postReq)
+	resp, err := s.doHTTP(postReq)
 
 	s.logDebugResponse(resp, err)
 
@@ -380,6 +380,21 @@ func (s *SearXNGSearcher) doSearchAttempt(ctx context.Context, args *SearchArgs)
 	}
 
 	return resp, postBodyStr, err
+}
+
+// doHTTP executes a request and transfers a response body to the caller only
+// when http.Client.Do returned without an error.
+func (s *SearXNGSearcher) doHTTP(req *http.Request) (*http.Response, error) {
+	//nolint:gosec // Callers use the validated SearXNG endpoint or its derived GET fallback URL.
+	resp, err := s.client.Do(req)
+	if err != nil && resp != nil {
+		// http.Client.Do returns both values only when CheckRedirect rejects a
+		// redirect. The client has already closed resp.Body, so retaining resp
+		// would give its body a second owner.
+		resp = nil
+	}
+
+	return resp, err
 }
 
 func (s *SearXNGSearcher) isEmptyResponse(resp *SearchResponse) bool {
@@ -479,8 +494,7 @@ func (s *SearXNGSearcher) executeGETfallback(
 	setBrowserHeaders(getReq)
 	s.logDebugRequest(getReq, "")
 
-	//nolint:gosec // The client redirect policy blocks fallback redirects to a different host.
-	getResp, err := s.client.Do(getReq)
+	getResp, err := s.doHTTP(getReq)
 	if err != nil {
 		err = fmt.Errorf("%w: %w", errGETFallbackUsed, redactSearchURLParamsFromError(err))
 		err = errors.Join(origErr, err)
