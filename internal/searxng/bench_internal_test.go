@@ -9,12 +9,14 @@ import (
 )
 
 // loadSearchResponse loads a SearchResponse from a JSON fixture in testdata/.
-func loadSearchResponse(tb testing.TB, fixture string) *SearchResponse {
+func loadSearchResponse(tb testing.TB, fixture string, wantResultCount int) *SearchResponse {
 	tb.Helper()
 
 	var resp SearchResponse
 
-	testhelper.LoadJSONFixture(tb, "../../testdata/"+fixture, &resp)
+	path := "../../testdata/" + fixture
+	testhelper.RequireSearchResponseFixture(tb, path, wantResultCount, true)
+	testhelper.LoadJSONFixture(tb, path, &resp)
 
 	return &resp
 }
@@ -24,6 +26,8 @@ func loadSearchResponse(tb testing.TB, fixture string) *SearchResponse {
 // ============================================================================
 
 func BenchmarkJSONUnmarshal(b *testing.B) {
+	testhelper.RequireSearchResponseFixture(b, "../../testdata/sample_response.json", 10, false)
+
 	data := testhelper.ReadFixture(b, "../../testdata/sample_response.json")
 
 	b.ReportAllocs()
@@ -39,6 +43,8 @@ func BenchmarkJSONUnmarshal(b *testing.B) {
 }
 
 func BenchmarkJSONUnmarshalLarge(b *testing.B) {
+	testhelper.RequireSearchResponseFixture(b, "../../testdata/large_response_100.json", 100, true)
+
 	data := testhelper.ReadFixture(b, "../../testdata/large_response_100.json")
 
 	b.ReportAllocs()
@@ -58,7 +64,7 @@ func BenchmarkJSONUnmarshalLarge(b *testing.B) {
 // ============================================================================
 
 func BenchmarkMarshalJSON(b *testing.B) {
-	resp := loadSearchResponse(b, "large_response_10.json")
+	resp := loadSearchResponse(b, "large_response_10.json", 10)
 
 	b.ReportAllocs()
 
@@ -71,7 +77,7 @@ func BenchmarkMarshalJSON(b *testing.B) {
 }
 
 func BenchmarkMarshalJSONLarge(b *testing.B) {
-	resp := loadSearchResponse(b, "large_response_100.json")
+	resp := loadSearchResponse(b, "large_response_100.json", 100)
 
 	b.ReportAllocs()
 
@@ -85,7 +91,7 @@ func BenchmarkMarshalJSONLarge(b *testing.B) {
 
 // Standard json.Marshal for comparison.
 func BenchmarkStdMarshalJSON(b *testing.B) {
-	resp := loadSearchResponse(b, "large_response_10.json")
+	resp := loadSearchResponse(b, "large_response_10.json", 10)
 
 	type stdSearchResponse SearchResponse
 

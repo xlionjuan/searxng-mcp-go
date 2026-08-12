@@ -13,12 +13,14 @@ import (
 )
 
 // loadSearchResponse loads a SearchResponse from a JSON fixture in testdata/.
-func loadSearchResponse(tb testing.TB, fixture string) *searxng.SearchResponse {
+func loadSearchResponse(tb testing.TB, fixture string, wantResultCount int) *searxng.SearchResponse {
 	tb.Helper()
 
 	var resp searxng.SearchResponse
 
-	testhelper.LoadJSONFixture(tb, "testdata/"+fixture, &resp)
+	path := "testdata/" + fixture
+	testhelper.RequireSearchResponseFixture(tb, path, wantResultCount, true)
+	testhelper.LoadJSONFixture(tb, path, &resp)
 
 	return &resp
 }
@@ -28,7 +30,7 @@ func loadSearchResponse(tb testing.TB, fixture string) *searxng.SearchResponse {
 // ============================================================================
 
 func BenchmarkFormatResults(b *testing.B) {
-	resp := loadSearchResponse(b, "large_response_10.json")
+	resp := loadSearchResponse(b, "large_response_10.json", 10)
 
 	b.ReportAllocs()
 
@@ -38,6 +40,8 @@ func BenchmarkFormatResults(b *testing.B) {
 }
 
 func BenchmarkSearch(b *testing.B) {
+	testhelper.RequireSearchResponseFixture(b, "testdata/sample_response.json", 10, false)
+
 	body := string(testhelper.ReadFixture(b, "testdata/sample_response.json"))
 
 	cfg := &searxng.Config{
@@ -69,7 +73,7 @@ func BenchmarkSearch(b *testing.B) {
 }
 
 func BenchmarkFormatResultsLarge(b *testing.B) {
-	resp := loadSearchResponse(b, "large_response_100.json")
+	resp := loadSearchResponse(b, "large_response_100.json", 100)
 
 	b.ReportAllocs()
 
