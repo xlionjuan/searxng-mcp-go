@@ -30,3 +30,44 @@ func LoadJSONFixture(tb testing.TB, path string, dst any) {
 		tb.Fatal(err)
 	}
 }
+
+// RequireSearchResponseFixture checks the result count and number_of_results
+// field presence that define a search-response benchmark fixture's workload.
+func RequireSearchResponseFixture(
+	tb testing.TB,
+	path string,
+	wantResultCount int,
+	wantNumberOfResults bool,
+) {
+	tb.Helper()
+
+	var fields map[string]json.RawMessage
+
+	data := ReadFixture(tb, path)
+
+	err := json.Unmarshal(data, &fields)
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	resultsJSON, ok := fields["results"]
+	if !ok {
+		tb.Fatalf("fixture %q has no results field", path)
+	}
+
+	var results []json.RawMessage
+
+	err = json.Unmarshal(resultsJSON, &results)
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	if got := len(results); got != wantResultCount {
+		tb.Fatalf("fixture %q has %d results, want %d", path, got, wantResultCount)
+	}
+
+	_, gotNumberOfResults := fields["number_of_results"]
+	if gotNumberOfResults != wantNumberOfResults {
+		tb.Fatalf("fixture %q number_of_results present = %t, want %t", path, gotNumberOfResults, wantNumberOfResults)
+	}
+}
