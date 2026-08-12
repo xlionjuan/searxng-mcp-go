@@ -655,8 +655,9 @@ func TestPrepareMCPStdinRejectsOversizedInitializeLine(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if reader.consumed > mcpFirstMessageMaxBytes+1 {
-		t.Fatalf("prepareMCPStdin consumed %d bytes, want at most %d", reader.consumed, mcpFirstMessageMaxBytes+1)
+	maxConsumed := mcpFirstMessageMaxBytes + mcpFirstMessageMaxDelimiterBytes
+	if reader.consumed > maxConsumed {
+		t.Fatalf("prepareMCPStdin consumed %d bytes, want at most %d", reader.consumed, maxConsumed)
 	}
 }
 
@@ -680,6 +681,14 @@ func TestPrepareMCPStdinAcceptsEOFWithoutNewline(t *testing.T) {
 	}
 }
 
+type mcpFirstMessageLimitTest struct {
+	name         string
+	firstMessage string
+	delimiter    string
+	tail         string
+	wantErr      bool
+}
+
 func TestPrepareMCPStdinFirstMessageLimit(t *testing.T) {
 	t.Parallel()
 
@@ -689,9 +698,7 @@ func TestPrepareMCPStdinFirstMessageLimit(t *testing.T) {
 		suffix = `"}}`
 	)
 
-	messageLength := mcpFirstMessageMaxBytes
-
-	paddingLength := messageLength - len(prefix) - len(suffix)
+	paddingLength := mcpFirstMessageMaxBytes - len(prefix) - len(suffix)
 	if paddingLength < 0 {
 		t.Fatalf("test prefix exceeds transport limit: %d bytes", len(prefix)+len(suffix))
 	}
@@ -705,9 +712,81 @@ func TestPrepareMCPStdinFirstMessageLimit(t *testing.T) {
 		t.Fatal("exact first message is not valid JSON")
 	}
 
-	input := exact + "\n" + "tail"
+	over := prefix + strings.Repeat("a", paddingLength+1) + suffix
+	if len(over) != mcpFirstMessageMaxBytes+1 {
+		t.Fatalf("over-limit first message length = %d, want %d", len(over), mcpFirstMessageMaxBytes+1)
+	}
 
-	stdin, err := prepareMCPStdin(strings.NewReader(input))
+	if !json.Valid([]byte(over)) {
+		t.Fatal("over-limit first message is not valid JSON")
+	}
+
+	tests := []mcpFirstMessageLimitTest{
+		{
+			name:         "exact limit with LF",
+			firstMessage: exact,
+			delimiter:    "\n",
+			tail:         "tail",
+		},
+		{
+			name:         "exact limit with CRLF",
+			firstMessage: exact,
+			delimiter:    "\r\n",
+			tail:         "tail",
+		},
+		{
+			name:         "exact limit at EOF",
+			firstMessage: exact,
+		},
+		{
+			name:         "over limit with LF",
+			firstMessage: over,
+			delimiter:    "\n",
+			wantErr:      true,
+		},
+		{
+			name:         "over limit with CRLF",
+			firstMessage: over,
+			delimiter:    "\r\n",
+			wantErr:      true,
+		},
+		{
+			name:         "over limit at EOF",
+			firstMessage: over,
+			wantErr:      true,
+		},
+	}
+
+	maxConsumed := mcpFirstMessageMaxBytes + mcpFirstMessageMaxDelimiterBytes
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assertMCPFirstMessageLimit(t, tt, maxConsumed)
+		})
+	}
+}
+
+func assertMCPFirstMessageLimit(t *testing.T, tt mcpFirstMessageLimitTest, maxConsumed int) {
+	t.Helper()
+
+	input := tt.firstMessage + tt.delimiter + tt.tail
+	reader := &countingMCPReader{reader: strings.NewReader(input)}
+
+	stdin, err := prepareMCPStdin(reader)
+	if reader.consumed > maxConsumed {
+		t.Fatalf("preflight read consumed %d bytes, want at most %d", reader.consumed, maxConsumed)
+	}
+
+	if tt.wantErr {
+		if !errors.Is(err, errInvalidMCPFirstMessage) {
+			t.Fatalf("prepareMCPStdin() error = %v, want %v", err, errInvalidMCPFirstMessage)
+		}
+
+		return
+	}
+
 	if err != nil {
 		t.Fatalf("prepareMCPStdin() rejected exact-limit message: %v", err)
 	}
@@ -719,26 +798,6 @@ func TestPrepareMCPStdinFirstMessageLimit(t *testing.T) {
 
 	if string(got) != input {
 		t.Fatalf("prepared exact-limit stdin mismatch\nwant: %q\ngot:  %q", input, string(got))
-	}
-
-	over := prefix + strings.Repeat("a", paddingLength+1) + suffix
-	if len(over) != mcpFirstMessageMaxBytes+1 {
-		t.Fatalf("over-limit first message length = %d, want %d", len(over), mcpFirstMessageMaxBytes+1)
-	}
-
-	if !json.Valid([]byte(over)) {
-		t.Fatal("over-limit first message is not valid JSON")
-	}
-
-	reader := &countingMCPReader{reader: strings.NewReader(over)}
-
-	_, err = prepareMCPStdin(reader)
-	if err == nil {
-		t.Fatal("expected over-limit first message to be rejected")
-	}
-
-	if reader.consumed > mcpFirstMessageMaxBytes+1 {
-		t.Fatalf("over-limit read consumed %d bytes, want at most %d", reader.consumed, mcpFirstMessageMaxBytes+1)
 	}
 }
 

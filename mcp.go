@@ -94,6 +94,10 @@ const (
 	// few underlying calls.
 	mcpFirstMessageReadChunkSize = 32 << 10
 
+	// mcpFirstMessageMaxDelimiterBytes permits either an LF or CRLF delimiter
+	// in addition to the JSON transport bound.
+	mcpFirstMessageMaxDelimiterBytes = len("\r\n")
+
 	mcpMethodInitialize = "initialize"
 	mcpMethodDiscover   = "server/discover"
 
@@ -128,10 +132,10 @@ func prepareMCPStdin(stdin io.Reader) (io.Reader, error) {
 
 // readFirstLine incrementally reads through the first newline, retaining any
 // bytes read after that newline as leftover. The reader never consumes more
-// than maxBytes+1 bytes, so an oversized first line is rejected without
-// buffering attacker-controlled input or allocating the entire transport
-// bound up front. A line ending at EOF is accepted for JSON validation by the
-// caller.
+// than maxBytes plus the longest supported delimiter (CRLF), so an oversized
+// first line is rejected without buffering attacker-controlled input or
+// allocating the entire transport bound up front. A line ending at EOF is
+// accepted for JSON validation by the caller.
 func readFirstLine(reader io.Reader, maxBytes int) ([]byte, []byte, error) {
 	if reader == nil || maxBytes < 1 {
 		return nil, nil, errMCPFirstMessageTooLong
@@ -140,11 +144,11 @@ func readFirstLine(reader io.Reader, maxBytes int) ([]byte, []byte, error) {
 	// The fixed transport bound used by prepareMCPStdin makes this addition
 	// safe. Keep the helper defensive for direct tests and future callers.
 	maxInt := int(^uint(0) >> 1)
-	if maxBytes == maxInt {
+	if maxBytes > maxInt-mcpFirstMessageMaxDelimiterBytes {
 		return nil, nil, errMCPFirstMessageTooLong
 	}
 
-	readLimit := maxBytes + 1
+	readLimit := maxBytes + mcpFirstMessageMaxDelimiterBytes
 	chunk := make([]byte, mcpFirstMessageReadChunkSize)
 	lineCapacity := min(maxBytes, len(chunk))
 	line := make([]byte, 0, lineCapacity)
@@ -153,36 +157,64 @@ func readFirstLine(reader io.Reader, maxBytes int) ([]byte, []byte, error) {
 	for consumed < readLimit {
 		readSize := min(len(chunk), readLimit-consumed)
 
-		n, err := reader.Read(chunk[:readSize])
+		n, readErr := reader.Read(chunk[:readSize])
 		if n < 0 || n > readSize {
 			return nil, nil, errInvalidMCPFirstMessageReaderResult
 		}
 
-		if n > 0 {
-			consumed += n
-
-			chunkLine, leftover, complete := consumeMCPFirstLineChunk(line, chunk[:n])
-			line = chunkLine
-
-			if complete {
-				return line, leftover, nil
-			}
-		}
-
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return line, nil, nil
-			}
-
-			return nil, nil, err
-		}
-
 		if n == 0 {
-			return nil, nil, io.ErrNoProgress
+			if readErr == nil {
+				return nil, nil, io.ErrNoProgress
+			}
+
+			return mcpFirstMessageReadError(line, readErr, maxBytes)
+		}
+
+		consumed += n
+
+		chunkLine, leftover, complete := consumeMCPFirstLineChunk(line, chunk[:n])
+		line = chunkLine
+
+		if complete {
+			return mcpFirstMessageLineResult(line, leftover, maxBytes)
+		}
+
+		if readErr != nil {
+			return mcpFirstMessageReadError(line, readErr, maxBytes)
 		}
 	}
 
 	return nil, nil, errMCPFirstMessageTooLong
+}
+
+func mcpFirstMessageReadError(line []byte, err error, maxBytes int) ([]byte, []byte, error) {
+	if errors.Is(err, io.EOF) {
+		return mcpFirstMessageLineResult(line, nil, maxBytes)
+	}
+
+	return nil, nil, err
+}
+
+func mcpFirstMessageLineResult(line, leftover []byte, maxBytes int) ([]byte, []byte, error) {
+	if mcpFirstMessagePayloadLength(line) > maxBytes {
+		return nil, nil, errMCPFirstMessageTooLong
+	}
+
+	return line, leftover, nil
+}
+
+func mcpFirstMessagePayloadLength(line []byte) int {
+	payloadLength := len(line)
+	if payloadLength == 0 || line[payloadLength-1] != '\n' {
+		return payloadLength
+	}
+
+	payloadLength--
+	if payloadLength > 0 && line[payloadLength-1] == '\r' {
+		payloadLength--
+	}
+
+	return payloadLength
 }
 
 func consumeMCPFirstLineChunk(line, data []byte) ([]byte, []byte, bool) {
