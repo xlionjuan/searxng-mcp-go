@@ -496,9 +496,7 @@ func assertCleanSessionClose(
 		return
 	}
 
-	var exitErr *exec.ExitError
-
-	if errors.As(closeErr, &exitErr) {
+	if exitErr, ok := errors.AsType[*exec.ExitError](closeErr); ok {
 		if exitErr.ExitCode() == 0 {
 			return
 		}

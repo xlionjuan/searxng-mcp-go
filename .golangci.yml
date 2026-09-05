@@ -14,6 +14,7 @@ linters:
     - usetesting
     - wastedassign
   disable:
+    - exhaustruct
     - gochecknoglobals
     - gomodguard
     - nestif
@@ -43,6 +44,8 @@ linters:
     errcheck:
       check-type-assertions: true
       check-blank: true
+      exclude-functions:
+        - errors.AsType
     errorlint:
       asserts: true
       comparison: true
@@ -91,7 +94,7 @@ linters:
       - builtin$
       - examples$
     rules:
-      - linters: [exhaustruct]
+      - linters: [exhaustruct_v5]
         paths:
           - ".*_test\\.go$"
         text: ".*"
@@ -152,8 +155,11 @@ formatters:
         - default
         - prefix(searxng-mcp-go)
     gofumpt:
-      extra-rules: true
       module-path: searxng-mcp-go
+      extra:
+        group-params: true
+        clothe-returns: true
+        balance-calls: true
   exclusions:
     generated: lax
     paths:

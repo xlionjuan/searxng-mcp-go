@@ -66,7 +66,8 @@ func TestSearch_RetryAfterRequestTimeout(t *testing.T) {
 				Body: io.NopCloser(strings.NewReader(
 					`{"query":"test","number_of_results":1,` +
 						`"results":[{"title":"OK","url":"https://example.com","content":"ok","engine":"test"}],` +
-						`"suggestions":[]}`)),
+						`"suggestions":[]}`,
+				)),
 			}, nil
 		})
 
@@ -551,7 +552,8 @@ func TestSearXNGSearcher_Close_Idempotent(t *testing.T) {
 		customClient := &http.Client{Timeout: 30 * time.Second}
 
 		searcher, err := searxng.NewSearXNGSearcher(
-			&searxng.Config{SearXNGURL: "https://example.com", HTTPClient: customClient}, false)
+			&searxng.Config{SearXNGURL: "https://example.com", HTTPClient: customClient}, false,
+		)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -838,7 +840,8 @@ func TestSearch_CanceledDuringRequest(t *testing.T) {
 			StatusCode: http.StatusOK,
 			Header:     http.Header{"Content-Type": []string{"application/json"}},
 			Body: io.NopCloser(strings.NewReader(
-				`{"query":"test","results":[],"suggestions":[],"answers":[],"infoboxes":[]}`)),
+				`{"query":"test","results":[],"suggestions":[],"answers":[],"infoboxes":[]}`,
+			)),
 		}, nil
 	})
 

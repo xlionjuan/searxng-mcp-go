@@ -467,7 +467,8 @@ func TestConcurrentValidationAndSearch(t *testing.T) {
 
 	//nolint:errcheck // test setup
 	searcher, _ := searxng.NewSearXNGSearcher(
-		&searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}, false)
+		&searxng.Config{SearXNGURL: server.URL, Timeout: 30 * time.Second}, false,
+	)
 
 	const numGoroutines = 50
 

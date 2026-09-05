@@ -25,9 +25,11 @@ var (
 var (
 	errArgumentParseFailed   = errors.New("failed to parse arguments")
 	errSearXNGURLRequiredCLI = errors.New(
-		"SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
+		"SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag",
+	)
 	errSearXNGURLRequiredMCP = errors.New(
-		"SearXNG_URL is required: set SEARXNG_URL environment variable")
+		"SearXNG_URL is required: set SEARXNG_URL environment variable",
+	)
 	errUnexpectedFlagType = errors.New("registered search flag has unexpected type")
 )
 

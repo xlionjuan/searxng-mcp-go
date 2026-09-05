@@ -578,8 +578,7 @@ func TestClassifyAttempt_BodyReadRetry(t *testing.T) {
 			t.Fatal("classifyAttempt() error = nil, want error for HTML response")
 		}
 
-		var he *HTMLResponseError
-		if !errors.As(err, &he) {
+		if _, ok := errors.AsType[*HTMLResponseError](err); !ok {
 			t.Fatalf("classifyAttempt() error type = %T, want *HTMLResponseError", err)
 		}
 	})

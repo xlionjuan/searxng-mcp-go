@@ -181,7 +181,8 @@ var SearchParams = []ParamDef{
 		Description: fmt.Sprintf("Maximum number of results to return (%d-%d)", MinResultLimit, MaxResultLimit),
 		CLIHelp: fmt.Sprintf(
 			"Maximum number of results to return (%d-%d) [default: %d]",
-			MinResultLimit, MaxResultLimit, DefaultResultLimit),
+			MinResultLimit, MaxResultLimit, DefaultResultLimit,
+		),
 		CLIType:    "N",
 		MCPType:    "integer",
 		DefaultInt: &DefaultResultLimit,

@@ -391,8 +391,7 @@ func searchAndBuildResult(ctx context.Context, s searcher, args *searxng.SearchA
 	if err != nil {
 		slog.Error("search failed", "error", err)
 
-		var searxngErr *searxng.SearXNGError
-		if errors.As(err, &searxngErr) {
+		if searxngErr, ok := errors.AsType[*searxng.SearXNGError](err); ok {
 			return mcpErrorResult("Search error: " + searxngErr.Error()), nil, nil
 		}
 

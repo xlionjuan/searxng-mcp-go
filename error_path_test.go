@@ -279,8 +279,7 @@ func TestSearch_HTMLResponseError(t *testing.T) {
 				t.Fatal("expected HTMLResponseError, got nil")
 			}
 
-			var htmlErr *searxng.HTMLResponseError
-			if !errors.As(err, &htmlErr) {
+			if _, ok := errors.AsType[*searxng.HTMLResponseError](err); !ok {
 				t.Errorf("expected HTMLResponseError, got: %v", err)
 			}
 
@@ -319,7 +318,8 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 
 			header := fmt.Sprintf(
 				"HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n",
-				len(body))
+				len(body),
+			)
 			_, _ = conn.Write([]byte(header)) //nolint:errcheck // test fixture write; failure does not affect test outcome
 			_, _ = conn.Write([]byte(body))   //nolint:errcheck // test fixture write; failure does not affect test outcome
 		}))
@@ -532,8 +532,7 @@ func TestSearch_NetworkError_ConnectionClose(t *testing.T) {
 	}
 
 	// Verify it's a proper wrapped error type
-	var searxngErr *searxng.SearXNGError
-	if !errors.As(err, &searxngErr) {
+	if _, ok := errors.AsType[*searxng.SearXNGError](err); !ok {
 		t.Errorf("expected *searxng.SearXNGError, got type %T", err)
 	}
 }
@@ -604,8 +603,7 @@ func TestSearch_ContextDeadlineExceeded(t *testing.T) {
 	}
 
 	// Verify error is wrapped
-	var searxngErr *searxng.SearXNGError
-	if !errors.As(err, &searxngErr) {
+	if _, ok := errors.AsType[*searxng.SearXNGError](err); !ok {
 		t.Errorf("expected *searxng.SearXNGError, got type %T: %v", err, err)
 	}
 }
@@ -874,8 +872,7 @@ func TestSearch_AllErrorTypesAreWrapped(t *testing.T) {
 			}
 
 			// For URL errors, should still be wrapped in SearXNGError
-			var searxngErr *searxng.SearXNGError
-			if errors.As(err, &searxngErr) {
+			if _, ok := errors.AsType[*searxng.SearXNGError](err); ok {
 				// Good - it's a proper wrapped error type
 				return
 			}

@@ -596,8 +596,7 @@ func TestFinishResponse(t *testing.T) {
 			t.Fatal("finishResponse() error = nil, want HTMLResponseError")
 		}
 
-		var htmlErr *HTMLResponseError
-		if !errors.As(err, &htmlErr) {
+		if _, ok := errors.AsType[*HTMLResponseError](err); !ok {
 			t.Fatalf("error type = %T, want *HTMLResponseError", err)
 		}
 	})

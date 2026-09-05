@@ -17,13 +17,15 @@ import (
 var (
 	errSearcherConfigRequired   = errors.New("newSearXNGSearcher: config cannot be nil")
 	errSearcherURLParseInternal = errors.New(
-		"newSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error)")
+		"newSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error)",
+	)
 	errRequestCreateFailed = errors.New("failed to create request")
 	errSearchRequestFailed = errors.New("failed to execute search request")
 	errErrorBodyTooLarge   = errors.New("error response body exceeded maximum size limit")
 	errSearchEmptyResults  = errors.New("search returned empty results after all retries")
 	errGETFallbackUsed     = errors.New(
-		"GET fallback was used; search query parameters may have been sent in the request URL")
+		"GET fallback was used; search query parameters may have been sent in the request URL",
+	)
 	errNilFinishResponse = errors.New("finishResponse: nil http.Response")
 )
 
@@ -281,8 +283,7 @@ func (s *SearXNGSearcher) searchContext(ctx context.Context) (context.Context, c
 // Preserves SearXNGError unwrapping to avoid hiding the real status code.
 // Returns the fallback error for the "should never reach here" case when err is nil.
 func wrapSearchError(err error) error {
-	var se *SearXNGError
-	if errors.As(err, &se) {
+	if _, ok := errors.AsType[*SearXNGError](err); ok {
 		return fmt.Errorf("%w: %w", errSearchRequestFailed, err)
 	}
 

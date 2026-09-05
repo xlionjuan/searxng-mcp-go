@@ -1876,7 +1876,8 @@ func TestRunCLIMode_TimeoutIsPerRequestNotOverall(t *testing.T) {
 		_, _ = w.Write([]byte(
 			`{"query":"test","number_of_results":1,` +
 				`"results":[{"title":"OK","url":"https://example.com","content":"ok","engine":"test"}],` +
-				`"suggestions":[]}`))
+				`"suggestions":[]}`,
+		))
 	}))
 	defer server.Close()
 

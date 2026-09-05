@@ -85,13 +85,11 @@ func classifyOutcome(
 	}
 
 	if err != nil {
-		var se *SearXNGError
-		if errors.As(err, &se) {
+		if _, ok := errors.AsType[*SearXNGError](err); ok {
 			return OutcomeAbort
 		}
 
-		var he *HTMLResponseError
-		if errors.As(err, &he) {
+		if _, ok := errors.AsType[*HTMLResponseError](err); ok {
 			return OutcomeAbort
 		}
 

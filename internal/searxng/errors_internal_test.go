@@ -79,7 +79,8 @@ func TestTruncateBody(t *testing.T) {
 			t.Logf(
 				"truncateBody(你好世界, 5) = %q (bytes: %d)"+
 					" — incomplete UTF-8 may produce replacement chars",
-				got, len([]byte(got)))
+				got, len([]byte(got)),
+			)
 		}
 	})
 
@@ -470,8 +471,7 @@ func TestParseSearchEdgeCases(t *testing.T) {
 			t.Fatal("parseSearchResponse() error = nil, want HTMLResponseError")
 		}
 
-		var htmlErr *HTMLResponseError
-		if !errors.As(err, &htmlErr) {
+		if _, ok := errors.AsType[*HTMLResponseError](err); !ok {
 			t.Fatalf("error type = %T, want *HTMLResponseError", err)
 		}
 	})
