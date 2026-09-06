@@ -70,3 +70,10 @@ const ResultSizeEstimate = 200
 
 // DebugBodyPreviewBytes is the maximum response body preview length emitted in debug logs.
 const DebugBodyPreviewBytes = 500
+
+// schemeHTTP and schemeHTTPS are the URL scheme strings compared across the
+// redirect policy, base-URL validation, and the plaintext-http warning.
+const (
+	schemeHTTP  = "http"
+	schemeHTTPS = "https"
+)

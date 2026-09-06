@@ -21,6 +21,8 @@ import (
 
 // TestSearch_DNSFailure tests that DNS failures are properly wrapped with context.
 func TestSearch_DNSFailure(t *testing.T) {
+	t.Parallel()
+
 	client := &http.Client{
 		Transport: testhelper.RoundTripperFunc(func(*http.Request) (*http.Response, error) {
 			return nil, &net.DNSError{
@@ -64,6 +66,8 @@ func TestSearch_DNSFailure(t *testing.T) {
 
 // TestSearch_ConnectionRefused tests connection refused errors.
 func TestSearch_ConnectionRefused(t *testing.T) {
+	t.Parallel()
+
 	// Create a server and immediately close it to simulate connection refused
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -101,6 +105,8 @@ func TestSearch_ConnectionRefused(t *testing.T) {
 
 // TestSearch_EmptyResponse tests handling of empty response body.
 func TestSearch_EmptyResponse(t *testing.T) {
+	t.Parallel()
+
 	server := newJSONRawTestServer(t, nil)
 	defer server.Close()
 
@@ -125,6 +131,8 @@ func TestSearch_EmptyResponse(t *testing.T) {
 
 // TestSearch_EmptyBodyWith200 tests empty JSON object response.
 func TestSearch_EmptyJSONObject(t *testing.T) {
+	t.Parallel()
+
 	server := newJSONRawTestServer(t, []byte("{}"))
 	defer server.Close()
 
@@ -148,6 +156,8 @@ func TestSearch_EmptyJSONObject(t *testing.T) {
 
 // TestSearch_UnexpectedContentType tests response with unexpected content type.
 func TestSearch_UnexpectedContentType(t *testing.T) {
+	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
@@ -279,8 +289,7 @@ func TestSearch_HTMLResponseError(t *testing.T) {
 				t.Fatal("expected HTMLResponseError, got nil")
 			}
 
-			var htmlErr *searxng.HTMLResponseError
-			if !errors.As(err, &htmlErr) {
+			if _, ok := errors.AsType[*searxng.HTMLResponseError](err); !ok {
 				t.Errorf("expected HTMLResponseError, got: %v", err)
 			}
 
@@ -319,7 +328,8 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 
 			header := fmt.Sprintf(
 				"HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n",
-				len(body))
+				len(body),
+			)
 			_, _ = conn.Write([]byte(header)) //nolint:errcheck // test fixture write; failure does not affect test outcome
 			_, _ = conn.Write([]byte(body))   //nolint:errcheck // test fixture write; failure does not affect test outcome
 		}))
@@ -414,6 +424,8 @@ func TestSearch_UnsupportedBodySizes(t *testing.T) {
 // ============================================================================
 
 func TestSearch_MalformedJSON_Truncated(t *testing.T) {
+	t.Parallel()
+
 	truncatedJSON := []byte(`{"results": [{"title": "test",`)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -442,6 +454,8 @@ func TestSearch_MalformedJSON_Truncated(t *testing.T) {
 }
 
 func TestSearch_WrongJSONType(t *testing.T) {
+	t.Parallel()
+
 	// Valid JSON with wrong types: results should be an array, but we provide a string
 	// because "results" is expected to be an array, not a string
 	wrongTypeJSON := []byte(`{"results": "not an array", "number_of_results": "not a number"}`)
@@ -473,6 +487,8 @@ func TestSearch_WrongJSONType(t *testing.T) {
 }
 
 func TestSearch_TrailingGarbage(t *testing.T) {
+	t.Parallel()
+
 	// Valid JSON followed by garbage
 	garbageJSON := []byte(`{"results":[],"number_of_results":0,"query":"test"}TRAILING GARBAGE`)
 
@@ -506,6 +522,8 @@ func TestSearch_TrailingGarbage(t *testing.T) {
 // ============================================================================
 
 func TestSearch_NetworkError_ConnectionClose(t *testing.T) {
+	t.Parallel()
+
 	// Create a server and immediately close it to simulate network error
 	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		// Close immediately without responding
@@ -532,8 +550,7 @@ func TestSearch_NetworkError_ConnectionClose(t *testing.T) {
 	}
 
 	// Verify it's a proper wrapped error type
-	var searxngErr *searxng.SearXNGError
-	if !errors.As(err, &searxngErr) {
+	if _, ok := errors.AsType[*searxng.SearXNGError](err); !ok {
 		t.Errorf("expected *searxng.SearXNGError, got type %T", err)
 	}
 }
@@ -543,6 +560,8 @@ func TestSearch_NetworkError_ConnectionClose(t *testing.T) {
 // ============================================================================
 
 func TestSearch_TimeoutExceeded(t *testing.T) {
+	t.Parallel()
+
 	// Use a custom RoundTripper that blocks until context cancellation,
 	// avoiding httptest.Server.Close() blocking on active connections.
 	client := &http.Client{
@@ -578,6 +597,8 @@ func TestSearch_TimeoutExceeded(t *testing.T) {
 }
 
 func TestSearch_ContextDeadlineExceeded(t *testing.T) {
+	t.Parallel()
+
 	// Use a custom RoundTripper that blocks until context cancellation,
 	// avoiding httptest.Server.Close() blocking on active connections.
 	client := &http.Client{
@@ -604,8 +625,7 @@ func TestSearch_ContextDeadlineExceeded(t *testing.T) {
 	}
 
 	// Verify error is wrapped
-	var searxngErr *searxng.SearXNGError
-	if !errors.As(err, &searxngErr) {
+	if _, ok := errors.AsType[*searxng.SearXNGError](err); !ok {
 		t.Errorf("expected *searxng.SearXNGError, got type %T: %v", err, err)
 	}
 }
@@ -615,6 +635,8 @@ func TestSearch_ContextDeadlineExceeded(t *testing.T) {
 // ============================================================================
 
 func TestSearch_HTTPStatusErrors(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		statusCode   int
 		wantContains string
@@ -635,6 +657,8 @@ func TestSearch_HTTPStatusErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(http.StatusText(tc.statusCode), func(t *testing.T) {
+			t.Parallel()
+
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(tc.statusCode)
 				_, _ = w.Write([]byte(http.StatusText(tc.statusCode))) //nolint:errcheck // test fixture write best-effort
@@ -671,6 +695,8 @@ func TestSearch_HTTPStatusErrors(t *testing.T) {
 }
 
 func TestSearch_RedirectStatus(t *testing.T) {
+	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Location", "/search/redirected")
 		w.WriteHeader(http.StatusTemporaryRedirect)
@@ -702,6 +728,8 @@ func TestSearch_RedirectStatus(t *testing.T) {
 }
 
 func TestSearch_CustomHTTPClientWithoutRedirectPolicyBlocksCrossHost(t *testing.T) {
+	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Location", "http://example.com/search")
 		w.WriteHeader(http.StatusFound)
@@ -726,6 +754,8 @@ func TestSearch_CustomHTTPClientWithoutRedirectPolicyBlocksCrossHost(t *testing.
 }
 
 func TestSearch_CustomHTTPClientSameHostRedirectAllowed(t *testing.T) {
+	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/search/redirected" {
 			w.Header().Set("Content-Type", "application/json")
@@ -759,6 +789,8 @@ func TestSearch_CustomHTTPClientSameHostRedirectAllowed(t *testing.T) {
 }
 
 func TestSearch_CustomHTTPClientCrossHostRedirectBlockedBeforeCustomPolicy(t *testing.T) {
+	t.Parallel()
+
 	customPolicyCalled := false
 	client := &http.Client{
 		Timeout: 5 * time.Second,
@@ -792,6 +824,8 @@ func TestSearch_CustomHTTPClientCrossHostRedirectBlockedBeforeCustomPolicy(t *te
 }
 
 func TestSearch_ConnectionResetMidResponse(t *testing.T) {
+	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		hj, ok := w.(http.Hijacker)
 		if !ok {
@@ -842,6 +876,8 @@ func TestSearch_ConnectionResetMidResponse(t *testing.T) {
 // TestSearch_AllErrorTypesAreWrapped verifies that all error types
 // returned by Search are properly wrapped with context.
 func TestSearch_AllErrorTypesAreWrapped(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		cfg  *searxng.Config
@@ -858,6 +894,8 @@ func TestSearch_AllErrorTypesAreWrapped(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			args := &searxng.SearchArgs{Query: "test"}
 			ctx := t.Context()
 
@@ -874,8 +912,7 @@ func TestSearch_AllErrorTypesAreWrapped(t *testing.T) {
 			}
 
 			// For URL errors, should still be wrapped in SearXNGError
-			var searxngErr *searxng.SearXNGError
-			if errors.As(err, &searxngErr) {
+			if _, ok := errors.AsType[*searxng.SearXNGError](err); ok {
 				// Good - it's a proper wrapped error type
 				return
 			}

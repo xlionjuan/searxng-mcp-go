@@ -96,8 +96,7 @@ func TestSearch_ValidationError(t *testing.T) {
 			t.Fatal("Search() error = nil, want validation error")
 		}
 
-		var valErr *ValidationError
-		if !errors.As(err, &valErr) {
+		if _, ok := errors.AsType[*ValidationError](err); !ok {
 			t.Fatalf("error type = %T, want *ValidationError", err)
 		}
 	})
@@ -464,8 +463,7 @@ func TestSearch_RedactsPOSTRedirectErrorURL(t *testing.T) {
 		t.Fatalf("original url.Error.URL = %q, want original redirect query preserved internally", urlErr.URL)
 	}
 
-	var searxErr *SearXNGError
-	if !errors.As(err, &searxErr) {
+	if _, ok := errors.AsType[*SearXNGError](err); !ok {
 		t.Fatalf("Search() error type = %T, want *SearXNGError in chain", err)
 	}
 
@@ -612,8 +610,7 @@ func TestDoHTTPPreservesNoQueryURLDiagnostic(t *testing.T) {
 		t.Fatalf("doHTTP() error = %v, want transport sentinel in chain", err)
 	}
 
-	var urlErr *url.Error
-	if !errors.As(err, &urlErr) {
+	if _, ok := errors.AsType[*url.Error](err); !ok {
 		t.Fatalf("doHTTP() error type = %T, want *url.Error in chain", err)
 	}
 }
@@ -675,8 +672,7 @@ func TestSearch_RedirectPolicyErrorBodyOwnership(t *testing.T) {
 		t.Fatalf("Search() error = %v, want errRedirectDifferentHost in chain", err)
 	}
 
-	var urlErr *url.Error
-	if !errors.As(err, &urlErr) {
+	if _, ok := errors.AsType[*url.Error](err); !ok {
 		t.Fatalf("Search() error type = %T, want *url.Error in chain", err)
 	}
 
@@ -773,8 +769,7 @@ func TestSearch_GETFallbackRedirectPolicyErrorBodyOwnership(t *testing.T) {
 		t.Fatalf("Search() error = %v, want errRedirectDifferentHost in chain", err)
 	}
 
-	var urlErr *url.Error
-	if !errors.As(err, &urlErr) {
+	if _, ok := errors.AsType[*url.Error](err); !ok {
 		t.Fatalf("Search() error type = %T, want *url.Error in chain", err)
 	}
 
@@ -910,8 +905,7 @@ func TestSearch_NonOKStatus(t *testing.T) {
 			t.Fatal("Search() error = nil, want HTMLResponseError")
 		}
 
-		var htmlErr *HTMLResponseError
-		if !errors.As(err, &htmlErr) {
+		if _, ok := errors.AsType[*HTMLResponseError](err); !ok {
 			t.Fatalf("error type = %T, want *HTMLResponseError", err)
 		}
 	})
@@ -935,8 +929,7 @@ func TestSearch_NonOKStatus(t *testing.T) {
 			t.Fatal("Search() error = nil, want HTMLResponseError")
 		}
 
-		var htmlErr *HTMLResponseError
-		if !errors.As(err, &htmlErr) {
+		if _, ok := errors.AsType[*HTMLResponseError](err); !ok {
 			t.Fatalf("error type = %T, want *HTMLResponseError", err)
 		}
 

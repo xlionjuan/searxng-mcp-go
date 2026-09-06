@@ -508,13 +508,13 @@ func TestDecodeSearchResponse(t *testing.T) {
 
 		_, err := decodeSearchResponse(
 			&http.Response{StatusCode: http.StatusOK},
-			"application/json", []byte("{invalid}"), slog.Default())
+			"application/json", []byte("{invalid}"), slog.Default(),
+		)
 		if err == nil {
 			t.Fatal("decodeSearchResponse() error = nil, want error")
 		}
 
-		var searxErr *SearXNGError
-		if !errors.As(err, &searxErr) {
+		if _, ok := errors.AsType[*SearXNGError](err); !ok {
 			t.Fatalf("error type = %T, want *SearXNGError", err)
 		}
 	})

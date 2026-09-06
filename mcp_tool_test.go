@@ -55,7 +55,8 @@ func newTestSearcher(t *testing.T, handler http.HandlerFunc) (*searxng.SearXNGSe
 	mockServer := httptest.NewServer(handler)
 
 	searcher, err := searxng.NewSearXNGSearcher(
-		&searxng.Config{SearXNGURL: mockServer.URL, Timeout: 30 * time.Second}, false)
+		&searxng.Config{SearXNGURL: mockServer.URL, Timeout: 30 * time.Second}, false,
+	)
 	if err != nil {
 		mockServer.Close()
 		t.Fatalf("failed to create searcher: %v", err)
@@ -170,6 +171,8 @@ func TestSearchInputSchema(t *testing.T) {
 }
 
 func TestMCP_Initialize(t *testing.T) {
+	t.Parallel()
+
 	session, cleanup := setupMCPSession(t, mockSearXNGHandler(t))
 	defer cleanup()
 
@@ -184,6 +187,8 @@ func TestMCP_Initialize(t *testing.T) {
 }
 
 func TestMCP_ToolsList(t *testing.T) {
+	t.Parallel()
+
 	session, cleanup := setupMCPSession(t, mockSearXNGHandler(t))
 	defer cleanup()
 

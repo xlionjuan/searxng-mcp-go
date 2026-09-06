@@ -125,7 +125,8 @@ func (e *SearXNGError) Error() string {
 		if e.RespContentType != "" {
 			return fmt.Sprintf(
 				"searxng error (status %d) - content-type %s: %v",
-				e.StatusCode, e.RespContentType, e.UnderlyingErr)
+				e.StatusCode, e.RespContentType, e.UnderlyingErr,
+			)
 		}
 
 		return fmt.Sprintf("searxng error (status %d): %v", e.StatusCode, e.UnderlyingErr)

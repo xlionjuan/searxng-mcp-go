@@ -95,7 +95,8 @@ func readLimitedBody(resp *http.Response) ([]byte, error) {
 	if err != nil {
 		return nil, NewSearXNGError(
 			resp.StatusCode, resp.Header.Get("Content-Type"), "",
-			fmt.Errorf("%w: %w", errResponseReadFailed, err))
+			fmt.Errorf("%w: %w", errResponseReadFailed, err),
+		)
 	}
 
 	if truncated {
@@ -141,23 +142,23 @@ const maxHTMLProbe = 64
 // It avoids allocating a lowercase copy of the entire body.
 func hasHTMLPrefix(body []byte) bool {
 	probe := body[:min(len(body), maxHTMLProbe)]
-	i := 0
+	idx := 0
 
-	for i < len(probe) {
-		r, size := utf8.DecodeRune(probe[i:])
+	for idx < len(probe) {
+		rn, size := utf8.DecodeRune(probe[idx:])
 
-		if r == utf8.RuneError {
+		if rn == utf8.RuneError {
 			break
 		}
 
-		if !unicode.IsSpace(r) {
+		if !unicode.IsSpace(rn) {
 			break
 		}
 
-		i += size
+		idx += size
 	}
 
-	remaining := probe[i:]
+	remaining := probe[idx:]
 	if len(remaining) == 0 {
 		return false
 	}
@@ -169,13 +170,13 @@ func hasHTMLPrefix(body []byte) bool {
 // case-insensitive comparison. Both b and s are assumed to contain only
 // ASCII bytes. The caller is responsible for bounding how much of b is
 // examined.
-func equalFoldPrefix(b []byte, s string) bool {
-	if len(b) < len(s) {
+func equalFoldPrefix(bs []byte, prefix string) bool {
+	if len(bs) < len(prefix) {
 		return false
 	}
 
-	for i := range len(s) {
-		if b[i]|0x20 != s[i]|0x20 {
+	for i := range len(prefix) {
+		if bs[i]|0x20 != prefix[i]|0x20 {
 			return false
 		}
 	}

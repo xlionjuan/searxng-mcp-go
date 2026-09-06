@@ -36,7 +36,7 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 			prevScheme := strings.ToLower(prev.URL.Scheme)
 			nextScheme := strings.ToLower(req.URL.Scheme)
 
-			if prevScheme == "https" && nextScheme == "http" {
+			if prevScheme == schemeHTTPS && nextScheme == schemeHTTP {
 				return fmt.Errorf("%w: %s -> %s", errRedirectSchemeDowngrade, prev.URL.Scheme, req.URL.Scheme)
 			}
 		}
@@ -69,18 +69,18 @@ func enforceSearchRedirectPolicy(req *http.Request, via []*http.Request) error {
 // from a host:port string. This allows same-host detection when a reverse proxy
 // such as NGINX strips the default port during a redirect (e.g. host:443 → host).
 func hostNoDefaultPort(host, scheme string) string {
-	h, port, err := net.SplitHostPort(host)
+	hostPart, port, err := net.SplitHostPort(host)
 	if err != nil {
 		// No port present — return as-is.
 		return host
 	}
 
-	if (port == "443" && scheme == "https") || (port == "80" && scheme == "http") {
+	if (port == "443" && scheme == schemeHTTPS) || (port == "80" && scheme == schemeHTTP) {
 		if strings.HasPrefix(host, "[") {
-			return "[" + h + "]"
+			return "[" + hostPart + "]"
 		}
 
-		return h
+		return hostPart
 	}
 
 	return host

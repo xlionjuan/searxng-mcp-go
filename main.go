@@ -25,9 +25,11 @@ var (
 var (
 	errArgumentParseFailed   = errors.New("failed to parse arguments")
 	errSearXNGURLRequiredCLI = errors.New(
-		"SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag")
+		"SearXNG_URL is required: set SEARXNG_URL environment variable or --searxng-url flag",
+	)
 	errSearXNGURLRequiredMCP = errors.New(
-		"SearXNG_URL is required: set SEARXNG_URL environment variable")
+		"SearXNG_URL is required: set SEARXNG_URL environment variable",
+	)
 	errUnexpectedFlagType = errors.New("registered search flag has unexpected type")
 )
 
@@ -37,6 +39,15 @@ var (
 const (
 	exitCodeCLIError = 1
 	exitCodeMCPError = 2
+)
+
+// CLI flag names that are referenced both at registration time
+// (registerFlags) and by the data-driven config table (configSources), so the
+// flag name is single-sourced instead of a duplicated literal.
+const (
+	flagNameTimeout          = "timeout"
+	flagNameMaxRetries       = "max-retries"
+	flagNameAllowGETFallback = "allow-get-fallback"
 )
 
 // ============================================================================
@@ -88,8 +99,6 @@ type registeredFlags struct {
 // parseArgs parses command-line arguments and returns the mode, flags, and positional arguments.
 // Any supplied arguments route the process into CLI mode; otherwise the server runs in MCP mode.
 // Flags are accepted anywhere before or after positional args, matching the current CLI behavior.
-//
-//nolint:gocyclo,cyclop // interleaved positional/flag processing inherent to CLI; linear scan is standard
 func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 	// Build the FlagSet first so we can use Lookup to determine whether a
 	// flag takes a value (via the IsBoolFlag interface) during the
@@ -106,88 +115,37 @@ func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 	// optional fields. Only flags that were explicitly set get a non-nil
 	// pointer; unset flags remain nil so downstream code (getConfig) can
 	// distinguish "not provided" from "provided-but-equal-to-default".
-	var (
-		pagenoPtr                *int
-		limitPtr                 *int
-		timeoutPtr               *time.Duration
-		maxRetriesPtr            *int
-		allowGETFallbackExplicit bool
-	)
+	opts := collectOptionalFlags(registered, fs)
 
-	fs.Visit(func(f *flag.Flag) {
-		switch f.Name {
-		case "pageno":
-			if ptr, ok := registered.searchFlags["pageno"].(*int); ok {
-				pagenoPtr = ptr
-			}
-		case "limit":
-			if ptr, ok := registered.searchFlags["limit"].(*int); ok {
-				limitPtr = ptr
-			}
-		case "timeout":
-			val := *registered.timeout
-			timeoutPtr = &val
-		case "max-retries":
-			val := *registered.maxRetries
-			maxRetriesPtr = &val
-		case "allow-get-fallback":
-			allowGETFallbackExplicit = true
-		}
-	})
+	searchVals, err := collectSearchFlagValues(registered)
+	if err != nil {
+		return false, nil, nil, err
+	}
 
+	limitPtr := opts.limit
 	if limitPtr == nil {
 		defaultLimit := searxng.DefaultResultLimit
 		limitPtr = &defaultLimit
 	}
 
-	queryPtr, err := searchFlagPtr[string](registered.searchFlags, "query")
-	if err != nil {
-		return false, nil, nil, err
-	}
-
-	languagePtr, err := searchFlagPtr[string](registered.searchFlags, "language")
-	if err != nil {
-		return false, nil, nil, err
-	}
-
-	safeSearchPtr, err := searchFlagPtr[int](registered.searchFlags, "safesearch")
-	if err != nil {
-		return false, nil, nil, err
-	}
-
-	timeRangePtr, err := searchFlagPtr[string](registered.searchFlags, "time_range")
-	if err != nil {
-		return false, nil, nil, err
-	}
-
-	categoriesPtr, err := searchFlagPtr[string](registered.searchFlags, "categories")
-	if err != nil {
-		return false, nil, nil, err
-	}
-
-	enginesPtr, err := searchFlagPtr[string](registered.searchFlags, "engines")
-	if err != nil {
-		return false, nil, nil, err
-	}
-
 	flags := CLIFlags{
-		Query:                    *queryPtr,
+		Query:                    searchVals.query,
 		JSON:                     *registered.jsonOut,
 		Help:                     *registered.help,
 		Version:                  *registered.version,
 		SearXNGURL:               *registered.searxngURL,
-		Language:                 *languagePtr,
-		SafeSearch:               *safeSearchPtr,
-		TimeRange:                *timeRangePtr,
-		Categories:               *categoriesPtr,
-		Engines:                  *enginesPtr,
-		Pageno:                   pagenoPtr,
+		Language:                 searchVals.language,
+		SafeSearch:               searchVals.safeSearch,
+		TimeRange:                searchVals.timeRange,
+		Categories:               searchVals.categories,
+		Engines:                  searchVals.engines,
+		Pageno:                   opts.pageno,
 		Limit:                    limitPtr,
 		Debug:                    *registered.debug,
-		Timeout:                  timeoutPtr,
-		MaxRetries:               maxRetriesPtr,
+		Timeout:                  opts.timeout,
+		MaxRetries:               opts.maxRetries,
 		AllowGETFallback:         *registered.allowGETFallback,
-		AllowGETFallbackExplicit: allowGETFallbackExplicit,
+		AllowGETFallbackExplicit: opts.allowGETFallbackExplicit,
 	}
 
 	isCLIMode := len(args) > 0 || flags.Help || flags.Version || flags.Query != "" || flags.JSON || len(positionalArgs) > 0
@@ -195,12 +153,107 @@ func parseArgs(args []string) (bool, *CLIFlags, []string, error) {
 	return isCLIMode, &flags, positionalArgs, nil
 }
 
+// optionalFlagValues captures the explicitly-set optional flags observed
+// during flag.Visit, mirroring the "set vs unset" semantics downstream code
+// relies on.
+type optionalFlagValues struct {
+	pageno                   *int
+	limit                    *int
+	timeout                  *time.Duration
+	maxRetries               *int
+	allowGETFallbackExplicit bool
+}
+
+// collectOptionalFlags visits the flags that were explicitly set and returns
+// pointers to their values. Only explicitly-provided flags get a non-nil
+// pointer; unset flags remain nil.
+func collectOptionalFlags(registered registeredFlags, fs *flag.FlagSet) optionalFlagValues {
+	var vals optionalFlagValues
+
+	fs.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "pageno":
+			if ptr, ok := registered.searchFlags["pageno"].(*int); ok {
+				vals.pageno = ptr
+			}
+		case "limit":
+			if ptr, ok := registered.searchFlags["limit"].(*int); ok {
+				vals.limit = ptr
+			}
+		case flagNameTimeout:
+			val := *registered.timeout
+			vals.timeout = &val
+		case flagNameMaxRetries:
+			val := *registered.maxRetries
+			vals.maxRetries = &val
+		case flagNameAllowGETFallback:
+			vals.allowGETFallbackExplicit = true
+		}
+	})
+
+	return vals
+}
+
+// searchFlagValues holds the typed values of the search parameters registered
+// from the shared searxng.SearchParams table.
+type searchFlagValues struct {
+	query      string
+	language   string
+	safeSearch int
+	timeRange  string
+	categories string
+	engines    string
+}
+
+// collectSearchFlagValues reads the typed pointer for each search parameter
+// and dereferences it into a searchFlagValues struct.
+func collectSearchFlagValues(registered registeredFlags) (searchFlagValues, error) {
+	queryPtr, err := searchFlagPtr[string](registered.searchFlags, "query")
+	if err != nil {
+		return searchFlagValues{}, err
+	}
+
+	languagePtr, err := searchFlagPtr[string](registered.searchFlags, "language")
+	if err != nil {
+		return searchFlagValues{}, err
+	}
+
+	safeSearchPtr, err := searchFlagPtr[int](registered.searchFlags, "safesearch")
+	if err != nil {
+		return searchFlagValues{}, err
+	}
+
+	timeRangePtr, err := searchFlagPtr[string](registered.searchFlags, "time_range")
+	if err != nil {
+		return searchFlagValues{}, err
+	}
+
+	categoriesPtr, err := searchFlagPtr[string](registered.searchFlags, "categories")
+	if err != nil {
+		return searchFlagValues{}, err
+	}
+
+	enginesPtr, err := searchFlagPtr[string](registered.searchFlags, "engines")
+	if err != nil {
+		return searchFlagValues{}, err
+	}
+
+	return searchFlagValues{
+		query:      *queryPtr,
+		language:   *languagePtr,
+		safeSearch: *safeSearchPtr,
+		timeRange:  *timeRangePtr,
+		categories: *categoriesPtr,
+		engines:    *enginesPtr,
+	}, nil
+}
+
 func registerFlags() (*flag.FlagSet, registeredFlags) {
 	fs := flag.NewFlagSet("searxng-mcp-go", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	fs.Usage = func() {}
 
-	r := registeredFlags{
+	reg := registeredFlags{
 		jsonOut:    fs.Bool("json", false, "Output results as JSON (CLI mode)"),
 		help:       fs.Bool("help", false, "Show this help message"),
 		version:    fs.Bool("version", false, "Show version information"),
@@ -208,17 +261,17 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 		debug: fs.Bool("debug", false,
 			"Enable verbose HTTP request/response logging (can also be set via DEBUG=1 env var)"),
 		timeout: fs.Duration(
-			"timeout",
+			flagNameTimeout,
 			searxng.DefaultTimeout,
 			"HTTP client timeout (e.g., 8s); must be positive; overrides SEARXNG_TIMEOUT env var",
 		),
 		maxRetries: fs.Int(
-			"max-retries",
+			flagNameMaxRetries,
 			searxng.DefaultMaxRetries,
 			"Max retries after initial search attempt; overrides SEARXNG_MAX_RETRIES env var",
 		),
 		allowGETFallback: fs.Bool(
-			"allow-get-fallback",
+			flagNameAllowGETFallback,
 			false,
 			"Enable POST→GET fallback for 405/501 responses (CLI mode); overrides SEARXNG_ALLOW_GET_FALLBACK env var",
 		),
@@ -227,25 +280,25 @@ func registerFlags() (*flag.FlagSet, registeredFlags) {
 
 	// Register search parameters from the shared table.
 	// Note: "query" is also used as a positional argument in CLI mode.
-	for _, p := range searxng.SearchParams {
-		defaultVal, err := p.FlagDefault()
+	for _, param := range searxng.SearchParams {
+		defaultVal, err := param.FlagDefault()
 		if err != nil {
 			panic(fmt.Errorf("%w (name=%q goType=%q default=%q): %w",
-				errParamDefaultNotInt, p.Name, p.GoType, p.Default, err))
+				errParamDefaultNotInt, param.Name, param.GoType, param.Default, err))
 		}
 
-		switch v := defaultVal.(type) {
+		switch val := defaultVal.(type) {
 		case string:
-			r.searchFlags[p.Name] = fs.String(p.Name, v, p.Description)
+			reg.searchFlags[param.Name] = fs.String(param.Name, val, param.Description)
 		case int:
-			r.searchFlags[p.Name] = fs.Int(p.Name, v, p.Description)
+			reg.searchFlags[param.Name] = fs.Int(param.Name, val, param.Description)
 		default:
 			panic(fmt.Errorf("%w: %s has unexpected default type %T",
-				errUnexpectedFlagType, p.Name, v))
+				errUnexpectedFlagType, param.Name, val))
 		}
 	}
 
-	return fs, r
+	return fs, reg
 }
 
 func searchFlagPtr[T any](searchFlags map[string]any, name string) (*T, error) {
@@ -303,14 +356,14 @@ func extractPositionalArgs(args []string, fs *flag.FlagSet) ([]string, []string)
 // ============================================================================
 
 // printError writes an error with ANSI color unless the environment requests plain output.
-func printError(err error, w io.Writer) {
+func printError(err error, out io.Writer) {
 	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
-		fmt.Fprintf(w, "ERROR: %v\n", err) //nolint:errcheck // best-effort write to stderr
+		fmt.Fprintf(out, "ERROR: %v\n", err) //nolint:errcheck // best-effort write to stderr
 
 		return
 	}
 
-	fmt.Fprintf(w, "\033[31mERROR: %v\033[0m\n", err) //nolint:errcheck // best-effort write to stderr
+	fmt.Fprintf(out, "\033[31mERROR: %v\033[0m\n", err) //nolint:errcheck // best-effort write to stderr
 }
 
 // printParseError writes an error message followed by CLI help text to w.
@@ -431,21 +484,21 @@ func boolFromString(s string) (bool, error) {
 var configSources = []func(*searxng.Config, *CLIFlags) error{
 	configSource[time.Duration]{
 		envVar:   "SEARXNG_TIMEOUT",
-		flagName: "timeout",
+		flagName: flagNameTimeout,
 		getFlag:  func(f *CLIFlags) *time.Duration { return f.Timeout },
 		parseEnv: time.ParseDuration,
 		setValue: (*searxng.Config).SetTimeout,
 	}.apply,
 	configSource[int]{
 		envVar:   "SEARXNG_MAX_RETRIES",
-		flagName: "max-retries",
+		flagName: flagNameMaxRetries,
 		getFlag:  func(f *CLIFlags) *int { return f.MaxRetries },
 		parseEnv: intFromString,
 		setValue: (*searxng.Config).SetMaxRetries,
 	}.apply,
 	configSource[bool]{
 		envVar:   "SEARXNG_ALLOW_GET_FALLBACK",
-		flagName: "allow-get-fallback",
+		flagName: flagNameAllowGETFallback,
 		getFlag:  allowGetFallbackFlagPtr,
 		parseEnv: boolFromString,
 		setValue: func(cfg *searxng.Config, v bool) error {

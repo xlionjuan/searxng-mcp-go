@@ -1007,6 +1007,7 @@ var stdoutMu sync.Mutex
 func TestGetConfig(t *testing.T) {
 	t.Setenv("SEARXNG_URL", "https://env.example.com")
 
+	//nolint:paralleltest // t.Setenv-based config resolution mutates process-global env vars
 	t.Run("flag overrides env", func(t *testing.T) {
 		cfg, err := getConfig(&CLIFlags{SearXNGURL: "https://flag.example.com"}, false)
 		if err != nil {
@@ -1018,6 +1019,7 @@ func TestGetConfig(t *testing.T) {
 		}
 	})
 
+	//nolint:paralleltest // t.Setenv-based config resolution mutates process-global env vars
 	t.Run("env used when flag empty", func(t *testing.T) {
 		cfg, err := getConfig(&CLIFlags{}, false)
 		if err != nil {
@@ -1115,6 +1117,7 @@ func TestGetConfig(t *testing.T) {
 		}
 	})
 
+	//nolint:paralleltest // t.Setenv-based config resolution mutates process-global env vars
 	t.Run("--allow-get-fallback flag without env enables fallback", func(t *testing.T) {
 		_, flags, _, err := parseArgs([]string{
 			"--searxng-url", "https://flag.example.com",
@@ -1326,6 +1329,7 @@ func TestGetConfig(t *testing.T) {
 		}
 	})
 
+	//nolint:paralleltest // t.Setenv-based config resolution mutates process-global env vars
 	t.Run("cli max-retries exceeds cap", func(t *testing.T) {
 		_, err := getConfig(&CLIFlags{
 			SearXNGURL: "https://example.com",
@@ -1340,6 +1344,7 @@ func TestGetConfig(t *testing.T) {
 		}
 	})
 
+	//nolint:paralleltest // t.Setenv-based config resolution mutates process-global env vars
 	t.Run("cli timeout negative", func(t *testing.T) {
 		_, err := getConfig(&CLIFlags{
 			SearXNGURL: "https://example.com",
@@ -1414,6 +1419,8 @@ func TestRegisterFlagsIntDefaultsParse(t *testing.T) {
 }
 
 func TestRunCLIMode_Success(t *testing.T) {
+	t.Parallel()
+
 	successResp := searxng.SearchResponse{
 		Query:           "golang",
 		NumberOfResults: 1,
@@ -1501,6 +1508,8 @@ func TestRunCLIMode_Success(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			var server *httptest.Server
 			if tt.rawResp != "" {
 				server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -1734,6 +1743,8 @@ func TestRunCLIMode_ValidationErrors(t *testing.T) {
 }
 
 func TestRunCLIMode_HelpFlag(t *testing.T) {
+	t.Parallel()
+
 	flags := &CLIFlags{Help: true, Language: "", SafeSearch: 0, Pageno: nil}
 
 	output := captureStdout(t, func() {
@@ -1753,6 +1764,8 @@ func TestRunCLIMode_HelpFlag(t *testing.T) {
 }
 
 func TestRunCLIMode_VersionFlag(t *testing.T) {
+	t.Parallel()
+
 	flags := &CLIFlags{Version: true, Language: "", SafeSearch: 0, Pageno: nil}
 
 	output := captureStdout(t, func() {
@@ -1876,7 +1889,8 @@ func TestRunCLIMode_TimeoutIsPerRequestNotOverall(t *testing.T) {
 		_, _ = w.Write([]byte(
 			`{"query":"test","number_of_results":1,` +
 				`"results":[{"title":"OK","url":"https://example.com","content":"ok","engine":"test"}],` +
-				`"suggestions":[]}`))
+				`"suggestions":[]}`,
+		))
 	}))
 	defer server.Close()
 

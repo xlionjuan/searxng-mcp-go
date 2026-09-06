@@ -287,6 +287,8 @@ func TestFormatResults_ResultCountFormat(t *testing.T) {
 }
 
 func TestLogUnresponsiveEngines(t *testing.T) {
+	t.Parallel()
+
 	var buf bytes.Buffer
 
 	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))

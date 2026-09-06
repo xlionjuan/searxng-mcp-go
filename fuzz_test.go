@@ -73,8 +73,7 @@ func FuzzValidateSearchArgs(f *testing.F) {
 		// (args is always non-nil here, but we verify the nil path separately)
 		// Invariant: if err is non-nil, it should be a *ValidationError
 		if err != nil {
-			var validationErr *searxng.ValidationError
-			if !errors.As(err, &validationErr) {
+			if _, ok := errors.AsType[*searxng.ValidationError](err); !ok {
 				t.Errorf("ValidateSearchArgs returned non-ValidationError: %T: %v", err, err)
 			}
 		}

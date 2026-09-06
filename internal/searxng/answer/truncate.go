@@ -14,20 +14,20 @@ package answer
 // used both by the internal deduplication prefix match (answer package) and
 // by the CLI text formatter (root package) for content-length bounding per
 // MaxContentRunes.
-func TruncateRunes(s string, maxRunes int) string {
+func TruncateRunes(str string, maxRunes int) string {
 	if maxRunes <= 0 {
 		return ""
 	}
 
 	count := 0
 
-	for i := range s {
+	for i := range str {
 		count++
 
 		if count > maxRunes {
-			return s[:i]
+			return str[:i]
 		}
 	}
 
-	return s
+	return str
 }

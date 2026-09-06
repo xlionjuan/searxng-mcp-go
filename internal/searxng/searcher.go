@@ -17,13 +17,15 @@ import (
 var (
 	errSearcherConfigRequired   = errors.New("newSearXNGSearcher: config cannot be nil")
 	errSearcherURLParseInternal = errors.New(
-		"newSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error)")
+		"newSearXNGSearcher: url.Parse failed after validateBaseURL passed (internal error)",
+	)
 	errRequestCreateFailed = errors.New("failed to create request")
 	errSearchRequestFailed = errors.New("failed to execute search request")
 	errErrorBodyTooLarge   = errors.New("error response body exceeded maximum size limit")
 	errSearchEmptyResults  = errors.New("search returned empty results after all retries")
 	errGETFallbackUsed     = errors.New(
-		"GET fallback was used; search query parameters may have been sent in the request URL")
+		"GET fallback was used; search query parameters may have been sent in the request URL",
+	)
 	errNilFinishResponse = errors.New("finishResponse: nil http.Response")
 )
 
@@ -88,7 +90,7 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		logger = cfg.Logger
 	}
 
-	if searchEndpoint.Scheme == "http" && !isPrivateHost(searchEndpoint.Host) {
+	if searchEndpoint.Scheme == schemeHTTP && !isPrivateHost(searchEndpoint.Host) {
 		logger.Warn("Using HTTP for non-private host. " +
 			"Search queries may be transmitted in clear text. " +
 			"Search results could be intercepted and modified by a MITM attacker")
@@ -98,6 +100,27 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		logger.Warn("GET fallback is enabled. " + getFallbackLogRisk)
 	}
 
+	client, ownsTransport := buildSearchHTTPClient(cfg)
+
+	searcher := &SearXNGSearcher{
+		client:           client,
+		searchEndpoint:   searchEndpoint,
+		debug:            debug,
+		logger:           logger,
+		retryStrategy:    newExponentialBackoffStrategy(cfg.MaxRetries, cfg.RetryDelay, cfg.MaxRetryDelay),
+		ownsTransport:    ownsTransport,
+		allowGETFallback: cfg.AllowGETFallback,
+	}
+	searcher.searcherCtx, searcher.searcherCancel = context.WithCancel(context.Background())
+
+	return searcher, nil
+}
+
+// buildSearchHTTPClient wraps the configured HTTP client with the search
+// redirect policy, or constructs a fresh client with the configured timeout.
+// It returns the client and whether the searcher owns it (and so must close
+// its idle connections on Close).
+func buildSearchHTTPClient(cfg *Config) (*http.Client, bool) {
 	client := cfg.HTTPClient
 
 	var ownsTransport bool
@@ -128,18 +151,7 @@ func NewSearXNGSearcher(cfg *Config, debug bool) (*SearXNGSearcher, error) {
 		}
 	}
 
-	s := &SearXNGSearcher{
-		client:           client,
-		searchEndpoint:   searchEndpoint,
-		debug:            debug,
-		logger:           logger,
-		retryStrategy:    newExponentialBackoffStrategy(cfg.MaxRetries, cfg.RetryDelay, cfg.MaxRetryDelay),
-		ownsTransport:    ownsTransport,
-		allowGETFallback: cfg.AllowGETFallback,
-	}
-	s.searcherCtx, s.searcherCancel = context.WithCancel(context.Background())
-
-	return s, nil
+	return client, ownsTransport
 }
 
 // Close releases resources held by the searcher and cancels in-flight searches.
@@ -181,7 +193,7 @@ func (s *SearXNGSearcher) Search(ctx context.Context, args *SearchArgs) (*Search
 
 // searchWithRetries runs the retry loop for a single search.
 //
-//nolint:gocognit,gocyclo,cyclop // retry orchestration: attempt, classification, error tracking, and wait
+//nolint:gocognit // retry orchestration: attempt, classification, error tracking, and wait
 func (s *SearXNGSearcher) searchWithRetries(ctx context.Context, args *SearchArgs) (*SearchResponse, error) {
 	var lastErr error
 
@@ -203,15 +215,7 @@ func (s *SearXNGSearcher) searchWithRetries(ctx context.Context, args *SearchArg
 			return nil, wrapSearchError(errSearchEmptyResults)
 		}
 
-		// Determine the error to track for this attempt
-		trackErr := err
-		if trackErr == nil && ar.err != nil {
-			trackErr = ar.err
-		}
-
-		if trackErr == nil && ar.outcome == OutcomeEmptyRetry {
-			trackErr = errSearchEmptyResults
-		}
+		trackErr := attemptError(err, ar)
 
 		shouldRetry, delay := s.retryStrategy.ShouldRetry(ctx, attempt, ar.outcome)
 
@@ -220,14 +224,13 @@ func (s *SearXNGSearcher) searchWithRetries(ctx context.Context, args *SearchArg
 				trackErr = ctx.Err()
 			}
 
-			if trackErr != nil {
-				lastErr = trackErr
+			direct, termErr := s.resolveTerminalOutcome(resp, args, trackErr)
+			if direct {
+				return nil, termErr
+			}
 
-				closeResponseBody(resp, s.getLogger())
-			} else if resp != nil && resp.StatusCode != http.StatusOK {
-				_, finishErr := s.finishResponse(resp, args)
-
-				return nil, finishErr
+			if termErr != nil {
+				lastErr = termErr
 			}
 
 			break
@@ -240,11 +243,7 @@ func (s *SearXNGSearcher) searchWithRetries(ctx context.Context, args *SearchArg
 
 		closeResponseBody(resp, s.getLogger())
 
-		if s.retryWaitHook != nil {
-			s.retryWaitHook()
-		}
-
-		waitErr := retryWait(ctx, delay)
+		waitErr := s.waitForRetry(ctx, delay)
 		if waitErr != nil {
 			lastErr = waitErr
 
@@ -253,6 +252,60 @@ func (s *SearXNGSearcher) searchWithRetries(ctx context.Context, args *SearchArg
 	}
 
 	return nil, wrapSearchError(lastErr)
+}
+
+// attemptError returns the error to track for a non-successful attempt: the
+// attempt's own error when present, otherwise the classified attempt's error
+// (e.g. a body-read failure), otherwise the empty-results sentinel for an
+// OutcomeEmptyRetry attempt.
+func attemptError(err error, ar *attemptResult) error {
+	if err != nil {
+		return err
+	}
+
+	if ar.err != nil {
+		return ar.err
+	}
+
+	if ar.outcome == OutcomeEmptyRetry {
+		return errSearchEmptyResults
+	}
+
+	return nil
+}
+
+// resolveTerminalOutcome handles a final (non-retried) attempt. It returns
+// whether the error must short-circuit the retry loop (a direct
+// finishResponse failure) and the error to record as the last error (which
+// the retry loop wraps) otherwise.
+func (s *SearXNGSearcher) resolveTerminalOutcome(
+	resp *http.Response,
+	args *SearchArgs,
+	trackErr error,
+) (bool, error) {
+	if trackErr != nil {
+		closeResponseBody(resp, s.getLogger())
+
+		return false, trackErr
+	}
+
+	if resp != nil && resp.StatusCode != http.StatusOK {
+		_, finishErr := s.finishResponse(resp, args)
+
+		return true, finishErr
+	}
+
+	return false, nil
+}
+
+// waitForRetry invokes the test-only retryWaitHook (used to verify
+// Close-during-backoff) and then sleeps for the retry backoff delay.
+func (s *SearXNGSearcher) waitForRetry(ctx context.Context, delay time.Duration) error {
+	if s.retryWaitHook != nil {
+		s.retryWaitHook()
+	}
+
+	return retryWait(ctx, delay)
 }
 
 // searchContext creates a context tied to the searcher lifecycle.
@@ -281,8 +334,7 @@ func (s *SearXNGSearcher) searchContext(ctx context.Context) (context.Context, c
 // Preserves SearXNGError unwrapping to avoid hiding the real status code.
 // Returns the fallback error for the "should never reach here" case when err is nil.
 func wrapSearchError(err error) error {
-	var se *SearXNGError
-	if errors.As(err, &se) {
+	if _, ok := errors.AsType[*SearXNGError](err); ok {
 		return fmt.Errorf("%w: %w", errSearchRequestFailed, err)
 	}
 

@@ -393,7 +393,11 @@ func TestSearch_EmptyResultsAfterRetryExhaustion(t *testing.T) {
 }
 
 func TestAllowGETFallbackLogsWarnings(t *testing.T) {
+	t.Parallel()
+
 	t.Run("startup warning", func(t *testing.T) {
+		t.Parallel()
+
 		var buf bytes.Buffer
 
 		logger := slog.New(slog.NewTextHandler(&buf, nil))
@@ -416,6 +420,8 @@ func TestAllowGETFallbackLogsWarnings(t *testing.T) {
 	})
 
 	t.Run("per-use warning", func(t *testing.T) {
+		t.Parallel()
+
 		var buf bytes.Buffer
 
 		logger := slog.New(slog.NewTextHandler(&buf, nil))
