@@ -20,6 +20,8 @@ import (
 //   - HTML entity unescaping (&amp; &lt; &gt; &quot;) in infobox titles and queries
 //   - content exceeding searxng.MaxContentRunes (4000) is truncated
 func TestFormatResultsGoldenOutput(t *testing.T) {
+	t.Parallel()
+
 	longContent := strings.Repeat("x", 4500)
 
 	resp := &searxng.SearchResponse{

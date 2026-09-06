@@ -119,12 +119,6 @@ linters:
         path: "internal/searxng/(types|answer/typed)\\.go$"
         text: "json\\(camel\\): got '(time_range|feels_like|wind_from|wind_speed|cloud_cover|country_code|number_of_results|unresponsive_engines)'"
       - linters: [paralleltest]
-        path: "error_path_test\\.go$"
-        text: ".*"
-      - linters: [paralleltest]
-        path: "golden_capture_test\\.go$"
-        text: ".*"
-      - linters: [paralleltest]
         path: "e2e_.*_test\\.go$"
         text: ".*"
       - linters: [revive]
