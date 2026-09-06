@@ -53,7 +53,7 @@ linters:
       optional-patterns:
         - ".*/http\\.(Client|Transport)$"
         - ".*net\\.Dialer$"
-        - "searxng-mcp-go/internal/searxng\\.(ParamDef|SearXNGSearcher|attemptResult|Config|SearchArgs|searchResponseJSON)$"
+        - "searxng-mcp-go/internal/searxng\\.(ParamDef|SearXNGSearcher|attemptResult|SearchArgs|searchResponseJSON)$"
         - ".*/mcp\\.(Tool|ToolAnnotations|Implementation|CallToolResult|TextContent)$"
     gocognit:
       min-complexity: 20

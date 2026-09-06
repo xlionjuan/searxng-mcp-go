@@ -75,10 +75,12 @@ func DefaultConfig() *Config {
 	return &Config{
 		SearXNGURL:       "",
 		Timeout:          DefaultTimeout,
+		HTTPClient:       nil,
 		MaxRetries:       DefaultMaxRetries,
 		RetryDelay:       DefaultRetryDelay,
 		MaxRetryDelay:    DefaultMaxRetryDelay,
 		AllowGETFallback: false,
+		Logger:           nil,
 	}
 }
 
