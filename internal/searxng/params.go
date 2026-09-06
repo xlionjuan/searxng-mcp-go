@@ -73,6 +73,14 @@ var errUnexpectedGoType = errors.New("unexpected GoType")
 // column in CLI help output, matching the CLI consumer's expectation.
 const cliHelpPadding = 18
 
+// Type-name constants shared by the ParamDef metadata table and FlagDefault
+// so the canonical Go/JSON-schema types are single-sourced.
+const (
+	goTypeString   = "string"
+	goTypeInt      = "int"
+	mcpTypeInteger = "integer"
+)
+
 // SearchParams is the canonical list of all search parameters used by both CLI
 // and MCP layers. Adding or changing a parameter here propagates to flag
 // registration, help text, and MCP schema generation automatically.
@@ -84,15 +92,15 @@ const cliHelpPadding = 18
 // params_validation_drift_test.go.
 var SearchParams = []ParamDef{
 	{
-		Name: "query", GoType: "string", Default: "", Required: true,
+		Name: "query", GoType: goTypeString, Default: "", Required: true,
 		Description: "Search query string",
 		CLIHelp:     "Search query string (alternative to positional argument)",
-		CLIType:     "string",
-		MCPType:     "string",
+		CLIType:     goTypeString,
+		MCPType:     goTypeString,
 		MaxLength:   &MaxQueryLength,
 	},
 	{
-		Name: "language", GoType: "string", Default: "",
+		Name: "language", GoType: goTypeString, Default: "",
 		Description: fmt.Sprintf(
 			"Language code for results (e.g., en, zh-tw, ja). Maximum %d runes for the full value. "+
 				"Leave empty or pass \"auto\" to let SearXNG decide",
@@ -108,33 +116,33 @@ var SearchParams = []ParamDef{
 			MaxLanguageLength,
 		),
 		CLIType:    "LANG",
-		MCPType:    "string",
+		MCPType:    goTypeString,
 		MaxLength:  &MaxLanguageLength,
 		DefaultStr: &paramDefaultLanguage,
 	},
 	{
-		Name: "safesearch", GoType: "int", Default: strconv.Itoa(MinSafeSearch),
+		Name: "safesearch", GoType: goTypeInt, Default: strconv.Itoa(MinSafeSearch),
 		Description: "SafeSearch level: 0=Off, 1=Moderate, 2=Strict",
 		CLIHelp:     fmt.Sprintf("SafeSearch level: 0=Off, 1=Moderate, 2=Strict [default: %d]", MinSafeSearch),
 		CLIType:     "0-2",
-		MCPType:     "integer",
+		MCPType:     mcpTypeInteger,
 		DefaultInt:  &MinSafeSearch,
 		Minimum:     &MinSafeSearch,
 		Maximum:     &MaxSafeSearch,
 	},
 	{
-		Name: "time_range", GoType: "string", Default: "",
+		Name: "time_range", GoType: goTypeString, Default: "",
 		Description: "Time range filter: " + strings.Join(ValidTimeRanges(), ", "),
 		CLIHelp:     "Time range filter: " + strings.Join(ValidTimeRanges(), ", "),
 		CLIType:     "RANGE",
-		MCPType:     "string",
+		MCPType:     goTypeString,
 		// Enum is derived from ValidTimeRanges() plus the empty
 		// string, which means "no time restriction" and is short-circuited
 		// by validateTimeRange.
 		Enum: append([]string{""}, ValidTimeRanges()...),
 	},
 	{
-		Name: "categories", GoType: "string", Default: "",
+		Name: "categories", GoType: goTypeString, Default: "",
 		Description: fmt.Sprintf(
 			`Comma-separated list of SearXNG categories (CSV format). `+
 				`Common values: general, news, images, videos, music, files, map, social media, science, it. `+
@@ -148,11 +156,11 @@ var SearchParams = []ParamDef{
 			MaxCSVInputBytes,
 		),
 		CLIType:  "CAT",
-		MCPType:  "string",
+		MCPType:  goTypeString,
 		Examples: []string{"general", "news", "social media", "images,videos"},
 	},
 	{
-		Name: "engines", GoType: "string", Default: "",
+		Name: "engines", GoType: goTypeString, Default: "",
 		Description: fmt.Sprintf(
 			`Comma-separated list of SearXNG engine names. Common engines: google, bing, duckduckgo. `+
 				`Maximum %d UTF-8 bytes for the full string.`,
@@ -163,28 +171,28 @@ var SearchParams = []ParamDef{
 			MaxCSVInputBytes,
 		),
 		CLIType:  "ENG",
-		MCPType:  "string",
+		MCPType:  goTypeString,
 		Examples: []string{"google", "bing", "duckduckgo"},
 	},
 	{
-		Name: "pageno", GoType: "int", Default: strconv.Itoa(MinPageno),
+		Name: "pageno", GoType: goTypeInt, Default: strconv.Itoa(MinPageno),
 		Description: "Page number for pagination",
 		CLIHelp:     fmt.Sprintf("Page number for pagination [default: %d]", MinPageno),
 		CLIType:     "N",
-		MCPType:     "integer",
+		MCPType:     mcpTypeInteger,
 		Nullable:    true,
 		DefaultInt:  &MinPageno,
 		Minimum:     &MinPageno,
 	},
 	{
-		Name: "limit", GoType: "int", Default: strconv.Itoa(DefaultResultLimit),
+		Name: "limit", GoType: goTypeInt, Default: strconv.Itoa(DefaultResultLimit),
 		Description: fmt.Sprintf("Maximum number of results to return (%d-%d)", MinResultLimit, MaxResultLimit),
 		CLIHelp: fmt.Sprintf(
 			"Maximum number of results to return (%d-%d) [default: %d]",
 			MinResultLimit, MaxResultLimit, DefaultResultLimit,
 		),
 		CLIType:    "N",
-		MCPType:    "integer",
+		MCPType:    mcpTypeInteger,
 		DefaultInt: &DefaultResultLimit,
 		Minimum:    &MinResultLimit,
 		Maximum:    &MaxResultLimit,
@@ -243,9 +251,9 @@ func (p ParamDef) JSONSchema() map[string]any {
 // An unparseable int default is treated as a programming error and reported.
 func (p ParamDef) FlagDefault() (any, error) {
 	switch p.GoType {
-	case "string":
+	case goTypeString:
 		return p.Default, nil
-	case "int":
+	case goTypeInt:
 		return strconv.Atoi(p.Default)
 	default:
 		return nil, fmt.Errorf("%w %q for param %q", errUnexpectedGoType, p.GoType, p.Name)

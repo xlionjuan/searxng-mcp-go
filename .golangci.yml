@@ -49,6 +49,12 @@ linters:
     errorlint:
       asserts: true
       comparison: true
+    exhaustruct_v5:
+      optional-patterns:
+        - ".*/http\\.(Client|Transport)$"
+        - ".*net\\.Dialer$"
+        - "searxng-mcp-go/internal/searxng\\.(ParamDef|SearXNGSearcher|attemptResult|Config|SearchArgs|searchResponseJSON)$"
+        - ".*/mcp\\.(Tool|ToolAnnotations|Implementation|CallToolResult|TextContent)$"
     gocognit:
       min-complexity: 20
     goconst:
@@ -95,48 +101,40 @@ linters:
       - examples$
     rules:
       - linters: [exhaustruct_v5]
-        paths:
-          - ".*_test\\.go$"
+        path: ".*_test\\.go$"
         text: ".*"
       - linters: [forbidigo]
-        paths:
-          - "cli\\.go$"
+        path: "cli\\.go$"
         text: ".*"
       - linters: [funlen]
-        paths:
-          - ".*_test\\.go$"
+        path: ".*_test\\.go$"
         text: ".*"
       - linters: [dupl]
-        paths:
-          - ".*_test\\.go$"
+        path: ".*_test\\.go$"
         text: ".*"
       - linters: [gosmopolitan]
-        paths:
-          - ".*_test\\.go$"
+        path: ".*_test\\.go$"
         text: ".*"
       - linters: [tagliatelle]
-        paths:
-          - "internal/searxng/types\\.go$"
+        path: "internal/searxng/(types|answer/typed)\\.go$"
         text: "json\\(camel\\): got '(time_range|feels_like|wind_from|wind_speed|cloud_cover|country_code|number_of_results|unresponsive_engines)'"
       - linters: [paralleltest]
-        paths:
-          - "error_path_test\\.go$"
+        path: "error_path_test\\.go$"
         text: ".*"
       - linters: [paralleltest]
-        paths:
-          - "golden_capture_test\\.go$"
+        path: "golden_capture_test\\.go$"
+        text: ".*"
+      - linters: [paralleltest]
+        path: "e2e_.*_test\\.go$"
         text: ".*"
       - linters: [revive]
-        paths:
-          - "internal/searxng/(errors|searcher)\\.go$"
+        path: "internal/searxng/(errors|searcher)\\.go$"
         text: "exported: type name will be used as searxng\\.(SearXNGError|SearXNGSearcher)"
       - linters: [goconst]
-        paths:
-          - ".*_test\\.go$"
+        path: ".*_test\\.go$"
         text: ".*"
       - linters: [varnamelen]
-        paths:
-          - ".*_test\\.go$"
+        path: ".*_test\\.go$"
         text: ".*"
 
 issues:

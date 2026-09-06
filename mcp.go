@@ -157,12 +157,12 @@ func readFirstLine(reader io.Reader, maxBytes int) ([]byte, []byte, error) {
 	for consumed < readLimit {
 		readSize := min(len(chunk), readLimit-consumed)
 
-		n, readErr := reader.Read(chunk[:readSize])
-		if n < 0 || n > readSize {
+		nRead, readErr := reader.Read(chunk[:readSize])
+		if nRead < 0 || nRead > readSize {
 			return nil, nil, errInvalidMCPFirstMessageReaderResult
 		}
 
-		if n == 0 {
+		if nRead == 0 {
 			if readErr == nil {
 				return nil, nil, io.ErrNoProgress
 			}
@@ -170,9 +170,9 @@ func readFirstLine(reader io.Reader, maxBytes int) ([]byte, []byte, error) {
 			return mcpFirstMessageReadError(line, readErr, maxBytes)
 		}
 
-		consumed += n
+		consumed += nRead
 
-		chunkLine, leftover, complete := consumeMCPFirstLineChunk(line, chunk[:n])
+		chunkLine, leftover, complete := consumeMCPFirstLineChunk(line, chunk[:nRead])
 		line = chunkLine
 
 		if complete {

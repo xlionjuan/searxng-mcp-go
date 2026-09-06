@@ -25,50 +25,50 @@ const noResultsFound = "No results found."
 // responses reuse that JSON path. Keeping the sanitizer at the format
 // layer preserves the structured data model and avoids changing
 // JSON-mode behavior.
-func sanitizeTerminalControl(s string) string {
-	if !hasUnsafeControlBytes(s) {
-		return s
+func sanitizeTerminalControl(str string) string {
+	if !hasUnsafeControlBytes(str) {
+		return str
 	}
 
 	const rewriteReserve = 4
 
 	var buf strings.Builder
 
-	buf.Grow(len(s) + rewriteReserve)
+	buf.Grow(len(str) + rewriteReserve)
 
-	for i := 0; i < len(s); {
-		b := s[i]
-		if b < utf8.RuneSelf {
+	for idx := 0; idx < len(str); {
+		ch := str[idx]
+		if ch < utf8.RuneSelf {
 			switch {
-			case b == '\t' || b == '\n':
-				buf.WriteByte(b)
-			case b < 0x20 || b == 0x7F:
-				fmt.Fprintf(&buf, `\x%02x`, b)
+			case ch == '\t' || ch == '\n':
+				buf.WriteByte(ch)
+			case ch < 0x20 || ch == 0x7F:
+				fmt.Fprintf(&buf, `\x%02x`, ch)
 			default:
-				buf.WriteByte(b)
+				buf.WriteByte(ch)
 			}
 
-			i++
+			idx++
 
 			continue
 		}
 
-		r, size := utf8.DecodeRuneInString(s[i:])
-		if r == utf8.RuneError && size == 1 {
-			fmt.Fprintf(&buf, `\x%02x`, b)
+		rn, size := utf8.DecodeRuneInString(str[idx:])
+		if rn == utf8.RuneError && size == 1 {
+			fmt.Fprintf(&buf, `\x%02x`, ch)
 
-			i++
+			idx++
 
 			continue
 		}
 
-		if r >= 0x80 && r <= 0x9F {
-			fmt.Fprintf(&buf, `\x%02x`, r)
+		if rn >= 0x80 && rn <= 0x9F {
+			fmt.Fprintf(&buf, `\x%02x`, rn)
 		} else {
-			buf.WriteRune(r)
+			buf.WriteRune(rn)
 		}
 
-		i += size
+		idx += size
 	}
 
 	return buf.String()
@@ -78,29 +78,29 @@ func sanitizeTerminalControl(s string) string {
 // that sanitizeTerminalControl would rewrite. It is a fast-path scan that
 // lets the common (clean) case return the original string without
 // allocating a new buffer.
-func hasUnsafeControlBytes(s string) bool {
-	for i := 0; i < len(s); {
-		b := s[i]
+func hasUnsafeControlBytes(str string) bool {
+	for idx := 0; idx < len(str); {
+		b := str[idx]
 		if b < utf8.RuneSelf {
 			if (b < 0x20 && b != '\t' && b != '\n') || b == 0x7F {
 				return true
 			}
 
-			i++
+			idx++
 
 			continue
 		}
 
-		r, size := utf8.DecodeRuneInString(s[i:])
-		if r == utf8.RuneError && size == 1 {
+		rn, size := utf8.DecodeRuneInString(str[idx:])
+		if rn == utf8.RuneError && size == 1 {
 			return true
 		}
 
-		if r >= 0x80 && r <= 0x9F {
+		if rn >= 0x80 && rn <= 0x9F {
 			return true
 		}
 
-		i += size
+		idx += size
 	}
 
 	return false

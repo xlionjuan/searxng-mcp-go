@@ -171,6 +171,8 @@ func TestSearchInputSchema(t *testing.T) {
 }
 
 func TestMCP_Initialize(t *testing.T) {
+	t.Parallel()
+
 	session, cleanup := setupMCPSession(t, mockSearXNGHandler(t))
 	defer cleanup()
 
@@ -185,6 +187,8 @@ func TestMCP_Initialize(t *testing.T) {
 }
 
 func TestMCP_ToolsList(t *testing.T) {
+	t.Parallel()
+
 	session, cleanup := setupMCPSession(t, mockSearXNGHandler(t))
 	defer cleanup()
 

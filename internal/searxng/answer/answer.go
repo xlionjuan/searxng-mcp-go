@@ -29,31 +29,31 @@ type Answer struct {
 
 // EnsureAnswerFallback derives a human-readable Answer string for known typed
 // answers (translation, weather) that may omit the legacy "answer" field.
-func EnsureAnswerFallback(a *Answer) {
-	if strings.TrimSpace(a.Answer) != "" {
+func EnsureAnswerFallback(ans *Answer) {
+	if strings.TrimSpace(ans.Answer) != "" {
 		return
 	}
 
-	if fallback := TranslationAnswerFallback(a); fallback != "" {
-		a.Answer = fallback
+	if fallback := TranslationAnswerFallback(ans); fallback != "" {
+		ans.Answer = fallback
 
 		return
 	}
 
-	if fallback := WeatherAnswerFallback(a); fallback != "" {
-		a.Answer = fallback
+	if fallback := WeatherAnswerFallback(ans); fallback != "" {
+		ans.Answer = fallback
 	}
 }
 
 // TranslationAnswerFallback returns a formatted translation string when the
 // answer has translation items, or an empty string otherwise.
-func TranslationAnswerFallback(a *Answer) string {
-	if len(a.Translations) == 0 {
+func TranslationAnswerFallback(ans *Answer) string {
+	if len(ans.Translations) == 0 {
 		return ""
 	}
 
-	parts := make([]string, 0, len(a.Translations))
-	for _, item := range a.Translations {
+	parts := make([]string, 0, len(ans.Translations))
+	for _, item := range ans.Translations {
 		text := strings.TrimSpace(item.Text)
 		if text != "" {
 			parts = append(parts, text)

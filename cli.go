@@ -25,12 +25,10 @@ var (
 	errJSONEncodeFailed    = errors.New("failed to encode json")
 )
 
-// printCLIHelp writes the help message to the given writer.
-func printCLIHelp(w io.Writer) {
-	var b strings.Builder
-
-	b.WriteString(`SearXNG MCP Server - CLI Mode (` + version + `)`)
-	b.WriteString(`
+// cliHelpTemplate is the CLI help body. The search-parameter OPTIONS lines
+// are injected via the %s placeholder between the SEARXNG_URL help line and
+// the --debug help line.
+const cliHelpTemplate = `SearXNG MCP Server - CLI Mode (%s)
 A Model Context Protocol server that provides web search via SearXNG.
 
 USAGE:
@@ -40,14 +38,7 @@ OPTIONS:
   --json             Output results as formatted JSON instead of human-readable text
   --searxng-url URL  SearXNG instance URL (required)
                      Can also be set via SEARXNG_URL environment variable
-`)
-
-	for _, p := range searxng.SearchParams {
-		b.WriteString(p.CLIHelpLine())
-		b.WriteString("\n")
-	}
-
-	fmt.Fprintf(&b, `  --debug            Enable verbose HTTP request/response logging
+%s  --debug            Enable verbose HTTP request/response logging
                      Can also be enabled via DEBUG=1 environment variable
   --timeout DURATION Per-request HTTP client timeout (e.g., 8s) [default: %s]
                      Must be positive; zero is rejected. Cannot be set to
@@ -91,10 +82,28 @@ EXIT CODES:
   2   MCP server error (in MCP mode)
 
 For more information, see: https://github.com/xlionjuan/searxng-mcp-go
-`,
-		searxng.DefaultTimeout, searxng.DefaultMaxRetries)
+`
 
-	_, err := w.Write([]byte(b.String()))
+// searchParamsHelpLines renders the per-parameter OPTIONS lines from the
+// shared searxng.SearchParams table.
+func searchParamsHelpLines() string {
+	var sb strings.Builder
+
+	for _, param := range searxng.SearchParams {
+		sb.WriteString(param.CLIHelpLine())
+		sb.WriteByte('\n')
+	}
+
+	return sb.String()
+}
+
+// printCLIHelp writes the help message to the given writer.
+func printCLIHelp(w io.Writer) {
+	var sb strings.Builder
+
+	fmt.Fprintf(&sb, cliHelpTemplate, version, searchParamsHelpLines(), searxng.DefaultTimeout, searxng.DefaultMaxRetries)
+
+	_, err := w.Write([]byte(sb.String()))
 	if err != nil {
 		slog.Warn("failed to write help text", "error", err)
 	}
@@ -130,6 +139,12 @@ func runCLIMode(debug bool, flags *CLIFlags, positionalArgs []string) error {
 		return errSearchQueryRequired
 	}
 
+	return runSearch(debug, flags, query)
+}
+
+// runSearch resolves the configuration, builds and validates the search
+// arguments, performs the search, and writes the result to stdout.
+func runSearch(debug bool, flags *CLIFlags, query string) error {
 	cfg, err := getConfig(flags, true)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errConfigurationFailed, err)

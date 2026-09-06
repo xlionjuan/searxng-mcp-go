@@ -50,6 +50,8 @@ func TestSearch_TimeoutZeroWithBackgroundContext(t *testing.T) {
 }
 
 func TestSearch_RetryAfterRequestTimeout(t *testing.T) {
+	t.Parallel()
+
 	synctest.Test(t, func(t *testing.T) {
 		var attempts atomic.Int32
 
@@ -727,6 +729,8 @@ func TestSearch_POSTtoGETFallback(t *testing.T) {
 }
 
 func TestSearch_RetriesRetryableStatus(t *testing.T) {
+	t.Parallel()
+
 	const successResponseBody = `{"query":"test","number_of_results":1,` +
 		`"results":[{"title":"Result","url":"https://example.com","content":"ok","engine":"test"}],` +
 		`"suggestions":[]}`
@@ -744,6 +748,8 @@ func TestSearch_RetriesRetryableStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			synctest.Test(t, func(t *testing.T) {
 				var attempts atomic.Int32
 
@@ -782,6 +788,8 @@ func TestSearch_RetriesRetryableStatus(t *testing.T) {
 }
 
 func TestSearch_RetriesEmptySearchResponse(t *testing.T) {
+	t.Parallel()
+
 	synctest.Test(t, func(t *testing.T) {
 		const successResponseBody = `{"query":"test","number_of_results":1,` +
 			`"results":[{"title":"Result","url":"https://example.com","content":"ok","engine":"test"}],` +
@@ -862,6 +870,8 @@ func TestSearch_CanceledDuringRequest(t *testing.T) {
 }
 
 func TestSearch_RetryWaitCanceled(t *testing.T) {
+	t.Parallel()
+
 	// synctest.Test runs the enclosed function in a deterministic time bubble
 	// where timers and context deadlines use synthetic time. Time advances
 	// only when all goroutines in the bubble are blocked, so there is no

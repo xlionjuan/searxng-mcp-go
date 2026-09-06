@@ -733,6 +733,8 @@ var errFakeTransport = errors.New("not a real transport")
 // TestNewHTTPClient_DefaultTransportFallback verifies that newHTTPClient works
 // even when http.DefaultTransport has been replaced with a non-*http.Transport
 // implementation. The fallback path constructs a transport from scratch.
+//
+//nolint:paralleltest // mutates the process-global http.DefaultTransport; cannot run in parallel
 func TestNewHTTPClient_DefaultTransportFallback(t *testing.T) {
 	// This test modifies http.DefaultTransport — a package-level global —
 	// so it cannot use t.Parallel().
@@ -854,6 +856,8 @@ func proxySubprocessCmd(t *testing.T, testName string, extraEnv ...string) *exec
 // http.ProxyFromEnvironment caches its configuration on first call via a
 // global sync.Once that cannot be reset from outside net/http.
 func TestNewHTTPClient_ProxyEnvHonored(t *testing.T) {
+	t.Parallel()
+
 	if os.Getenv(proxySubprocessEnv) == "" {
 		cmd := proxySubprocessCmd(t, "TestNewHTTPClient_ProxyEnvHonored",
 			proxySubprocessEnv+"=1",
@@ -921,6 +925,8 @@ func TestNewHTTPClient_ProxyEnvHonored(t *testing.T) {
 // The test re-executes itself in a subprocess with HTTP_PROXY and NO_PROXY
 // set, for the same sync.Once isolation reason as ProxyEnvHonored.
 func TestNewHTTPClient_NoProxyBypass(t *testing.T) {
+	t.Parallel()
+
 	if os.Getenv(proxySubprocessEnv) == "" {
 		cmd := proxySubprocessCmd(t, "TestNewHTTPClient_NoProxyBypass",
 			proxySubprocessEnv+"=1",

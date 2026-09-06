@@ -88,16 +88,16 @@ func DefaultConfig() *Config {
 // and flag overrides go through this setter so zero is rejected for explicit
 // CLI/env paths. Programmatic callers using a struct literal zero can rely
 // on Normalize to apply DefaultTimeout.
-func (c *Config) SetTimeout(d time.Duration) error {
-	if d < 0 {
+func (c *Config) SetTimeout(dur time.Duration) error {
+	if dur < 0 {
 		return errTimeoutNegative
 	}
 
-	if d == 0 {
+	if dur == 0 {
 		return errTimeoutZero
 	}
 
-	c.Timeout = d
+	c.Timeout = dur
 
 	return nil
 }
@@ -105,16 +105,16 @@ func (c *Config) SetTimeout(d time.Duration) error {
 // SetMaxRetries validates and sets the MaxRetries field. Returns an error
 // for negative values or values exceeding maxRetryCap. Both env-var parsing
 // and flag overrides go through this setter.
-func (c *Config) SetMaxRetries(n int) error {
-	if n < 0 {
+func (c *Config) SetMaxRetries(retries int) error {
+	if retries < 0 {
 		return errMaxRetriesNegative
 	}
 
-	if n > maxRetryCap {
+	if retries > maxRetryCap {
 		return errMaxRetriesTooLarge
 	}
 
-	c.MaxRetries = n
+	c.MaxRetries = retries
 
 	return nil
 }
