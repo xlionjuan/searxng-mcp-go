@@ -36,6 +36,24 @@ from ruamel.yaml import YAML
 
 TARGET_ENGINES = ("yahoo", "bing", "ddg definitions")
 
+# Always-empty test engine for E2E. It uses SearXNG's built-in "dummy"
+# engine (searx/engines/dummy.py), whose response() always returns an empty
+# results array — a pure offline engine with no external server. The E2E suite
+# names it explicitly via engines to deterministically exercise the
+# "empty results -> tool error" path without depending on a live third-party
+# engine returning zero results.
+# It lives in a custom category ("empty") so it is never swept into a general
+# search; it is only invoked when a query explicitly names it via engines.
+EMPTY_ENGINE_NAME = "empty engine"
+EMPTY_ENGINE = {
+    "name": EMPTY_ENGINE_NAME,
+    "engine": "dummy",
+    "shortcut": "ee",
+    "categories": ["empty"],
+    "disabled": False,
+}
+
+
 _yaml = YAML()
 _yaml.preserve_quotes = True
 _yaml.indent(mapping=2, sequence=4, offset=2)
@@ -150,6 +168,21 @@ def enable_engine(data: Any, engine_name: str) -> EngineStatus:
     return EngineStatus.MISSING
 
 
+def ensure_empty_engine(data: Any) -> bool:
+    """Add the always-empty test engine if it is missing. Returns True if added."""
+    engines = data.get("engines", [])
+    if not isinstance(engines, list):
+        print("Error: engines must be a YAML list", file=sys.stderr)
+        sys.exit(1)
+
+    for engine in engines:
+        if isinstance(engine, dict) and engine.get("name") == EMPTY_ENGINE_NAME:
+            return False
+
+    engines.append(dict(EMPTY_ENGINE))
+    return True
+
+
 def verify_data(data: Any) -> list[str]:
     """Return verification errors for required settings."""
     errors = []
@@ -187,6 +220,11 @@ def verify_data(data: Any) -> list[str]:
             errors.append(f"Engine '{name}' not found in settings.yml")
         elif engine.get("disabled") is not False:
             errors.append(f"Engine '{name}' is still disabled")
+
+    if not any(
+        isinstance(e, dict) and e.get("name") == EMPTY_ENGINE_NAME for e in engines
+    ):
+        errors.append(f"Engine '{EMPTY_ENGINE_NAME}' not found in settings.yml")
 
     return errors
 
@@ -242,6 +280,12 @@ def main() -> None:
             print(f"  {engine_name} engine already enabled ✓")
         else:
             print(f"  {engine_name} engine not found ✗", file=sys.stderr)
+
+    # 3b. Ensure the always-empty test engine exists
+    if ensure_empty_engine(data):
+        print("  Added empty engine ✓")
+    else:
+        print("  Empty engine already present ✓")
 
     # 4. Verify in memory before writing; this gives dry-run and missing-engine
     # paths the same contract as the final on-disk verification.

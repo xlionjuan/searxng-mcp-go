@@ -354,11 +354,16 @@ func TestMCPStdioE2E_ResponseFormatInvariants(t *testing.T) {
 	searchTool := findSearchTool(ctx, t, session, stderr)
 	t.Logf("found tool: %s", searchTool.Name)
 
+	// The "empty engine" is a SearXNG built-in dummy engine that always
+	// returns an empty results array (registered by apply-settings.py).
+	// Naming it explicitly — and omitting categories, which would otherwise
+	// expand the search to the whole general engine set — makes this
+	// empty-results invariant deterministic instead of relying on a live
+	// engine such as bing to return zero results for a nonsense query.
 	result := callSearchTool(ctx, t, session, map[string]any{
-		"query":      "site:example.invalid unlikely-no-real-result-codex-e2e",
-		"engines":    "bing",
-		"categories": "general",
-		"limit":      3,
+		"query":   "anything",
+		"engines": "empty engine",
+		"limit":   3,
 	}, stderr)
 
 	if !result.IsError {
