@@ -315,8 +315,9 @@ func runMCPMode(debug bool, flags *CLIFlags, stdin io.Reader) error {
 	defer stop()
 
 	err = server.Run(ctx, &mcp.IOTransport{
-		Reader: io.NopCloser(stdin),
-		Writer: os.Stdout,
+		Reader:        io.NopCloser(stdin),
+		Writer:        os.Stdout,
+		MaxLineLength: 0, // Use the SDK's default frame limit.
 	})
 	if err != nil {
 		// SIGINT/SIGTERM cancels the context; a normal shutdown should

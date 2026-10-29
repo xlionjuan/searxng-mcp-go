@@ -41,7 +41,7 @@ in `internal/searxng/bench_internal_test.go`.
 | `test-e2e-stress` | `go test -v -tags='e2e stress' -run 'TestMCPStress' -race -count=1 -timeout=900s .` | E2E stress subset used by the manual stress workflow |
 | `test-e2e-mcp` | `go test -v -tags=e2e -run 'TestMCP' -race -count=1 -timeout=600s .` | MCP stdio E2E subset used with the CI retry wrapper |
 | `test-e2e-cli-smoke` | `go test -v -tags=e2e -run 'TestCLISmoke' -race -count=1 -timeout=600s .` | CLI smoke E2E subset used with the CI retry wrapper |
-| `lint` | `golangci-lint run --timeout 5m` (+ `stress` + `e2e` + `e2e,stress` build tags) | Full lint suite (4 tag variants); CI uses v2.12.2 |
+| `lint` | `golangci-lint run --timeout 5m` (+ `stress` + `e2e` + `e2e,stress` build tags) | Full lint suite (4 tag variants) |
 | `vet` | `go vet ./...` | Static analysis fallback |
 
 ## Lightweight Fuzzing Policy
