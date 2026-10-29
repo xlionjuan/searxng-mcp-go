@@ -37,8 +37,8 @@ func computeSearchEndpoint(baseURL string) (*url.URL, error) {
 	trimmedPath := strings.TrimRight(parsed.Path, "/")
 
 	lastSegment := trimmedPath
-	if idx := strings.LastIndex(trimmedPath, "/"); idx >= 0 {
-		lastSegment = trimmedPath[idx+1:]
+	if _, segment, found := strings.CutLast(trimmedPath, "/"); found {
+		lastSegment = segment
 	}
 
 	if lastSegment != "search" {
